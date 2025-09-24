@@ -1,0 +1,22 @@
+# Railway deployment configuration
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "make start"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 10
+
+# Environment variable schema
+[environments.production]
+  OPENSEARCH_URL = "http://opensearch.railway.internal:9200"
+  REDIS_URL = "redis://default:${{Redis.REDIS_PASSWORD}}@${{Redis.RAILWAY_TCP_PROXY_DOMAIN}}:${{Redis.RAILWAY_TCP_PROXY_PORT}}"
+  DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+
+[environments.staging]
+  OPENSEARCH_URL = "http://opensearch-staging.railway.internal:9200"
+  REDIS_URL = "${{Redis.REDIS_URL}}"
+  DATABASE_URL = "${{Postgres.DATABASE_URL}}"

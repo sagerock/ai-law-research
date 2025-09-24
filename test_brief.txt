@@ -1,0 +1,37 @@
+BRIEF FOR APPELLANT
+
+IN THE UNITED STATES COURT OF APPEALS
+FOR THE NINTH CIRCUIT
+
+ARGUMENT
+
+I. THE DISTRICT COURT LACKS PERSONAL JURISDICTION OVER DEFENDANT
+
+Plaintiff contends that this Court has personal jurisdiction over Defendant based on minimum contacts with the forum state. However, the Supreme Court has established clear guidelines for determining personal jurisdiction. See International Shoe Co. v. Washington, 326 U.S. 310 (1945) (establishing the minimum contacts standard for personal jurisdiction).
+
+As clarified in World-Wide Volkswagen Corp. v. Woodson, 444 U.S. 286 (1980), mere foreseeability that a product might reach the forum state is insufficient to establish personal jurisdiction. The defendant must have purposefully availed itself of the privilege of conducting activities within the forum state.
+
+The recent Supreme Court decision in Ford Motor Co. v. Montana Eighth Judicial District Court, 141 S. Ct. 1017 (2021), while expanding the scope of specific jurisdiction in some contexts, does not alter the fundamental requirement of purposeful availment. In that case, the Court emphasized that jurisdiction requires a connection between the defendant's forum contacts and the plaintiff's claims. Id. at 1025.
+
+II. SUMMARY JUDGMENT WAS IMPROPERLY GRANTED
+
+The district court erred in granting summary judgment. Under Federal Rule of Civil Procedure 56, summary judgment is appropriate only when "there is no genuine dispute as to any material fact and the movant is entitled to judgment as a matter of law." Fed. R. Civ. P. 56(a).
+
+The Supreme Court's trilogy of 1986 summary judgment cases provides the framework for analysis. See Celotex Corp. v. Catrett, 477 U.S. 317 (1986); Anderson v. Liberty Lobby, Inc., 477 U.S. 242 (1986); Matsushita Electric Industrial Co. v. Zenith Radio Corp., 475 U.S. 574 (1986). These cases establish that the moving party bears the initial burden of demonstrating the absence of a genuine issue of material fact.
+
+Furthermore, as stated in Scott v. Harris, 550 U.S. 372 (2007), courts must view the evidence "in the light most favorable to the nonmoving party." However, the district court failed to apply this standard properly.
+
+III. THE PLAINTIFF'S DUE PROCESS RIGHTS WERE VIOLATED
+
+The procedural due process analysis requires application of the balancing test from Mathews v. Eldridge, 424 U.S. 319 (1976). This test weighs three factors: (1) the private interest affected, (2) the risk of erroneous deprivation, and (3) the government's interest. Id. at 335.
+
+Additionally, Goldberg v. Kelly, 397 U.S. 254 (1970), establishes that when protected interests are at stake, due process requires notice and an opportunity to be heard "at a meaningful time and in a meaningful manner."
+
+CONCLUSION
+
+For the foregoing reasons, Appellant respectfully requests that this Court reverse the district court's judgment and remand for further proceedings.
+
+Respectfully submitted,
+
+/s/ Attorney Name
+Attorney for Appellant
