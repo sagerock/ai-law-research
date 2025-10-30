@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Upload, FileText, Loader2, AlertCircle, CheckCircle, TrendingUp, XCircle, DollarSign } from 'lucide-react'
+import { API_URL } from '@/lib/api'
 
 interface BriefAnalysisResult {
   filename: string
@@ -72,7 +73,7 @@ export default function BriefUpload() {
     formData.append('file', file)
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/briefcheck?use_ai=${useAI}`, {
+      const response = await fetch(`${API_URL}/api/v1/briefcheck?use_ai=${useAI}`, {
         method: 'POST',
         body: formData
       })

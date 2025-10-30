@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Search, Sparkles, Hash } from 'lucide-react'
 import { Case, SearchRequest } from '@/types'
+import { API_URL } from '@/lib/api'
 
 interface SearchInterfaceProps {
   onSearch: (results: Case[]) => void
@@ -27,7 +28,7 @@ export default function SearchInterface({ onSearch, setIsLoading }: SearchInterf
       }
 
       // For now, use mock data - replace with actual API call
-      const response = await fetch('http://localhost:8000/api/v1/search', {
+      const response = await fetch(`${API_URL}/api/v1/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +38,8 @@ export default function SearchInterface({ onSearch, setIsLoading }: SearchInterf
 
       if (response.ok) {
         const data = await response.json()
-        onSearch(data.results || [])
+        // Backend returns array directly, not wrapped in {results: []}
+        onSearch(Array.isArray(data) ? data : [])
       } else {
         // Fallback to mock data for testing
         const mockResults: Case[] = [

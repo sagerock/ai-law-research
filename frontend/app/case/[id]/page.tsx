@@ -4,15 +4,19 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2 } from 'lucide-react'
+import { API_URL } from '@/lib/api'
 
 interface CaseDetail {
   id: string
-  case_name: string
+  title?: string
+  case_name?: string
   court_id: string
   court_name?: string
-  date_filed: string
+  decision_date?: string
+  date_filed?: string
   citation_count?: number
   url?: string
+  source_url?: string
   content?: string
   metadata?: any
 }
@@ -51,7 +55,7 @@ export default function CaseDetailPage() {
 
   const fetchCase = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/cases/${params.id}`)
+      const response = await fetch(`${API_URL}/api/v1/cases/${params.id}`)
       if (!response.ok) throw new Error('Case not found')
       const data = await response.json()
       setCaseData(data)
@@ -66,7 +70,7 @@ export default function CaseDetailPage() {
   const generateSummary = async () => {
     setSummaryLoading(true)
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/cases/${params.id}/summarize`, {
+      const response = await fetch(`${API_URL}/api/v1/cases/${params.id}/summarize`, {
         method: 'POST'
       })
       if (!response.ok) throw new Error('Failed to generate summary')
@@ -89,7 +93,10 @@ export default function CaseDetailPage() {
 
   const handleCopyCitation = () => {
     if (caseData) {
-      const citation = `${caseData.case_name}, ${caseData.metadata?.citation || ''} (${caseData.court_id} ${new Date(caseData.date_filed).getFullYear()})`
+      const caseName = caseData.title || caseData.case_name || 'Unknown Case'
+      const dateStr = caseData.decision_date || caseData.date_filed
+      const year = dateStr ? new Date(dateStr).getFullYear() : ''
+      const citation = `${caseName}, ${caseData.metadata?.citation || ''} (${caseData.court_id} ${year})`
       navigator.clipboard.writeText(citation)
       setCopiedCitation(true)
       setTimeout(() => setCopiedCitation(false), 2000)
@@ -158,7 +165,7 @@ export default function CaseDetailPage() {
             {/* Case Header */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h1 className="text-2xl font-bold text-neutral-900 mb-4">
-                {caseData.case_name}
+                {caseData.title || caseData.case_name}
               </h1>
 
               {/* Case Metadata */}
@@ -167,10 +174,10 @@ export default function CaseDetailPage() {
                   <FileText className="h-4 w-4 mr-1" />
                   {caseData.court_name || caseData.court_id}
                 </span>
-                {caseData.date_filed && (
+                {(caseData.decision_date || caseData.date_filed) && (
                   <span className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
-                    {new Date(caseData.date_filed).toLocaleDateString()}
+                    {new Date(caseData.decision_date || caseData.date_filed || '').toLocaleDateString()}
                   </span>
                 )}
                 {caseData.citation_count !== undefined && (
@@ -296,7 +303,7 @@ export default function CaseDetailPage() {
             {/* Case Text */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h2 className="text-lg font-semibold text-neutral-900 mb-4">Full Opinion</h2>
-              {caseData.content ? (
+              {caseData.content && caseData.content.length > 50 ? (
                 <div className="prose prose-neutral max-w-none">
                   {/* Check if content contains HTML tags */}
                   {caseData.content.includes('<') && caseData.content.includes('>') ? (
@@ -311,9 +318,36 @@ export default function CaseDetailPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-neutral-500 italic">
-                  No case text available. This may be a citation-only entry.
-                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                  <AlertCircle className="h-12 w-12 text-blue-600 mx-auto mb-3" />
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                    Full Opinion Text Not Available
+                  </h3>
+                  <p className="text-neutral-600 mb-4">
+                    The complete opinion text is not available in our database.
+                    Please view the full case on CourtListener.
+                  </p>
+                  {(() => {
+                    const courtListenerUrl = caseData.url || caseData.source_url || caseData.metadata?.absolute_url
+                    if (!courtListenerUrl) return null
+
+                    const fullUrl = courtListenerUrl.startsWith('http')
+                      ? courtListenerUrl
+                      : `https://www.courtlistener.com${courtListenerUrl}`
+
+                    return (
+                      <a
+                        href={fullUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                      >
+                        <ExternalLink className="h-5 w-5 mr-2" />
+                        View Full Opinion on CourtListener
+                      </a>
+                    )
+                  })()}
+                </div>
               )}
             </div>
           </div>
@@ -381,17 +415,27 @@ export default function CaseDetailPage() {
             {caseData.metadata && Object.keys(caseData.metadata).length > 0 && (
               <div className="bg-white rounded-lg shadow-sm border p-4">
                 <h3 className="text-md font-semibold text-neutral-900 mb-3">Additional Information</h3>
-                <dl className="space-y-2">
-                  {Object.entries(caseData.metadata).map(([key, value]) => (
-                    <div key={key}>
-                      <dt className="text-xs font-medium text-neutral-500 capitalize">
-                        {key.replace('_', ' ')}
-                      </dt>
-                      <dd className="text-sm text-neutral-900">
-                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                      </dd>
-                    </div>
-                  ))}
+                <dl className="space-y-3">
+                  {Object.entries(caseData.metadata)
+                    .filter(([key, value]) => {
+                      // Only show useful, non-complex fields
+                      if (typeof value === 'object' && value !== null) return false
+                      // Skip empty or very long values
+                      if (!value || (typeof value === 'string' && value.length > 200)) return false
+                      // Skip technical fields
+                      if (['meta', 'opinions'].includes(key)) return false
+                      return true
+                    })
+                    .map(([key, value]) => (
+                      <div key={key} className="pb-2 border-b border-neutral-100 last:border-0">
+                        <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
+                          {key.replace(/_/g, ' ')}
+                        </dt>
+                        <dd className="text-sm text-neutral-900 break-words">
+                          {String(value)}
+                        </dd>
+                      </div>
+                    ))}
                 </dl>
               </div>
             )}

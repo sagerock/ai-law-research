@@ -1,0 +1,9 @@
+# Railway configuration for Next.js frontend
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm run start"
+healthcheckPath = "/"
+healthcheckTimeout = 100
