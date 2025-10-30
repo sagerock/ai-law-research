@@ -261,6 +261,7 @@ async def keyword_search(query: SearchQuery):
     results = []
     for hit in response["hits"]["hits"]:
         case = hit["_source"]
+        case["id"] = hit["_id"]  # Extract document ID from OpenSearch
         case["score"] = hit["_score"]
         if "highlight" in hit:
             case["snippet"] = hit["highlight"]["content"][0]
