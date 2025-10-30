@@ -14,10 +14,15 @@ import json
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
 # CORS configuration
+# Allow frontend to access the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://ai-law-research-production.up.railway.app",
+        "*"  # Allow all origins in development
+    ],
+    allow_credentials=False,  # Must be False when using wildcard
     allow_methods=["*"],
     allow_headers=["*"],
 )
