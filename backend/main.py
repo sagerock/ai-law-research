@@ -176,32 +176,40 @@ async def health_check():
 @app.post("/api/v1/search")
 async def search_cases(query: SearchQuery):
     """Hybrid search combining BM25 and semantic search"""
-    
+
     # Check cache first
     cache_key = f"search:{json.dumps(query.dict(), sort_keys=True)}"
     cached = await redis_client.get(cache_key)
     if cached:
         return json.loads(cached)
-    
+
     results = []
-    
+    keyword_results = []
+    semantic_results = []
+
     if query.search_type in ["hybrid", "keyword"]:
         # BM25 search via OpenSearch
         keyword_results = await keyword_search(query)
         results.extend(keyword_results)
-    
-    if query.search_type in ["hybrid", "semantic"]:
-        # Semantic search via pgvector
-        semantic_results = await semantic_search(query)
-        results.extend(semantic_results)
-    
-    if query.search_type == "hybrid":
-        # Reciprocal Rank Fusion
+
+    # Only do semantic search if OpenAI API key is configured
+    if query.search_type in ["hybrid", "semantic"] and OPENAI_API_KEY:
+        try:
+            # Semantic search via pgvector
+            semantic_results = await semantic_search(query)
+            results.extend(semantic_results)
+        except Exception as e:
+            # If semantic search fails, just use keyword results
+            print(f"Semantic search failed: {e}")
+            pass
+
+    if query.search_type == "hybrid" and semantic_results:
+        # Reciprocal Rank Fusion only if we have both result sets
         results = reciprocal_rank_fusion(keyword_results, semantic_results)
-    
+
     # Cache results
     await redis_client.setex(cache_key, 300, json.dumps(results))
-    
+
     return results
 
 async def keyword_search(query: SearchQuery):
