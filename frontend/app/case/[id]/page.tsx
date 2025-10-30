@@ -18,6 +18,8 @@ interface CaseDetail {
   url?: string
   source_url?: string
   content?: string
+  content_type?: string
+  pdf_url?: string
   metadata?: any
 }
 
@@ -302,19 +304,66 @@ export default function CaseDetailPage() {
 
             {/* Case Text */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-4">Full Opinion</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-neutral-900">Full Opinion</h2>
+                {caseData.pdf_url && (
+                  <a
+                    href={caseData.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    View PDF
+                  </a>
+                )}
+              </div>
+
               {caseData.content && caseData.content.length > 50 ? (
-                <div className="prose prose-neutral max-w-none">
-                  {/* Check if content contains HTML tags */}
-                  {caseData.content.includes('<') && caseData.content.includes('>') ? (
-                    <div
-                      className="text-sm leading-relaxed text-neutral-700"
-                      dangerouslySetInnerHTML={{ __html: caseData.content }}
-                    />
-                  ) : (
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-700">
-                      {caseData.content}
-                    </pre>
+                <div>
+                  {/* Show preview notice if content is truncated */}
+                  {caseData.content.length < 5000 && caseData.pdf_url && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm">
+                      <AlertCircle className="h-4 w-4 inline mr-2 text-amber-600" />
+                      <span className="text-amber-900">
+                        This is a preview. <a href={caseData.pdf_url} target="_blank" rel="noopener noreferrer" className="underline font-medium">View the full opinion PDF</a> for complete text.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="prose prose-neutral max-w-none">
+                    {/* Check if content contains HTML tags */}
+                    {caseData.content.includes('<') && caseData.content.includes('>') ? (
+                      <div
+                        className="text-sm leading-relaxed text-neutral-700"
+                        dangerouslySetInnerHTML={{ __html: caseData.content }}
+                      />
+                    ) : (
+                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-700">
+                        {caseData.content}
+                      </pre>
+                    )}
+                  </div>
+
+                  {/* PDF Embed Option */}
+                  {caseData.pdf_url && (
+                    <div className="mt-6 border-t pt-6">
+                      <details className="group">
+                        <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900 flex items-center">
+                          <FileText className="h-4 w-4 mr-2 text-neutral-500" />
+                          View PDF inline
+                          <span className="ml-2 text-neutral-400 group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div className="mt-4">
+                          <iframe
+                            src={caseData.pdf_url}
+                            className="w-full border rounded-lg"
+                            style={{ height: '800px' }}
+                            title="Case Opinion PDF"
+                          />
+                        </div>
+                      </details>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -325,28 +374,40 @@ export default function CaseDetailPage() {
                   </h3>
                   <p className="text-neutral-600 mb-4">
                     The complete opinion text is not available in our database.
-                    Please view the full case on CourtListener.
+                    {caseData.pdf_url ? ' Please view the PDF version.' : ' Please view the full case on CourtListener.'}
                   </p>
-                  {(() => {
-                    const courtListenerUrl = caseData.url || caseData.source_url || caseData.metadata?.absolute_url
-                    if (!courtListenerUrl) return null
+                  {caseData.pdf_url ? (
+                    <a
+                      href={caseData.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition"
+                    >
+                      <FileText className="h-5 w-5 mr-2" />
+                      View Full Opinion PDF
+                    </a>
+                  ) : (
+                    (() => {
+                      const courtListenerUrl = caseData.url || caseData.source_url || caseData.metadata?.absolute_url
+                      if (!courtListenerUrl) return null
 
-                    const fullUrl = courtListenerUrl.startsWith('http')
-                      ? courtListenerUrl
-                      : `https://www.courtlistener.com${courtListenerUrl}`
+                      const fullUrl = courtListenerUrl.startsWith('http')
+                        ? courtListenerUrl
+                        : `https://www.courtlistener.com${courtListenerUrl}`
 
-                    return (
-                      <a
-                        href={fullUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
-                      >
-                        <ExternalLink className="h-5 w-5 mr-2" />
-                        View Full Opinion on CourtListener
-                      </a>
-                    )
-                  })()}
+                      return (
+                        <a
+                          href={fullUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                        >
+                          <ExternalLink className="h-5 w-5 mr-2" />
+                          View Full Opinion on CourtListener
+                        </a>
+                      )
+                    })()
+                  )}
                 </div>
               )}
             </div>

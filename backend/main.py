@@ -406,32 +406,23 @@ async def get_case(case_id: str):
         except json.JSONDecodeError:
             result["metadata"] = {}
 
-    # Fetch full opinion text if content is too short or missing
+    # Try to get full opinion text from metadata
     if result.get("metadata") and isinstance(result["metadata"], dict):
         opinions = result["metadata"].get("opinions", [])
-        if opinions and (not result.get("content") or len(result.get("content", "")) < 200):
-            # Try to fetch the full opinion text from CourtListener
-            opinion_id = opinions[0].get("id") if opinions else None
-            if opinion_id:
-                try:
-                    async with httpx.AsyncClient() as client:
-                        response = await client.get(
-                            f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
-                            timeout=10.0
-                        )
-                        if response.status_code == 200:
-                            opinion_data = response.json()
-                            # Get plain text, html, or xml content
-                            full_text = (
-                                opinion_data.get("plain_text") or
-                                opinion_data.get("html") or
-                                opinion_data.get("xml") or
-                                result.get("content", "")
-                            )
-                            result["content"] = full_text
-                except Exception as e:
-                    # If fetching fails, keep the existing content
-                    print(f"Failed to fetch opinion {opinion_id}: {e}")
+        if opinions:
+            opinion = opinions[0]
+
+            # Store PDF URL if available
+            download_url = opinion.get("download_url")
+            if download_url:
+                result["pdf_url"] = download_url
+
+            # Use the snippet from metadata if it's longer than current content
+            # The snippet often contains the beginning of the full opinion
+            snippet = opinion.get("snippet", "")
+            if snippet and len(snippet) > len(result.get("content", "")):
+                result["content"] = snippet
+                result["content_type"] = "plain_text"
 
     return result
 
