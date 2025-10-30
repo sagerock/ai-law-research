@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 import os
 import asyncpg
 import httpx
-from opensearchpy import AsyncOpenSearch
+from opensearchpy._async.client import AsyncOpenSearch
 import redis.asyncio as redis
 import numpy as np
 from datetime import datetime
@@ -76,9 +76,13 @@ async def startup():
     db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
     
     # Initialize OpenSearch client
+    # Detect if URL uses HTTPS (for managed services like Bonsai)
+    use_ssl = OPENSEARCH_URL.startswith('https://')
     osearch_client = AsyncOpenSearch(
         hosts=[OPENSEARCH_URL],
         http_compress=True,
+        use_ssl=use_ssl,
+        verify_certs=False,
     )
     
     # Initialize Redis client
@@ -100,6 +104,7 @@ async def ensure_opensearch_indices():
     """Create OpenSearch indices if they don't exist"""
     cases_index = {
         "settings": {
+            "index.knn": True,
             "number_of_shards": 2,
             "number_of_replicas": 1,
             "analysis": {
@@ -113,14 +118,21 @@ async def ensure_opensearch_indices():
         },
         "mappings": {
             "properties": {
-                "case_id": {"type": "keyword"},
+                "id": {"type": "keyword"},
                 "title": {"type": "text", "analyzer": "legal_analyzer"},
                 "content": {"type": "text", "analyzer": "legal_analyzer"},
-                "court": {"type": "keyword"},
-                "date": {"type": "date"},
+                "court_id": {"type": "integer"},
+                "decision_date": {"type": "date"},
                 "reporter_cite": {"type": "keyword"},
-                "jurisdiction": {"type": "keyword"},
-                "embedding": {"type": "dense_vector", "dims": 1536}
+                "embedding": {
+                    "type": "knn_vector",
+                    "dimension": 1536,
+                    "method": {
+                        "name": "hnsw",
+                        "space_type": "l2",
+                        "engine": "nmslib"
+                    }
+                }
             }
         }
     }
@@ -213,17 +225,17 @@ async def keyword_search(query: SearchQuery):
     # Add filters
     if query.jurisdiction:
         search_body["query"]["bool"]["filter"].append(
-            {"term": {"jurisdiction": query.jurisdiction}}
+            {"term": {"court_id": query.jurisdiction}}
         )
-    
+
     if query.date_from:
         search_body["query"]["bool"]["filter"].append(
-            {"range": {"date": {"gte": query.date_from}}}
+            {"range": {"decision_date": {"gte": query.date_from}}}
         )
-    
+
     if query.date_to:
         search_body["query"]["bool"]["filter"].append(
-            {"range": {"date": {"lte": query.date_to}}}
+            {"range": {"decision_date": {"lte": query.date_to}}}
         )
     
     response = await osearch_client.search(index="cases", body=search_body)
@@ -243,32 +255,39 @@ async def semantic_search(query: SearchQuery):
     
     # Generate embedding for query
     embedding = await generate_embedding(query.query)
-    
-    # Search in PostgreSQL with pgvector
+
+    # Format embedding as PostgreSQL vector string
+    embedding_str = '[' + ','.join(map(str, embedding)) + ']'
+
+    # Search in PostgreSQL with pgvector - join with courts table and extract court from metadata
     sql = """
-        SELECT 
-            id, title, court, date, reporter_cite, content,
-            1 - (embedding <=> $1::vector) as score
+        SELECT
+            cases.id, cases.title, cases.court_id, cases.decision_date,
+            cases.reporter_cite, cases.content,
+            courts.name as court_name,
+            cases.metadata->>'court' as metadata_court,
+            1 - (cases.embedding <=> $1::vector) as score
         FROM cases
+        LEFT JOIN courts ON cases.court_id = courts.id
         WHERE 1=1
     """
-    
-    params = [embedding]
+
+    params = [embedding_str]
     param_count = 1
-    
+
     if query.jurisdiction:
         param_count += 1
-        sql += f" AND jurisdiction = ${param_count}"
+        sql += f" AND court_id = ${param_count}"
         params.append(query.jurisdiction)
-    
+
     if query.date_from:
         param_count += 1
-        sql += f" AND date >= ${param_count}"
+        sql += f" AND decision_date >= ${param_count}"
         params.append(query.date_from)
-    
+
     if query.date_to:
         param_count += 1
-        sql += f" AND date <= ${param_count}"
+        sql += f" AND decision_date <= ${param_count}"
         params.append(query.date_to)
     
     sql += f" ORDER BY embedding <=> $1::vector LIMIT {query.limit}"
@@ -278,16 +297,19 @@ async def semantic_search(query: SearchQuery):
     
     results = []
     for row in rows:
+        # Get court name from join, or fallback to metadata_court
+        court_name = row["court_name"] or row["metadata_court"] or "Unknown Court"
+
         results.append({
             "id": row["id"],
             "title": row["title"],
-            "court": row["court"],
-            "date": row["date"].isoformat(),
-            "reporter_cite": row["reporter_cite"],
-            "content": row["content"][:500],  # Truncate for response
+            "court_name": court_name,  # Changed from "court" to "court_name" to match frontend
+            "date": row["decision_date"].isoformat() if row["decision_date"] else "",
+            "reporter_cite": row["reporter_cite"] or "",
+            "content": row["content"][:500] if row["content"] else "",  # Truncate for response
             "score": float(row["score"])
         })
-    
+
     return results
 
 def reciprocal_rank_fusion(list1, list2, k=60):
@@ -346,17 +368,53 @@ async def generate_embedding(text: str):
 @app.get("/api/v1/cases/{case_id}")
 async def get_case(case_id: str):
     """Get a specific case by ID"""
-    
+
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
             """SELECT * FROM cases WHERE id = $1""",
             case_id
         )
-    
+
     if not row:
         raise HTTPException(status_code=404, detail="Case not found")
-    
-    return dict(row)
+
+    result = dict(row)
+
+    # Parse metadata if it's a JSON string
+    if result.get("metadata") and isinstance(result["metadata"], str):
+        try:
+            result["metadata"] = json.loads(result["metadata"])
+        except json.JSONDecodeError:
+            result["metadata"] = {}
+
+    # Fetch full opinion text if content is too short or missing
+    if result.get("metadata") and isinstance(result["metadata"], dict):
+        opinions = result["metadata"].get("opinions", [])
+        if opinions and (not result.get("content") or len(result.get("content", "")) < 200):
+            # Try to fetch the full opinion text from CourtListener
+            opinion_id = opinions[0].get("id") if opinions else None
+            if opinion_id:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(
+                            f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
+                            timeout=10.0
+                        )
+                        if response.status_code == 200:
+                            opinion_data = response.json()
+                            # Get plain text, html, or xml content
+                            full_text = (
+                                opinion_data.get("plain_text") or
+                                opinion_data.get("html") or
+                                opinion_data.get("xml") or
+                                result.get("content", "")
+                            )
+                            result["content"] = full_text
+                except Exception as e:
+                    # If fetching fails, keep the existing content
+                    print(f"Failed to fetch opinion {opinion_id}: {e}")
+
+    return result
 
 @app.get("/api/v1/cases/{case_id}/citator")
 async def get_citator(case_id: str):
