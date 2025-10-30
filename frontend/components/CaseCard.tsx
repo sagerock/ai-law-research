@@ -37,23 +37,37 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
     }
   }
 
+  // Extract court name from metadata if not available at top level
+  const getCourtName = () => {
+    if (caseItem.court_name) return caseItem.court_name
+    if (caseItem.metadata?.court) return caseItem.metadata.court
+    if (caseItem.metadata?.court_citation_string) return caseItem.metadata.court_citation_string
+    return null
+  }
+
+  const courtName = getCourtName()
+
   return (
     <Link href={`/case/${caseItem.id}`} className="block">
       <div className="bg-white p-6 rounded-lg border border-neutral-200 hover:border-blue-300 hover:shadow-md transition cursor-pointer">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
             <h4 className="text-lg font-semibold text-neutral-900 hover:text-blue-600 transition">
-              {caseItem.case_name}
+              {caseItem.title || caseItem.case_name || 'Untitled Case'}
             </h4>
             <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
-              <span className="flex items-center">
-                <FileText className="h-3 w-3 mr-1" />
-                {caseItem.court_name || caseItem.court_id || 'Unknown Court'}
-              </span>
-              <span className="flex items-center">
-                <Calendar className="h-3 w-3 mr-1" />
-                {caseItem.date_filed}
-              </span>
+              {courtName && (
+                <span className="flex items-center">
+                  <FileText className="h-3 w-3 mr-1" />
+                  {courtName}
+                </span>
+              )}
+              {(caseItem.date_filed || caseItem.decision_date) && (
+                <span className="flex items-center">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {caseItem.date_filed || caseItem.decision_date}
+                </span>
+              )}
               {caseItem.citation_count !== undefined && (
                 <span className="flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
@@ -67,9 +81,14 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
 
         {/* Snippet or Content Preview */}
         {(caseItem.snippet || caseItem.content) && (
-          <p className="text-sm text-neutral-700 line-clamp-3 mb-3">
-            {caseItem.snippet || caseItem.content}
-          </p>
+          <p
+            className="text-sm text-neutral-700 line-clamp-3 mb-3"
+            dangerouslySetInnerHTML={{
+              __html: (caseItem.snippet || caseItem.content || '').replace(
+                /<em>/g, '<em class="font-semibold text-blue-700 not-italic bg-blue-50 px-1 rounded">'
+              )
+            }}
+          />
         )}
 
         {/* Match Score */}

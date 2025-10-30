@@ -1,9 +1,11 @@
 export interface Case {
   id: string
-  case_name: string
+  case_name?: string
+  title?: string
   court_id?: string
   court_name?: string
-  date_filed: string
+  date_filed?: string
+  decision_date?: string
   citation_count?: number
   url?: string
   content?: string
