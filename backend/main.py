@@ -469,6 +469,164 @@ async def get_citator(case_id: str):
             positive_treatments=positive[:5]
         )
 
+@app.post("/api/v1/cases/{case_id}/summarize")
+async def summarize_case(case_id: str):
+    """Generate an AI-powered case brief summary"""
+
+    # Check if OpenAI API key is configured
+    if not OPENAI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="AI summaries require OPENAI_API_KEY to be configured"
+        )
+
+    # Get the case from database
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT c.*, ct.name as court_name
+            FROM cases c
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE c.id = $1
+            """,
+            case_id
+        )
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    case_data = dict(row)
+
+    # Parse metadata if it's a JSON string
+    if case_data.get("metadata") and isinstance(case_data["metadata"], str):
+        try:
+            case_data["metadata"] = json.loads(case_data["metadata"])
+        except json.JSONDecodeError:
+            case_data["metadata"] = {}
+
+    # Get case content
+    content = case_data.get("content", "")
+
+    # Strip HTML tags if present
+    import re
+    if '<' in content and '>' in content:
+        content = re.sub('<.*?>', '', content)
+        content = ' '.join(content.split())
+
+    # Limit to 8000 characters for API cost management
+    content = content[:8000]
+
+    # Get citing and cited cases for context
+    citing_query = await conn.fetch(
+        """
+        SELECT c.id, c.title, c.decision_date, ct.name as court_name
+        FROM citations cit
+        JOIN cases c ON cit.source_case_id = c.id
+        LEFT JOIN courts ct ON c.court_id = ct.id
+        WHERE cit.target_case_id = $1
+        LIMIT 5
+        """,
+        case_id
+    )
+
+    cited_query = await conn.fetch(
+        """
+        SELECT c.id, c.title, c.decision_date, ct.name as court_name
+        FROM citations cit
+        JOIN cases c ON cit.target_case_id = c.id
+        LEFT JOIN courts ct ON c.court_id = ct.id
+        WHERE cit.source_case_id = $1
+        LIMIT 5
+        """,
+        case_id
+    )
+
+    # Prepare prompt for GPT
+    case_name = case_data.get("title") or case_data.get("case_name", "Unknown Case")
+    court = case_data.get("court_name") or case_data.get("court_id", "Unknown Court")
+    date = case_data.get("decision_date") or case_data.get("date_filed")
+    date_str = date.isoformat() if date else "Unknown Date"
+
+    prompt = f"""You are a legal research assistant. Analyze this case and provide a comprehensive brief.
+
+**Case Information:**
+- Name: {case_name}
+- Court: {court}
+- Date: {date_str}
+
+**Case Text:**
+{content}
+
+Please provide a structured legal brief with these sections:
+
+**📋 Facts**
+Summarize the key facts in 3-4 sentences. Focus on what happened that led to this case.
+
+**⚖️ Issue(s)**
+State the legal question(s) the court had to decide. Be specific and frame as questions.
+
+**📚 Holding**
+State the court's decision clearly. What did the court rule?
+
+**💡 Reasoning**
+Explain the court's rationale in 3-4 sentences. Why did they decide this way? What legal principles or precedents did they rely on?
+
+**🎯 Significance**
+Why does this case matter? How might it be used in legal practice? (2-3 sentences)
+
+Format your response with clear section headers using the emoji markers shown above."""
+
+    try:
+        # Call OpenAI API
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": "You are an expert legal research assistant who creates clear, professional case briefs."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 1500
+                },
+                timeout=30.0
+            )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=500,
+                detail=f"OpenAI API error: {response.text}"
+            )
+
+        result = response.json()
+        summary = result["choices"][0]["message"]["content"]
+
+        # Calculate cost (approximate)
+        # GPT-4o-mini: $0.150 per 1M input tokens, $0.600 per 1M output tokens
+        input_tokens = result["usage"]["prompt_tokens"]
+        output_tokens = result["usage"]["completion_tokens"]
+        cost = (input_tokens * 0.150 / 1_000_000) + (output_tokens * 0.600 / 1_000_000)
+
+        return {
+            "summary": summary,
+            "cost": cost,
+            "citing_cases": [dict(r) for r in citing_query],
+            "cited_cases": [dict(r) for r in cited_query],
+            "tokens_used": {
+                "input": input_tokens,
+                "output": output_tokens,
+                "total": result["usage"]["total_tokens"]
+            }
+        }
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="AI service timeout")
+    except Exception as e:
+        print(f"Error generating summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/v1/briefcheck")
 async def check_brief(file: UploadFile = File(...)):
     """Analyze a brief for missing authorities and treatments"""
