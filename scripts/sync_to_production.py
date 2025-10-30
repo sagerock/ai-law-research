@@ -12,8 +12,14 @@ from opensearchpy import AsyncOpenSearch
 # Local database
 LOCAL_DATABASE_URL = "postgresql://legal_user:legal_pass@localhost:5432/legal_research"
 
-# Production OpenSearch
-PROD_OPENSEARCH_URL = "https://2a01db3e3f:bb4b793dbb9748db1a82@law-researcher-1hx7y39w.us-east-1.bonsaisearch.net"
+# Production OpenSearch - get from environment variable
+PROD_OPENSEARCH_URL = os.environ.get("OPENSEARCH_URL")
+
+if not PROD_OPENSEARCH_URL:
+    print("❌ ERROR: OPENSEARCH_URL environment variable not set")
+    print("   Please set it to your Bonsai OpenSearch URL:")
+    print("   export OPENSEARCH_URL='https://user:pass@host'")
+    exit(1)
 
 async def sync_to_production():
     """Sync all cases from local PostgreSQL to production OpenSearch"""

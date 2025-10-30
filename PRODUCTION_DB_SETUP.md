@@ -14,8 +14,8 @@ The production PostgreSQL database on Railway needs to be initialized with the s
 ## Step 2: Run the Setup Script
 
 ```bash
-# Set the production database URL
-export DATABASE_URL='postgresql://postgres:YOUR_PASSWORD@HOST:PORT/railway'
+# Set the production database URL (get this from Railway's PostgreSQL service variables)
+export DATABASE_URL='<your-railway-postgres-url>'
 
 # Make the script executable
 chmod +x scripts/setup_production_db.py
