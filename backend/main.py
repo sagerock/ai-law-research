@@ -13,12 +13,10 @@ import json
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
-# CORS configuration
-# Allow frontend to access the API
-# Using regex pattern to allow all subdomains
+# CORS configuration - Allow all origins for now
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.railway\.app|http://localhost:3000",
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
