@@ -19,47 +19,18 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://legal_user:legal_pass@loc
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 async def setup_database():
-    """Create tables if they don't exist"""
+    """Verify database tables exist (tables should be created by migration)"""
     conn = await asyncpg.connect(DATABASE_URL)
 
-    await conn.execute("""
-        CREATE EXTENSION IF NOT EXISTS vector;
-
-        CREATE TABLE IF NOT EXISTS courts (
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            full_name TEXT,
-            jurisdiction TEXT,
-            level TEXT,
-            abbreviation TEXT,
-            court_listener_id TEXT UNIQUE,
-            url TEXT,
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-
-        CREATE TABLE IF NOT EXISTS cases (
-            id TEXT PRIMARY KEY,
-            court_id TEXT,
-            case_name TEXT,
-            date_filed DATE,
-            citation_count INTEGER,
-            url TEXT,
-            content TEXT,
-            embedding vector(1536),
-            metadata JSONB,
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-
-        CREATE TABLE IF NOT EXISTS citations (
-            id SERIAL PRIMARY KEY,
-            citing_opinion TEXT,
-            cited_opinion TEXT,
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-    """)
+    # Just verify the tables exist
+    try:
+        await conn.fetchval("SELECT 1 FROM courts LIMIT 1")
+        await conn.fetchval("SELECT 1 FROM cases LIMIT 1")
+        print("✓ Database tables ready")
+    except Exception as e:
+        print(f"⚠ Warning: Tables may not exist. Run migrations first. Error: {e}")
 
     await conn.close()
-    print("✓ Database tables ready")
 
 async def import_courts():
     """Import court data"""
@@ -127,44 +98,62 @@ async def search_and_import_cases():
 
             if response.status_code == 200:
                 data = response.json()
-                results = data["results"]
+                results = data.get("results", [])
 
                 for result in results:
-                    # Extract available metadata
-                    case_id = str(result.get("id", ""))
+                    # Extract available metadata - use cluster_id as the case ID
+                    case_id = str(result.get("cluster_id", ""))
+
+                    # Skip if no valid ID
+                    if not case_id or case_id == "":
+                        continue
+
                     case_name = result.get("caseName", "Unknown")
-                    court = result.get("court", "")
+                    court_cl_id = result.get("court_id", "")  # This is CourtListener court ID
                     date_filed = result.get("dateFiled")
                     citation_count = result.get("citeCount", 0)
                     url = result.get("absolute_url", "")
-                    snippet = result.get("snippet", "")
+                    # Get snippet from syllabus or first part of case
+                    snippet = result.get("syllabus", "")[:1000] if result.get("syllabus") else ""
+
+                    # Look up the court's integer ID from our courts table
+                    court_id = None
+                    if court_cl_id:
+                        court_id = await conn.fetchval(
+                            "SELECT id FROM courts WHERE court_listener_id = $1",
+                            court_cl_id
+                        )
 
                     # Generate embedding if we have content
                     embedding = None
                     if OPENAI_API_KEY and snippet:
-                        embedding = await generate_embedding(snippet)
+                        embedding_list = await generate_embedding(snippet)
+                        if embedding_list:
+                            # Convert list to PostgreSQL vector string format
+                            embedding = '[' + ','.join(map(str, embedding_list)) + ']'
 
-                    # Store case
-                    await conn.execute("""
-                        INSERT INTO cases (
-                            id, case_name, court_id, date_filed,
-                            citation_count, url, content, embedding, metadata
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                        ON CONFLICT (id) DO UPDATE SET
-                            citation_count = EXCLUDED.citation_count
-                    """,
-                        case_id,
-                        case_name,
-                        court,
-                        datetime.strptime(date_filed, "%Y-%m-%d") if date_filed else None,
-                        citation_count,
-                        url,
-                        snippet,
-                        embedding,
-                        json.dumps(result)
-                    )
-
-                    total_cases += 1
+                    try:
+                        # Store case - use title column (required by migration) instead of case_name
+                        await conn.execute("""
+                            INSERT INTO cases (
+                                id, title, court_id, decision_date,
+                                content, embedding, metadata, source_url
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                            ON CONFLICT (id) DO UPDATE SET
+                                content = EXCLUDED.content
+                        """,
+                            case_id,
+                            case_name,
+                            court_id,
+                            datetime.strptime(date_filed, "%Y-%m-%d") if date_filed else None,
+                            snippet,
+                            embedding,
+                            json.dumps(result),
+                            url
+                        )
+                        total_cases += 1
+                    except Exception as e:
+                        print(f"    ⚠ Failed to import case {case_id}: {e}")
 
     await conn.close()
     print(f"✓ Imported {total_cases} case records")
@@ -186,13 +175,18 @@ async def import_citations():
             conn = await asyncpg.connect(DATABASE_URL)
 
             for cite in citations[:100]:  # First 100 citations
-                await conn.execute("""
-                    INSERT INTO citations (citing_opinion, cited_opinion)
-                    VALUES ($1, $2)
-                """,
-                    str(cite.get("citing_opinion", "")),
-                    str(cite.get("cited_opinion", ""))
-                )
+                try:
+                    await conn.execute("""
+                        INSERT INTO citations (source_case_id, target_case_id)
+                        VALUES ($1, $2)
+                        ON CONFLICT DO NOTHING
+                    """,
+                        str(cite.get("citing_opinion", "")),
+                        str(cite.get("cited_opinion", ""))
+                    )
+                except:
+                    # Skip citations that don't have valid case IDs
+                    pass
 
             await conn.close()
             print(f"✓ Imported {len(citations[:100])} citations")
@@ -239,17 +233,17 @@ async def show_summary():
     # Show sample cases
     print("\nSample cases imported:")
     rows = await conn.fetch("""
-        SELECT case_name, date_filed, citation_count
+        SELECT title, decision_date
         FROM cases
-        WHERE case_name != 'Unknown'
-        ORDER BY citation_count DESC NULLS LAST
+        WHERE title != 'Unknown'
+        ORDER BY created_at DESC
         LIMIT 5
     """)
 
     for row in rows:
-        date_str = row['date_filed'].strftime('%Y-%m-%d') if row['date_filed'] else 'N/A'
-        print(f"  • {row['case_name'][:60]}")
-        print(f"    Filed: {date_str}, Citations: {row['citation_count'] or 0}")
+        date_str = row['decision_date'].strftime('%Y-%m-%d') if row['decision_date'] else 'N/A'
+        print(f"  • {row['title'][:60]}")
+        print(f"    Decision date: {date_str}")
 
     await conn.close()
 

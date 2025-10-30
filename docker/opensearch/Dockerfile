@@ -4,7 +4,6 @@ FROM --platform=linux/amd64 opensearchproject/opensearch:2.11.0
 
 # Disable security for development (enable in production with proper certs)
 ENV discovery.type=single-node
-ENV plugins.security.disabled=true
 ENV OPENSEARCH_JAVA_OPTS="-Xms1g -Xmx1g"
 ENV bootstrap.memory_lock=true
 

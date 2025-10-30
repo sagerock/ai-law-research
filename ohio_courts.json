@@ -1,0 +1,25 @@
+[
+  {
+    "resource_uri": "https://www.courtlistener.com/api/rest/v4/courts/ca6/",
+    "id": "ca6",
+    "pacer_court_id": 6,
+    "pacer_has_rss_feed": true,
+    "pacer_rss_entry_types": "orders,opinions,judgments",
+    "date_last_pacer_contact": null,
+    "fjc_court_id": "6",
+    "date_modified": "2023-02-22T07:45:44.669268-08:00",
+    "in_use": true,
+    "has_opinion_scraper": true,
+    "has_oral_argument_scraper": true,
+    "position": 106.0,
+    "citation_string": "6th Cir.",
+    "short_name": "Sixth Circuit",
+    "full_name": "Court of Appeals for the Sixth Circuit",
+    "url": "http://www.ca6.uscourts.gov/",
+    "start_date": "1891-03-03",
+    "end_date": null,
+    "jurisdiction": "F",
+    "parent_court": null,
+    "appeals_to": []
+  }
+]
