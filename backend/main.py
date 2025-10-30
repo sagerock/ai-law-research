@@ -104,9 +104,8 @@ async def ensure_opensearch_indices():
     """Create OpenSearch indices if they don't exist"""
     cases_index = {
         "settings": {
-            "index.knn": True,
-            "number_of_shards": 2,
-            "number_of_replicas": 1,
+            "number_of_shards": 1,
+            "number_of_replicas": 0,
             "analysis": {
                 "analyzer": {
                     "legal_analyzer": {
@@ -122,17 +121,12 @@ async def ensure_opensearch_indices():
                 "title": {"type": "text", "analyzer": "legal_analyzer"},
                 "content": {"type": "text", "analyzer": "legal_analyzer"},
                 "court_id": {"type": "integer"},
+                "court_name": {"type": "text"},
                 "decision_date": {"type": "date"},
                 "reporter_cite": {"type": "keyword"},
-                "embedding": {
-                    "type": "knn_vector",
-                    "dimension": 1536,
-                    "method": {
-                        "name": "hnsw",
-                        "space_type": "l2",
-                        "engine": "nmslib"
-                    }
-                }
+                "metadata": {"type": "object"},
+                "source_url": {"type": "keyword"},
+                "created_at": {"type": "date"}
             }
         }
     }
