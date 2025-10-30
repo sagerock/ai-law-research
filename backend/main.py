@@ -480,7 +480,7 @@ async def summarize_case(case_id: str):
             detail="AI summaries require OPENAI_API_KEY to be configured"
         )
 
-    # Get the case from database
+    # Get the case from database and related cases
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
             """
@@ -492,8 +492,33 @@ async def summarize_case(case_id: str):
             case_id
         )
 
-    if not row:
-        raise HTTPException(status_code=404, detail="Case not found")
+        if not row:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        # Get citing and cited cases for context
+        citing_query = await conn.fetch(
+            """
+            SELECT c.id, c.title, c.decision_date, ct.name as court_name
+            FROM citations cit
+            JOIN cases c ON cit.source_case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cit.target_case_id = $1
+            LIMIT 5
+            """,
+            case_id
+        )
+
+        cited_query = await conn.fetch(
+            """
+            SELECT c.id, c.title, c.decision_date, ct.name as court_name
+            FROM citations cit
+            JOIN cases c ON cit.target_case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cit.source_case_id = $1
+            LIMIT 5
+            """,
+            case_id
+        )
 
     case_data = dict(row)
 
@@ -515,31 +540,6 @@ async def summarize_case(case_id: str):
 
     # Limit to 8000 characters for API cost management
     content = content[:8000]
-
-    # Get citing and cited cases for context
-    citing_query = await conn.fetch(
-        """
-        SELECT c.id, c.title, c.decision_date, ct.name as court_name
-        FROM citations cit
-        JOIN cases c ON cit.source_case_id = c.id
-        LEFT JOIN courts ct ON c.court_id = ct.id
-        WHERE cit.target_case_id = $1
-        LIMIT 5
-        """,
-        case_id
-    )
-
-    cited_query = await conn.fetch(
-        """
-        SELECT c.id, c.title, c.decision_date, ct.name as court_name
-        FROM citations cit
-        JOIN cases c ON cit.target_case_id = c.id
-        LEFT JOIN courts ct ON c.court_id = ct.id
-        WHERE cit.source_case_id = $1
-        LIMIT 5
-        """,
-        case_id
-    )
 
     # Prepare prompt for GPT
     case_name = case_data.get("title") or case_data.get("case_name", "Unknown Case")
