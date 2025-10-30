@@ -137,8 +137,8 @@ async def ensure_opensearch_indices():
         }
     }
     
-    if not await osearch_client.indices.exists("cases"):
-        await osearch_client.indices.create("cases", body=cases_index)
+    if not await osearch_client.indices.exists(index="cases"):
+        await osearch_client.indices.create(index="cases", body=cases_index)
 
 @app.get("/health")
 async def health_check():
