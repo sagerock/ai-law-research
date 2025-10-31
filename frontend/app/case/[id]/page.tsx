@@ -64,6 +64,7 @@ export default function CaseDetailPage() {
 
   useEffect(() => {
     fetchCase()
+    fetchCachedSummary()
   }, [params.id])
 
   const fetchCase = async () => {
@@ -77,6 +78,20 @@ export default function CaseDetailPage() {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCachedSummary = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/cases/${params.id}/summary`)
+      if (!response.ok) return
+      const data = await response.json()
+      if (data.cached && data.summary) {
+        setCaseSummary(data)
+        console.log('✅ Loaded cached summary')
+      }
+    } catch (err) {
+      console.log('No cached summary available')
     }
   }
 

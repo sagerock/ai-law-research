@@ -469,6 +469,35 @@ async def get_citator(case_id: str):
             positive_treatments=positive[:5]
         )
 
+@app.get("/api/v1/cases/{case_id}/summary")
+async def get_case_summary(case_id: str):
+    """Get cached AI summary if it exists"""
+    async with db_pool.acquire() as conn:
+        cached = await conn.fetchrow(
+            """
+            SELECT summary, model, input_tokens, output_tokens, cost, created_at
+            FROM ai_summaries
+            WHERE case_id = $1
+            """,
+            case_id
+        )
+
+        if not cached:
+            return {"summary": None, "cached": False}
+
+        return {
+            "summary": cached["summary"],
+            "cost": float(cached["cost"]) if cached["cost"] else 0,
+            "tokens_used": {
+                "input": cached["input_tokens"],
+                "output": cached["output_tokens"],
+                "total": cached["input_tokens"] + cached["output_tokens"]
+            },
+            "cached": True,
+            "cached_at": cached["created_at"].isoformat() if cached["created_at"] else None,
+            "model": cached["model"]
+        }
+
 @app.post("/api/v1/cases/{case_id}/summarize")
 async def summarize_case(case_id: str):
     """Generate an AI-powered case brief summary"""
@@ -482,6 +511,15 @@ async def summarize_case(case_id: str):
 
     # Get the case from database and related cases
     async with db_pool.acquire() as conn:
+        # Check if we already have a cached summary
+        cached = await conn.fetchrow(
+            """
+            SELECT summary, model, input_tokens, output_tokens, cost, created_at
+            FROM ai_summaries
+            WHERE case_id = $1
+            """,
+            case_id
+        )
         row = await conn.fetchrow(
             """
             SELECT c.*, ct.name as court_name
@@ -519,6 +557,23 @@ async def summarize_case(case_id: str):
             """,
             case_id
         )
+
+        # Return cached summary if it exists
+        if cached:
+            print(f"✅ Returning cached summary for case {case_id}")
+            return {
+                "summary": cached["summary"],
+                "cost": float(cached["cost"]) if cached["cost"] else 0,
+                "citing_cases": [dict(r) for r in citing_query],
+                "cited_cases": [dict(r) for r in cited_query],
+                "tokens_used": {
+                    "input": cached["input_tokens"],
+                    "output": cached["output_tokens"],
+                    "total": cached["input_tokens"] + cached["output_tokens"]
+                },
+                "cached": True,
+                "cached_at": cached["created_at"].isoformat() if cached["created_at"] else None
+            }
 
     case_data = dict(row)
 
@@ -682,6 +737,25 @@ Format your response with clear section headers using the emoji markers shown ab
         output_tokens = usage.get("output_tokens", 0)
         cost = (input_tokens * 0.25 / 1_000_000) + (output_tokens * 2.00 / 1_000_000)
 
+        # Save the summary to database for caching
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO ai_summaries (case_id, summary, model, input_tokens, output_tokens, cost)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (case_id) DO UPDATE
+                SET summary = EXCLUDED.summary,
+                    model = EXCLUDED.model,
+                    input_tokens = EXCLUDED.input_tokens,
+                    output_tokens = EXCLUDED.output_tokens,
+                    cost = EXCLUDED.cost,
+                    created_at = CURRENT_TIMESTAMP
+                """,
+                case_id, summary, "gpt-5-mini", input_tokens, output_tokens, cost
+            )
+
+        print(f"💾 Saved summary for case {case_id} to database")
+
         return {
             "summary": summary,
             "cost": cost,
@@ -691,7 +765,8 @@ Format your response with clear section headers using the emoji markers shown ab
                 "input": input_tokens,
                 "output": output_tokens,
                 "total": input_tokens + output_tokens
-            }
+            },
+            "cached": False
         }
 
     except httpx.TimeoutException:
