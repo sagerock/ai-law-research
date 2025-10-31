@@ -651,23 +651,35 @@ Format your response with clear section headers using the emoji markers shown ab
             )
 
         result = response.json()
-        print(f"GPT-5 API Response: {result}")  # Debug logging
+        print(f"GPT-5 API Response status: {result.get('status')}")  # Debug logging
 
-        # GPT-5 Responses API structure
-        summary = result.get("output_text") or result.get("text") or result.get("output", {}).get("text")
+        # GPT-5 Responses API structure: output is an array with reasoning and message items
+        # The actual text is in output[1].content[0].text (skipping output[0] which is reasoning)
+        output_items = result.get("output", [])
+        summary = None
+
+        for item in output_items:
+            if item.get("type") == "message":
+                content = item.get("content", [])
+                for content_item in content:
+                    if content_item.get("type") == "output_text":
+                        summary = content_item.get("text")
+                        break
+                if summary:
+                    break
 
         if not summary:
-            print(f"Could not find output text in response. Keys: {result.keys()}")
+            print(f"Could not find output text in response. Output items: {len(output_items)}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Unexpected API response structure: {list(result.keys())}"
+                detail=f"Could not extract text from GPT-5 response"
             )
 
         # Calculate cost
         # GPT-5 mini: $0.25 per 1M input tokens, $2.00 per 1M output tokens
         usage = result.get("usage", {})
-        input_tokens = usage.get("input_tokens") or usage.get("prompt_tokens", 0)
-        output_tokens = usage.get("output_tokens") or usage.get("completion_tokens", 0)
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
         cost = (input_tokens * 0.25 / 1_000_000) + (output_tokens * 2.00 / 1_000_000)
 
         return {
