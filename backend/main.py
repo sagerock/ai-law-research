@@ -618,6 +618,7 @@ Explain the court's rationale in 4-6 sentences. Why did they decide this way? Wh
 Why does this case matter? How might it be used in legal practice? What legal principle does it establish or clarify? (3-4 sentences)
 
 Format your response with clear section headers using the emoji markers shown above. Be thorough and specific, using the full opinion text provided.
+"""
 
     try:
         # Call OpenAI API with GPT-5 mini
