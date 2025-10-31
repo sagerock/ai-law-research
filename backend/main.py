@@ -651,12 +651,23 @@ Format your response with clear section headers using the emoji markers shown ab
             )
 
         result = response.json()
-        summary = result["output_text"]  # GPT-5 returns output_text
+        print(f"GPT-5 API Response: {result}")  # Debug logging
+
+        # GPT-5 Responses API structure
+        summary = result.get("output_text") or result.get("text") or result.get("output", {}).get("text")
+
+        if not summary:
+            print(f"Could not find output text in response. Keys: {result.keys()}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected API response structure: {list(result.keys())}"
+            )
 
         # Calculate cost
         # GPT-5 mini: $0.25 per 1M input tokens, $2.00 per 1M output tokens
-        input_tokens = result["usage"]["input_tokens"]
-        output_tokens = result["usage"]["output_tokens"]
+        usage = result.get("usage", {})
+        input_tokens = usage.get("input_tokens") or usage.get("prompt_tokens", 0)
+        output_tokens = usage.get("output_tokens") or usage.get("completion_tokens", 0)
         cost = (input_tokens * 0.25 / 1_000_000) + (output_tokens * 2.00 / 1_000_000)
 
         return {
