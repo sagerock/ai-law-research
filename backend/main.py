@@ -529,17 +529,60 @@ async def summarize_case(case_id: str):
         except json.JSONDecodeError:
             case_data["metadata"] = {}
 
-    # Get case content
-    content = case_data.get("content", "")
+    # Get case content - try PDF first, then fallback to database content
+    content = ""
+    pdf_url = None
 
-    # Strip HTML tags if present
-    import re
-    if '<' in content and '>' in content:
-        content = re.sub('<.*?>', '', content)
-        content = ' '.join(content.split())
+    # Check if we have a PDF URL in metadata
+    if case_data.get("metadata") and isinstance(case_data["metadata"], dict):
+        opinions = case_data["metadata"].get("opinions", [])
+        if opinions:
+            pdf_url = opinions[0].get("download_url")
 
-    # Limit to 8000 characters for API cost management
-    content = content[:8000]
+    # Try to extract text from PDF
+    if pdf_url:
+        try:
+            print(f"Fetching PDF from: {pdf_url}")
+            import io
+            import pdfplumber
+
+            async with httpx.AsyncClient() as client:
+                pdf_response = await client.get(pdf_url, timeout=30.0, follow_redirects=True)
+
+                if pdf_response.status_code == 200:
+                    # Extract text from PDF
+                    pdf_file = io.BytesIO(pdf_response.content)
+                    with pdfplumber.open(pdf_file) as pdf:
+                        pdf_text = ""
+                        # Extract from first 15 pages (usually enough for a case)
+                        for page in pdf.pages[:15]:
+                            pdf_text += page.extract_text() or ""
+
+                        if len(pdf_text) > 500:
+                            content = pdf_text
+                            print(f"✅ Extracted {len(content)} characters from PDF")
+                        else:
+                            print(f"⚠️ PDF text too short ({len(pdf_text)} chars), using database content")
+        except Exception as e:
+            print(f"⚠️ Failed to extract PDF text: {e}")
+
+    # Fallback to database content if PDF extraction failed
+    if not content:
+        content = case_data.get("content", "")
+        print(f"Using database content: {len(content)} characters")
+
+        # Strip HTML tags if present
+        import re
+        if '<' in content and '>' in content:
+            content = re.sub('<.*?>', '', content)
+            content = ' '.join(content.split())
+
+    # Limit to 20,000 characters for API cost management
+    # (GPT-4o-mini is cheap enough to handle more text)
+    if len(content) > 20000:
+        # Take first 18000 and last 2000 to get beginning and conclusion
+        content = content[:18000] + "\n\n[...middle section omitted...]\n\n" + content[-2000:]
+        print(f"Truncated content to 20,000 characters (with middle section omitted)")
 
     # Prepare prompt for GPT
     case_name = case_data.get("title") or case_data.get("case_name", "Unknown Case")
@@ -547,34 +590,34 @@ async def summarize_case(case_id: str):
     date = case_data.get("decision_date") or case_data.get("date_filed")
     date_str = date.isoformat() if date else "Unknown Date"
 
-    prompt = f"""You are a legal research assistant. Analyze this case and provide a comprehensive brief.
+    prompt = f"""You are a legal research assistant. Analyze this case opinion and provide a comprehensive brief.
 
 **Case Information:**
 - Name: {case_name}
 - Court: {court}
 - Date: {date_str}
 
-**Case Text:**
+**Full Case Opinion:**
 {content}
 
 Please provide a structured legal brief with these sections:
 
 **📋 Facts**
-Summarize the key facts in 3-4 sentences. Focus on what happened that led to this case.
+Summarize the key facts in 4-5 sentences. Include the parties involved, what happened that led to this lawsuit, and the procedural history. Focus on facts that are crucial to understanding the legal issues.
 
 **⚖️ Issue(s)**
-State the legal question(s) the court had to decide. Be specific and frame as questions.
+State the legal question(s) the court had to decide. Be specific and frame as questions. If there are multiple issues, number them.
 
 **📚 Holding**
-State the court's decision clearly. What did the court rule?
+State the court's decision clearly and completely. What did the court rule on each issue? Include the outcome (affirmed, reversed, remanded, etc.).
 
 **💡 Reasoning**
-Explain the court's rationale in 3-4 sentences. Why did they decide this way? What legal principles or precedents did they rely on?
+Explain the court's rationale in 4-6 sentences. Why did they decide this way? What legal principles, statutes, or precedents did they rely on? Include key quotes or citations if particularly important.
 
 **🎯 Significance**
-Why does this case matter? How might it be used in legal practice? (2-3 sentences)
+Why does this case matter? How might it be used in legal practice? What legal principle does it establish or clarify? (3-4 sentences)
 
-Format your response with clear section headers using the emoji markers shown above."""
+Format your response with clear section headers using the emoji markers shown above. Be thorough and specific, using the full opinion text provided.
 
     try:
         # Call OpenAI API
@@ -585,13 +628,13 @@ Format your response with clear section headers using the emoji markers shown ab
                 json={
                     "model": "gpt-4o-mini",
                     "messages": [
-                        {"role": "system", "content": "You are an expert legal research assistant who creates clear, professional case briefs."},
+                        {"role": "system", "content": "You are an expert legal research assistant who creates clear, professional case briefs from full court opinions."},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": 0.3,
-                    "max_tokens": 1500
+                    "max_tokens": 2500  # Increased for more detailed summaries from full PDFs
                 },
-                timeout=30.0
+                timeout=60.0  # Increased timeout for PDF processing
             )
 
         if response.status_code != 200:
