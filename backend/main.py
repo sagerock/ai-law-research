@@ -620,19 +620,19 @@ Why does this case matter? How might it be used in legal practice? What legal pr
 Format your response with clear section headers using the emoji markers shown above. Be thorough and specific, using the full opinion text provided.
 
     try:
-        # Call OpenAI API
+        # Call OpenAI API with GPT-5 mini
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                 json={
-                    "model": "gpt-4o-mini",
+                    "model": "gpt-5-mini",  # Using GPT-5 mini for better reasoning at low cost
                     "messages": [
                         {"role": "system", "content": "You are an expert legal research assistant who creates clear, professional case briefs from full court opinions."},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": 0.3,
-                    "max_tokens": 2500  # Increased for more detailed summaries from full PDFs
+                    "max_tokens": 4000  # GPT-5 mini supports up to 128K output tokens
                 },
                 timeout=60.0  # Increased timeout for PDF processing
             )
@@ -646,11 +646,11 @@ Format your response with clear section headers using the emoji markers shown ab
         result = response.json()
         summary = result["choices"][0]["message"]["content"]
 
-        # Calculate cost (approximate)
-        # GPT-4o-mini: $0.150 per 1M input tokens, $0.600 per 1M output tokens
+        # Calculate cost
+        # GPT-5 mini: $0.25 per 1M input tokens, $2.00 per 1M output tokens
         input_tokens = result["usage"]["prompt_tokens"]
         output_tokens = result["usage"]["completion_tokens"]
-        cost = (input_tokens * 0.150 / 1_000_000) + (output_tokens * 0.600 / 1_000_000)
+        cost = (input_tokens * 0.25 / 1_000_000) + (output_tokens * 2.00 / 1_000_000)
 
         return {
             "summary": summary,
