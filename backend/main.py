@@ -485,9 +485,36 @@ async def get_case_summary(case_id: str):
         if not cached:
             return {"summary": None, "cached": False}
 
+        # Get citing and cited cases for the response
+        citing_query = await conn.fetch(
+            """
+            SELECT c.id, c.title, c.decision_date, ct.name as court_name
+            FROM citations cit
+            JOIN cases c ON cit.source_case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cit.target_case_id = $1
+            LIMIT 5
+            """,
+            case_id
+        )
+
+        cited_query = await conn.fetch(
+            """
+            SELECT c.id, c.title, c.decision_date, ct.name as court_name
+            FROM citations cit
+            JOIN cases c ON cit.target_case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cit.source_case_id = $1
+            LIMIT 5
+            """,
+            case_id
+        )
+
         return {
             "summary": cached["summary"],
             "cost": float(cached["cost"]) if cached["cost"] else 0,
+            "citing_cases": [dict(r) for r in citing_query],
+            "cited_cases": [dict(r) for r in cited_query],
             "tokens_used": {
                 "input": cached["input_tokens"],
                 "output": cached["output_tokens"],
