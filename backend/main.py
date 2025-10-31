@@ -621,19 +621,25 @@ Format your response with clear section headers using the emoji markers shown ab
 """
 
     try:
-        # Call OpenAI API with GPT-5 mini
+        # Call OpenAI Responses API with GPT-5 mini
+        # GPT-5 uses the Responses API, not Chat Completions
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                "https://api.openai.com/v1/responses",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                },
                 json={
                     "model": "gpt-5-mini",  # Using GPT-5 mini for better reasoning at low cost
-                    "messages": [
-                        {"role": "system", "content": "You are an expert legal research assistant who creates clear, professional case briefs from full court opinions."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 4000  # GPT-5 mini supports up to 128K output tokens
+                    "input": prompt,  # GPT-5 uses "input" instead of "messages"
+                    "reasoning": {
+                        "effort": "medium"  # medium reasoning for legal analysis
+                    },
+                    "text": {
+                        "verbosity": "high"  # high verbosity for comprehensive legal briefs
+                    },
+                    "max_output_tokens": 4000  # GPT-5 uses max_output_tokens instead of max_tokens
                 },
                 timeout=60.0  # Increased timeout for PDF processing
             )
@@ -645,12 +651,12 @@ Format your response with clear section headers using the emoji markers shown ab
             )
 
         result = response.json()
-        summary = result["choices"][0]["message"]["content"]
+        summary = result["output_text"]  # GPT-5 returns output_text
 
         # Calculate cost
         # GPT-5 mini: $0.25 per 1M input tokens, $2.00 per 1M output tokens
-        input_tokens = result["usage"]["prompt_tokens"]
-        output_tokens = result["usage"]["completion_tokens"]
+        input_tokens = result["usage"]["input_tokens"]
+        output_tokens = result["usage"]["output_tokens"]
         cost = (input_tokens * 0.25 / 1_000_000) + (output_tokens * 2.00 / 1_000_000)
 
         return {
@@ -661,7 +667,7 @@ Format your response with clear section headers using the emoji markers shown ab
             "tokens_used": {
                 "input": input_tokens,
                 "output": output_tokens,
-                "total": result["usage"]["total_tokens"]
+                "total": input_tokens + output_tokens
             }
         }
 
