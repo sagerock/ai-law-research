@@ -29,9 +29,10 @@ redis_client = None
 
 # Environment variables
 DATABASE_URL = os.getenv("DATABASE_URL")
-OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")  # Optional - falls back to PostgreSQL search
+REDIS_URL = os.getenv("REDIS_URL")  # Optional - caching disabled if not set
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 
@@ -71,25 +72,39 @@ class CitatorResult(BaseModel):
 @app.on_event("startup")
 async def startup():
     global db_pool, osearch_client, redis_client
-    
+
     # Initialize PostgreSQL connection pool
-    db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
-    
-    # Initialize OpenSearch client
-    # Detect if URL uses HTTPS (for managed services like Bonsai)
-    use_ssl = OPENSEARCH_URL.startswith('https://')
-    osearch_client = AsyncOpenSearch(
-        hosts=[OPENSEARCH_URL],
-        http_compress=True,
-        use_ssl=use_ssl,
-        verify_certs=False,
-    )
-    
-    # Initialize Redis client
-    redis_client = await redis.from_url(REDIS_URL, decode_responses=True)
-    
-    # Ensure OpenSearch indices exist
-    await ensure_opensearch_indices()
+    db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+
+    # Initialize OpenSearch client (optional)
+    if OPENSEARCH_URL:
+        try:
+            use_ssl = OPENSEARCH_URL.startswith('https://')
+            osearch_client = AsyncOpenSearch(
+                hosts=[OPENSEARCH_URL],
+                http_compress=True,
+                use_ssl=use_ssl,
+                verify_certs=False,
+            )
+            await ensure_opensearch_indices()
+            print(f"OpenSearch connected: {OPENSEARCH_URL}")
+        except Exception as e:
+            print(f"OpenSearch not available: {e}")
+            osearch_client = None
+    else:
+        print("OpenSearch not configured - using PostgreSQL search")
+
+    # Initialize Redis client (optional)
+    if REDIS_URL:
+        try:
+            redis_client = await redis.from_url(REDIS_URL, decode_responses=True)
+            await redis_client.ping()
+            print(f"Redis connected: {REDIS_URL}")
+        except Exception as e:
+            print(f"Redis not available: {e}")
+            redis_client = None
+    else:
+        print("Redis not configured - caching disabled")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -140,56 +155,62 @@ async def health_check():
     health_status = {
         "status": "healthy",
         "database": "unknown",
-        "opensearch": "unknown",
-        "redis": "unknown"
+        "opensearch": "not configured",
+        "redis": "not configured"
     }
 
-    # Check each service individually with timeouts
-    # Don't fail the entire health check if one service is slow
-
-    # Check database
+    # Check database (required)
     try:
         async with db_pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
         health_status["database"] = "connected"
     except Exception as e:
         health_status["database"] = f"error: {str(e)[:50]}"
+        health_status["status"] = "degraded"
 
-    # Check OpenSearch
-    try:
-        opensearch_health = await osearch_client.cluster.health()
-        health_status["opensearch"] = opensearch_health.get("status", "connected")
-    except Exception as e:
-        health_status["opensearch"] = f"error: {str(e)[:50]}"
+    # Check OpenSearch (optional)
+    if osearch_client:
+        try:
+            opensearch_health = await osearch_client.cluster.health()
+            health_status["opensearch"] = opensearch_health.get("status", "connected")
+        except Exception as e:
+            health_status["opensearch"] = f"error: {str(e)[:50]}"
 
-    # Check Redis
-    try:
-        await redis_client.ping()
-        health_status["redis"] = "connected"
-    except Exception as e:
-        health_status["redis"] = f"error: {str(e)[:50]}"
+    # Check Redis (optional)
+    if redis_client:
+        try:
+            await redis_client.ping()
+            health_status["redis"] = "connected"
+        except Exception as e:
+            health_status["redis"] = f"error: {str(e)[:50]}"
 
     # Always return 200 OK so Railway considers the deployment healthy
-    # The status field shows if there are any issues
     return health_status
 
 @app.post("/api/v1/search")
 async def search_cases(query: SearchQuery):
     """Hybrid search combining BM25 and semantic search"""
 
-    # Check cache first
+    # Check cache first (if Redis available)
     cache_key = f"search:{json.dumps(query.dict(), sort_keys=True)}"
-    cached = await redis_client.get(cache_key)
-    if cached:
-        return json.loads(cached)
+    if redis_client:
+        try:
+            cached = await redis_client.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except:
+            pass
 
     results = []
     keyword_results = []
     semantic_results = []
 
     if query.search_type in ["hybrid", "keyword"]:
-        # BM25 search via OpenSearch
-        keyword_results = await keyword_search(query)
+        # Use OpenSearch if available, otherwise PostgreSQL
+        if osearch_client:
+            keyword_results = await keyword_search(query)
+        else:
+            keyword_results = await postgres_search(query)
         results.extend(keyword_results)
 
     # Only do semantic search if OpenAI API key is configured
@@ -207,31 +228,75 @@ async def search_cases(query: SearchQuery):
         # Reciprocal Rank Fusion only if we have both result sets
         results = reciprocal_rank_fusion(keyword_results, semantic_results)
 
-    # Cache results
-    await redis_client.setex(cache_key, 300, json.dumps(results))
+    # Cache results (if Redis available)
+    if redis_client:
+        try:
+            await redis_client.setex(cache_key, 300, json.dumps(results))
+        except:
+            pass
 
     return results
 
 async def keyword_search(query: SearchQuery):
-    """BM25 keyword search using OpenSearch"""
-    
+    """BM25 keyword search using OpenSearch with title and citation boosting"""
+
     search_body = {
         "query": {
-            "bool": {
-                "must": {
-                    "match": {
-                        "content": {
-                            "query": query.query,
-                            "operator": "or"
-                        }
+            "function_score": {
+                "query": {
+                    "bool": {
+                        "should": [
+                            # Exact phrase match in title - highest boost
+                            {
+                                "match_phrase": {
+                                    "title": {
+                                        "query": query.query,
+                                        "boost": 20
+                                    }
+                                }
+                            },
+                            # Word match in title - high boost
+                            {
+                                "match": {
+                                    "title": {
+                                        "query": query.query,
+                                        "boost": 10
+                                    }
+                                }
+                            },
+                            # Match in content
+                            {
+                                "match": {
+                                    "content": {
+                                        "query": query.query,
+                                        "operator": "or"
+                                    }
+                                }
+                            }
+                        ],
+                        "minimum_should_match": 1,
+                        "filter": []
                     }
                 },
-                "filter": []
+                # Boost by citation count - landmark cases rank higher
+                "functions": [
+                    {
+                        "field_value_factor": {
+                            "field": "citation_count",
+                            "factor": 0.0001,
+                            "modifier": "log1p",
+                            "missing": 1
+                        }
+                    }
+                ],
+                "boost_mode": "multiply",
+                "score_mode": "multiply"
             }
         },
         "size": query.limit,
         "highlight": {
             "fields": {
+                "title": {},
                 "content": {
                     "fragment_size": 200,
                     "number_of_fragments": 1
@@ -240,24 +305,19 @@ async def keyword_search(query: SearchQuery):
         }
     }
     
-    # Add filters
+    # Add filters (nested inside function_score > query > bool)
+    filters = search_body["query"]["function_score"]["query"]["bool"]["filter"]
     if query.jurisdiction:
-        search_body["query"]["bool"]["filter"].append(
-            {"term": {"court_id": query.jurisdiction}}
-        )
+        filters.append({"term": {"court_id": query.jurisdiction}})
 
     if query.date_from:
-        search_body["query"]["bool"]["filter"].append(
-            {"range": {"decision_date": {"gte": query.date_from}}}
-        )
+        filters.append({"range": {"decision_date": {"gte": query.date_from}}})
 
     if query.date_to:
-        search_body["query"]["bool"]["filter"].append(
-            {"range": {"decision_date": {"lte": query.date_to}}}
-        )
+        filters.append({"range": {"decision_date": {"lte": query.date_to}}})
     
     response = await osearch_client.search(index="cases", body=search_body)
-    
+
     results = []
     for hit in response["hits"]["hits"]:
         case = hit["_source"]
@@ -266,7 +326,78 @@ async def keyword_search(query: SearchQuery):
         if "highlight" in hit:
             case["snippet"] = hit["highlight"]["content"][0]
         results.append(case)
-    
+
+    return results
+
+async def postgres_search(query: SearchQuery):
+    """Fallback search using PostgreSQL ILIKE when OpenSearch is not available"""
+
+    sql = """
+        SELECT
+            c.id, c.title, c.court_id, c.decision_date,
+            c.reporter_cite, c.content, c.metadata,
+            ct.name as court_name,
+            COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count,
+            CASE
+                WHEN c.title ILIKE $1 THEN 100
+                WHEN c.title ILIKE $2 THEN 50
+                WHEN c.content ILIKE $2 THEN 10
+                ELSE 1
+            END as score
+        FROM cases c
+        LEFT JOIN courts ct ON c.court_id = ct.id
+        WHERE c.title ILIKE $2 OR c.content ILIKE $2
+    """
+
+    params = [f"%{query.query}%", f"%{query.query}%"]
+    param_count = 2
+
+    if query.jurisdiction:
+        param_count += 1
+        sql += f" AND c.court_id = ${param_count}"
+        params.append(query.jurisdiction)
+
+    if query.date_from:
+        param_count += 1
+        sql += f" AND c.decision_date >= ${param_count}"
+        params.append(query.date_from)
+
+    if query.date_to:
+        param_count += 1
+        sql += f" AND c.decision_date <= ${param_count}"
+        params.append(query.date_to)
+
+    sql += f"""
+        ORDER BY
+            score DESC,
+            COALESCE((c.metadata->>'citation_count')::int, 0) DESC
+        LIMIT {query.limit}
+    """
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(sql, *params)
+
+    results = []
+    for row in rows:
+        court_name = row["court_name"] or "Unknown Court"
+        metadata = row["metadata"] if row["metadata"] else {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except:
+                metadata = {}
+
+        results.append({
+            "id": row["id"],
+            "title": row["title"],
+            "court_name": court_name,
+            "decision_date": row["decision_date"].isoformat() if row["decision_date"] else "",
+            "reporter_cite": row["reporter_cite"] or "",
+            "content": row["content"][:500] if row["content"] else "",
+            "citation_count": row["citation_count"],
+            "score": float(row["score"])
+        })
+
     return results
 
 async def semantic_search(query: SearchQuery):
@@ -363,13 +494,17 @@ def reciprocal_rank_fusion(list1, list2, k=60):
 
 async def generate_embedding(text: str):
     """Generate embeddings using OpenAI API"""
-    
-    # Check cache
+
+    # Check cache (if Redis available)
     cache_key = f"embedding:{hash(text)}"
-    cached = await redis_client.get(cache_key)
-    if cached:
-        return json.loads(cached)
-    
+    if redis_client:
+        try:
+            cached = await redis_client.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except:
+            pass
+
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://api.openai.com/v1/embeddings",
@@ -378,10 +513,14 @@ async def generate_embedding(text: str):
         )
     
     embedding = response.json()["data"][0]["embedding"]
-    
-    # Cache embedding
-    await redis_client.setex(cache_key, 86400, json.dumps(embedding))
-    
+
+    # Cache embedding (if Redis available)
+    if redis_client:
+        try:
+            await redis_client.setex(cache_key, 86400, json.dumps(embedding))
+        except:
+            pass
+
     return embedding
 
 @app.get("/api/v1/cases/{case_id}")
@@ -426,10 +565,71 @@ async def get_case(case_id: str):
 
     return result
 
+@app.get("/api/v1/cases/{case_id}/citations")
+async def get_case_citations(case_id: str):
+    """Get all cases that cite this case and cases this case cites"""
+
+    async with db_pool.acquire() as conn:
+        # Get cases that cite this case (citing_cases)
+        citing = await conn.fetch(
+            """
+            SELECT c.id, c.title, c.decision_date, ct.name as court_name,
+                   cit.signal, cit.context_span as snippet
+            FROM citations cit
+            JOIN cases c ON cit.source_case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cit.target_case_id = $1
+            ORDER BY c.decision_date DESC NULLS LAST
+            """,
+            case_id
+        )
+
+        # Get cases that this case cites (cited_cases)
+        cited = await conn.fetch(
+            """
+            SELECT c.id, c.title, c.decision_date, ct.name as court_name,
+                   cit.signal, cit.context_span as snippet
+            FROM citations cit
+            JOIN cases c ON cit.target_case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cit.source_case_id = $1
+            ORDER BY c.decision_date DESC NULLS LAST
+            """,
+            case_id
+        )
+
+        return {
+            "case_id": case_id,
+            "citing_cases": [
+                {
+                    "id": r["id"],
+                    "title": r["title"],
+                    "decision_date": r["decision_date"].isoformat() if r["decision_date"] else None,
+                    "court_name": r["court_name"],
+                    "signal": r["signal"],
+                    "snippet": r["snippet"]
+                }
+                for r in citing
+            ],
+            "cited_cases": [
+                {
+                    "id": r["id"],
+                    "title": r["title"],
+                    "decision_date": r["decision_date"].isoformat() if r["decision_date"] else None,
+                    "court_name": r["court_name"],
+                    "signal": r["signal"],
+                    "snippet": r["snippet"]
+                }
+                for r in cited
+            ],
+            "citing_count": len(citing),
+            "cited_count": len(cited)
+        }
+
 @app.get("/api/v1/cases/{case_id}/citator")
 async def get_citator(case_id: str):
     """Get citator information for a case"""
-    
+
     async with db_pool.acquire() as conn:
         # Get citing cases
         citing = await conn.fetch(
@@ -438,7 +638,7 @@ async def get_citator(case_id: str):
             FROM citations ct
             JOIN cases c2 ON ct.source_case_id = c2.id
             WHERE ct.target_case_id = $1
-            ORDER BY c2.date DESC
+            ORDER BY c2.decision_date DESC NULLS LAST
             LIMIT 100
             """,
             case_id
@@ -529,11 +729,11 @@ async def get_case_summary(case_id: str):
 async def summarize_case(case_id: str):
     """Generate an AI-powered case brief summary"""
 
-    # Check if OpenAI API key is configured
-    if not OPENAI_API_KEY:
+    # Check if Anthropic API key is configured
+    if not ANTHROPIC_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="AI summaries require OPENAI_API_KEY to be configured"
+            detail="AI summaries require ANTHROPIC_API_KEY to be configured"
         )
 
     # Get the case from database and related cases
@@ -599,7 +799,8 @@ async def summarize_case(case_id: str):
                     "total": cached["input_tokens"] + cached["output_tokens"]
                 },
                 "cached": True,
-                "cached_at": cached["created_at"].isoformat() if cached["created_at"] else None
+                "cached_at": cached["created_at"].isoformat() if cached["created_at"] else None,
+                "model": cached["model"]
             }
 
     case_data = dict(row)
@@ -703,66 +904,59 @@ Format your response with clear section headers using the emoji markers shown ab
 """
 
     try:
-        # Call OpenAI Responses API with GPT-5 mini
-        # GPT-5 uses the Responses API, not Chat Completions
+        # Call Anthropic Messages API with Claude Sonnet 4.5
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.openai.com/v1/responses",
+                "https://api.anthropic.com/v1/messages",
                 headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "gpt-5-mini",  # Using GPT-5 mini for better reasoning at low cost
-                    "input": prompt,  # GPT-5 uses "input" instead of "messages"
-                    "reasoning": {
-                        "effort": "medium"  # medium reasoning for legal analysis
-                    },
-                    "text": {
-                        "verbosity": "high"  # high verbosity for comprehensive legal briefs
-                    },
-                    "max_output_tokens": 4000  # GPT-5 uses max_output_tokens instead of max_tokens
+                    "model": "claude-sonnet-4-5-20250929",
+                    "max_tokens": 4000,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
                 },
-                timeout=60.0  # Increased timeout for PDF processing
+                timeout=90.0  # Increased timeout for longer cases
             )
 
         if response.status_code != 200:
             raise HTTPException(
                 status_code=500,
-                detail=f"OpenAI API error: {response.text}"
+                detail=f"Anthropic API error: {response.text}"
             )
 
         result = response.json()
-        print(f"GPT-5 API Response status: {result.get('status')}")  # Debug logging
+        print(f"Claude API Response: stop_reason={result.get('stop_reason')}")  # Debug logging
 
-        # GPT-5 Responses API structure: output is an array with reasoning and message items
-        # The actual text is in output[1].content[0].text (skipping output[0] which is reasoning)
-        output_items = result.get("output", [])
+        # Extract text from Claude's response
+        content_blocks = result.get("content", [])
         summary = None
 
-        for item in output_items:
-            if item.get("type") == "message":
-                content = item.get("content", [])
-                for content_item in content:
-                    if content_item.get("type") == "output_text":
-                        summary = content_item.get("text")
-                        break
-                if summary:
-                    break
+        for block in content_blocks:
+            if block.get("type") == "text":
+                summary = block.get("text")
+                break
 
         if not summary:
-            print(f"Could not find output text in response. Output items: {len(output_items)}")
+            print(f"Could not find text in response. Content blocks: {len(content_blocks)}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Could not extract text from GPT-5 response"
+                detail="Could not extract text from Claude response"
             )
 
         # Calculate cost
-        # GPT-5 mini: $0.25 per 1M input tokens, $2.00 per 1M output tokens
+        # Claude Sonnet 4.5: $3 per 1M input tokens, $15 per 1M output tokens
         usage = result.get("usage", {})
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
-        cost = (input_tokens * 0.25 / 1_000_000) + (output_tokens * 2.00 / 1_000_000)
+        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
 
         # Save the summary to database for caching
         async with db_pool.acquire() as conn:
@@ -778,7 +972,7 @@ Format your response with clear section headers using the emoji markers shown ab
                     cost = EXCLUDED.cost,
                     created_at = CURRENT_TIMESTAMP
                 """,
-                case_id, summary, "gpt-5-mini", input_tokens, output_tokens, cost
+                case_id, summary, "claude-sonnet-4-5-20250929", input_tokens, output_tokens, cost
             )
 
         print(f"💾 Saved summary for case {case_id} to database")
@@ -793,7 +987,8 @@ Format your response with clear section headers using the emoji markers shown ab
                 "output": output_tokens,
                 "total": input_tokens + output_tokens
             },
-            "cached": False
+            "cached": False,
+            "model": "claude-sonnet-4-5-20250929"
         }
 
     except httpx.TimeoutException:

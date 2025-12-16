@@ -26,29 +26,34 @@ interface CaseDetail {
 interface CaseSummary {
   summary: string
   cost: number
-  citing_cases: Array<{
-    id: string
-    title?: string
-    case_name?: string
-    decision_date?: string
-    date_filed?: string
-    court_name?: string
-    court_id?: string
-  }>
-  cited_cases: Array<{
-    id: string
-    title?: string
-    case_name?: string
-    decision_date?: string
-    date_filed?: string
-    court_name?: string
-    court_id?: string
-  }>
+  citing_cases: Array<CaseReference>
+  cited_cases: Array<CaseReference>
   tokens_used?: {
     input: number
     output: number
     total: number
   }
+  model?: string
+}
+
+interface CaseReference {
+  id: string
+  title?: string
+  case_name?: string
+  decision_date?: string
+  date_filed?: string
+  court_name?: string
+  court_id?: string
+  signal?: string
+  snippet?: string
+}
+
+interface CitationData {
+  case_id: string
+  citing_cases: Array<CaseReference>
+  cited_cases: Array<CaseReference>
+  citing_count: number
+  cited_count: number
 }
 
 export default function CaseDetailPage() {
@@ -56,6 +61,7 @@ export default function CaseDetailPage() {
   const router = useRouter()
   const [caseData, setCaseData] = useState<CaseDetail | null>(null)
   const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
+  const [citations, setCitations] = useState<CitationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,6 +71,7 @@ export default function CaseDetailPage() {
   useEffect(() => {
     fetchCase()
     fetchCachedSummary()
+    fetchCitations()
   }, [params.id])
 
   const fetchCase = async () => {
@@ -88,10 +95,22 @@ export default function CaseDetailPage() {
       const data = await response.json()
       if (data.cached && data.summary) {
         setCaseSummary(data)
-        console.log('✅ Loaded cached summary')
+        console.log('Loaded cached summary')
       }
     } catch (err) {
       console.log('No cached summary available')
+    }
+  }
+
+  const fetchCitations = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/cases/${params.id}/citations`)
+      if (!response.ok) return
+      const data = await response.json()
+      setCitations(data)
+      console.log(`Loaded ${data.citing_count} citing cases, ${data.cited_count} cited cases`)
+    } catch (err) {
+      console.log('Failed to load citations:', err)
     }
   }
 
@@ -303,15 +322,33 @@ export default function CaseDetailPage() {
                 <div className="space-y-4">
                   <div className="prose prose-sm max-w-none space-y-4">
                     {caseSummary.summary.split('\n').map((line, idx) => {
-                      // Section headers with emoji (e.g., **📋 Facts**)
-                      if (line.trim().match(/^\*\*[📋⚖️📚💡🎯]/)) {
-                        const headerText = line.replace(/\*\*/g, '').trim()
+                      // Main title (# Header)
+                      if (line.trim().match(/^#\s+[^#]/)) {
+                        const headerText = line.replace(/^#\s+/, '').trim()
+                        return (
+                          <h3 key={idx} className="text-xl font-bold text-neutral-900 mb-4">
+                            {headerText}
+                          </h3>
+                        )
+                      }
+                      // Section headers (## 📋 Facts or **📋 Facts**)
+                      else if (line.trim().match(/^##\s+[📋⚖️📚💡🎯]/) || line.trim().match(/^\*\*[📋⚖️📚💡🎯]/)) {
+                        const headerText = line.replace(/^##\s+/, '').replace(/\*\*/g, '').trim()
                         return (
                           <div key={idx} className="mt-6 first:mt-0">
                             <h4 className="text-lg font-bold text-neutral-900 mb-2 flex items-center">
                               {headerText}
                             </h4>
                           </div>
+                        )
+                      }
+                      // Numbered list items
+                      else if (line.trim().match(/^\d+\.\s+/)) {
+                        const itemText = line.trim()
+                        return (
+                          <p key={idx} className="text-neutral-700 leading-relaxed ml-4">
+                            {itemText}
+                          </p>
                         )
                       }
                       // Bold text without emoji
@@ -344,7 +381,7 @@ export default function CaseDetailPage() {
                   {/* Token usage and cost info */}
                   <div className="mt-6 pt-4 border-t border-neutral-200 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-4 text-neutral-600">
-                      <span>🤖 Generated by GPT-5 mini</span>
+                      <span>🤖 Generated by {caseSummary.model || 'Claude'}</span>
                       {caseSummary.tokens_used && (
                         <span className="text-neutral-500">
                           {caseSummary.tokens_used.total.toLocaleString()} tokens
@@ -503,18 +540,23 @@ export default function CaseDetailPage() {
 
           {/* Sidebar - Right 1/3 */}
           <div className="space-y-6">
-            {/* Citations Panel */}
-            {caseSummary && (
-              <>
+            {/* Citation Network Panel */}
+            {citations && (citations.citing_count > 0 || citations.cited_count > 0) && (
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <h3 className="text-md font-semibold text-neutral-900 mb-4 flex items-center">
+                  <Scale className="h-4 w-4 mr-2 text-purple-600" />
+                  Citation Network
+                </h3>
+
                 {/* Cases Citing This Case */}
-                {caseSummary.citing_cases.length > 0 && (
-                  <div className="bg-white rounded-lg shadow-sm border p-4">
-                    <h3 className="text-md font-semibold text-neutral-900 mb-3 flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
-                      Cited By ({caseSummary.citing_cases.length})
-                    </h3>
+                {citations.citing_cases.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-neutral-700 mb-2 flex items-center">
+                      <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
+                      Cited By ({citations.citing_count})
+                    </h4>
                     <div className="space-y-2">
-                      {caseSummary.citing_cases.map((c) => (
+                      {citations.citing_cases.map((c) => (
                         <Link
                           key={c.id}
                           href={`/case/${c.id}`}
@@ -524,7 +566,7 @@ export default function CaseDetailPage() {
                             {c.title || c.case_name || 'Untitled Case'}
                           </p>
                           <p className="text-xs text-neutral-500 mt-1">
-                            {c.court_name || c.court_id || 'Unknown Court'} • {c.decision_date || c.date_filed ? new Date(c.decision_date || c.date_filed || '').getFullYear() : 'No Date'}
+                            {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${new Date(c.decision_date).getFullYear()}` : ''}
                           </p>
                         </Link>
                       ))}
@@ -533,14 +575,14 @@ export default function CaseDetailPage() {
                 )}
 
                 {/* Cases This Case Cites */}
-                {caseSummary.cited_cases.length > 0 && (
-                  <div className="bg-white rounded-lg shadow-sm border p-4">
-                    <h3 className="text-md font-semibold text-neutral-900 mb-3 flex items-center">
-                      <Gavel className="h-4 w-4 mr-2 text-blue-600" />
-                      Cites ({caseSummary.cited_cases.length})
-                    </h3>
+                {citations.cited_cases.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-neutral-700 mb-2 flex items-center">
+                      <Gavel className="h-3 w-3 mr-1 text-blue-600" />
+                      Cites ({citations.cited_count})
+                    </h4>
                     <div className="space-y-2">
-                      {caseSummary.cited_cases.map((c) => (
+                      {citations.cited_cases.map((c) => (
                         <Link
                           key={c.id}
                           href={`/case/${c.id}`}
@@ -550,14 +592,14 @@ export default function CaseDetailPage() {
                             {c.title || c.case_name || 'Untitled Case'}
                           </p>
                           <p className="text-xs text-neutral-500 mt-1">
-                            {c.court_name || c.court_id || 'Unknown Court'} • {c.decision_date || c.date_filed ? new Date(c.decision_date || c.date_filed || '').getFullYear() : 'No Date'}
+                            {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${new Date(c.decision_date).getFullYear()}` : ''}
                           </p>
                         </Link>
                       ))}
                     </div>
                   </div>
                 )}
-              </>
+              </div>
             )}
 
             {/* Additional Metadata */}
