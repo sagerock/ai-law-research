@@ -23,4 +23,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway sets PORT env var, default to 8000
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
