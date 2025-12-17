@@ -4,7 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A legal research tool designed as a free alternative to Westlaw/Lexis for solo lawyers and small firms. Features hybrid search (BM25 + semantic), AI-powered case summaries via GPT-5-mini, brief analysis with citation extraction, and CourtListener webhook integration.
+A legal research tool designed as a free alternative to Westlaw/Lexis for solo lawyers and small firms. Features keyword search with citation ranking, AI-powered case summaries via Claude Sonnet 4.5, citation network visualization, and brief analysis with citation extraction.
+
+## Production Deployment (Railway)
+
+The app is deployed on Railway with three services:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Frontend | `ai-law-research-production.up.railway.app` | Next.js 16 app |
+| Backend | `backend-production-8940.up.railway.app` | FastAPI server |
+| Database | Railway PostgreSQL | 548 cases, 184 citations |
+
+### Production Environment Variables
+
+**Backend service:**
+- `DATABASE_URL`: Railway PostgreSQL connection string
+- `ANTHROPIC_API_KEY`: For Claude AI summaries
+
+**Frontend service:**
+- `NEXT_PUBLIC_API_URL`: `https://backend-production-8940.up.railway.app`
 
 ## Development Commands
 
@@ -45,16 +64,18 @@ make clean   # Remove containers AND volumes
 ## Architecture
 
 ### Backend (`backend/`)
-- `main.py`: Full FastAPI server with OpenSearch integration, used in Docker/production
+- `main.py`: Production FastAPI server (Railway deployment), supports optional OpenSearch/Redis
 - `simple_api.py`: Simplified API for local development, direct PostgreSQL queries
 - `brief_analyzer.py`: Citation extraction using eyecite library, validates against database, detects legal areas
-- `webhooks.py`: CourtListener webhook handlers for real-time case updates
+- `railway.toml`: Railway deployment config (Dockerfile builder)
+- `Dockerfile`: Production container with Python 3.11
 
 ### Frontend (`frontend/`)
-- Next.js 15 App Router with Turbopack
+- Next.js 16 App Router with Turbopack (requires Node.js 20+)
 - React 19 with Tailwind CSS v4
-- Pages: `/` (search), `/case/[id]` (case detail), `/briefcheck` (brief analysis)
+- Pages: `/` (search), `/case/[id]` (case detail with citation sidebar), `/briefcheck` (brief analysis)
 - Components: `SearchInterface`, `CaseList`, `CaseCard`, `BriefUpload`
+- `railway.toml`: Railway deployment config (Nixpacks with Node 20)
 
 ### Workers (`workers/`)
 - `etl.py`: `LegalETLPipeline` class - imports from CourtListener, generates embeddings, indexes to OpenSearch
@@ -67,12 +88,17 @@ make clean   # Remove containers AND volumes
 - IVFFlat indexes for similarity search
 
 ### External Services
-- **PostgreSQL + pgvector**: Primary database with vector similarity search
-- **OpenSearch**: BM25 keyword search (cases index with legal_analyzer)
-- **Redis**: Caching layer for API responses
-- **OpenAI API**: GPT-5-mini for summaries, text-embedding-3-small for embeddings
-- **CourtListener API**: Case data source, webhook integration
-- **Supabase**: Optional cloud PostgreSQL for production
+
+**Production (Railway):**
+- **Railway PostgreSQL**: Primary database (no pgvector - uses ILIKE search with citation ranking)
+- **Anthropic API**: Claude Sonnet 4.5 for AI case summaries (~$0.03/summary)
+- **CourtListener**: Case data source (bulk CSV imports)
+
+**Local Development (Docker):**
+- **PostgreSQL + pgvector**: Local database with optional vector similarity search
+- **OpenSearch**: Optional BM25 keyword search (cases index with legal_analyzer)
+- **Redis**: Optional caching layer for API responses
+- **OpenAI API**: Optional embeddings (text-embedding-3-small)
 
 ## Available Bulk Data
 
@@ -90,40 +116,45 @@ Curated data in `data/`:
 ## Key API Endpoints
 
 ```
-GET  /health                    # Service health check
-POST /api/v1/search             # Search cases (query, search_type, limit)
-GET  /api/v1/case/{id}          # Get case details
-GET  /api/v1/case/{id}/summary  # Get/generate AI summary
-POST /api/v1/briefcheck         # Analyze uploaded brief
-GET  /api/v1/citator/{id}       # Get citation treatment for case
+GET  /health                        # Service health check
+POST /api/v1/search                 # Search cases (query, search_type, limit)
+GET  /api/v1/cases/{id}             # Get case details
+GET  /api/v1/cases/{id}/summary     # Get cached AI summary
+POST /api/v1/cases/{id}/summarize   # Generate new AI summary (uses Claude)
+GET  /api/v1/cases/{id}/citations   # Get citing/cited cases
+GET  /api/v1/cases/{id}/citator     # Get citation treatment badge
+POST /api/v1/briefcheck             # Analyze uploaded brief
 ```
 
 ## Key Patterns
 
 - Database connections use `asyncpg` with connection pooling
-- Search combines ILIKE keyword matching with citation count ordering (semantic search WIP)
-- AI summaries generated on-demand, cached in database (~$0.002/summary)
+- Production search uses PostgreSQL ILIKE with citation count ranking (no pgvector on Railway)
+- AI summaries generated via Claude Sonnet 4.5, cached in `ai_summaries` table (~$0.03/summary)
+- Citation network stored in `citations` table (184 relationships between 548 cases)
 - Citation extraction uses eyecite library with custom patterns for missed citations
-- Brief analyzer detects legal areas and suggests foundation cases
-- Docker backend depends on OpenSearch being ready; may need manual restart
+- Backend gracefully handles missing OpenSearch/Redis (optional services)
 
 ## Environment Variables
 
-Required in `.env`:
+**Required:**
 - `DATABASE_URL`: PostgreSQL connection string
-- `OPENAI_API_KEY`: For AI summaries and embeddings
-- `COURTLISTENER_API_KEY`: For case imports
-- `SUPABASE_URL` / `SUPABASE_ANON_KEY`: For production database (optional)
+
+**For AI Summaries (production):**
+- `ANTHROPIC_API_KEY`: Claude API key for case summaries
+
+**Optional (local development):**
+- `OPENAI_API_KEY`: For embeddings (text-embedding-3-small)
 - `OPENSEARCH_URL`: Default http://localhost:9200
 - `REDIS_URL`: Default redis://localhost:6379
+- `COURTLISTENER_API_KEY`: For API-based case imports
 
 ## Import Scripts
 
 ```bash
-python scripts/import_ohio_cases.py      # Import Ohio court cases via API
-python scripts/import_from_huggingface.py # Import from HuggingFace datasets
+python scripts/import_casebook.py        # Import 1L landmark cases from JSON
+python scripts/import_citations_local.py # Build citation network from bulk CSV
 python scripts/fetch_full_opinions.py    # Fetch full opinion text for existing cases
 python scripts/setup_bulk_data.py        # Set up bulk data import from CSVs
-python scripts/import_casebook.py        # Import casebook case lists
-python scripts/sync_to_production.py     # Sync local DB to production
+python scripts/sync_to_production.py     # Sync local DB to production (Railway)
 ```
