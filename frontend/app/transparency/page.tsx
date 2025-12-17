@@ -359,14 +359,14 @@ export default function TransparencyPage() {
               </h2>
               <div className="prose prose-neutral max-w-none text-neutral-600 space-y-4">
                 <p>
-                  Legal research shouldn't cost $400/month. I built this tool because I believe
-                  everyone deserves access to case law and AI-powered research tools, especially
-                  students and solo practitioners who can't afford Westlaw or Lexis.
+                  As law students, we get free Westlaw and Lexis access. But Quimbee? That's $276/year
+                  out of our own pockets - on top of tuition, books, and everything else. I built this
+                  tool because AI-powered case briefs shouldn't be another expense we have to stress about.
                 </p>
                 <p>
                   By showing exactly what it costs to run this site, I want you to know that your
                   support directly enables free legal research. There's no hidden profit margin here -
-                  just a fellow law student trying to help.
+                  just a fellow 1L trying to help.
                 </p>
                 <p className="font-medium text-neutral-700">
                   - Sage
