@@ -6,6 +6,7 @@ import SearchInterface from '@/components/SearchInterface'
 import CaseList from '@/components/CaseList'
 import { Case } from '@/types'
 import Link from 'next/link'
+import { UserMenu } from '@/components/auth/UserMenu'
 
 export default function HomePage() {
   const [searchResults, setSearchResults] = useState<Case[]>([])
@@ -36,6 +37,7 @@ export default function HomePage() {
                 <BookOpen className="h-5 w-5 inline mr-2" />
                 My Library
               </button>
+              <UserMenu />
             </nav>
           </div>
         </div>

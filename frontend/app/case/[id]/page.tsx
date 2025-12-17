@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2 } from 'lucide-react'
 import { API_URL } from '@/lib/api'
+import { UserMenu } from '@/components/auth/UserMenu'
 
 interface CaseDetail {
   id: string
@@ -196,10 +197,13 @@ export default function CaseDetailPage() {
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Results
             </button>
-            <Link href="/" className="flex items-center">
-              <Scale className="h-6 w-6 text-neutral-700 mr-2" />
-              <span className="text-xl font-bold text-neutral-900">Legal Research Tool</span>
-            </Link>
+            <div className="flex items-center gap-6">
+              <Link href="/" className="flex items-center">
+                <Scale className="h-6 w-6 text-neutral-700 mr-2" />
+                <span className="text-xl font-bold text-neutral-900">Legal Research Tool</span>
+              </Link>
+              <UserMenu />
+            </div>
           </div>
         </div>
       </header>
