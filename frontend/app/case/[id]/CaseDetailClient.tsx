@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2 } from 'lucide-react'
+import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
+import { useAuth } from '@/lib/auth-context'
 
 export interface CaseDetail {
   id: string
@@ -62,18 +63,179 @@ interface CaseDetailClientProps {
   caseId: string
 }
 
+interface UserCollection {
+  id: string
+  name: string
+  subject: string | null
+  case_count: number
+}
+
 export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientProps) {
   const router = useRouter()
+  const { user, session } = useAuth()
   const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
   const [citations, setCitations] = useState<CitationData | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
 
+  // Library feature state
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const [collections, setCollections] = useState<UserCollection[]>([])
+  const [showCollectionDropdown, setShowCollectionDropdown] = useState(false)
+  const [addingToCollection, setAddingToCollection] = useState<string | null>(null)
+  const [caseInCollections, setCaseInCollections] = useState<Set<string>>(new Set())
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Get auth headers for API calls
+  const getAuthHeaders = (): Record<string, string> => {
+    if (!session?.access_token) return {}
+    return {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json'
+    }
+  }
+
   useEffect(() => {
     fetchCachedSummary()
     fetchCitations()
   }, [caseId])
+
+  // Fetch library data when user is logged in
+  useEffect(() => {
+    if (user && session?.access_token) {
+      checkBookmarkStatus()
+      fetchUserCollections()
+    }
+  }, [user, session, caseId])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCollectionDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Check if case is bookmarked
+  const checkBookmarkStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/library/bookmarks/check/${caseId}`, {
+        headers: getAuthHeaders()
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setIsBookmarked(data.bookmarked)
+      }
+    } catch (err) {
+      console.log('Failed to check bookmark status:', err)
+    }
+  }
+
+  // Fetch user collections and check which contain this case
+  const fetchUserCollections = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/library/collections`, {
+        headers: getAuthHeaders()
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setCollections(data.collections)
+
+        // Check which collections contain this case
+        const inCollections = new Set<string>()
+        for (const collection of data.collections) {
+          const detailResponse = await fetch(`${API_URL}/api/v1/library/collections/${collection.id}`, {
+            headers: getAuthHeaders()
+          })
+          if (detailResponse.ok) {
+            const detail = await detailResponse.json()
+            if (detail.cases.some((c: { id: string }) => c.id === caseId)) {
+              inCollections.add(collection.id)
+            }
+          }
+        }
+        setCaseInCollections(inCollections)
+      }
+    } catch (err) {
+      console.log('Failed to fetch collections:', err)
+    }
+  }
+
+  // Toggle bookmark
+  const toggleBookmark = async () => {
+    if (!user || !session?.access_token) {
+      router.push('/login')
+      return
+    }
+
+    setBookmarkLoading(true)
+    try {
+      if (isBookmarked) {
+        const response = await fetch(`${API_URL}/api/v1/library/bookmarks/${caseId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        })
+        if (response.ok) {
+          setIsBookmarked(false)
+        }
+      } else {
+        const response = await fetch(`${API_URL}/api/v1/library/bookmarks`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ case_id: caseId })
+        })
+        if (response.ok) {
+          setIsBookmarked(true)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle bookmark:', err)
+    } finally {
+      setBookmarkLoading(false)
+    }
+  }
+
+  // Add/remove case to/from collection
+  const toggleCollection = async (collectionId: string) => {
+    if (!user || !session?.access_token) return
+
+    setAddingToCollection(collectionId)
+    try {
+      if (caseInCollections.has(collectionId)) {
+        // Remove from collection
+        const response = await fetch(`${API_URL}/api/v1/library/collections/${collectionId}/cases/${caseId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        })
+        if (response.ok) {
+          setCaseInCollections(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(collectionId)
+            return newSet
+          })
+        }
+      } else {
+        // Add to collection
+        const response = await fetch(`${API_URL}/api/v1/library/collections/${collectionId}/cases`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ case_id: caseId })
+        })
+        if (response.ok) {
+          setCaseInCollections(prev => new Set(prev).add(collectionId))
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update collection:', err)
+    } finally {
+      setAddingToCollection(null)
+    }
+  }
 
   const fetchCachedSummary = async () => {
     try {
@@ -201,6 +363,96 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
               {/* Actions */}
               <div className="flex flex-wrap gap-3">
+                {/* Bookmark Button */}
+                <button
+                  onClick={toggleBookmark}
+                  disabled={bookmarkLoading}
+                  className={`flex items-center px-4 py-2 rounded-lg transition ${
+                    isBookmarked
+                      ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                  title={user ? (isBookmarked ? 'Remove bookmark' : 'Bookmark this case') : 'Login to bookmark'}
+                >
+                  {bookmarkLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Bookmark className={`h-4 w-4 mr-2 ${isBookmarked ? 'fill-current' : ''}`} />
+                  )}
+                  {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+                </button>
+
+                {/* Add to Collection Dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => {
+                      if (!user) {
+                        router.push('/login')
+                        return
+                      }
+                      setShowCollectionDropdown(!showCollectionDropdown)
+                    }}
+                    className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"
+                  >
+                    <FolderPlus className="h-4 w-4 mr-2" />
+                    Add to Collection
+                    <ChevronDown className={`h-4 w-4 ml-1 transition ${showCollectionDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showCollectionDropdown && (
+                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50">
+                      {collections.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-neutral-500">
+                          <p>No collections yet</p>
+                          <Link
+                            href="/library"
+                            className="text-blue-600 hover:text-blue-700 font-medium"
+                            onClick={() => setShowCollectionDropdown(false)}
+                          >
+                            Create one in My Library
+                          </Link>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="px-4 py-2 text-xs font-medium text-neutral-500 uppercase tracking-wide border-b">
+                            Your Collections
+                          </div>
+                          {collections.map(collection => (
+                            <button
+                              key={collection.id}
+                              onClick={() => toggleCollection(collection.id)}
+                              disabled={addingToCollection === collection.id}
+                              className="w-full flex items-center justify-between px-4 py-2 hover:bg-neutral-50 text-left"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-neutral-900 truncate">{collection.name}</p>
+                                {collection.subject && (
+                                  <p className="text-xs text-neutral-500">{collection.subject}</p>
+                                )}
+                              </div>
+                              {addingToCollection === collection.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400 flex-shrink-0" />
+                              ) : caseInCollections.has(collection.id) ? (
+                                <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                              ) : null}
+                            </button>
+                          ))}
+                          <div className="border-t mt-2 pt-2">
+                            <Link
+                              href="/library"
+                              className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                              onClick={() => setShowCollectionDropdown(false)}
+                            >
+                              <FolderPlus className="h-4 w-4 mr-2" />
+                              Create New Collection
+                            </Link>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={handleCopy}
                   className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"

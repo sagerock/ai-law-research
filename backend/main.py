@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -10,6 +10,8 @@ import redis.asyncio as redis
 import numpy as np
 from datetime import datetime
 import json
+from jose import jwt, JWTError
+from uuid import UUID
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
@@ -35,6 +37,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
 # Pydantic models
 class SearchQuery(BaseModel):
@@ -68,6 +71,77 @@ class CitatorResult(BaseModel):
     citing_cases: List[Dict]
     negative_treatments: List[Dict]
     positive_treatments: List[Dict]
+
+
+# Library feature models
+class CollectionCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    is_public: bool = False
+
+
+class CollectionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    is_public: Optional[bool] = None
+
+
+class AddCaseToCollection(BaseModel):
+    case_id: str
+    notes: Optional[str] = None
+
+
+class BookmarkCreate(BaseModel):
+    case_id: str
+    folder: Optional[str] = None
+    notes: Optional[str] = None
+
+
+# JWT Authentication helper
+async def get_current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    """
+    Validate Supabase JWT and return user info.
+    Returns None if no valid token (for optional auth endpoints).
+    """
+    if not authorization:
+        return None
+
+    if not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization.replace("Bearer ", "")
+
+    if not SUPABASE_JWT_SECRET:
+        print("Warning: SUPABASE_JWT_SECRET not configured")
+        return None
+
+    try:
+        payload = jwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            audience="authenticated"
+        )
+        return {
+            "id": payload.get("sub"),
+            "email": payload.get("email"),
+            "role": payload.get("role")
+        }
+    except JWTError as e:
+        print(f"JWT validation error: {e}")
+        if "expired" in str(e).lower():
+            raise HTTPException(status_code=401, detail="Token expired")
+        return None
+
+
+async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
+    """Require authentication - raises 401 if not authenticated"""
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user
 
 
 # Transparency dashboard helper
@@ -1286,6 +1360,378 @@ def extract_text_from_docx(content: bytes) -> str:
     """Extract text from DOCX (placeholder)"""
     # Would use python-docx in production
     return "Extracted DOCX text"
+
+
+# ============================================================================
+# Library Feature Endpoints
+# ============================================================================
+
+@app.get("/api/v1/library/collections")
+async def list_collections(user: dict = Depends(require_auth)):
+    """List all collections for the authenticated user"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.name, c.description, c.subject, c.is_public, c.created_at,
+                   COUNT(cc.id) as case_count
+            FROM collections c
+            LEFT JOIN collection_cases cc ON c.id = cc.collection_id
+            WHERE c.user_id = $1
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+        """, user["id"])
+
+    return {
+        "collections": [
+            {
+                "id": str(row["id"]),
+                "name": row["name"],
+                "description": row["description"],
+                "subject": row["subject"],
+                "is_public": row["is_public"],
+                "case_count": row["case_count"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.post("/api/v1/library/collections")
+async def create_collection(collection: CollectionCreate, user: dict = Depends(require_auth)):
+    """Create a new collection"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO collections (user_id, name, description, subject, is_public)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, name, description, subject, is_public, created_at
+        """, user["id"], collection.name, collection.description, collection.subject, collection.is_public)
+
+    return {
+        "id": str(row["id"]),
+        "name": row["name"],
+        "description": row["description"],
+        "subject": row["subject"],
+        "is_public": row["is_public"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None
+    }
+
+
+@app.get("/api/v1/library/collections/{collection_id}")
+async def get_collection(collection_id: str, user: dict = Depends(require_auth)):
+    """Get a collection with its cases"""
+    async with db_pool.acquire() as conn:
+        # Get collection info
+        collection = await conn.fetchrow("""
+            SELECT id, user_id, name, description, subject, is_public, created_at
+            FROM collections
+            WHERE id = $1 AND user_id = $2
+        """, collection_id, user["id"])
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        # Get cases in collection
+        cases = await conn.fetch("""
+            SELECT cc.id as collection_case_id, cc.notes, cc.added_at,
+                   c.id, c.title, c.decision_date, c.reporter_cite,
+                   ct.name as court_name
+            FROM collection_cases cc
+            JOIN cases c ON cc.case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cc.collection_id = $1
+            ORDER BY cc.added_at DESC
+        """, collection_id)
+
+    return {
+        "id": str(collection["id"]),
+        "name": collection["name"],
+        "description": collection["description"],
+        "subject": collection["subject"],
+        "is_public": collection["is_public"],
+        "created_at": collection["created_at"].isoformat() if collection["created_at"] else None,
+        "cases": [
+            {
+                "collection_case_id": str(c["collection_case_id"]),
+                "id": c["id"],
+                "title": c["title"],
+                "decision_date": c["decision_date"].isoformat() if c["decision_date"] else None,
+                "reporter_cite": c["reporter_cite"],
+                "court_name": c["court_name"],
+                "notes": c["notes"],
+                "added_at": c["added_at"].isoformat() if c["added_at"] else None
+            }
+            for c in cases
+        ]
+    }
+
+
+@app.put("/api/v1/library/collections/{collection_id}")
+async def update_collection(collection_id: str, update: CollectionUpdate, user: dict = Depends(require_auth)):
+    """Update a collection"""
+    # Build dynamic update query
+    updates = []
+    params = [collection_id, user["id"]]
+    param_idx = 3
+
+    if update.name is not None:
+        updates.append(f"name = ${param_idx}")
+        params.append(update.name)
+        param_idx += 1
+
+    if update.description is not None:
+        updates.append(f"description = ${param_idx}")
+        params.append(update.description)
+        param_idx += 1
+
+    if update.subject is not None:
+        updates.append(f"subject = ${param_idx}")
+        params.append(update.subject)
+        param_idx += 1
+
+    if update.is_public is not None:
+        updates.append(f"is_public = ${param_idx}")
+        params.append(update.is_public)
+        param_idx += 1
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(f"""
+            UPDATE collections
+            SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1 AND user_id = $2
+            RETURNING id, name, description, subject, is_public, created_at
+        """, *params)
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    return {
+        "id": str(row["id"]),
+        "name": row["name"],
+        "description": row["description"],
+        "subject": row["subject"],
+        "is_public": row["is_public"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None
+    }
+
+
+@app.delete("/api/v1/library/collections/{collection_id}")
+async def delete_collection(collection_id: str, user: dict = Depends(require_auth)):
+    """Delete a collection"""
+    async with db_pool.acquire() as conn:
+        result = await conn.execute("""
+            DELETE FROM collections
+            WHERE id = $1 AND user_id = $2
+        """, collection_id, user["id"])
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    return {"status": "deleted"}
+
+
+@app.post("/api/v1/library/collections/{collection_id}/cases")
+async def add_case_to_collection(collection_id: str, data: AddCaseToCollection, user: dict = Depends(require_auth)):
+    """Add a case to a collection"""
+    async with db_pool.acquire() as conn:
+        # Verify collection ownership
+        collection = await conn.fetchrow("""
+            SELECT id FROM collections WHERE id = $1 AND user_id = $2
+        """, collection_id, user["id"])
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        # Verify case exists
+        case = await conn.fetchrow("SELECT id FROM cases WHERE id = $1", data.case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        # Add to collection (ignore if already exists)
+        try:
+            row = await conn.fetchrow("""
+                INSERT INTO collection_cases (collection_id, case_id, notes)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (collection_id, case_id) DO UPDATE SET notes = $3
+                RETURNING id, added_at
+            """, collection_id, data.case_id, data.notes)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "collection_case_id": str(row["id"]),
+        "added_at": row["added_at"].isoformat() if row["added_at"] else None
+    }
+
+
+@app.delete("/api/v1/library/collections/{collection_id}/cases/{case_id}")
+async def remove_case_from_collection(collection_id: str, case_id: str, user: dict = Depends(require_auth)):
+    """Remove a case from a collection"""
+    async with db_pool.acquire() as conn:
+        # Verify collection ownership
+        collection = await conn.fetchrow("""
+            SELECT id FROM collections WHERE id = $1 AND user_id = $2
+        """, collection_id, user["id"])
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        result = await conn.execute("""
+            DELETE FROM collection_cases
+            WHERE collection_id = $1 AND case_id = $2
+        """, collection_id, case_id)
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Case not in collection")
+
+    return {"status": "removed"}
+
+
+# ============================================================================
+# Bookmarks Endpoints
+# ============================================================================
+
+@app.get("/api/v1/library/bookmarks")
+async def list_bookmarks(user: dict = Depends(require_auth)):
+    """List all bookmarks for the authenticated user"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT b.id, b.folder, b.notes, b.created_at,
+                   c.id as case_id, c.title, c.decision_date, c.reporter_cite,
+                   ct.name as court_name
+            FROM bookmarks b
+            JOIN cases c ON b.case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE b.user_id = $1
+            ORDER BY b.created_at DESC
+        """, user["id"])
+
+    return {
+        "bookmarks": [
+            {
+                "id": str(row["id"]),
+                "case_id": row["case_id"],
+                "title": row["title"],
+                "decision_date": row["decision_date"].isoformat() if row["decision_date"] else None,
+                "reporter_cite": row["reporter_cite"],
+                "court_name": row["court_name"],
+                "folder": row["folder"],
+                "notes": row["notes"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.post("/api/v1/library/bookmarks")
+async def create_bookmark(bookmark: BookmarkCreate, user: dict = Depends(require_auth)):
+    """Add a case to bookmarks"""
+    async with db_pool.acquire() as conn:
+        # Verify case exists
+        case = await conn.fetchrow("SELECT id FROM cases WHERE id = $1", bookmark.case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        try:
+            row = await conn.fetchrow("""
+                INSERT INTO bookmarks (user_id, case_id, folder, notes)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (user_id, case_id) DO UPDATE SET folder = $3, notes = $4
+                RETURNING id, created_at
+            """, user["id"], bookmark.case_id, bookmark.folder, bookmark.notes)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "id": str(row["id"]),
+        "case_id": bookmark.case_id,
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None
+    }
+
+
+@app.delete("/api/v1/library/bookmarks/{case_id}")
+async def delete_bookmark(case_id: str, user: dict = Depends(require_auth)):
+    """Remove a case from bookmarks"""
+    async with db_pool.acquire() as conn:
+        result = await conn.execute("""
+            DELETE FROM bookmarks
+            WHERE user_id = $1 AND case_id = $2
+        """, user["id"], case_id)
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+
+    return {"status": "deleted"}
+
+
+@app.get("/api/v1/library/bookmarks/check/{case_id}")
+async def check_bookmark(case_id: str, user: dict = Depends(require_auth)):
+    """Check if a case is bookmarked by the user"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT id FROM bookmarks
+            WHERE user_id = $1 AND case_id = $2
+        """, user["id"], case_id)
+
+    return {"bookmarked": row is not None}
+
+
+# ============================================================================
+# Shared Collections (Public)
+# ============================================================================
+
+@app.get("/api/v1/shared/{collection_id}")
+async def get_shared_collection(collection_id: str):
+    """Get a public shared collection (no auth required)"""
+    async with db_pool.acquire() as conn:
+        # Get collection info (must be public)
+        collection = await conn.fetchrow("""
+            SELECT c.id, c.name, c.description, c.subject, c.created_at,
+                   p.full_name as owner_name
+            FROM collections c
+            LEFT JOIN profiles p ON c.user_id = p.id
+            WHERE c.id = $1 AND c.is_public = true
+        """, collection_id)
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found or not public")
+
+        # Get cases in collection
+        cases = await conn.fetch("""
+            SELECT cc.notes, cc.added_at,
+                   c.id, c.title, c.decision_date, c.reporter_cite,
+                   ct.name as court_name
+            FROM collection_cases cc
+            JOIN cases c ON cc.case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE cc.collection_id = $1
+            ORDER BY cc.added_at DESC
+        """, collection_id)
+
+    return {
+        "id": str(collection["id"]),
+        "name": collection["name"],
+        "description": collection["description"],
+        "subject": collection["subject"],
+        "owner_name": collection["owner_name"] or "Anonymous",
+        "created_at": collection["created_at"].isoformat() if collection["created_at"] else None,
+        "cases": [
+            {
+                "id": c["id"],
+                "title": c["title"],
+                "decision_date": c["decision_date"].isoformat() if c["decision_date"] else None,
+                "reporter_cite": c["reporter_cite"],
+                "court_name": c["court_name"],
+                "notes": c["notes"]
+            }
+            for c in cases
+        ],
+        "case_count": len(cases)
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

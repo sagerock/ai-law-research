@@ -40,10 +40,13 @@ export default function HomePage() {
                 <Heart className="h-5 w-5 sm:mr-2" />
                 <span className="hidden sm:inline">Transparency</span>
               </Link>
-              <button className="text-neutral-600 hover:text-neutral-900 transition hidden sm:flex items-center">
+              <Link
+                href="/library"
+                className="text-neutral-600 hover:text-neutral-900 transition hidden sm:flex items-center"
+              >
                 <BookOpen className="h-5 w-5 mr-2" />
                 My Library
-              </button>
+              </Link>
               <UserMenu />
             </nav>
           </div>
