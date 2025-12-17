@@ -64,14 +64,15 @@ async def search_cases(request: SearchRequest):
             # Search in case names and content
             query_sql = """
                 SELECT
-                    id, case_name, court_id, date_filed,
-                    citation_count, url, content,
+                    id, title, court_id, decision_date,
+                    COALESCE((metadata->>'citation_count')::int, 0) as citation_count,
+                    source_url, content,
                     metadata
                 FROM cases
                 WHERE
-                    case_name ILIKE $1 OR
+                    title ILIKE $1 OR
                     content ILIKE $1
-                ORDER BY citation_count DESC NULLS LAST
+                ORDER BY COALESCE((metadata->>'citation_count')::int, 0) DESC NULLS LAST
                 LIMIT $2
             """
 
@@ -83,19 +84,20 @@ async def search_cases(request: SearchRequest):
             # (In production, this would use embeddings)
             query_sql = """
                 SELECT
-                    id, case_name, court_id, date_filed,
-                    citation_count, url, content,
+                    id, title, court_id, decision_date,
+                    COALESCE((metadata->>'citation_count')::int, 0) as citation_count,
+                    source_url, content,
                     metadata,
                     CASE
-                        WHEN case_name ILIKE $1 THEN 0.9
+                        WHEN title ILIKE $1 THEN 0.9
                         WHEN content ILIKE $1 THEN 0.7
                         ELSE 0.5
                     END as similarity
                 FROM cases
-                WHERE case_name IS NOT NULL
+                WHERE title IS NOT NULL
                 ORDER BY
-                    CASE WHEN case_name ILIKE $1 THEN 0 ELSE 1 END,
-                    citation_count DESC NULLS LAST
+                    CASE WHEN title ILIKE $1 THEN 0 ELSE 1 END,
+                    COALESCE((metadata->>'citation_count')::int, 0) DESC NULLS LAST
                 LIMIT $2
             """
 
@@ -115,12 +117,12 @@ async def search_cases(request: SearchRequest):
 
             result = {
                 "id": row["id"],
-                "case_name": row["case_name"] or "Unknown Case",
+                "case_name": row["title"] or "Unknown Case",
                 "court_id": row["court_id"],
                 "court_name": metadata.get("court", row["court_id"]),
-                "date_filed": row["date_filed"].isoformat() if row["date_filed"] else None,
+                "date_filed": row["decision_date"].isoformat() if row["decision_date"] else None,
                 "citation_count": row["citation_count"] or 0,
-                "url": row["url"],
+                "url": row["source_url"],
                 "content": row["content"][:500] if row["content"] else None,
                 "snippet": row["content"][:200] if row["content"] else None,
                 "citations": metadata.get("citations", []),
