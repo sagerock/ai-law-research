@@ -66,7 +66,7 @@ export default function LibraryPage() {
   const [collections, setCollections] = useState<Collection[]>([])
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([])
   const [selectedCollection, setSelectedCollection] = useState<CollectionDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Create collection modal state

@@ -86,38 +86,23 @@ export function UserMenu() {
 
           {/* Menu items */}
           <div className="py-1">
-            <button
-              onClick={() => {
-                setShowDropdown(false)
-                // TODO: Navigate to bookmarks page
-              }}
+            <Link
+              href="/library"
+              onClick={() => setShowDropdown(false)}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
             >
               <Bookmark className="h-4 w-4" />
-              <span>Bookmarks</span>
-            </button>
+              <span>My Bookmarks</span>
+            </Link>
 
-            <button
-              onClick={() => {
-                setShowDropdown(false)
-                // TODO: Navigate to collections page
-              }}
+            <Link
+              href="/library"
+              onClick={() => setShowDropdown(false)}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
             >
               <FolderOpen className="h-4 w-4" />
-              <span>Collections</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setShowDropdown(false)
-                // TODO: Navigate to settings page
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </button>
+              <span>My Collections</span>
+            </Link>
           </div>
 
           {/* Sign out */}
