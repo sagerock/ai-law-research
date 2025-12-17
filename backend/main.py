@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -1122,10 +1122,24 @@ async def get_transparency_stats():
         config_rows = await conn.fetch("SELECT key, value FROM site_config")
         config = {row["key"]: row["value"] for row in config_rows}
 
+        # Get donations from donations table (from Ko-fi webhooks)
+        month_donations = await conn.fetchrow("""
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+            FROM donations
+            WHERE DATE_TRUNC('month', received_at) = DATE_TRUNC('month', CURRENT_DATE)
+        """)
+
+        alltime_donations = await conn.fetchrow("""
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+            FROM donations
+        """)
+
     # Parse config values with defaults
     hosting = float(config.get("monthly_hosting_cost", "5.00"))
     goal = float(config.get("monthly_goal", "25.00"))
-    donations = float(config.get("monthly_donations", "0.00"))
+    donations = float(month_donations["total"]) if month_donations else 0
+    donations_count = month_donations["count"] if month_donations else 0
+    total_donations = float(alltime_donations["total"]) if alltime_donations else 0
 
     month_ai_cost = float(month_stats["cost"]) if month_stats["cost"] else 0
     month_total = month_ai_cost + hosting
@@ -1136,7 +1150,9 @@ async def get_transparency_stats():
         "month_ai_cost": round(month_ai_cost, 2),
         "month_hosting_cost": hosting,
         "month_total_cost": round(month_total, 2),
-        "monthly_donations": donations,
+        "monthly_donations": round(donations, 2),
+        "monthly_donations_count": donations_count,
+        "total_donations": round(total_donations, 2),
         "total_summaries": alltime_summaries,
         "total_ai_cost": round(alltime_cost, 2),
         "monthly_goal": goal,
@@ -1146,6 +1162,52 @@ async def get_transparency_stats():
         "charity_description": config.get("charity_description", ""),
         "charity_url": config.get("charity_url", "")
     }
+
+
+@app.post("/api/v1/kofi-webhook")
+async def kofi_webhook(data: str = Form(...)):
+    """
+    Receive Ko-fi donation webhooks.
+    Ko-fi sends POST with content-type application/x-www-form-urlencoded
+    and a 'data' field containing JSON.
+    """
+    try:
+        # Parse the JSON data from the form field
+        payload = json.loads(data)
+
+        # Extract donation info
+        transaction_id = payload.get("kofi_transaction_id")
+        amount = float(payload.get("amount", 0))
+        from_name = payload.get("from_name", "Anonymous")
+        message = payload.get("message")
+        donation_type = payload.get("type", "Donation")
+        is_public = payload.get("is_public", True)
+        is_subscription = payload.get("is_subscription_payment", False)
+        tier_name = payload.get("tier_name")
+
+        # Store in database
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO donations (
+                    kofi_transaction_id, from_name, message, amount,
+                    donation_type, is_public, is_subscription, tier_name, raw_data
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (kofi_transaction_id) DO NOTHING
+            """,
+                transaction_id, from_name, message, amount,
+                donation_type, is_public, is_subscription, tier_name,
+                json.dumps(payload)
+            )
+
+        print(f"☕ Ko-fi donation received: ${amount} from {from_name}")
+
+        # Return 200 as Ko-fi expects
+        return {"status": "success"}
+
+    except Exception as e:
+        print(f"❌ Ko-fi webhook error: {e}")
+        # Still return 200 to prevent retries for malformed data
+        return {"status": "error", "message": str(e)}
 
 
 async def extract_citations(text: str):

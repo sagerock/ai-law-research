@@ -48,6 +48,8 @@ export interface TransparencyStats {
   month_hosting_cost: number
   month_total_cost: number
   monthly_donations: number
+  monthly_donations_count: number
+  total_donations: number
   total_summaries: number
   total_ai_cost: number
   monthly_goal: number

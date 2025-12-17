@@ -198,7 +198,7 @@ export default function TransparencyPage() {
                   Database, API server, and frontend hosting
                 </p>
 
-                {/* Total */}
+                {/* Total Costs */}
                 <div className="pt-4 border-t">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-semibold text-neutral-900">Total Monthly Costs</span>
@@ -212,11 +212,40 @@ export default function TransparencyPage() {
                       style={{ width: `${stats.goal_percent}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-neutral-500 mt-1">
-                    <span>{stats.goal_percent.toFixed(1)}% of ${stats.monthly_goal} goal</span>
-                    {stats.monthly_donations > 0 && (
-                      <span className="text-green-600">
-                        Donations: ${stats.monthly_donations.toFixed(2)}
+                  <div className="text-xs text-neutral-500 mt-1">
+                    {stats.goal_percent.toFixed(1)}% of ${stats.monthly_goal} monthly goal
+                  </div>
+                </div>
+
+                {/* Donations vs Costs */}
+                <div className="pt-4 border-t mt-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-semibold text-neutral-900">
+                      Donations This Month
+                      {stats.monthly_donations_count > 0 && (
+                        <span className="text-neutral-500 font-normal ml-1">
+                          ({stats.monthly_donations_count} supporter{stats.monthly_donations_count !== 1 ? 's' : ''})
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-xl font-bold text-green-600">
+                      ${stats.monthly_donations.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="h-4 bg-neutral-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (stats.monthly_donations / stats.month_total_cost) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs mt-1">
+                    {stats.monthly_donations >= stats.month_total_cost ? (
+                      <span className="text-green-600 font-medium">
+                        Fully funded! Surplus goes to {stats.charity_name}
+                      </span>
+                    ) : (
+                      <span className="text-neutral-500">
+                        ${(stats.month_total_cost - stats.monthly_donations).toFixed(2)} still needed to cover costs
                       </span>
                     )}
                   </div>
@@ -230,19 +259,26 @@ export default function TransparencyPage() {
                 <TrendingUp className="h-6 w-6 mr-2 text-blue-600" />
                 All-Time Impact
               </h2>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                   icon={Sparkles}
-                  label="Case Briefs Generated"
+                  label="Case Briefs"
                   value={stats.total_summaries}
-                  subtext="AI-powered summaries"
+                  subtext="AI-powered"
                   colorClass="text-purple-600"
                 />
                 <StatCard
                   icon={DollarSign}
-                  label="Total AI Costs"
+                  label="Total Costs"
                   value={`$${stats.total_ai_cost.toFixed(2)}`}
-                  subtext="Since launch"
+                  subtext="AI summaries"
+                  colorClass="text-red-500"
+                />
+                <StatCard
+                  icon={Heart}
+                  label="Donations"
+                  value={`$${stats.total_donations.toFixed(2)}`}
+                  subtext="From supporters"
                   colorClass="text-green-600"
                 />
                 <StatCard
