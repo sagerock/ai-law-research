@@ -278,8 +278,8 @@ export default function LibraryPage() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        // Not logged in - redirect to login
-        router.push('/login')
+        // Not logged in - stop loading (we'll show login prompt)
+        setIsLoading(false)
         return
       }
 
@@ -290,8 +290,8 @@ export default function LibraryPage() {
     }
   }, [user, authLoading, session])
 
-  // Render loading state
-  if (authLoading || isLoading) {
+  // Render loading state (only while auth is loading)
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
@@ -299,7 +299,7 @@ export default function LibraryPage() {
     )
   }
 
-  // If not configured or no user
+  // If not configured or no user - show login prompt
   if (!isConfigured || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
@@ -309,6 +309,15 @@ export default function LibraryPage() {
             Go to Login
           </Link>
         </div>
+      </div>
+    )
+  }
+
+  // Loading data
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
       </div>
     )
   }
