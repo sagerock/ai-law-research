@@ -16,7 +16,7 @@ export default function BriefCheckPage() {
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Search
             </Link>
-            <h1 className="text-xl font-bold text-neutral-900">Legal Research Tool</h1>
+            <h1 className="text-xl font-bold text-neutral-900">Sage's Study Group</h1>
           </div>
         </div>
       </header>

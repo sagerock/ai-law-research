@@ -136,7 +136,7 @@ export default function TransparencyPage() {
             </Link>
             <Link href="/" className="flex items-center">
               <Scale className="h-6 w-6 text-neutral-700 mr-2" />
-              <span className="text-xl font-bold text-neutral-900">LegalSearch</span>
+              <span className="text-xl font-bold text-neutral-900">Sage's Study Group</span>
             </Link>
           </div>
         </div>

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Legal Research Tool",
-  description: "Free legal research for solo lawyers and small firms",
+  title: "Sage's Study Group | Free AI Case Briefs for Law Students",
+  description: "Free AI-powered case briefs for law students. Skip the $276/year Quimbee subscription.",
 };
 
 export default function RootLayout({
