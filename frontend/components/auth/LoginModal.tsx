@@ -60,17 +60,18 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/50"
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal container - centers the modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="relative z-10 flex min-h-full items-center justify-center p-4">
         {/* Modal */}
-        <div className="relative z-10 bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
         {/* Close button */}
         <button
           onClick={onClose}
