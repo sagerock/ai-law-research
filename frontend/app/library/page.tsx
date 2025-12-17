@@ -290,30 +290,43 @@ export default function LibraryPage() {
     }
   }, [user, authLoading, session])
 
-  // Render loading state (only while auth is loading)
-  if (authLoading) {
+  // If not configured or no user - show login prompt (don't wait for auth to finish)
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-      </div>
-    )
-  }
+      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
+        {/* Header */}
+        <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <Link href="/" className="flex items-center space-x-3">
+                <Scale className="h-8 w-8 text-neutral-700" />
+                <div>
+                  <h1 className="text-2xl font-bold text-neutral-900">Sage's Study Group</h1>
+                  <p className="text-sm text-neutral-600 hidden sm:block">Free AI Case Briefs for Law Students</p>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </header>
 
-  // If not configured or no user - show login prompt
-  if (!isConfigured || !user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-neutral-600 mb-4">Please log in to access your library.</p>
-          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-            Go to Login
-          </Link>
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center">
+            <Bookmark className="h-16 w-16 text-neutral-300 mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-neutral-900 mb-2">My Library</h2>
+            <p className="text-neutral-600 mb-6">Sign in to save cases and create collections.</p>
+            <Link
+              href="/login"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+            >
+              Sign in to continue
+            </Link>
+          </div>
         </div>
       </div>
     )
   }
 
-  // Loading data
+  // Loading data (only when we have a user)
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
