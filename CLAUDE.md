@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A legal research tool designed as a free alternative to Westlaw/Lexis for solo lawyers and small firms. Features keyword search with citation ranking, AI-powered case summaries via Claude Sonnet 4.5, citation network visualization, and brief analysis with citation extraction.
+**Sage's Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.5, keyword search with citation ranking, citation network visualization, and brief analysis.
+
+**Target audience**: Law students who want free case briefs without paying $276/year for Quimbee.
+
+**Branding**:
+- Site name: "Sage's Study Group"
+- Tagline: "Free AI Case Briefs for Law Students"
+- HTML title: "Sage's Study Group | Free AI Case Briefs for Law Students"
 
 ## Production Deployment (Railway)
 
@@ -24,6 +31,7 @@ The app is deployed on Railway with three services:
 
 **Frontend service:**
 - `NEXT_PUBLIC_API_URL`: `https://backend-production-8940.up.railway.app`
+- `NEXT_PUBLIC_SITE_URL`: `https://ai-law-research-production.up.railway.app` (for sitemap)
 
 ## Development Commands
 
@@ -44,7 +52,7 @@ python simple_api.py           # Simplified API for local dev (port 8000)
 uvicorn main:app --reload      # Full API with OpenSearch integration
 ```
 
-### Frontend (Next.js 15 with React 19)
+### Frontend (Next.js 16 with React 19)
 ```bash
 cd frontend
 npm install
@@ -73,45 +81,48 @@ make clean   # Remove containers AND volumes
 ### Frontend (`frontend/`)
 - Next.js 16 App Router with Turbopack (requires Node.js 20+)
 - React 19 with Tailwind CSS v4
-- Pages: `/` (search), `/case/[id]` (case detail with citation sidebar), `/briefcheck` (brief analysis)
-- Components: `SearchInterface`, `CaseList`, `CaseCard`, `BriefUpload`
-- `railway.toml`: Railway deployment config (Nixpacks with Node 20)
+- **SSR for case pages** - `generateMetadata()` for SEO (case names in browser tab + indexed by Google)
+- `sitemap.ts` - Dynamic sitemap generated from database (auto-updates as cases are added)
+- `robots.ts` - Allows search engine crawling
+
+**Pages:**
+- `/` - Homepage with search
+- `/case/[id]` - Case detail with AI briefs (SSR with dynamic metadata)
+- `/briefcheck` - Brief analysis tool
+- `/transparency` - Cost transparency dashboard
+- `/login` - User authentication
+
+**Components:** `SearchInterface`, `CaseList`, `CaseCard`, `BriefUpload`, `CaseDetailClient`
 
 ### Workers (`workers/`)
 - `etl.py`: `LegalETLPipeline` class - imports from CourtListener, generates embeddings, indexes to OpenSearch
 - `bulk_loader.py`: Bulk data loading utilities for large imports
 
-### Database Schema (PostgreSQL + pgvector)
-- `migrations/001_init.sql`: Core schema (cases, courts, citations, case_chunks, treatments)
-- `migrations/002_casebooks.sql`: Law school casebook tracking (casebooks, casebook_cases, chapters)
-- Vector embeddings use 1536 dimensions (OpenAI text-embedding-3-small)
-- IVFFlat indexes for similarity search
+### Database Schema (PostgreSQL)
+
+**Core tables** (`migrations/001_init.sql`):
+- `cases`, `courts`, `citations`, `case_chunks`, `treatments`, `ai_summaries`
+
+**Casebook tracking** (`migrations/002_casebooks.sql`):
+- `casebooks`, `casebook_cases`, `chapters`
+
+**Transparency & donations** (`migrations/003_transparency_tracking.sql`, `004_donations_tracking.sql`):
+- `api_usage_log` - Tracks AI API calls per day for cost transparency
+- `site_config` - Editable config values (hosting cost, Ko-fi username, charity info)
+- `donations` - Ko-fi webhook donations (auto-populated via webhook)
 
 ### External Services
 
 **Production (Railway):**
-- **Railway PostgreSQL**: Primary database (no pgvector - uses ILIKE search with citation ranking)
+- **Railway PostgreSQL**: Primary database
 - **Anthropic API**: Claude Sonnet 4.5 for AI case summaries (~$0.03/summary)
 - **CourtListener**: Case data source (bulk CSV imports)
+- **Ko-fi**: Donation platform (webhook integration)
 
 **Local Development (Docker):**
 - **PostgreSQL + pgvector**: Local database with optional vector similarity search
-- **OpenSearch**: Optional BM25 keyword search (cases index with legal_analyzer)
-- **Redis**: Optional caching layer for API responses
-- **OpenAI API**: Optional embeddings (text-embedding-3-small)
-
-## Available Bulk Data
-
-Located in `data/courtlistener/`:
-- `opinions-2025-12-02.csv` (321 GB): Full opinion text for all cases
-- `opinion-clusters-2025-12-02.csv` (12 GB): Case metadata (74.5M records)
-- `citation-map-2025-12-02.csv` (2.6 GB): Citation relationships (76M records)
-- `citations.db` (4.1 GB): Pre-processed SQLite citation database
-- `courts-2025-12-02.csv`: Court metadata
-
-Curated data in `data/`:
-- `1L_core_cases.json`: Foundation law school cases by subject with CourtListener IDs
-- `torts_top50_matched.json`: Top torts cases matched to CourtListener
+- **OpenSearch**: Optional BM25 keyword search
+- **Redis**: Optional caching layer
 
 ## Key API Endpoints
 
@@ -124,16 +135,47 @@ POST /api/v1/cases/{id}/summarize   # Generate new AI summary (uses Claude)
 GET  /api/v1/cases/{id}/citations   # Get citing/cited cases
 GET  /api/v1/cases/{id}/citator     # Get citation treatment badge
 POST /api/v1/briefcheck             # Analyze uploaded brief
+GET  /api/v1/transparency           # Get cost/donation stats for dashboard
+POST /api/v1/kofi-webhook           # Receive Ko-fi donation webhooks
+GET  /api/v1/sitemap/cases          # Get all case IDs for sitemap generation
 ```
+
+## Transparency Dashboard
+
+The `/transparency` page shows real-time costs and donations:
+- Monthly AI costs (tracked per summary in `api_usage_log`)
+- Monthly hosting costs (configured in `site_config`)
+- Donations received (auto-tracked via Ko-fi webhook)
+- Progress bars showing donations vs costs
+- Surplus goes to Houseless Movement charity
+
+**Ko-fi webhook URL**: `https://backend-production-8940.up.railway.app/api/v1/kofi-webhook`
+
+**Configurable values** (via `site_config` table):
+```sql
+UPDATE site_config SET value = 'your-username' WHERE key = 'kofi_username';
+UPDATE site_config SET value = 'https://charity-url.org' WHERE key = 'charity_url';
+UPDATE site_config SET value = '10.00' WHERE key = 'monthly_hosting_cost';
+```
+
+## SEO
+
+- **Dynamic page titles**: Case pages show "Erie Railroad v. Tompkins | Sage's Study Group"
+- **Server-side rendering**: Case metadata generated on server for search engine indexing
+- **Sitemap**: `/sitemap.xml` dynamically lists all cases from database (revalidates hourly)
+- **Robots.txt**: `/robots.txt` allows crawling, points to sitemap
+
+New cases are automatically added to the sitemap when inserted into the database.
 
 ## Key Patterns
 
 - Database connections use `asyncpg` with connection pooling
-- Production search uses PostgreSQL ILIKE with citation count ranking (no pgvector on Railway)
-- AI summaries generated via Claude Sonnet 4.5, cached in `ai_summaries` table (~$0.03/summary)
-- Citation network stored in `citations` table (184 relationships between 548 cases)
-- Citation extraction uses eyecite library with custom patterns for missed citations
-- Backend gracefully handles missing OpenSearch/Redis (optional services)
+- Production search uses PostgreSQL ILIKE with citation count ranking
+- AI summaries generated via Claude Sonnet 4.5, cached in `ai_summaries` table
+- AI usage logged to `api_usage_log` for transparency dashboard
+- Citation network stored in `citations` table
+- Case pages use SSR with `generateMetadata()` for SEO
+- Ko-fi donations auto-tracked via webhook
 
 ## Environment Variables
 
@@ -142,6 +184,9 @@ POST /api/v1/briefcheck             # Analyze uploaded brief
 
 **For AI Summaries (production):**
 - `ANTHROPIC_API_KEY`: Claude API key for case summaries
+
+**For SEO (production):**
+- `NEXT_PUBLIC_SITE_URL`: Full site URL for sitemap generation
 
 **Optional (local development):**
 - `OPENAI_API_KEY`: For embeddings (text-embedding-3-small)
@@ -158,3 +203,16 @@ python scripts/fetch_full_opinions.py    # Fetch full opinion text for existing 
 python scripts/setup_bulk_data.py        # Set up bulk data import from CSVs
 python scripts/sync_to_production.py     # Sync local DB to production (Railway)
 ```
+
+## Available Bulk Data
+
+Located in `data/courtlistener/`:
+- `opinions-2025-12-02.csv` (321 GB): Full opinion text for all cases
+- `opinion-clusters-2025-12-02.csv` (12 GB): Case metadata (74.5M records)
+- `citation-map-2025-12-02.csv` (2.6 GB): Citation relationships (76M records)
+- `citations.db` (4.1 GB): Pre-processed SQLite citation database
+- `courts-2025-12-02.csv`: Court metadata
+
+Curated data in `data/`:
+- `1L_core_cases.json`: Foundation law school cases by subject with CourtListener IDs
+- `torts_top50_matched.json`: Top torts cases matched to CourtListener
