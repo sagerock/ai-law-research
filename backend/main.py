@@ -330,26 +330,35 @@ async def keyword_search(query: SearchQuery):
     return results
 
 async def postgres_search(query: SearchQuery):
-    """Fallback search using PostgreSQL ILIKE when OpenSearch is not available"""
+    """Search using PostgreSQL full-text search with ts_rank for relevance scoring"""
 
+    # Convert query to tsquery format (handles multiple words)
+    # plainto_tsquery handles natural language input
     sql = """
         SELECT
             c.id, c.title, c.court_id, c.decision_date,
             c.reporter_cite, c.content, c.metadata,
             ct.name as court_name,
             COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count,
-            CASE
-                WHEN c.title ILIKE $1 THEN 100
-                WHEN c.title ILIKE $2 THEN 50
-                WHEN c.content ILIKE $2 THEN 10
-                ELSE 1
-            END as score
+            (
+                -- Title relevance (weighted 10x)
+                COALESCE(ts_rank(to_tsvector('english', c.title), plainto_tsquery('english', $1)), 0) * 10 +
+                -- Content relevance
+                COALESCE(ts_rank(to_tsvector('english', COALESCE(c.content, '')), plainto_tsquery('english', $1)), 0) +
+                -- Boost for exact title match
+                CASE WHEN c.title ILIKE $2 THEN 5 ELSE 0 END +
+                -- Citation count boost (log scale to prevent domination)
+                LN(GREATEST(COALESCE((c.metadata->>'citation_count')::int, 0), 1) + 1) * 0.1
+            ) as score
         FROM cases c
         LEFT JOIN courts ct ON c.court_id = ct.id
-        WHERE c.title ILIKE $2 OR c.content ILIKE $2
+        WHERE
+            to_tsvector('english', c.title) @@ plainto_tsquery('english', $1)
+            OR to_tsvector('english', COALESCE(c.content, '')) @@ plainto_tsquery('english', $1)
+            OR c.title ILIKE $2
     """
 
-    params = [f"%{query.query}%", f"%{query.query}%"]
+    params = [query.query, f"%{query.query}%"]
     param_count = 2
 
     if query.jurisdiction:
@@ -368,9 +377,7 @@ async def postgres_search(query: SearchQuery):
         params.append(query.date_to)
 
     sql += f"""
-        ORDER BY
-            score DESC,
-            COALESCE((c.metadata->>'citation_count')::int, 0) DESC
+        ORDER BY score DESC
         LIMIT {query.limit}
     """
 
