@@ -69,6 +69,27 @@ class CitatorResult(BaseModel):
     negative_treatments: List[Dict]
     positive_treatments: List[Dict]
 
+
+# Transparency dashboard helper
+async def log_api_usage(usage_type: str, input_tokens: int, output_tokens: int, cost: float):
+    """Log API usage for transparency dashboard tracking"""
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO api_usage_log (usage_date, usage_type, call_count, input_tokens, output_tokens, estimated_cost, updated_at)
+                VALUES (CURRENT_DATE, $1, 1, $2, $3, $4, CURRENT_TIMESTAMP)
+                ON CONFLICT (usage_date, usage_type) DO UPDATE SET
+                    call_count = api_usage_log.call_count + 1,
+                    input_tokens = api_usage_log.input_tokens + EXCLUDED.input_tokens,
+                    output_tokens = api_usage_log.output_tokens + EXCLUDED.output_tokens,
+                    estimated_cost = api_usage_log.estimated_cost + EXCLUDED.estimated_cost,
+                    updated_at = CURRENT_TIMESTAMP
+            """, usage_type, input_tokens, output_tokens, cost)
+    except Exception as e:
+        # Don't fail the main request if logging fails
+        print(f"Warning: Failed to log API usage: {e}")
+
+
 @app.on_event("startup")
 async def startup():
     global db_pool, osearch_client, redis_client
@@ -984,6 +1005,9 @@ Format your response with clear section headers using the emoji markers shown ab
 
         print(f"💾 Saved summary for case {case_id} to database")
 
+        # Log usage for transparency dashboard
+        await log_api_usage("ai_summary", input_tokens, output_tokens, cost)
+
         return {
             "summary": summary,
             "cost": cost,
@@ -1057,6 +1081,72 @@ async def check_brief(file: UploadFile = File(...)):
                 results["suggested_cases"].append(case)
     
     return results
+
+
+@app.get("/api/v1/transparency")
+async def get_transparency_stats():
+    """Get transparency dashboard statistics for public display"""
+    import calendar
+
+    async with db_pool.acquire() as conn:
+        # Current month stats from api_usage_log
+        month_stats = await conn.fetchrow("""
+            SELECT COALESCE(SUM(call_count), 0) as summaries,
+                   COALESCE(SUM(estimated_cost), 0) as cost
+            FROM api_usage_log
+            WHERE usage_type = 'ai_summary'
+            AND DATE_TRUNC('month', usage_date) = DATE_TRUNC('month', CURRENT_DATE)
+        """)
+
+        # All-time stats from api_usage_log
+        alltime = await conn.fetchrow("""
+            SELECT COALESCE(SUM(call_count), 0) as summaries,
+                   COALESCE(SUM(estimated_cost), 0) as cost
+            FROM api_usage_log
+            WHERE usage_type = 'ai_summary'
+        """)
+
+        # Fallback to ai_summaries table if no usage logged yet
+        if alltime["summaries"] == 0:
+            fallback = await conn.fetchrow("""
+                SELECT COUNT(*) as summaries, COALESCE(SUM(cost), 0) as cost
+                FROM ai_summaries
+            """)
+            alltime_summaries = fallback["summaries"]
+            alltime_cost = float(fallback["cost"]) if fallback["cost"] else 0
+        else:
+            alltime_summaries = alltime["summaries"]
+            alltime_cost = float(alltime["cost"])
+
+        # Get config values from site_config table
+        config_rows = await conn.fetch("SELECT key, value FROM site_config")
+        config = {row["key"]: row["value"] for row in config_rows}
+
+    # Parse config values with defaults
+    hosting = float(config.get("monthly_hosting_cost", "5.00"))
+    goal = float(config.get("monthly_goal", "25.00"))
+    donations = float(config.get("monthly_donations", "0.00"))
+
+    month_ai_cost = float(month_stats["cost"]) if month_stats["cost"] else 0
+    month_total = month_ai_cost + hosting
+
+    return {
+        "month_name": calendar.month_name[datetime.now().month],
+        "month_summaries": month_stats["summaries"] if month_stats else 0,
+        "month_ai_cost": round(month_ai_cost, 2),
+        "month_hosting_cost": hosting,
+        "month_total_cost": round(month_total, 2),
+        "monthly_donations": donations,
+        "total_summaries": alltime_summaries,
+        "total_ai_cost": round(alltime_cost, 2),
+        "monthly_goal": goal,
+        "goal_percent": min(100, round((month_total / goal) * 100, 1)) if goal > 0 else 0,
+        "kofi_url": f"https://ko-fi.com/{config.get('kofi_username', '')}" if config.get('kofi_username') else "",
+        "charity_name": config.get("charity_name", "Houseless Movement"),
+        "charity_description": config.get("charity_description", ""),
+        "charity_url": config.get("charity_url", "")
+    }
+
 
 async def extract_citations(text: str):
     """Extract legal citations from text using Eyecite"""

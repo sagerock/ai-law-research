@@ -40,3 +40,20 @@ export interface CitatorResult {
   negative_treatments: Case[]
   positive_treatments: Case[]
 }
+
+export interface TransparencyStats {
+  month_name: string
+  month_summaries: number
+  month_ai_cost: number
+  month_hosting_cost: number
+  month_total_cost: number
+  monthly_donations: number
+  total_summaries: number
+  total_ai_cost: number
+  monthly_goal: number
+  goal_percent: number
+  kofi_url: string
+  charity_name: string
+  charity_description: string
+  charity_url: string
+}

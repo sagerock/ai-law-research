@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Scale, Brain, Upload, BookOpen, TrendingUp } from 'lucide-react'
+import { Scale, Brain, Upload, BookOpen, TrendingUp, Heart } from 'lucide-react'
 import SearchInterface from '@/components/SearchInterface'
 import CaseList from '@/components/CaseList'
 import { Case } from '@/types'
@@ -32,6 +32,13 @@ export default function HomePage() {
               >
                 <Upload className="h-5 w-5 sm:mr-2" />
                 <span className="hidden sm:inline">Brief Check</span>
+              </Link>
+              <Link
+                href="/transparency"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <Heart className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Transparency</span>
               </Link>
               <button className="text-neutral-600 hover:text-neutral-900 transition hidden sm:flex items-center">
                 <BookOpen className="h-5 w-5 mr-2" />
