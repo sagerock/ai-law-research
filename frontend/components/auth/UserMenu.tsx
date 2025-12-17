@@ -3,12 +3,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { LoginModal } from './LoginModal'
+import Link from 'next/link'
 
 export function UserMenu() {
   const { user, profile, isLoading, isConfigured, signOut } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -36,19 +35,13 @@ export function UserMenu() {
 
   if (!user) {
     return (
-      <>
-        <button
-          onClick={() => setShowLoginModal(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <User className="h-4 w-4" />
-          <span>Sign In</span>
-        </button>
-        <LoginModal
-          isOpen={showLoginModal}
-          onClose={() => setShowLoginModal(false)}
-        />
-      </>
+      <Link
+        href="/login"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <User className="h-4 w-4" />
+        <span>Sign In</span>
+      </Link>
     )
   }
 
