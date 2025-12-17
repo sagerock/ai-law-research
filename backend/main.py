@@ -1164,6 +1164,29 @@ async def get_transparency_stats():
     }
 
 
+@app.get("/api/v1/sitemap/cases")
+async def get_sitemap_cases():
+    """Get all case IDs and titles for sitemap generation"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, title, case_name, decision_date, date_filed
+            FROM cases
+            ORDER BY decision_date DESC NULLS LAST
+        """)
+
+    return {
+        "cases": [
+            {
+                "id": row["id"],
+                "title": row["title"] or row["case_name"],
+                "date": (row["decision_date"] or row["date_filed"]).isoformat() if (row["decision_date"] or row["date_filed"]) else None
+            }
+            for row in rows
+        ],
+        "count": len(rows)
+    }
+
+
 @app.post("/api/v1/kofi-webhook")
 async def kofi_webhook(data: str = Form(...)):
     """
