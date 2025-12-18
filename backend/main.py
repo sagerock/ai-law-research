@@ -1845,12 +1845,14 @@ async def update_profile(data: ProfileUpdate, user: dict = Depends(require_auth)
             "SELECT id FROM profiles WHERE id = $1", user["id"]
         )
         if not existing_profile:
-            # Create profile first
+            # Create profile first (use user ID suffix to avoid username conflicts)
             email_name = user.get("email", "").split("@")[0] if user.get("email") else "user"
+            unique_username = f"{email_name}_{user['id'][:8]}"
             await conn.execute("""
                 INSERT INTO profiles (id, username, full_name, created_at, updated_at)
                 VALUES ($1, $2, $3, NOW(), NOW())
-            """, user["id"], email_name, email_name)
+                ON CONFLICT (id) DO NOTHING
+            """, user["id"], unique_username, email_name)
 
         # Check if username is taken (if changing)
         if data.username:
