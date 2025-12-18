@@ -181,7 +181,7 @@ export default function Comments({ caseId }: CommentsProps) {
 
   // Get display name for comment
   const getDisplayName = (comment: Comment) => {
-    return comment.user.display_name || comment.user.username || 'Anonymous'
+    return comment.user.display_name || comment.user.username || 'Law Student'
   }
 
   // Get initials for avatar

@@ -1848,6 +1848,9 @@ async def create_comment(case_id: str, data: CommentCreate, user: dict = Depends
             SELECT username, full_name, avatar_url FROM profiles WHERE id = $1
         """, user["id"])
 
+    # Use email as fallback if no profile exists
+    email_name = user.get("email", "").split("@")[0] if user.get("email") else None
+
     return {
         "id": row["id"],
         "case_id": row["case_id"],
@@ -1857,8 +1860,8 @@ async def create_comment(case_id: str, data: CommentCreate, user: dict = Depends
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
         "user": {
-            "username": profile["username"] if profile else None,
-            "display_name": profile["full_name"] if profile else None,
+            "username": profile["username"] if profile else email_name,
+            "display_name": profile["full_name"] if profile else email_name,
             "avatar_url": profile["avatar_url"] if profile else None
         }
     }
@@ -1895,6 +1898,9 @@ async def update_comment(comment_id: int, data: CommentUpdate, user: dict = Depe
             SELECT username, full_name, avatar_url FROM profiles WHERE id = $1
         """, user["id"])
 
+    # Use email as fallback if no profile exists
+    email_name = user.get("email", "").split("@")[0] if user.get("email") else None
+
     return {
         "id": row["id"],
         "case_id": row["case_id"],
@@ -1904,8 +1910,8 @@ async def update_comment(comment_id: int, data: CommentUpdate, user: dict = Depe
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
         "user": {
-            "username": profile["username"] if profile else None,
-            "display_name": profile["full_name"] if profile else None,
+            "username": profile["username"] if profile else email_name,
+            "display_name": profile["full_name"] if profile else email_name,
             "avatar_url": profile["avatar_url"] if profile else None
         }
     }
