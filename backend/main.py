@@ -1794,7 +1794,7 @@ async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_
         # Get comments with user profile info
         rows = await conn.fetch("""
             SELECT c.id, c.case_id, c.user_id, c.content, c.is_edited,
-                   c.created_at, c.updated_at,
+                   c.created_at, c.updated_at, c.author_name,
                    p.username, p.full_name, p.avatar_url
             FROM comments c
             LEFT JOIN profiles p ON c.user_id = p.id
@@ -1813,8 +1813,8 @@ async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None,
                 "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
                 "user": {
-                    "username": row["username"],
-                    "display_name": row["full_name"],
+                    "username": row["author_name"] or row["username"],
+                    "display_name": row["author_name"] or row["full_name"],
                     "avatar_url": row["avatar_url"]
                 }
             }
@@ -1830,26 +1830,33 @@ async def create_comment(case_id: str, data: CommentCreate, user: dict = Depends
     if not data.content.strip():
         raise HTTPException(status_code=400, detail="Comment cannot be empty")
 
+    # Determine author name: profile name > email username
+    email_name = user.get("email", "").split("@")[0] if user.get("email") else None
+
     async with db_pool.acquire() as conn:
         # Verify case exists
         case = await conn.fetchrow("SELECT id FROM cases WHERE id = $1", case_id)
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
 
-        # Create comment
-        row = await conn.fetchrow("""
-            INSERT INTO comments (case_id, user_id, content)
-            VALUES ($1, $2, $3)
-            RETURNING id, case_id, user_id, content, is_edited, created_at, updated_at
-        """, case_id, user["id"], data.content.strip())
-
-        # Get user profile for response
+        # Get user profile for author name
         profile = await conn.fetchrow("""
             SELECT username, full_name, avatar_url FROM profiles WHERE id = $1
         """, user["id"])
 
-    # Use email as fallback if no profile exists
-    email_name = user.get("email", "").split("@")[0] if user.get("email") else None
+        # Use profile name, then email username as fallback
+        author_name = None
+        if profile:
+            author_name = profile["full_name"] or profile["username"]
+        if not author_name:
+            author_name = email_name
+
+        # Create comment with author_name stored
+        row = await conn.fetchrow("""
+            INSERT INTO comments (case_id, user_id, content, author_name)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, case_id, user_id, content, is_edited, created_at, updated_at, author_name
+        """, case_id, user["id"], data.content.strip(), author_name)
 
     return {
         "id": row["id"],
@@ -1860,8 +1867,8 @@ async def create_comment(case_id: str, data: CommentCreate, user: dict = Depends
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
         "user": {
-            "username": profile["username"] if profile else email_name,
-            "display_name": profile["full_name"] if profile else email_name,
+            "username": row["author_name"],
+            "display_name": row["author_name"],
             "avatar_url": profile["avatar_url"] if profile else None
         }
     }
