@@ -1419,13 +1419,19 @@ async def create_collection(collection: CollectionCreate, user: dict = Depends(r
 @app.get("/api/v1/library/collections/{collection_id}")
 async def get_collection(collection_id: str, user: dict = Depends(require_auth)):
     """Get a collection with its cases"""
+    # Convert collection_id to integer (DB uses SERIAL)
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
     async with db_pool.acquire() as conn:
         # Get collection info
         collection = await conn.fetchrow("""
             SELECT id, user_id, name, description, subject, is_public, created_at
             FROM collections
             WHERE id = $1 AND user_id = $2
-        """, collection_id, user["id"])
+        """, coll_id, user["id"])
 
         if not collection:
             raise HTTPException(status_code=404, detail="Collection not found")
@@ -1440,7 +1446,7 @@ async def get_collection(collection_id: str, user: dict = Depends(require_auth))
             LEFT JOIN courts ct ON c.court_id = ct.id
             WHERE cc.collection_id = $1
             ORDER BY cc.added_at DESC
-        """, collection_id)
+        """, coll_id)
 
     return {
         "id": str(collection["id"]),
@@ -1468,9 +1474,15 @@ async def get_collection(collection_id: str, user: dict = Depends(require_auth))
 @app.put("/api/v1/library/collections/{collection_id}")
 async def update_collection(collection_id: str, update: CollectionUpdate, user: dict = Depends(require_auth)):
     """Update a collection"""
+    # Convert collection_id to integer (DB uses SERIAL)
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
     # Build dynamic update query
     updates = []
-    params = [collection_id, user["id"]]
+    params = [coll_id, user["id"]]
     param_idx = 3
 
     if update.name is not None:
@@ -1520,11 +1532,17 @@ async def update_collection(collection_id: str, update: CollectionUpdate, user: 
 @app.delete("/api/v1/library/collections/{collection_id}")
 async def delete_collection(collection_id: str, user: dict = Depends(require_auth)):
     """Delete a collection"""
+    # Convert collection_id to integer (DB uses SERIAL)
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
     async with db_pool.acquire() as conn:
         result = await conn.execute("""
             DELETE FROM collections
             WHERE id = $1 AND user_id = $2
-        """, collection_id, user["id"])
+        """, coll_id, user["id"])
 
     if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Collection not found")
@@ -1535,11 +1553,17 @@ async def delete_collection(collection_id: str, user: dict = Depends(require_aut
 @app.post("/api/v1/library/collections/{collection_id}/cases")
 async def add_case_to_collection(collection_id: str, data: AddCaseToCollection, user: dict = Depends(require_auth)):
     """Add a case to a collection"""
+    # Convert collection_id to integer (DB uses SERIAL)
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
     async with db_pool.acquire() as conn:
         # Verify collection ownership
         collection = await conn.fetchrow("""
             SELECT id FROM collections WHERE id = $1 AND user_id = $2
-        """, collection_id, user["id"])
+        """, coll_id, user["id"])
 
         if not collection:
             raise HTTPException(status_code=404, detail="Collection not found")
@@ -1556,7 +1580,7 @@ async def add_case_to_collection(collection_id: str, data: AddCaseToCollection, 
                 VALUES ($1, $2, $3)
                 ON CONFLICT (collection_id, case_id) DO UPDATE SET notes = $3
                 RETURNING id, added_at
-            """, collection_id, data.case_id, data.notes)
+            """, coll_id, data.case_id, data.notes)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -1569,11 +1593,17 @@ async def add_case_to_collection(collection_id: str, data: AddCaseToCollection, 
 @app.delete("/api/v1/library/collections/{collection_id}/cases/{case_id}")
 async def remove_case_from_collection(collection_id: str, case_id: str, user: dict = Depends(require_auth)):
     """Remove a case from a collection"""
+    # Convert collection_id to integer (DB uses SERIAL)
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
     async with db_pool.acquire() as conn:
         # Verify collection ownership
         collection = await conn.fetchrow("""
             SELECT id FROM collections WHERE id = $1 AND user_id = $2
-        """, collection_id, user["id"])
+        """, coll_id, user["id"])
 
         if not collection:
             raise HTTPException(status_code=404, detail="Collection not found")
@@ -1581,7 +1611,7 @@ async def remove_case_from_collection(collection_id: str, case_id: str, user: di
         result = await conn.execute("""
             DELETE FROM collection_cases
             WHERE collection_id = $1 AND case_id = $2
-        """, collection_id, case_id)
+        """, coll_id, case_id)
 
     if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Case not in collection")
@@ -1686,6 +1716,12 @@ async def check_bookmark(case_id: str, user: dict = Depends(require_auth)):
 @app.get("/api/v1/shared/{collection_id}")
 async def get_shared_collection(collection_id: str):
     """Get a public shared collection (no auth required)"""
+    # Convert collection_id to integer (DB uses SERIAL)
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
     async with db_pool.acquire() as conn:
         # Get collection info (must be public)
         collection = await conn.fetchrow("""
@@ -1694,7 +1730,7 @@ async def get_shared_collection(collection_id: str):
             FROM collections c
             LEFT JOIN profiles p ON c.user_id = p.id
             WHERE c.id = $1 AND c.is_public = true
-        """, collection_id)
+        """, coll_id)
 
         if not collection:
             raise HTTPException(status_code=404, detail="Collection not found or not public")
@@ -1709,7 +1745,7 @@ async def get_shared_collection(collection_id: str):
             LEFT JOIN courts ct ON c.court_id = ct.id
             WHERE cc.collection_id = $1
             ORDER BY cc.added_at DESC
-        """, collection_id)
+        """, coll_id)
 
     return {
         "id": str(collection["id"]),

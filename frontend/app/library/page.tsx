@@ -61,6 +61,7 @@ interface BookmarkItem {
 export default function LibraryPage() {
   const { user, session, isLoading: authLoading, isConfigured } = useAuth()
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
 
   const [activeTab, setActiveTab] = useState<'collections' | 'bookmarks'>('collections')
   const [collections, setCollections] = useState<Collection[]>([])
@@ -90,12 +91,16 @@ export default function LibraryPage() {
   }
 
   // Fetch collections
-  const fetchCollections = async () => {
-    if (!session?.access_token) return
+  const fetchCollections = async (token?: string) => {
+    const accessToken = token || session?.access_token
+    if (!accessToken) return
 
     try {
       const response = await fetch(`${API_URL}/api/v1/library/collections`, {
-        headers: getAuthHeaders()
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
       })
 
       if (response.ok) {
@@ -110,12 +115,16 @@ export default function LibraryPage() {
   }
 
   // Fetch bookmarks
-  const fetchBookmarks = async () => {
-    if (!session?.access_token) return
+  const fetchBookmarks = async (token?: string) => {
+    const accessToken = token || session?.access_token
+    if (!accessToken) return
 
     try {
       const response = await fetch(`${API_URL}/api/v1/library/bookmarks`, {
-        headers: getAuthHeaders()
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
       })
 
       if (response.ok) {
@@ -274,24 +283,31 @@ export default function LibraryPage() {
     }
   }
 
+  // Track when component is mounted (client-side)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Initial data fetch
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        // Not logged in - stop loading (we'll show login prompt)
+    if (mounted && !authLoading) {
+      if (!user || !session?.access_token) {
+        // Not logged in or no token - stop loading (we'll show login prompt)
         setIsLoading(false)
         return
       }
 
       setIsLoading(true)
-      Promise.all([fetchCollections(), fetchBookmarks()]).finally(() => {
+      const token = session.access_token
+      Promise.all([fetchCollections(token), fetchBookmarks(token)]).finally(() => {
         setIsLoading(false)
       })
     }
-  }, [user, authLoading, session])
+  }, [user, authLoading, session?.access_token, mounted])
 
-  // If not configured or no user - show login prompt (don't wait for auth to finish)
-  if (!user) {
+  // Show login prompt before mount or if no user
+  // This ensures we don't show a spinner during SSR
+  if (!mounted || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
         {/* Header */}
@@ -326,7 +342,7 @@ export default function LibraryPage() {
     )
   }
 
-  // Loading data (only when we have a user)
+  // Loading data (only when we have a user and are mounted)
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white flex items-center justify-center">
