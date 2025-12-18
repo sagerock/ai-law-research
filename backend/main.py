@@ -99,6 +99,15 @@ class BookmarkCreate(BaseModel):
     notes: Optional[str] = None
 
 
+# Comment models
+class CommentCreate(BaseModel):
+    content: str
+
+
+class CommentUpdate(BaseModel):
+    content: str
+
+
 # JWT Authentication helper
 async def get_current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
     """
@@ -1767,6 +1776,160 @@ async def get_shared_collection(collection_id: str):
         ],
         "case_count": len(cases)
     }
+
+
+# ============================================================================
+# Comments
+# ============================================================================
+
+@app.get("/api/v1/cases/{case_id}/comments")
+async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_user)):
+    """Get all comments for a case with user info"""
+    async with db_pool.acquire() as conn:
+        # Verify case exists
+        case = await conn.fetchrow("SELECT id FROM cases WHERE id = $1", case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        # Get comments with user profile info
+        rows = await conn.fetch("""
+            SELECT c.id, c.case_id, c.user_id, c.content, c.is_edited,
+                   c.created_at, c.updated_at,
+                   p.username, p.full_name, p.avatar_url
+            FROM comments c
+            LEFT JOIN profiles p ON c.user_id = p.id
+            WHERE c.case_id = $1
+            ORDER BY c.created_at ASC
+        """, case_id)
+
+    return {
+        "comments": [
+            {
+                "id": row["id"],
+                "case_id": row["case_id"],
+                "user_id": row["user_id"],
+                "content": row["content"],
+                "is_edited": row["is_edited"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+                "user": {
+                    "username": row["username"],
+                    "display_name": row["full_name"],
+                    "avatar_url": row["avatar_url"]
+                }
+            }
+            for row in rows
+        ],
+        "count": len(rows)
+    }
+
+
+@app.post("/api/v1/cases/{case_id}/comments")
+async def create_comment(case_id: str, data: CommentCreate, user: dict = Depends(require_auth)):
+    """Create a new comment on a case"""
+    if not data.content.strip():
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+
+    async with db_pool.acquire() as conn:
+        # Verify case exists
+        case = await conn.fetchrow("SELECT id FROM cases WHERE id = $1", case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        # Create comment
+        row = await conn.fetchrow("""
+            INSERT INTO comments (case_id, user_id, content)
+            VALUES ($1, $2, $3)
+            RETURNING id, case_id, user_id, content, is_edited, created_at, updated_at
+        """, case_id, user["id"], data.content.strip())
+
+        # Get user profile for response
+        profile = await conn.fetchrow("""
+            SELECT username, full_name, avatar_url FROM profiles WHERE id = $1
+        """, user["id"])
+
+    return {
+        "id": row["id"],
+        "case_id": row["case_id"],
+        "user_id": row["user_id"],
+        "content": row["content"],
+        "is_edited": row["is_edited"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+        "user": {
+            "username": profile["username"] if profile else None,
+            "display_name": profile["full_name"] if profile else None,
+            "avatar_url": profile["avatar_url"] if profile else None
+        }
+    }
+
+
+@app.put("/api/v1/comments/{comment_id}")
+async def update_comment(comment_id: int, data: CommentUpdate, user: dict = Depends(require_auth)):
+    """Update own comment"""
+    if not data.content.strip():
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+
+    async with db_pool.acquire() as conn:
+        # Verify comment exists and belongs to user
+        comment = await conn.fetchrow("""
+            SELECT id, user_id FROM comments WHERE id = $1
+        """, comment_id)
+
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        if comment["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only edit your own comments")
+
+        # Update comment
+        row = await conn.fetchrow("""
+            UPDATE comments
+            SET content = $1, is_edited = TRUE, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, case_id, user_id, content, is_edited, created_at, updated_at
+        """, data.content.strip(), comment_id)
+
+        # Get user profile for response
+        profile = await conn.fetchrow("""
+            SELECT username, full_name, avatar_url FROM profiles WHERE id = $1
+        """, user["id"])
+
+    return {
+        "id": row["id"],
+        "case_id": row["case_id"],
+        "user_id": row["user_id"],
+        "content": row["content"],
+        "is_edited": row["is_edited"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+        "user": {
+            "username": profile["username"] if profile else None,
+            "display_name": profile["full_name"] if profile else None,
+            "avatar_url": profile["avatar_url"] if profile else None
+        }
+    }
+
+
+@app.delete("/api/v1/comments/{comment_id}")
+async def delete_comment(comment_id: int, user: dict = Depends(require_auth)):
+    """Delete own comment"""
+    async with db_pool.acquire() as conn:
+        # Verify comment exists and belongs to user
+        comment = await conn.fetchrow("""
+            SELECT id, user_id FROM comments WHERE id = $1
+        """, comment_id)
+
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        if comment["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only delete your own comments")
+
+        # Delete comment
+        await conn.execute("DELETE FROM comments WHERE id = $1", comment_id)
+
+    return {"status": "deleted"}
 
 
 if __name__ == "__main__":

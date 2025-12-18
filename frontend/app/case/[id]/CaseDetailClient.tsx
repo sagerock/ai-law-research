@@ -7,6 +7,7 @@ import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, C
 import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useAuth } from '@/lib/auth-context'
+import Comments from '@/components/Comments'
 
 export interface CaseDetail {
   id: string
@@ -634,6 +635,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Comments Section */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <Comments caseId={caseData.id} />
             </div>
 
             {/* Case Text */}
