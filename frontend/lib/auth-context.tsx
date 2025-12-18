@@ -268,8 +268,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: new Error(errorData.detail || 'Failed to update profile') }
       }
 
-      // Refresh profile data
-      await refreshProfile()
+      // Use the returned profile data directly instead of refreshing from Supabase
+      const updatedProfile = await response.json()
+      setProfile({
+        id: updatedProfile.id,
+        username: updatedProfile.username,
+        display_name: updatedProfile.full_name,
+        full_name: updatedProfile.full_name,
+        avatar_url: updatedProfile.avatar_url,
+        bio: updatedProfile.bio,
+        reputation: updatedProfile.reputation || 0,
+        law_school: updatedProfile.law_school,
+        graduation_year: updatedProfile.graduation_year,
+        practice_areas: null,
+        is_public: updatedProfile.is_public || false,
+        created_at: updatedProfile.created_at,
+        updated_at: updatedProfile.updated_at,
+      })
       return { error: null }
     } catch (error) {
       return { error: error as Error }
