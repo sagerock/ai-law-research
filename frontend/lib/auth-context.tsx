@@ -4,6 +4,16 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js'
 import { createClient, Profile, isSupabaseConfigured } from './supabase'
 
+interface ProfileUpdateData {
+  full_name?: string
+  username?: string
+  bio?: string
+  avatar_url?: string
+  law_school?: string
+  graduation_year?: number
+  is_public?: boolean
+}
+
 interface AuthContextType {
   user: User | null
   profile: Profile | null
@@ -15,6 +25,8 @@ interface AuthContextType {
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  updateProfile: (data: ProfileUpdateData) => Promise<{ error: Error | null }>
+  changePassword: (newPassword: string) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -42,6 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           signInWithOAuth: async () => ({ error: new Error('Supabase not configured') }),
           signOut: async () => {},
           refreshProfile: async () => {},
+          updateProfile: async () => ({ error: new Error('Supabase not configured') }),
+          changePassword: async () => ({ error: new Error('Supabase not configured') }),
         }}
       >
         {children}
@@ -232,6 +246,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }
 
+  // Update profile via backend API
+  const updateProfile = async (data: ProfileUpdateData) => {
+    if (!session?.access_token) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${API_URL}/api/v1/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        return { error: new Error(errorData.detail || 'Failed to update profile') }
+      }
+
+      // Refresh profile data
+      await refreshProfile()
+      return { error: null }
+    } catch (error) {
+      return { error: error as Error }
+    }
+  }
+
+  // Change password via Supabase
+  const changePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    })
+    return { error: error as Error | null }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -245,6 +297,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithOAuth,
         signOut,
         refreshProfile,
+        updateProfile,
+        changePassword,
       }}
     >
       {children}

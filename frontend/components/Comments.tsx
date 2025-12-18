@@ -11,6 +11,7 @@ interface CommentUser {
   username: string | null
   display_name: string | null
   avatar_url: string | null
+  profile_username: string | null  // For linking to profile
 }
 
 interface Comment {
@@ -230,9 +231,18 @@ export default function Comments({ caseId }: CommentsProps) {
               <div className="flex-1 min-w-0">
                 <div className="bg-neutral-50 rounded-lg px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-neutral-900">
-                      {getDisplayName(comment)}
-                    </span>
+                    {comment.user.profile_username ? (
+                      <Link
+                        href={`/users/${comment.user.profile_username}`}
+                        className="font-medium text-neutral-900 hover:text-blue-600"
+                      >
+                        {getDisplayName(comment)}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-neutral-900">
+                        {getDisplayName(comment)}
+                      </span>
+                    )}
                     <span className="text-xs text-neutral-500">
                       {getRelativeTime(comment.created_at)}
                       {comment.is_edited && ' (edited)'}

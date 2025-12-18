@@ -29,12 +29,14 @@ export interface Profile {
   id: string
   username: string | null
   display_name: string | null
+  full_name: string | null
   avatar_url: string | null
   bio: string | null
   reputation: number
   law_school: string | null
   graduation_year: number | null
   practice_areas: string[] | null
+  is_public: boolean
   created_at: string
   updated_at: string
 }

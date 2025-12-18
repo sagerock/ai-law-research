@@ -108,6 +108,16 @@ class CommentUpdate(BaseModel):
     content: str
 
 
+class ProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    law_school: Optional[str] = None
+    graduation_year: Optional[int] = None
+    is_public: Optional[bool] = None
+
+
 # JWT Authentication helper
 async def get_current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
     """
@@ -1779,6 +1789,242 @@ async def get_shared_collection(collection_id: str):
 
 
 # ============================================================================
+# Profile
+# ============================================================================
+
+@app.get("/api/v1/profile")
+async def get_own_profile(user: dict = Depends(require_auth)):
+    """Get the current user's profile"""
+    async with db_pool.acquire() as conn:
+        profile = await conn.fetchrow("""
+            SELECT id, username, full_name, avatar_url, bio, reputation,
+                   law_school, graduation_year, is_public, created_at, updated_at
+            FROM profiles WHERE id = $1
+        """, user["id"])
+
+        if not profile:
+            # Create profile if doesn't exist
+            profile = await conn.fetchrow("""
+                INSERT INTO profiles (id, username, full_name, created_at, updated_at)
+                VALUES ($1, $2, $3, NOW(), NOW())
+                ON CONFLICT (id) DO NOTHING
+                RETURNING id, username, full_name, avatar_url, bio, reputation,
+                          law_school, graduation_year, is_public, created_at, updated_at
+            """, user["id"], user.get("email", "").split("@")[0], user.get("email", "").split("@")[0])
+
+            # Fetch again if ON CONFLICT triggered
+            if not profile:
+                profile = await conn.fetchrow("""
+                    SELECT id, username, full_name, avatar_url, bio, reputation,
+                           law_school, graduation_year, is_public, created_at, updated_at
+                    FROM profiles WHERE id = $1
+                """, user["id"])
+
+    return {
+        "id": profile["id"],
+        "username": profile["username"],
+        "full_name": profile["full_name"],
+        "avatar_url": profile["avatar_url"],
+        "bio": profile["bio"],
+        "reputation": profile["reputation"] or 0,
+        "law_school": profile["law_school"],
+        "graduation_year": profile["graduation_year"],
+        "is_public": profile["is_public"] or False,
+        "email": user.get("email"),
+        "created_at": profile["created_at"].isoformat() if profile["created_at"] else None,
+        "updated_at": profile["updated_at"].isoformat() if profile["updated_at"] else None
+    }
+
+
+@app.put("/api/v1/profile")
+async def update_profile(data: ProfileUpdate, user: dict = Depends(require_auth)):
+    """Update the current user's profile"""
+    async with db_pool.acquire() as conn:
+        # Check if username is taken (if changing)
+        if data.username:
+            existing = await conn.fetchrow("""
+                SELECT id FROM profiles WHERE username = $1 AND id != $2
+            """, data.username, user["id"])
+            if existing:
+                raise HTTPException(status_code=400, detail="Username already taken")
+
+        # Build update query dynamically
+        updates = []
+        values = []
+        param_num = 1
+
+        if data.full_name is not None:
+            updates.append(f"full_name = ${param_num}")
+            values.append(data.full_name)
+            param_num += 1
+        if data.username is not None:
+            updates.append(f"username = ${param_num}")
+            values.append(data.username)
+            param_num += 1
+        if data.bio is not None:
+            updates.append(f"bio = ${param_num}")
+            values.append(data.bio)
+            param_num += 1
+        if data.avatar_url is not None:
+            updates.append(f"avatar_url = ${param_num}")
+            values.append(data.avatar_url)
+            param_num += 1
+        if data.law_school is not None:
+            updates.append(f"law_school = ${param_num}")
+            values.append(data.law_school)
+            param_num += 1
+        if data.graduation_year is not None:
+            updates.append(f"graduation_year = ${param_num}")
+            values.append(data.graduation_year)
+            param_num += 1
+        if data.is_public is not None:
+            updates.append(f"is_public = ${param_num}")
+            values.append(data.is_public)
+            param_num += 1
+
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        updates.append("updated_at = NOW()")
+        values.append(user["id"])
+
+        query = f"""
+            UPDATE profiles SET {', '.join(updates)}
+            WHERE id = ${param_num}
+            RETURNING id, username, full_name, avatar_url, bio, reputation,
+                      law_school, graduation_year, is_public, created_at, updated_at
+        """
+
+        profile = await conn.fetchrow(query, *values)
+
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+    return {
+        "id": profile["id"],
+        "username": profile["username"],
+        "full_name": profile["full_name"],
+        "avatar_url": profile["avatar_url"],
+        "bio": profile["bio"],
+        "reputation": profile["reputation"] or 0,
+        "law_school": profile["law_school"],
+        "graduation_year": profile["graduation_year"],
+        "is_public": profile["is_public"] or False,
+        "created_at": profile["created_at"].isoformat() if profile["created_at"] else None,
+        "updated_at": profile["updated_at"].isoformat() if profile["updated_at"] else None
+    }
+
+
+@app.get("/api/v1/profile/comments")
+async def get_own_comments(user: dict = Depends(require_auth)):
+    """Get all comments by the current user with case info"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.case_id, c.content, c.is_edited, c.created_at, c.updated_at,
+                   cs.title as case_title, cs.reporter_cite
+            FROM comments c
+            JOIN cases cs ON c.case_id = cs.id
+            WHERE c.user_id = $1
+            ORDER BY c.created_at DESC
+        """, user["id"])
+
+    return {
+        "comments": [
+            {
+                "id": row["id"],
+                "case_id": row["case_id"],
+                "case_title": row["case_title"],
+                "case_cite": row["reporter_cite"],
+                "content": row["content"],
+                "is_edited": row["is_edited"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None
+            }
+            for row in rows
+        ],
+        "count": len(rows)
+    }
+
+
+@app.get("/api/v1/users/{username}")
+async def get_public_profile(username: str):
+    """Get a public user profile by username"""
+    async with db_pool.acquire() as conn:
+        profile = await conn.fetchrow("""
+            SELECT id, username, full_name, avatar_url, bio, reputation,
+                   law_school, graduation_year, is_public, created_at
+            FROM profiles WHERE username = $1
+        """, username)
+
+        if not profile:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not profile["is_public"]:
+            # Return limited info for private profiles
+            return {
+                "username": profile["username"],
+                "avatar_url": profile["avatar_url"],
+                "is_public": False,
+                "message": "This profile is private"
+            }
+
+    return {
+        "id": profile["id"],
+        "username": profile["username"],
+        "full_name": profile["full_name"],
+        "avatar_url": profile["avatar_url"],
+        "bio": profile["bio"],
+        "reputation": profile["reputation"] or 0,
+        "law_school": profile["law_school"],
+        "graduation_year": profile["graduation_year"],
+        "is_public": True,
+        "created_at": profile["created_at"].isoformat() if profile["created_at"] else None
+    }
+
+
+@app.get("/api/v1/users/{username}/comments")
+async def get_user_comments(username: str):
+    """Get public comments by a user"""
+    async with db_pool.acquire() as conn:
+        # Check if profile exists and is public
+        profile = await conn.fetchrow("""
+            SELECT id, is_public FROM profiles WHERE username = $1
+        """, username)
+
+        if not profile:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not profile["is_public"]:
+            raise HTTPException(status_code=403, detail="This profile is private")
+
+        rows = await conn.fetch("""
+            SELECT c.id, c.case_id, c.content, c.is_edited, c.created_at,
+                   cs.title as case_title, cs.reporter_cite
+            FROM comments c
+            JOIN cases cs ON c.case_id = cs.id
+            WHERE c.user_id = $1
+            ORDER BY c.created_at DESC
+            LIMIT 50
+        """, profile["id"])
+
+    return {
+        "comments": [
+            {
+                "id": row["id"],
+                "case_id": row["case_id"],
+                "case_title": row["case_title"],
+                "case_cite": row["reporter_cite"],
+                "content": row["content"][:200] + ("..." if len(row["content"]) > 200 else ""),
+                "is_edited": row["is_edited"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None
+            }
+            for row in rows
+        ],
+        "count": len(rows)
+    }
+
+
+# ============================================================================
 # Comments
 # ============================================================================
 
@@ -1815,7 +2061,8 @@ async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_
                 "user": {
                     "username": row["author_name"] or row["username"],
                     "display_name": row["author_name"] or row["full_name"],
-                    "avatar_url": row["avatar_url"]
+                    "avatar_url": row["avatar_url"],
+                    "profile_username": row["username"]  # For linking to profile
                 }
             }
             for row in rows

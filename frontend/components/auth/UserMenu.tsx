@@ -108,6 +108,15 @@ export function UserMenu() {
           {/* Menu items */}
           <div className="py-1">
             <Link
+              href="/profile"
+              onClick={() => setShowDropdown(false)}
+              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+            >
+              <Settings className="h-4 w-4" />
+              <span>My Profile</span>
+            </Link>
+
+            <Link
               href="/library"
               onClick={() => setShowDropdown(false)}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
