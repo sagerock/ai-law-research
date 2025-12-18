@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Sage's Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.5, keyword search with citation ranking, citation network visualization, and brief analysis.
+**Sage's Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.5, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
 
 **Target audience**: Law students who want free case briefs without paying $276/year for Quimbee.
 
@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Site name: "Sage's Study Group"
 - Tagline: "Free AI Case Briefs for Law Students"
 - HTML title: "Sage's Study Group | Free AI Case Briefs for Law Students"
+- Domain: `lawstudygroup.com`
 
 ## Production Deployment (Railway)
 
@@ -19,19 +20,22 @@ The app is deployed on Railway with three services:
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| Frontend | `ai-law-research-production.up.railway.app` | Next.js 16 app |
+| Frontend | `lawstudygroup.com` | Next.js 16 app |
 | Backend | `backend-production-8940.up.railway.app` | FastAPI server |
-| Database | Railway PostgreSQL | 548 cases, 184 citations |
+| Database | Railway PostgreSQL | Cases, citations, user library |
 
 ### Production Environment Variables
 
 **Backend service:**
 - `DATABASE_URL`: Railway PostgreSQL connection string
 - `ANTHROPIC_API_KEY`: For Claude AI summaries
+- `SUPABASE_JWT_SECRET`: For validating user auth tokens
 
 **Frontend service:**
 - `NEXT_PUBLIC_API_URL`: `https://backend-production-8940.up.railway.app`
-- `NEXT_PUBLIC_SITE_URL`: `https://ai-law-research-production.up.railway.app` (for sitemap)
+- `NEXT_PUBLIC_SITE_URL`: `https://lawstudygroup.com` (for sitemap)
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
 
 ## Development Commands
 
@@ -84,15 +88,18 @@ make clean   # Remove containers AND volumes
 - **SSR for case pages** - `generateMetadata()` for SEO (case names in browser tab + indexed by Google)
 - `sitemap.ts` - Dynamic sitemap generated from database (auto-updates as cases are added)
 - `robots.ts` - Allows search engine crawling
+- Supabase authentication with JWT tokens
 
 **Pages:**
 - `/` - Homepage with search
-- `/case/[id]` - Case detail with AI briefs (SSR with dynamic metadata)
+- `/case/[id]` - Case detail with AI briefs, bookmarks, add to collection (SSR with dynamic metadata)
 - `/briefcheck` - Brief analysis tool
 - `/transparency` - Cost transparency dashboard
+- `/library` - User's bookmarks and collections (requires auth)
 - `/login` - User authentication
+- `/shared/[id]` - Public shared collections
 
-**Components:** `SearchInterface`, `CaseList`, `CaseCard`, `BriefUpload`, `CaseDetailClient`
+**Components:** `SearchInterface`, `CaseList`, `CaseCard`, `BriefUpload`, `CaseDetailClient`, `UserMenu`
 
 ### Workers (`workers/`)
 - `etl.py`: `LegalETLPipeline` class - imports from CourtListener, generates embeddings, indexes to OpenSearch
@@ -101,7 +108,7 @@ make clean   # Remove containers AND volumes
 ### Database Schema (PostgreSQL)
 
 **Core tables** (`migrations/001_init.sql`):
-- `cases`, `courts`, `citations`, `case_chunks`, `treatments`, `ai_summaries`
+- `cases`, `courts`, `citations`, `case_chunks`, `treatments`, `ai_summaries`, `collections`, `collection_cases`
 
 **Casebook tracking** (`migrations/002_casebooks.sql`):
 - `casebooks`, `casebook_cases`, `chapters`
@@ -111,6 +118,11 @@ make clean   # Remove containers AND volumes
 - `site_config` - Editable config values (hosting cost, Ko-fi username, charity info)
 - `donations` - Ko-fi webhook donations (auto-populated via webhook)
 
+**User library** (`migrations/005_user_library.sql`):
+- `profiles` - User profiles (synced from Supabase auth)
+- `bookmarks` - Saved cases per user
+- Adds `subject` column to `collections`
+
 ### External Services
 
 **Production (Railway):**
@@ -118,6 +130,7 @@ make clean   # Remove containers AND volumes
 - **Anthropic API**: Claude Sonnet 4.5 for AI case summaries (~$0.03/summary)
 - **CourtListener**: Case data source (bulk CSV imports)
 - **Ko-fi**: Donation platform (webhook integration)
+- **Supabase**: User authentication (JWT tokens validated by backend)
 
 **Local Development (Docker):**
 - **PostgreSQL + pgvector**: Local database with optional vector similarity search
@@ -138,7 +151,35 @@ POST /api/v1/briefcheck             # Analyze uploaded brief
 GET  /api/v1/transparency           # Get cost/donation stats for dashboard
 POST /api/v1/kofi-webhook           # Receive Ko-fi donation webhooks
 GET  /api/v1/sitemap/cases          # Get all case IDs for sitemap generation
+
+# Library endpoints (require auth)
+GET  /api/v1/library/collections              # List user's collections
+POST /api/v1/library/collections              # Create collection
+GET  /api/v1/library/collections/{id}         # Get collection with cases
+PUT  /api/v1/library/collections/{id}         # Update collection
+DELETE /api/v1/library/collections/{id}       # Delete collection
+POST /api/v1/library/collections/{id}/cases   # Add case to collection
+DELETE /api/v1/library/collections/{id}/cases/{case_id}  # Remove case
+GET  /api/v1/library/bookmarks                # List user's bookmarks
+POST /api/v1/library/bookmarks                # Add bookmark
+DELETE /api/v1/library/bookmarks/{case_id}    # Remove bookmark
+GET  /api/v1/library/bookmarks/check/{case_id}  # Check if bookmarked
+GET  /api/v1/shared/{collection_id}           # Get public collection (no auth)
 ```
+
+## User Library Feature
+
+Users can save cases and organize them:
+
+**Bookmarks**: Quick-save individual cases from the case detail page
+- Click bookmark icon on any case
+- View all bookmarks in My Library > Bookmarks tab
+
+**Collections**: Organize cases into named groups
+- Create collections with name, description, subject tag
+- Add/remove cases from collections via case detail page dropdown
+- Make collections public to share with others
+- Public collections accessible at `/shared/{collection_id}`
 
 ## Transparency Dashboard
 
@@ -160,6 +201,7 @@ UPDATE site_config SET value = '10.00' WHERE key = 'monthly_hosting_cost';
 
 ## SEO
 
+- **Custom domain**: `lawstudygroup.com`
 - **Dynamic page titles**: Case pages show "Erie Railroad v. Tompkins | Sage's Study Group"
 - **Server-side rendering**: Case metadata generated on server for search engine indexing
 - **Sitemap**: `/sitemap.xml` dynamically lists all cases from database (revalidates hourly)
@@ -176,6 +218,8 @@ New cases are automatically added to the sitemap when inserted into the database
 - Citation network stored in `citations` table
 - Case pages use SSR with `generateMetadata()` for SEO
 - Ko-fi donations auto-tracked via webhook
+- User auth via Supabase JWT tokens, validated in backend with `SUPABASE_JWT_SECRET`
+- Collection IDs are integers (SERIAL) - backend casts string params to int
 
 ## Environment Variables
 
@@ -185,8 +229,11 @@ New cases are automatically added to the sitemap when inserted into the database
 **For AI Summaries (production):**
 - `ANTHROPIC_API_KEY`: Claude API key for case summaries
 
+**For User Auth (production):**
+- `SUPABASE_JWT_SECRET`: Secret for validating Supabase JWT tokens
+
 **For SEO (production):**
-- `NEXT_PUBLIC_SITE_URL`: Full site URL for sitemap generation
+- `NEXT_PUBLIC_SITE_URL`: `https://lawstudygroup.com` for sitemap generation
 
 **Optional (local development):**
 - `OPENAI_API_KEY`: For embeddings (text-embedding-3-small)
