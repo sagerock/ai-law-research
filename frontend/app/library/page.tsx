@@ -288,22 +288,32 @@ export default function LibraryPage() {
     setMounted(true)
   }, [])
 
-  // Initial data fetch
+  // Initial data fetch - runs when session becomes available
   useEffect(() => {
-    if (mounted && !authLoading) {
-      if (!user || !session?.access_token) {
-        // Not logged in or no token - stop loading (we'll show login prompt)
-        setIsLoading(false)
-        return
-      }
+    // Wait for mount and auth to finish loading
+    if (!mounted || authLoading) return
 
-      setIsLoading(true)
-      const token = session.access_token
-      Promise.all([fetchCollections(token), fetchBookmarks(token)]).finally(() => {
-        setIsLoading(false)
-      })
+    // If no user/session, just stop loading spinner
+    if (!user || !session?.access_token) {
+      setIsLoading(false)
+      return
     }
-  }, [user, authLoading, session?.access_token, mounted])
+
+    // Fetch data
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        await Promise.all([
+          fetchCollections(session.access_token),
+          fetchBookmarks(session.access_token)
+        ])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [mounted, authLoading, user, session])
 
   // Show login prompt before mount or if no user
   // This ensures we don't show a spinner during SSR
