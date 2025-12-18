@@ -1840,6 +1840,18 @@ async def get_own_profile(user: dict = Depends(require_auth)):
 async def update_profile(data: ProfileUpdate, user: dict = Depends(require_auth)):
     """Update the current user's profile"""
     async with db_pool.acquire() as conn:
+        # Check if profile exists, create if not
+        existing_profile = await conn.fetchrow(
+            "SELECT id FROM profiles WHERE id = $1", user["id"]
+        )
+        if not existing_profile:
+            # Create profile first
+            email_name = user.get("email", "").split("@")[0] if user.get("email") else "user"
+            await conn.execute("""
+                INSERT INTO profiles (id, username, full_name, created_at, updated_at)
+                VALUES ($1, $2, $3, NOW(), NOW())
+            """, user["id"], email_name, email_name)
+
         # Check if username is taken (if changing)
         if data.username:
             existing = await conn.fetchrow("""
