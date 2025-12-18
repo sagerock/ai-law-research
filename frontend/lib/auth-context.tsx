@@ -75,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Initialize auth state
   useEffect(() => {
     let mounted = true
+    let timeoutId: NodeJS.Timeout
 
     const initAuth = async () => {
       try {
@@ -112,9 +113,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null)
         }
       } finally {
-        if (mounted) setIsLoading(false)
+        if (mounted) {
+          clearTimeout(timeoutId)
+          setIsLoading(false)
+        }
       }
     }
+
+    // Failsafe: if auth takes longer than 5 seconds, stop loading anyway
+    timeoutId = setTimeout(() => {
+      if (mounted) {
+        console.warn('Auth initialization timed out')
+        setIsLoading(false)
+      }
+    }, 5000)
 
     initAuth()
 
@@ -157,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false
+      clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
   }, [])

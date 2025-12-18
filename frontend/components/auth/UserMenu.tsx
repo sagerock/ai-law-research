@@ -8,7 +8,13 @@ import Link from 'next/link'
 export function UserMenu() {
   const { user, profile, isLoading, isConfigured, signOut } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Track client-side mount to avoid hydration issues
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -22,9 +28,24 @@ export function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Don't render until mounted (prevents hydration mismatch)
+  if (!mounted) {
+    return (
+      <div className="h-8 w-8 rounded-full bg-neutral-200 animate-pulse" />
+    )
+  }
+
   // Don't show anything if Supabase is not configured
   if (!isConfigured) {
-    return null
+    return (
+      <Link
+        href="/login"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <User className="h-4 w-4" />
+        <span>Sign In</span>
+      </Link>
+    )
   }
 
   if (isLoading) {
