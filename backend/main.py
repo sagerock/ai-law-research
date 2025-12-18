@@ -1243,7 +1243,7 @@ async def get_sitemap_cases():
     """Get all case IDs and titles for sitemap generation"""
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, title, case_name, decision_date, date_filed
+            SELECT id, title, decision_date
             FROM cases
             ORDER BY decision_date DESC NULLS LAST
         """)
@@ -1252,8 +1252,8 @@ async def get_sitemap_cases():
         "cases": [
             {
                 "id": row["id"],
-                "title": row["title"] or row["case_name"],
-                "date": (row["decision_date"] or row["date_filed"]).isoformat() if (row["decision_date"] or row["date_filed"]) else None
+                "title": row["title"],
+                "date": row["decision_date"].isoformat() if row["decision_date"] else None
             }
             for row in rows
         ],
