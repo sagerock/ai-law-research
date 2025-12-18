@@ -74,21 +74,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
+    let mounted = true
+
     const initAuth = async () => {
       try {
         // Get initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession()
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
 
-        if (initialSession?.user) {
+        if (error) {
+          console.error('Error getting session:', error)
+          // Clear any stale state
+          if (mounted) {
+            setSession(null)
+            setUser(null)
+            setProfile(null)
+          }
+          return
+        }
+
+        if (initialSession?.user && mounted) {
           setSession(initialSession)
           setUser(initialSession.user)
           const profileData = await fetchProfile(initialSession.user.id)
-          setProfile(profileData)
+          if (mounted) setProfile(profileData)
+        } else if (mounted) {
+          // Explicitly clear state if no valid session
+          setSession(null)
+          setUser(null)
+          setProfile(null)
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
+        // Clear state on error
+        if (mounted) {
+          setSession(null)
+          setUser(null)
+          setProfile(null)
+        }
       } finally {
-        setIsLoading(false)
+        if (mounted) setIsLoading(false)
       }
     }
 
@@ -97,12 +121,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        if (!mounted) return
+
+        // Handle token refresh failure - clear state
+        if (event === 'TOKEN_REFRESHED' && !newSession) {
+          setSession(null)
+          setUser(null)
+          setProfile(null)
+          setIsLoading(false)
+          return
+        }
+
+        // Handle sign out
+        if (event === 'SIGNED_OUT') {
+          setSession(null)
+          setUser(null)
+          setProfile(null)
+          setIsLoading(false)
+          return
+        }
+
         setSession(newSession)
         setUser(newSession?.user ?? null)
 
         if (newSession?.user) {
           const profileData = await fetchProfile(newSession.user.id)
-          setProfile(profileData)
+          if (mounted) setProfile(profileData)
         } else {
           setProfile(null)
         }
@@ -112,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [])
