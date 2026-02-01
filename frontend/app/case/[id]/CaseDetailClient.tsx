@@ -486,9 +486,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </>
                   )}
                 </button>
-                {caseData.url && (
+                {(caseData.url || caseData.source_url) && (
                   <a
-                    href={caseData.url.startsWith('http') ? caseData.url : `https://www.courtlistener.com${caseData.url}`}
+                    href={(() => {
+                      const url = caseData.url || caseData.source_url || '';
+                      return url.startsWith('http') ? url : `https://www.courtlistener.com${url}`;
+                    })()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
