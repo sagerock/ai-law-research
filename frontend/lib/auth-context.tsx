@@ -188,21 +188,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Helper: race a promise against a timeout
+  const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out. Please try again.')), ms)
+      ),
+    ])
+  }
+
   // Sign in with email/password
   const signInWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { error } = await withTimeout(
+      supabase.auth.signInWithPassword({ email, password }),
+      15000
+    )
     return { error: error as Error | null }
   }
 
   // Sign up with email/password
   const signUpWithEmail = async (email: string, password: string, username?: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
+    const { data, error } = await withTimeout(
+      supabase.auth.signUp({ email, password }),
+      15000
+    )
 
     if (error) {
       return { error: error as Error | null }
