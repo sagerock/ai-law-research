@@ -2206,6 +2206,49 @@ async def delete_comment(comment_id: int, user: dict = Depends(require_auth)):
     return {"status": "deleted"}
 
 
+# ============================================================================
+# Casebook Lookup (instant search by case name)
+# ============================================================================
+
+@app.get("/api/v1/casebook-cases")
+async def get_casebook_cases(subject: str = None):
+    """Return all cases that have AI briefs, for client-side instant search."""
+    async with db_pool.acquire() as conn:
+        if subject:
+            rows = await conn.fetch("""
+                SELECT c.id, c.title, c.reporter_cite, c.decision_date,
+                       ct.name as court_name,
+                       c.metadata->>'subject' as subject
+                FROM cases c
+                JOIN ai_summaries s ON s.case_id = c.id
+                LEFT JOIN courts ct ON c.court_id = ct.id
+                WHERE c.metadata->>'subject' = $1
+                ORDER BY c.title
+            """, subject)
+        else:
+            rows = await conn.fetch("""
+                SELECT c.id, c.title, c.reporter_cite, c.decision_date,
+                       ct.name as court_name,
+                       c.metadata->>'subject' as subject
+                FROM cases c
+                JOIN ai_summaries s ON s.case_id = c.id
+                LEFT JOIN courts ct ON c.court_id = ct.id
+                ORDER BY c.title
+            """)
+
+    return [
+        {
+            "id": r["id"],
+            "title": r["title"],
+            "reporter_cite": r["reporter_cite"],
+            "decision_date": r["decision_date"].isoformat() if r["decision_date"] else None,
+            "court_name": r["court_name"],
+            "subject": r["subject"],
+        }
+        for r in rows
+    ]
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

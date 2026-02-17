@@ -27,6 +27,13 @@ export default function HomePage() {
             </div>
             <nav className="flex items-center space-x-4 sm:space-x-6">
               <Link
+                href="/casebook"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <BookOpen className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Casebook</span>
+              </Link>
+              <Link
                 href="/briefcheck"
                 className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
               >
