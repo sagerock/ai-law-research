@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, MessageCircle } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useAuth } from '@/lib/auth-context'
@@ -322,8 +322,16 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center">
                 <Scale className="h-6 w-6 text-neutral-700 mr-2" />
-                <span className="text-xl font-bold text-neutral-900">Sage's Study Group</span>
+                <span className="text-xl font-bold text-neutral-900">Sage's Law School Study Group</span>
               </Link>
+              <a
+                href="https://discord.gg/AcGcKMmMZX"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </a>
               <UserMenu />
             </div>
           </div>

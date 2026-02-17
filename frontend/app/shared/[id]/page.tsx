@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Scale, Calendar, User, FolderOpen, ExternalLink } from 'lucide-react'
+import { Scale, Calendar, User, FolderOpen, ExternalLink, MessageCircle } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-law-research-production.up.railway.app'
@@ -57,10 +57,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     || `A collection of ${collection.case_count} cases${collection.subject ? ` about ${collection.subject}` : ''} by ${collection.owner_name}`
 
   return {
-    title: `${collection.name} | Sage's Study Group`,
+    title: `${collection.name} | Sage's Law School Study Group`,
     description,
     openGraph: {
-      title: `${collection.name} | Sage's Study Group`,
+      title: `${collection.name} | Sage's Law School Study Group`,
       description,
       type: 'article',
       url: `${SITE_URL}/shared/${id}`,
@@ -85,11 +85,19 @@ export default async function SharedCollectionPage({ params }: PageProps) {
             <Link href="/" className="flex items-center space-x-3">
               <Scale className="h-8 w-8 text-neutral-700" />
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Sage's Study Group</h1>
+                <h1 className="text-2xl font-bold text-neutral-900">Sage's Law School Study Group</h1>
                 <p className="text-sm text-neutral-600 hidden sm:block">Free AI Case Briefs for Law Students</p>
               </div>
             </Link>
             <nav className="flex items-center gap-4">
+              <a
+                href="https://discord.gg/AcGcKMmMZX"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </a>
               <Link href="/" className="text-neutral-600 hover:text-neutral-900 transition">
                 Search Cases
               </Link>
@@ -201,7 +209,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
       {/* Footer */}
       <footer className="border-t bg-white mt-16">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-neutral-500">
-          <p>Sage's Study Group - Free AI Case Briefs for Law Students</p>
+          <p>Sage's Law School Study Group - Free AI Case Briefs for Law Students</p>
         </div>
       </footer>
     </div>

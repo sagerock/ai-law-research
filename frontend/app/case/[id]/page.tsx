@@ -40,10 +40,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : ''
 
   return {
-    title: `${caseName} | Sage's Study Group`,
+    title: `${caseName} | Sage's Law School Study Group`,
     description: `Read the full case brief for ${caseName}${court ? ` (${court}${year ? `, ${year}` : ''})` : ''}. Free AI-powered case summaries for law students.`,
     openGraph: {
-      title: `${caseName} | Sage's Study Group`,
+      title: `${caseName} | Sage's Law School Study Group`,
       description: `Case brief and AI summary for ${caseName}`,
       type: 'article',
     },

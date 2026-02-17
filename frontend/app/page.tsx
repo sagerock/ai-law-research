@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Scale, BookOpen, Search, Heart, Upload } from 'lucide-react'
+import { Scale, BookOpen, Search, Heart, Upload, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
@@ -57,7 +57,7 @@ export default function HomePage() {
             <div className="flex items-center space-x-3">
               <Scale className="h-8 w-8 text-neutral-700" />
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Sage's Study Group</h1>
+                <h1 className="text-2xl font-bold text-neutral-900">Sage's Law School Study Group</h1>
                 <p className="text-sm text-neutral-600 hidden sm:block">Free AI Case Briefs for Law Students</p>
               </div>
             </div>
@@ -83,6 +83,15 @@ export default function HomePage() {
                 <BookOpen className="h-5 w-5 mr-2" />
                 My Library
               </Link>
+              <a
+                href="https://discord.gg/AcGcKMmMZX"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <MessageCircle className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Discord</span>
+              </a>
               <UserMenu />
             </nav>
           </div>
