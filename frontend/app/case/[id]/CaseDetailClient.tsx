@@ -307,11 +307,17 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => router.back()}
+              onClick={() => {
+                if (window.history.length > 1) {
+                  router.back()
+                } else {
+                  router.push('/casebook')
+                }
+              }}
               className="flex items-center text-neutral-600 hover:text-neutral-900"
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
-              Back to Results
+              Back to Cases
             </button>
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center">
