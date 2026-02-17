@@ -40,8 +40,9 @@ export default function LoginPage() {
           setMessage('Check your email for a confirmation link!')
         }
       }
-    } catch (err) {
-      setError('An unexpected error occurred')
+    } catch (err: any) {
+      console.error('Auth error:', err)
+      setError(err?.message || 'An unexpected error occurred')
     } finally {
       setIsLoading(false)
     }
