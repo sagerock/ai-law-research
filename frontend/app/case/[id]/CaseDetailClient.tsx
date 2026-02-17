@@ -311,7 +311,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 if (window.history.length > 1) {
                   router.back()
                 } else {
-                  router.push('/casebook')
+                  router.push('/')
                 }
               }}
               className="flex items-center text-neutral-600 hover:text-neutral-900"
