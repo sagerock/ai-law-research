@@ -165,9 +165,9 @@ export function UserMenu() {
           {/* Sign out */}
           <div className="border-t border-neutral-100 py-1">
             <button
-              onClick={() => {
-                signOut()
+              onClick={async () => {
                 setShowDropdown(false)
+                await signOut()
               }}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
             >

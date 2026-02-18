@@ -250,10 +250,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign out
   const signOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+    } catch (err) {
+      console.error('Error signing out:', err)
+    }
     setUser(null)
     setProfile(null)
     setSession(null)
+    window.location.href = '/'
   }
 
   // Update profile via backend API
