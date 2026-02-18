@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Mail, Loader2, Scale, ArrowLeft, MessageCircle, GraduationCap, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/supabase'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -19,11 +19,11 @@ export default function LoginPage() {
 
   const { signInWithEmail, signUpWithEmail, resetPassword, changePassword, isConfigured } = useAuth()
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   // Detect password recovery from Supabase redirect
   useEffect(() => {
-    if (searchParams.get('reset') !== 'true') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('reset') !== 'true') return
     const supabase = createClient()
     if (!supabase) return
 
@@ -36,7 +36,7 @@ export default function LoginPage() {
     })
 
     return () => subscription.unsubscribe()
-  }, [searchParams])
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
