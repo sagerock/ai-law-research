@@ -63,12 +63,17 @@ export interface Outline {
 export interface StudyNote {
   id: number
   title: string
-  subject: string | null
+  tags: string[] | null
   filename: string
   file_size: number | null
   file_type: string | null
   char_count: number
   created_at: string
+}
+
+export interface TagCount {
+  tag: string
+  count: number
 }
 
 export interface Conversation {

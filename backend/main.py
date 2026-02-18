@@ -2457,7 +2457,7 @@ class ChatMessage(BaseModel):
 async def upload_study_note(
     file: UploadFile = File(...),
     title: str = Form(...),
-    subject: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
     user: dict = Depends(require_auth),
 ):
     """Upload a study note file, extract text, store in DB"""
@@ -2486,17 +2486,20 @@ async def upload_study_note(
 
     char_count = len(extracted_text)
 
+    # Parse comma-separated tags into list
+    tag_list = [t.strip() for t in tags.split(',') if t.strip()] if tags else None
+
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            INSERT INTO study_notes (user_id, title, subject, filename, file_size, file_type, extracted_text, char_count)
+            INSERT INTO study_notes (user_id, title, tags, filename, file_size, file_type, extracted_text, char_count)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id, title, subject, filename, file_size, file_type, char_count, created_at
-        """, user["id"], title, subject, filename, file_size, ext, extracted_text, char_count)
+            RETURNING id, title, tags, filename, file_size, file_type, char_count, created_at
+        """, user["id"], title, tag_list, filename, file_size, ext, extracted_text, char_count)
 
     return {
         "id": row["id"],
         "title": row["title"],
-        "subject": row["subject"],
+        "tags": list(row["tags"]) if row["tags"] else None,
         "filename": row["filename"],
         "file_size": row["file_size"],
         "file_type": row["file_type"],
@@ -2510,7 +2513,7 @@ async def list_study_notes(user: dict = Depends(require_auth)):
     """List user's study notes"""
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, title, subject, filename, file_size, file_type, char_count, created_at
+            SELECT id, title, tags, filename, file_size, file_type, char_count, created_at
             FROM study_notes
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -2520,7 +2523,7 @@ async def list_study_notes(user: dict = Depends(require_auth)):
         {
             "id": row["id"],
             "title": row["title"],
-            "subject": row["subject"],
+            "tags": list(row["tags"]) if row["tags"] else None,
             "filename": row["filename"],
             "file_size": row["file_size"],
             "file_type": row["file_type"],
@@ -2546,6 +2549,46 @@ async def delete_study_note(note_id: int, user: dict = Depends(require_auth)):
         await conn.execute("DELETE FROM study_notes WHERE id = $1", note_id)
 
     return {"status": "deleted"}
+
+
+@app.get("/api/v1/study/tags")
+async def list_study_tags(user: dict = Depends(require_auth)):
+    """Return user's unique tags with note counts (for autocomplete)"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT unnest(tags) AS tag, COUNT(*) AS count
+            FROM study_notes
+            WHERE user_id = $1 AND tags IS NOT NULL
+            GROUP BY tag
+            ORDER BY count DESC, tag
+        """, user["id"])
+
+    return [{"tag": row["tag"], "count": row["count"]} for row in rows]
+
+
+class TagsUpdate(BaseModel):
+    tags: List[str]
+
+
+@app.patch("/api/v1/study/notes/{note_id}/tags")
+async def update_note_tags(note_id: int, body: TagsUpdate, user: dict = Depends(require_auth)):
+    """Update tags on an existing note"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT user_id FROM study_notes WHERE id = $1", note_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Note not found")
+        if row["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only update your own notes")
+
+        tag_list = [t.strip() for t in body.tags if t.strip()] or None
+        await conn.execute(
+            "UPDATE study_notes SET tags = $1 WHERE id = $2",
+            tag_list, note_id
+        )
+
+    return {"status": "updated", "tags": tag_list}
 
 
 # --- Conversations CRUD ---

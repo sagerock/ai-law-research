@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { UserMenu } from '@/components/auth/UserMenu'
-import type { StudyNote, Conversation, ChatMessageType, UsageInfo } from '@/types'
+import type { StudyNote, Conversation, ChatMessageType, UsageInfo, TagCount } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -33,6 +33,7 @@ export default function StudyPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [uploading, setUploading] = useState(false)
   const [rateLimited, setRateLimited] = useState(false)
+  const [availableTags, setAvailableTags] = useState<TagCount[]>([])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -58,6 +59,7 @@ export default function StudyPage() {
       fetchNotes()
       fetchConversations()
       fetchUsage()
+      fetchTags()
     }
   }, [user, session?.access_token])
 
@@ -74,6 +76,17 @@ export default function StudyPage() {
       if (res.ok) setNotes(await res.json())
     } catch (e) {
       console.error('Failed to fetch notes:', e)
+    }
+  }
+
+  const fetchTags = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/study/tags`, {
+        headers: getAuthHeaders(),
+      })
+      if (res.ok) setAvailableTags(await res.json())
+    } catch (e) {
+      console.error('Failed to fetch tags:', e)
     }
   }
 
@@ -153,13 +166,13 @@ export default function StudyPage() {
     }
   }
 
-  const handleUpload = async (file: File, title: string, subject: string) => {
+  const handleUpload = async (file: File, title: string, tags: string[]) => {
     setUploading(true)
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('title', title)
-      if (subject) formData.append('subject', subject)
+      if (tags.length > 0) formData.append('tags', tags.join(','))
 
       const res = await fetch(`${API_URL}/api/v1/study/notes/upload`, {
         method: 'POST',
@@ -173,6 +186,7 @@ export default function StudyPage() {
         const note = await res.json()
         setNotes(prev => [note, ...prev])
         setShowUpload(false)
+        fetchTags()
       } else {
         const err = await res.json()
         alert(err.detail || 'Upload failed')
@@ -327,13 +341,15 @@ export default function StudyPage() {
     }
   }
 
-  // Group notes by subject
+  // Group notes by tags (notes with multiple tags appear in all matching groups)
   const noteGroups = useMemo(() => {
     const groups: Record<string, StudyNote[]> = {}
     for (const note of notes) {
-      const key = note.subject || 'Uncategorized'
-      if (!groups[key]) groups[key] = []
-      groups[key].push(note)
+      const tagList = note.tags?.length ? note.tags : ['Uncategorized']
+      for (const tag of tagList) {
+        if (!groups[tag]) groups[tag] = []
+        groups[tag].push(note)
+      }
     }
     // Sort groups alphabetically, Uncategorized last
     return Object.entries(groups).sort(([a], [b]) => {
@@ -485,9 +501,14 @@ export default function StudyPage() {
                                 />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm text-neutral-800 truncate">{note.title}</p>
-                                  <p className="text-xs text-neutral-400">
-                                    {note.char_count.toLocaleString()} chars
-                                  </p>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="text-xs text-neutral-400">
+                                      {note.char_count.toLocaleString()} chars
+                                    </span>
+                                    {(note.tags || []).filter(t => t !== group).map(t => (
+                                      <span key={t} className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0 rounded-full">{t}</span>
+                                    ))}
+                                  </div>
                                 </div>
                                 <button
                                   onClick={() => deleteNote(note.id)}
@@ -692,6 +713,7 @@ export default function StudyPage() {
           onClose={() => setShowUpload(false)}
           onUpload={handleUpload}
           uploading={uploading}
+          availableTags={availableTags}
         />
       )}
 
@@ -711,16 +733,21 @@ function UploadModal({
   onClose,
   onUpload,
   uploading,
+  availableTags,
 }: {
   onClose: () => void
-  onUpload: (file: File, title: string, subject: string) => void
+  onUpload: (file: File, title: string, tags: string[]) => void
   uploading: boolean
+  availableTags: TagCount[]
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
-  const [subject, setSubject] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
+  const [showDropdown, setShowDropdown] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const tagInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (f: File) => {
     const ext = f.name.split('.').pop()?.toLowerCase()
@@ -735,6 +762,25 @@ function UploadModal({
     setFile(f)
     if (!title) setTitle(f.name.replace(/\.[^.]+$/, ''))
   }
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim()
+    if (trimmed && !selectedTags.includes(trimmed)) {
+      setSelectedTags(prev => [...prev, trimmed])
+    }
+    setTagInput('')
+    setShowDropdown(false)
+    tagInputRef.current?.focus()
+  }
+
+  const removeTag = (tag: string) => {
+    setSelectedTags(prev => prev.filter(t => t !== tag))
+  }
+
+  const filteredTags = availableTags.filter(
+    tc => !selectedTags.includes(tc.tag) &&
+      tc.tag.toLowerCase().includes(tagInput.toLowerCase())
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -810,13 +856,64 @@ function UploadModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Subject (optional)</label>
-            <input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g. Property Law"
-            />
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Tags (optional)</label>
+            <div
+              className="w-full border border-neutral-300 rounded-lg px-2 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent min-h-[38px] cursor-text"
+              onClick={() => tagInputRef.current?.focus()}
+            >
+              {selectedTags.map(tag => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeTag(tag) }}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              <div className="relative flex-1 min-w-[80px]">
+                <input
+                  ref={tagInputRef}
+                  value={tagInput}
+                  onChange={(e) => {
+                    setTagInput(e.target.value)
+                    setShowDropdown(true)
+                  }}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                      e.preventDefault()
+                      addTag(tagInput)
+                    } else if (e.key === 'Backspace' && !tagInput && selectedTags.length > 0) {
+                      removeTag(selectedTags[selectedTags.length - 1])
+                    }
+                  }}
+                  className="w-full border-0 outline-none text-sm py-0.5 bg-transparent"
+                  placeholder={selectedTags.length === 0 ? 'e.g. Property Law, Torts' : ''}
+                />
+                {showDropdown && tagInput && filteredTags.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                    {filteredTags.map(tc => (
+                      <button
+                        key={tc.tag}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); addTag(tc.tag) }}
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between"
+                      >
+                        <span>{tc.tag}</span>
+                        <span className="text-xs text-neutral-400">{tc.count} note{tc.count !== 1 ? 's' : ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -830,7 +927,7 @@ function UploadModal({
           <button
             onClick={() => {
               if (file && title.trim()) {
-                onUpload(file, title.trim(), subject.trim())
+                onUpload(file, title.trim(), selectedTags)
               }
             }}
             disabled={!file || !title.trim() || uploading}
