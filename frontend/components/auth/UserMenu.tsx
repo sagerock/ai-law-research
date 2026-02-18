@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown, GraduationCap, Upload, Heart } from 'lucide-react'
+import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown, GraduationCap, Upload, Heart, Shield } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
 
@@ -107,6 +107,17 @@ export function UserMenu() {
 
           {/* Menu items */}
           <div className="py-1">
+            {user.email === 'sage@sagerock.com' && (
+              <Link
+                href="/admin"
+                onClick={() => setShowDropdown(false)}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Admin Panel</span>
+              </Link>
+            )}
+
             <Link
               href="/profile"
               onClick={() => setShowDropdown(false)}

@@ -101,6 +101,22 @@ export interface UsageInfo {
   model: string
 }
 
+export interface AdminUser {
+  id: string
+  email: string | null
+  username: string | null
+  full_name: string | null
+  tier: 'free' | 'pro'
+  messages_today: number
+  daily_limit: number | null
+  custom_daily_limit: number | null
+  model_override: string | null
+  effective_model: string
+  last_message_date: string | null
+  profile_created_at: string | null
+  last_active: string | null
+}
+
 export interface TransparencyStats {
   month_name: string
   month_summaries: number

@@ -176,7 +176,35 @@ async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
     user = await get_current_user(authorization)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
+    # Backfill email on profiles table (fire-and-forget)
+    try:
+        if db_pool and user.get("email"):
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE profiles SET email = $1 WHERE id = $2 AND (email IS NULL OR email != $1)",
+                    user["email"], user["id"],
+                )
+    except Exception:
+        pass
     return user
+
+
+# Admin authentication
+ADMIN_EMAIL = "sage@sagerock.com"
+
+
+async def require_admin(authorization: Optional[str] = Header(None)) -> dict:
+    """Require admin authentication - raises 403 if not admin"""
+    user = await require_auth(authorization)
+    if user.get("email") != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+class AdminUserUpdate(BaseModel):
+    tier: Optional[str] = None
+    daily_limit: Optional[int] = None
+    model_override: Optional[str] = None
 
 
 # Transparency dashboard helper
@@ -2683,7 +2711,7 @@ async def get_study_usage(user: dict = Depends(require_auth)):
     """Get user's tier and daily usage info"""
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT tier, messages_today, last_message_date FROM user_tiers WHERE user_id = $1",
+            "SELECT tier, messages_today, last_message_date, daily_limit, model_override FROM user_tiers WHERE user_id = $1",
             user["id"],
         )
 
@@ -2698,13 +2726,20 @@ async def get_study_usage(user: dict = Depends(require_auth)):
 
     tier = row["tier"]
     messages_today = row["messages_today"]
-    # Reset counter if last message was on a different day
     if row["last_message_date"] != date.today():
         messages_today = 0
 
-    daily_limit = None if tier == "pro" else 15
-    messages_remaining = None if tier == "pro" else max(0, 15 - messages_today)
-    model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+    custom_limit = row["daily_limit"]
+    if custom_limit is not None:
+        daily_limit = custom_limit
+    elif tier == "pro":
+        daily_limit = None
+    else:
+        daily_limit = 15
+
+    messages_remaining = None if daily_limit is None else max(0, daily_limit - messages_today)
+    default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+    model = row["model_override"] or default_model
 
     return {
         "tier": tier,
@@ -2728,7 +2763,7 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
     async with db_pool.acquire() as conn:
         # Get or create user tier
         tier_row = await conn.fetchrow(
-            "SELECT tier, messages_today, last_message_date FROM user_tiers WHERE user_id = $1",
+            "SELECT tier, messages_today, last_message_date, daily_limit, model_override FROM user_tiers WHERE user_id = $1",
             user_id,
         )
 
@@ -2739,21 +2774,34 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
             )
             tier = "free"
             messages_today = 0
+            custom_limit = None
+            model_override = None
         else:
             tier = tier_row["tier"]
             messages_today = tier_row["messages_today"]
             if tier_row["last_message_date"] != date.today():
                 messages_today = 0
+            custom_limit = tier_row["daily_limit"]
+            model_override = tier_row["model_override"]
 
-        # Check daily limit for free tier
-        if tier == "free" and messages_today >= 15:
+        # Compute effective limit
+        if custom_limit is not None:
+            effective_limit = custom_limit
+        elif tier == "pro":
+            effective_limit = None  # unlimited
+        else:
+            effective_limit = 15
+
+        # Check daily limit
+        if effective_limit is not None and messages_today >= effective_limit:
             raise HTTPException(
                 status_code=429,
                 detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
             )
 
         # Select model
-        model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+        default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+        model = model_override or default_model
 
         # Create or get conversation
         conversation_id = msg.conversation_id
@@ -2959,11 +3007,185 @@ Guidelines:
 
         # Final done event
         remaining = None
-        if tier == "free":
-            remaining = max(0, 15 - (messages_today + 1))
+        if effective_limit is not None:
+            remaining = max(0, effective_limit - (messages_today + 1))
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining})}\n\n"
 
     return StreamingResponse(stream_response(), media_type="text/event-stream")
+
+
+# ============================================================================
+# Admin Panel
+# ============================================================================
+
+@app.get("/api/v1/admin/users")
+async def admin_list_users(
+    search: Optional[str] = None,
+    tier_filter: Optional[str] = None,
+    user: dict = Depends(require_admin),
+):
+    """List all users with tier/usage info (admin only)"""
+    async with db_pool.acquire() as conn:
+        conditions = []
+        params = []
+        idx = 1
+
+        if search:
+            conditions.append(f"(p.email ILIKE ${idx} OR p.username ILIKE ${idx} OR p.full_name ILIKE ${idx})")
+            params.append(f"%{search}%")
+            idx += 1
+
+        if tier_filter:
+            conditions.append(f"COALESCE(t.tier, 'free') = ${idx}")
+            params.append(tier_filter)
+            idx += 1
+
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        rows = await conn.fetch(f"""
+            SELECT
+                p.id,
+                p.email,
+                p.username,
+                p.full_name,
+                COALESCE(t.tier, 'free') as tier,
+                COALESCE(t.messages_today, 0) as messages_today,
+                t.last_message_date,
+                t.daily_limit as custom_daily_limit,
+                t.model_override,
+                p.created_at as profile_created_at,
+                t.updated_at as last_active
+            FROM profiles p
+            LEFT JOIN user_tiers t ON p.id::text = t.user_id
+            {where}
+            ORDER BY t.updated_at DESC NULLS LAST
+            LIMIT 200
+        """, *params)
+
+    default_free_model = "claude-haiku-4-5-20251001"
+    default_pro_model = "claude-sonnet-4-5-20250929"
+
+    users = []
+    for r in rows:
+        tier = r["tier"]
+        messages_today = r["messages_today"]
+        if r["last_message_date"] and r["last_message_date"] != date.today():
+            messages_today = 0
+
+        custom_limit = r["custom_daily_limit"]
+        if custom_limit is not None:
+            daily_limit = custom_limit
+        elif tier == "pro":
+            daily_limit = None
+        else:
+            daily_limit = 15
+
+        default_model = default_pro_model if tier == "pro" else default_free_model
+        effective_model = r["model_override"] or default_model
+
+        users.append({
+            "id": str(r["id"]),
+            "email": r["email"],
+            "username": r["username"],
+            "full_name": r["full_name"],
+            "tier": tier,
+            "messages_today": messages_today,
+            "daily_limit": daily_limit,
+            "custom_daily_limit": custom_limit,
+            "model_override": r["model_override"],
+            "effective_model": effective_model,
+            "last_message_date": r["last_message_date"].isoformat() if r["last_message_date"] else None,
+            "profile_created_at": r["profile_created_at"].isoformat() if r["profile_created_at"] else None,
+            "last_active": r["last_active"].isoformat() if r["last_active"] else None,
+        })
+
+    return users
+
+
+@app.patch("/api/v1/admin/users/{user_id}")
+async def admin_update_user(
+    user_id: str,
+    body: AdminUserUpdate,
+    user: dict = Depends(require_admin),
+):
+    """Update a user's tier, daily limit, or model override (admin only)"""
+    async with db_pool.acquire() as conn:
+        # Build SET clauses
+        sets = []
+        params = [user_id]  # $1
+        idx = 2
+
+        tier_value = "free"  # default for UPSERT insert
+
+        if body.tier is not None:
+            if body.tier not in ("free", "pro"):
+                raise HTTPException(status_code=400, detail="tier must be 'free' or 'pro'")
+            sets.append(f"tier = ${idx}")
+            params.append(body.tier)
+            tier_value = body.tier
+            idx += 1
+
+        if body.daily_limit is not None:
+            if body.daily_limit == -1:
+                sets.append("daily_limit = NULL")
+            else:
+                sets.append(f"daily_limit = ${idx}")
+                params.append(body.daily_limit)
+                idx += 1
+
+        if body.model_override is not None:
+            if body.model_override == "":
+                sets.append("model_override = NULL")
+            else:
+                sets.append(f"model_override = ${idx}")
+                params.append(body.model_override)
+                idx += 1
+
+        if not sets:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        update_clause = ", ".join(sets)
+
+        await conn.execute(f"""
+            INSERT INTO user_tiers (user_id, tier)
+            VALUES ($1, '{tier_value}')
+            ON CONFLICT (user_id) DO UPDATE SET {update_clause}, updated_at = NOW()
+        """, *params)
+
+        # Return updated state
+        row = await conn.fetchrow("""
+            SELECT
+                p.id, p.email, p.username, p.full_name,
+                COALESCE(t.tier, 'free') as tier,
+                COALESCE(t.messages_today, 0) as messages_today,
+                t.last_message_date,
+                t.daily_limit as custom_daily_limit,
+                t.model_override,
+                p.created_at as profile_created_at,
+                t.updated_at as last_active
+            FROM profiles p
+            LEFT JOIN user_tiers t ON p.id::text = t.user_id
+            WHERE p.id::text = $1
+        """, user_id)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        tier = row["tier"]
+        default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+
+        return {
+            "id": str(row["id"]),
+            "email": row["email"],
+            "username": row["username"],
+            "full_name": row["full_name"],
+            "tier": tier,
+            "messages_today": row["messages_today"],
+            "custom_daily_limit": row["custom_daily_limit"],
+            "model_override": row["model_override"],
+            "effective_model": row["model_override"] or default_model,
+            "last_active": row["last_active"].isoformat() if row["last_active"] else None,
+        }
 
 
 # ============================================================================
