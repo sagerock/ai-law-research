@@ -70,7 +70,7 @@ export default function LoginPage() {
             <Link href="/" className="flex items-center space-x-3">
               <Scale className="h-8 w-8 text-neutral-700" />
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Sage's Law School Study Group</h1>
+                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
                 <p className="text-sm text-neutral-600 hidden sm:block">Free AI Case Briefs for Law Students</p>
               </div>
             </Link>

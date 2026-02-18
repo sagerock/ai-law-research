@@ -322,7 +322,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center">
                 <Scale className="h-6 w-6 text-neutral-700 mr-2" />
-                <span className="text-xl font-bold text-neutral-900">Sage's Law School Study Group</span>
+                <span className="text-xl font-bold text-neutral-900">Law Study Group</span>
               </Link>
               <Link
                 href="/outlines"

@@ -134,7 +134,7 @@ export default function TransparencyPage() {
             <Link href="/" className="flex items-center space-x-3">
               <Scale className="h-8 w-8 text-neutral-700" />
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Sage's Law School Study Group</h1>
+                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
                 <p className="text-sm text-neutral-600 hidden sm:block">Free AI Case Briefs for Law Students</p>
               </div>
             </Link>
@@ -189,7 +189,7 @@ export default function TransparencyPage() {
             Transparency Dashboard
           </h1>
           <p className="text-lg text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            Hi, I'm Sage! I built this tool to help fellow law students access legal research
+            This tool was built to help law students access legal research
             without expensive subscriptions. Here's exactly what it costs to run, because you
             deserve to know where your support goes.
           </p>
@@ -404,12 +404,9 @@ export default function TransparencyPage() {
                   tool because AI-powered case briefs shouldn't be another expense we have to stress about.
                 </p>
                 <p>
-                  By showing exactly what it costs to run this site, I want you to know that your
+                  By showing exactly what it costs to run this site, we want you to know that your
                   support directly enables free legal research. There's no hidden profit margin here -
-                  just a fellow 1L trying to help.
-                </p>
-                <p className="font-medium text-neutral-700">
-                  - Sage
+                  just fellow law students trying to help.
                 </p>
               </div>
             </section>

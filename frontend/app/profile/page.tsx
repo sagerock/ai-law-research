@@ -224,7 +224,7 @@ export default function ProfilePage() {
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <Scale className="h-6 w-6 text-blue-600" />
-              <span className="text-xl font-semibold">Sage&apos;s Study Group</span>
+              <span className="text-xl font-semibold">Law Study Group</span>
             </Link>
           </div>
         </header>
@@ -252,7 +252,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center gap-2">
                 <Scale className="h-6 w-6 text-blue-600" />
-                <span className="text-xl font-semibold">Sage&apos;s Study Group</span>
+                <span className="text-xl font-semibold">Law Study Group</span>
               </Link>
               <nav className="hidden md:flex items-center gap-4">
                 <Link

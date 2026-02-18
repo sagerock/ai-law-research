@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!collection) {
     return {
-      title: 'Collection Not Found | Sage\'s Study Group',
+      title: 'Collection Not Found | Law Study Group',
     }
   }
 
@@ -57,10 +57,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     || `A collection of ${collection.case_count} cases${collection.subject ? ` about ${collection.subject}` : ''} by ${collection.owner_name}`
 
   return {
-    title: `${collection.name} | Sage's Law School Study Group`,
+    title: `${collection.name} | Law Study Group`,
     description,
     openGraph: {
-      title: `${collection.name} | Sage's Law School Study Group`,
+      title: `${collection.name} | Law Study Group`,
       description,
       type: 'article',
       url: `${SITE_URL}/shared/${id}`,
@@ -85,7 +85,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
             <Link href="/" className="flex items-center space-x-3">
               <Scale className="h-8 w-8 text-neutral-700" />
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Sage's Law School Study Group</h1>
+                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
                 <p className="text-sm text-neutral-600 hidden sm:block">Free AI Case Briefs for Law Students</p>
               </div>
             </Link>
@@ -215,7 +215,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
       {/* Footer */}
       <footer className="border-t bg-white mt-16">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-neutral-500">
-          <p>Sage's Law School Study Group - Free AI Case Briefs for Law Students</p>
+          <p>Law Study Group - Free AI Case Briefs for Law Students</p>
         </div>
       </footer>
     </div>
