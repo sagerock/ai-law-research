@@ -20,6 +20,7 @@ import {
   X,
   Plus,
   Filter,
+  GraduationCap,
 } from 'lucide-react'
 
 const SUBJECT_OPTIONS = [
@@ -328,9 +329,9 @@ export default function OutlinesPage() {
               <BookOpen className="h-5 w-5 mr-2" />
               My Library
             </Link>
-            <Link href="/outlines" className="text-neutral-900 font-medium transition flex items-center">
-              <FileText className="h-5 w-5 sm:mr-2" />
-              <span className="hidden sm:inline">Outlines</span>
+            <Link href="/study" className="text-neutral-600 hover:text-neutral-900 transition flex items-center">
+              <GraduationCap className="h-5 w-5 sm:mr-2" />
+              <span className="hidden sm:inline">Study</span>
             </Link>
             <a
               href="https://discord.gg/AcGcKMmMZX"

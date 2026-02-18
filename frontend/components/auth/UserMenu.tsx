@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown } from 'lucide-react'
+import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown, GraduationCap } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
 
@@ -132,6 +132,15 @@ export function UserMenu() {
             >
               <FolderOpen className="h-4 w-4" />
               <span>My Collections</span>
+            </Link>
+
+            <Link
+              href="/study"
+              onClick={() => setShowDropdown(false)}
+              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+            >
+              <GraduationCap className="h-4 w-4" />
+              <span>Study Assistant</span>
             </Link>
           </div>
 

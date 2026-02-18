@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, MessageCircle, GraduationCap } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useAuth } from '@/lib/auth-context'
@@ -325,10 +325,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 <span className="text-xl font-bold text-neutral-900">Law Study Group</span>
               </Link>
               <Link
-                href="/outlines"
+                href="/study"
                 className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
               >
-                <FileText className="h-5 w-5" />
+                <GraduationCap className="h-5 w-5" />
               </Link>
               <a
                 href="https://discord.gg/AcGcKMmMZX"

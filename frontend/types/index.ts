@@ -60,6 +60,42 @@ export interface Outline {
   full_name?: string
 }
 
+export interface StudyNote {
+  id: number
+  title: string
+  subject: string | null
+  filename: string
+  file_size: number | null
+  file_type: string | null
+  char_count: number
+  created_at: string
+}
+
+export interface Conversation {
+  id: number
+  title: string | null
+  note_ids: number[]
+  message_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ChatMessageType {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  model: string | null
+  created_at: string
+}
+
+export interface UsageInfo {
+  tier: 'free' | 'pro'
+  messages_today: number
+  daily_limit: number | null
+  messages_remaining: number | null
+  model: string
+}
+
 export interface TransparencyStats {
   month_name: string
   month_summaries: number

@@ -1,14 +1,16 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
+import io
 import asyncpg
 import httpx
 from opensearchpy._async.client import AsyncOpenSearch
 import redis.asyncio as redis
 import numpy as np
-from datetime import datetime
+from datetime import datetime, date
 import json
 from jose import jwt, JWTError
 from uuid import UUID
@@ -1385,14 +1387,24 @@ def extract_key_arguments(text: str, max_passages=5):
     return key_sentences[:max_passages]
 
 def extract_text_from_pdf(content: bytes) -> str:
-    """Extract text from PDF (placeholder)"""
-    # Would use PyPDF2 or pdfplumber in production
-    return "Extracted PDF text"
+    """Extract text from PDF using pdfplumber"""
+    import pdfplumber
+    text = ""
+    pdf_file = io.BytesIO(content)
+    with pdfplumber.open(pdf_file) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+    return text.strip()
 
 def extract_text_from_docx(content: bytes) -> str:
-    """Extract text from DOCX (placeholder)"""
-    # Would use python-docx in production
-    return "Extracted DOCX text"
+    """Extract text from DOCX using python-docx"""
+    from docx import Document
+    doc_file = io.BytesIO(content)
+    doc = Document(doc_file)
+    text = "\n".join(para.text for para in doc.paragraphs if para.text.strip())
+    return text.strip()
 
 
 # ============================================================================
@@ -2428,6 +2440,487 @@ async def delete_outline(outline_id: int, user: dict = Depends(require_auth)):
         await conn.execute("DELETE FROM outlines WHERE id = $1", outline_id)
 
     return {"status": "deleted", "file_url": row["file_url"]}
+
+
+# ============================================================================
+# Study Assistant (AI chat with uploaded notes)
+# ============================================================================
+
+class ChatMessage(BaseModel):
+    content: str
+    conversation_id: Optional[int] = None
+    note_ids: Optional[List[int]] = None
+
+# --- Notes CRUD ---
+
+@app.post("/api/v1/study/notes/upload")
+async def upload_study_note(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    subject: Optional[str] = Form(None),
+    user: dict = Depends(require_auth),
+):
+    """Upload a study note file, extract text, store in DB"""
+    # Validate file type
+    filename = file.filename or "untitled"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("pdf", "docx", "txt"):
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
+
+    content = await file.read()
+    file_size = len(content)
+
+    if file_size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size limit is 10MB")
+
+    # Extract text
+    if ext == "pdf":
+        extracted_text = extract_text_from_pdf(content)
+    elif ext == "docx":
+        extracted_text = extract_text_from_docx(content)
+    else:
+        extracted_text = content.decode("utf-8", errors="replace")
+
+    if not extracted_text or len(extracted_text) < 10:
+        raise HTTPException(status_code=400, detail="Could not extract text from file")
+
+    char_count = len(extracted_text)
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO study_notes (user_id, title, subject, filename, file_size, file_type, extracted_text, char_count)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, title, subject, filename, file_size, file_type, char_count, created_at
+        """, user["id"], title, subject, filename, file_size, ext, extracted_text, char_count)
+
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "subject": row["subject"],
+        "filename": row["filename"],
+        "file_size": row["file_size"],
+        "file_type": row["file_type"],
+        "char_count": row["char_count"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.get("/api/v1/study/notes")
+async def list_study_notes(user: dict = Depends(require_auth)):
+    """List user's study notes"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, title, subject, filename, file_size, file_type, char_count, created_at
+            FROM study_notes
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+        """, user["id"])
+
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "subject": row["subject"],
+            "filename": row["filename"],
+            "file_size": row["file_size"],
+            "file_type": row["file_type"],
+            "char_count": row["char_count"],
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        }
+        for row in rows
+    ]
+
+
+@app.delete("/api/v1/study/notes/{note_id}")
+async def delete_study_note(note_id: int, user: dict = Depends(require_auth)):
+    """Delete a study note"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT user_id FROM study_notes WHERE id = $1", note_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Note not found")
+        if row["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only delete your own notes")
+
+        await conn.execute("DELETE FROM study_notes WHERE id = $1", note_id)
+
+    return {"status": "deleted"}
+
+
+# --- Conversations CRUD ---
+
+@app.get("/api/v1/study/conversations")
+async def list_conversations(user: dict = Depends(require_auth)):
+    """List user's conversations with message counts"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.title, c.note_ids, c.created_at, c.updated_at,
+                   COUNT(m.id) as message_count
+            FROM conversations c
+            LEFT JOIN messages m ON m.conversation_id = c.id
+            WHERE c.user_id = $1
+            GROUP BY c.id
+            ORDER BY c.updated_at DESC
+        """, user["id"])
+
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "note_ids": row["note_ids"] or [],
+            "message_count": row["message_count"],
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/v1/study/conversations/{conversation_id}")
+async def get_conversation(conversation_id: int, user: dict = Depends(require_auth)):
+    """Get a conversation with all messages"""
+    async with db_pool.acquire() as conn:
+        convo = await conn.fetchrow(
+            "SELECT id, user_id, title, note_ids, created_at, updated_at FROM conversations WHERE id = $1",
+            conversation_id,
+        )
+        if not convo:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if convo["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="Not your conversation")
+
+        msgs = await conn.fetch("""
+            SELECT id, role, content, model, created_at
+            FROM messages
+            WHERE conversation_id = $1
+            ORDER BY created_at ASC
+        """, conversation_id)
+
+    return {
+        "id": convo["id"],
+        "title": convo["title"],
+        "note_ids": convo["note_ids"] or [],
+        "created_at": convo["created_at"].isoformat() if convo["created_at"] else None,
+        "updated_at": convo["updated_at"].isoformat() if convo["updated_at"] else None,
+        "messages": [
+            {
+                "id": m["id"],
+                "role": m["role"],
+                "content": m["content"],
+                "model": m["model"],
+                "created_at": m["created_at"].isoformat() if m["created_at"] else None,
+            }
+            for m in msgs
+        ],
+    }
+
+
+@app.delete("/api/v1/study/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: int, user: dict = Depends(require_auth)):
+    """Delete a conversation and its messages"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT user_id FROM conversations WHERE id = $1", conversation_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if row["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="Not your conversation")
+
+        await conn.execute("DELETE FROM conversations WHERE id = $1", conversation_id)
+
+    return {"status": "deleted"}
+
+
+# --- Usage endpoint ---
+
+@app.get("/api/v1/study/usage")
+async def get_study_usage(user: dict = Depends(require_auth)):
+    """Get user's tier and daily usage info"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT tier, messages_today, last_message_date FROM user_tiers WHERE user_id = $1",
+            user["id"],
+        )
+
+    if not row:
+        return {
+            "tier": "free",
+            "messages_today": 0,
+            "daily_limit": 15,
+            "messages_remaining": 15,
+            "model": "claude-haiku-4-5-20251001",
+        }
+
+    tier = row["tier"]
+    messages_today = row["messages_today"]
+    # Reset counter if last message was on a different day
+    if row["last_message_date"] != date.today():
+        messages_today = 0
+
+    daily_limit = None if tier == "pro" else 15
+    messages_remaining = None if tier == "pro" else max(0, 15 - messages_today)
+    model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+
+    return {
+        "tier": tier,
+        "messages_today": messages_today,
+        "daily_limit": daily_limit,
+        "messages_remaining": messages_remaining,
+        "model": model,
+    }
+
+
+# --- Chat SSE endpoint ---
+
+@app.post("/api/v1/study/chat")
+async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
+    """Stream AI study assistant response via SSE"""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        # Get or create user tier
+        tier_row = await conn.fetchrow(
+            "SELECT tier, messages_today, last_message_date FROM user_tiers WHERE user_id = $1",
+            user_id,
+        )
+
+        if not tier_row:
+            await conn.execute(
+                "INSERT INTO user_tiers (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+                user_id,
+            )
+            tier = "free"
+            messages_today = 0
+        else:
+            tier = tier_row["tier"]
+            messages_today = tier_row["messages_today"]
+            if tier_row["last_message_date"] != date.today():
+                messages_today = 0
+
+        # Check daily limit for free tier
+        if tier == "free" and messages_today >= 15:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+            )
+
+        # Select model
+        model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+
+        # Create or get conversation
+        conversation_id = msg.conversation_id
+        if not conversation_id:
+            title = msg.content[:80].strip()
+            if len(msg.content) > 80:
+                title += "..."
+            row = await conn.fetchrow("""
+                INSERT INTO conversations (user_id, title, note_ids)
+                VALUES ($1, $2, $3)
+                RETURNING id
+            """, user_id, title, msg.note_ids or [])
+            conversation_id = row["id"]
+        else:
+            # Verify ownership
+            convo = await conn.fetchrow(
+                "SELECT user_id FROM conversations WHERE id = $1", conversation_id
+            )
+            if not convo or convo["user_id"] != user_id:
+                raise HTTPException(status_code=403, detail="Not your conversation")
+
+        # Save user message
+        await conn.execute("""
+            INSERT INTO messages (conversation_id, role, content)
+            VALUES ($1, 'user', $2)
+        """, conversation_id, msg.content)
+
+        # Update conversation timestamp
+        await conn.execute(
+            "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
+            conversation_id,
+        )
+
+        # Build context: get notes text
+        notes_context = ""
+        note_ids = msg.note_ids
+        if not note_ids and msg.conversation_id:
+            convo_row = await conn.fetchrow(
+                "SELECT note_ids FROM conversations WHERE id = $1", conversation_id
+            )
+            note_ids = convo_row["note_ids"] if convo_row and convo_row["note_ids"] else []
+
+        if note_ids:
+            notes = await conn.fetch("""
+                SELECT title, extracted_text FROM study_notes
+                WHERE id = ANY($1) AND user_id = $2
+            """, note_ids, user_id)
+            for note in notes:
+                text = note["extracted_text"] or ""
+                if len(text) > 30000:
+                    text = text[:30000] + "\n...[truncated]"
+                notes_context += f"\n\n--- Student's Note: {note['title']} ---\n{text}"
+
+            # Cap total notes context
+            if len(notes_context) > 120000:
+                notes_context = notes_context[:120000] + "\n...[notes truncated]"
+
+        # FTS search for relevant case briefs from ai_summaries
+        briefs_context = ""
+        try:
+            brief_rows = await conn.fetch("""
+                SELECT s.summary, c.title as case_title
+                FROM ai_summaries s
+                JOIN cases c ON s.case_id = c.id
+                WHERE to_tsvector('english', s.summary) @@ plainto_tsquery('english', $1)
+                LIMIT 5
+            """, msg.content)
+            for br in brief_rows:
+                briefs_context += f"\n\n--- Case Brief: {br['case_title']} ---\n{br['summary'][:3000]}"
+        except Exception as e:
+            print(f"FTS brief lookup failed: {e}")
+
+        # Get conversation history (last 20 messages)
+        history = await conn.fetch("""
+            SELECT role, content FROM messages
+            WHERE conversation_id = $1
+            ORDER BY created_at DESC
+            LIMIT 20
+        """, conversation_id)
+        history = list(reversed(history))
+
+    # Build system prompt
+    system_prompt = """You are a law school study assistant. You help students understand legal concepts, prepare for exams, and analyze cases.
+
+Guidelines:
+- Reference the student's uploaded notes when relevant, citing specific passages
+- Cite cases accurately using proper legal citation format
+- Use the Socratic method when appropriate — ask guiding questions to deepen understanding
+- Structure responses clearly with headers and bullet points when helpful
+- Be concise but thorough — law students are busy
+- If you're unsure about something, say so rather than guessing"""
+
+    if notes_context:
+        system_prompt += f"\n\nThe student has shared these study notes for reference:{notes_context}"
+    if briefs_context:
+        system_prompt += f"\n\nRelevant case briefs from our database:{briefs_context}"
+
+    # Build messages for API (skip last entry which is the user msg we just added)
+    api_messages = []
+    for h in history:
+        api_messages.append({"role": h["role"], "content": h["content"]})
+
+    async def stream_response():
+        full_response = ""
+        input_tokens = 0
+        output_tokens = 0
+
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": ANTHROPIC_API_KEY,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": 4096,
+                        "system": system_prompt,
+                        "messages": api_messages,
+                        "stream": True,
+                    },
+                    timeout=120.0,
+                ) as response:
+                    if response.status_code != 200:
+                        error_body = ""
+                        async for chunk in response.aiter_text():
+                            error_body += chunk
+                        yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
+                        return
+
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            event = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+
+                        event_type = event.get("type", "")
+
+                        if event_type == "content_block_delta":
+                            delta = event.get("delta", {})
+                            text = delta.get("text", "")
+                            if text:
+                                full_response += text
+                                yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+
+                        elif event_type == "message_start":
+                            usage = event.get("message", {}).get("usage", {})
+                            input_tokens = usage.get("input_tokens", 0)
+
+                        elif event_type == "message_delta":
+                            usage = event.get("usage", {})
+                            output_tokens = usage.get("output_tokens", 0)
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            return
+
+        # Calculate cost
+        if "haiku" in model:
+            cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
+            usage_type = "study_chat_haiku"
+        else:
+            cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
+            usage_type = "study_chat_sonnet"
+
+        # Save assistant message, update usage
+        try:
+            async with db_pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO messages (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+                    VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+                """, conversation_id, full_response, model, input_tokens, output_tokens, cost)
+
+                await conn.execute("""
+                    INSERT INTO user_tiers (user_id, messages_today, last_message_date, updated_at)
+                    VALUES ($1, 1, CURRENT_DATE, NOW())
+                    ON CONFLICT (user_id) DO UPDATE SET
+                        messages_today = CASE
+                            WHEN user_tiers.last_message_date = CURRENT_DATE
+                            THEN user_tiers.messages_today + 1
+                            ELSE 1
+                        END,
+                        last_message_date = CURRENT_DATE,
+                        updated_at = NOW()
+                """, user_id)
+
+                await conn.execute(
+                    "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
+                    conversation_id,
+                )
+
+            await log_api_usage(usage_type, input_tokens, output_tokens, cost)
+        except Exception as e:
+            print(f"Failed to save chat result: {e}")
+
+        # Final done event
+        remaining = None
+        if tier == "free":
+            remaining = max(0, 15 - (messages_today + 1))
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining})}\n\n"
+
+    return StreamingResponse(stream_response(), media_type="text/event-stream")
 
 
 # ============================================================================

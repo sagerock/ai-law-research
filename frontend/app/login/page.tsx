@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, Loader2, Scale, ArrowLeft, MessageCircle, FileText } from 'lucide-react'
+import { Mail, Loader2, Scale, ArrowLeft, MessageCircle, GraduationCap } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -76,10 +76,10 @@ export default function LoginPage() {
             </Link>
             <div className="flex items-center gap-4">
               <Link
-                href="/outlines"
+                href="/study"
                 className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
               >
-                <FileText className="h-5 w-5" />
+                <GraduationCap className="h-5 w-5" />
               </Link>
               <a
                 href="https://discord.gg/AcGcKMmMZX"

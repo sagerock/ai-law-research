@@ -16,7 +16,7 @@ import {
   Upload,
   BookOpen,
   MessageCircle,
-  FileText
+  GraduationCap
 } from 'lucide-react'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { API_URL } from '@/lib/api'
@@ -161,11 +161,11 @@ export default function TransparencyPage() {
                 My Library
               </Link>
               <Link
-                href="/outlines"
+                href="/study"
                 className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
               >
-                <FileText className="h-5 w-5 sm:mr-2" />
-                <span className="hidden sm:inline">Outlines</span>
+                <GraduationCap className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Study</span>
               </Link>
               <a
                 href="https://discord.gg/AcGcKMmMZX"
