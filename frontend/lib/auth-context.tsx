@@ -250,10 +250,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null }
   }
 
-  // Sign out
+  // Sign out — use local scope to avoid hanging on API call
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
     } catch (err) {
       console.error('Error signing out:', err)
     }
