@@ -263,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/'
   }
 
-  // Reset password
+  // Reset password — redirects to /login?reset=true for new password form
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
