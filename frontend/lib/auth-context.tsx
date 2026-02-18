@@ -24,6 +24,7 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<{ error: Error | null }>
   refreshProfile: () => Promise<void>
   updateProfile: (data: ProfileUpdateData) => Promise<{ error: Error | null }>
   changePassword: (newPassword: string) => Promise<{ error: Error | null }>
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           signUpWithEmail: async () => ({ error: new Error('Supabase not configured') }),
           signInWithOAuth: async () => ({ error: new Error('Supabase not configured') }),
           signOut: async () => {},
+          resetPassword: async () => ({ error: new Error('Supabase not configured') }),
           refreshProfile: async () => {},
           updateProfile: async () => ({ error: new Error('Supabase not configured') }),
           changePassword: async () => ({ error: new Error('Supabase not configured') }),
@@ -261,6 +263,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/'
   }
 
+  // Reset password
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/profile`,
+      })
+      return { error: error as Error | null }
+    } catch (err) {
+      return { error: err as Error }
+    }
+  }
+
   // Update profile via backend API
   const updateProfile = async (data: ProfileUpdateData) => {
     if (!session?.access_token) {
@@ -326,6 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUpWithEmail,
         signInWithOAuth,
         signOut,
+        resetPassword,
         refreshProfile,
         updateProfile,
         changePassword,

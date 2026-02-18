@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const { signInWithEmail, signUpWithEmail, isConfigured } = useAuth()
+  const { signInWithEmail, signUpWithEmail, resetPassword, isConfigured } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +25,14 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      if (mode === 'signin') {
+      if (mode === 'forgot') {
+        const { error } = await resetPassword(email)
+        if (error) {
+          setError(error.message)
+        } else {
+          setMessage('Check your email for a password reset link!')
+        }
+      } else if (mode === 'signin') {
         const { error } = await signInWithEmail(email, password)
         if (error) {
           setError(error.message)
@@ -106,10 +113,12 @@ export default function LoginPage() {
         <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-8">
           {/* Header */}
           <h2 className="text-2xl font-bold text-neutral-900 mb-2">
-            {mode === 'signin' ? 'Welcome back' : 'Create an account'}
+            {mode === 'forgot' ? 'Reset your password' : mode === 'signin' ? 'Welcome back' : 'Create an account'}
           </h2>
           <p className="text-neutral-600 mb-6">
-            {mode === 'signin'
+            {mode === 'forgot'
+              ? 'Enter your email and we\'ll send you a reset link'
+              : mode === 'signin'
               ? 'Sign in to access your bookmarks and annotations'
               : 'Join to save cases and participate in discussions'}
           </p>
@@ -147,21 +156,36 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="••••••••"
-              />
-            </div>
+            {mode !== 'forgot' && (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="••••••••"
+                />
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('forgot')
+                      setError(null)
+                      setMessage(null)
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 mt-1"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+            )}
 
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -183,12 +207,12 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{mode === 'signin' ? 'Signing in...' : 'Creating account...'}</span>
+                  <span>{mode === 'forgot' ? 'Sending...' : mode === 'signin' ? 'Signing in...' : 'Creating account...'}</span>
                 </>
               ) : (
                 <>
                   <Mail className="h-4 w-4" />
-                  <span>{mode === 'signin' ? 'Sign in' : 'Create account'}</span>
+                  <span>{mode === 'forgot' ? 'Send reset link' : mode === 'signin' ? 'Sign in' : 'Create account'}</span>
                 </>
               )}
             </button>
@@ -212,7 +236,7 @@ export default function LoginPage() {
               </>
             ) : (
               <>
-                Already have an account?{' '}
+                {mode === 'forgot' ? 'Remember your password?' : 'Already have an account?'}{' '}
                 <button
                   onClick={() => {
                     setMode('signin')
