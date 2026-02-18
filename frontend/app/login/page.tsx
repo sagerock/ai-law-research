@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Mail, Loader2, Scale, ArrowLeft, MessageCircle, GraduationCap, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -21,21 +20,14 @@ export default function LoginPage() {
   const router = useRouter()
 
   // Detect password recovery from Supabase redirect
+  // Check URL hash for type=recovery (Supabase appends tokens as hash fragments)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('reset') !== 'true') return
-    const supabase = createClient()
-    if (!supabase) return
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setMode('newpassword')
-        setError(null)
-        setMessage(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    const hash = window.location.hash
+    if (hash.includes('type=recovery')) {
+      setMode('newpassword')
+      setError(null)
+      setMessage(null)
+    }
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
