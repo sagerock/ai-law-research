@@ -15,15 +15,18 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [recoveryToken, setRecoveryToken] = useState<string | null>(null)
 
   const { signInWithEmail, signUpWithEmail, resetPassword, isConfigured } = useAuth()
   const router = useRouter()
 
   // Detect password recovery from Supabase redirect
-  // Check URL hash for type=recovery (Supabase appends tokens as hash fragments)
+  // Capture access_token immediately before the Supabase client consumes the hash
   useEffect(() => {
     const hash = window.location.hash
     if (hash.includes('type=recovery')) {
+      const hashParams = new URLSearchParams(hash.substring(1))
+      setRecoveryToken(hashParams.get('access_token'))
       setMode('newpassword')
       setError(null)
       setMessage(null)
@@ -44,10 +47,7 @@ export default function LoginPage() {
           return
         }
         // Call Supabase API directly — the Supabase client hangs during recovery
-        const hash = window.location.hash.substring(1)
-        const hashParams = new URLSearchParams(hash)
-        const accessToken = hashParams.get('access_token')
-        if (!accessToken) {
+        if (!recoveryToken) {
           setError('Recovery session expired. Please request a new reset link.')
           setIsLoading(false)
           return
@@ -57,7 +57,7 @@ export default function LoginPage() {
         const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${recoveryToken}`,
             'Content-Type': 'application/json',
             'apikey': supabaseKey || '',
           },
