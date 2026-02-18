@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const { signInWithEmail, signUpWithEmail, resetPassword, changePassword, isConfigured } = useAuth()
+  const { signInWithEmail, signUpWithEmail, resetPassword, isConfigured } = useAuth()
   const router = useRouter()
 
   // Detect password recovery from Supabase redirect
@@ -43,12 +43,36 @@ export default function LoginPage() {
           setIsLoading(false)
           return
         }
-        const { error } = await changePassword(password)
-        if (error) {
-          setError(error.message)
+        // Call Supabase API directly — the Supabase client hangs during recovery
+        const hash = window.location.hash.substring(1)
+        const hashParams = new URLSearchParams(hash)
+        const accessToken = hashParams.get('access_token')
+        if (!accessToken) {
+          setError('Recovery session expired. Please request a new reset link.')
+          setIsLoading(false)
+          return
+        }
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey || '',
+          },
+          body: JSON.stringify({ password }),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          setError(data.msg || data.message || 'Failed to update password')
         } else {
-          setMessage('Password updated successfully!')
-          setTimeout(() => router.push('/'), 1500)
+          // Clear recovery session and redirect
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-')) localStorage.removeItem(key)
+          })
+          setMessage('Password updated successfully! Redirecting...')
+          setTimeout(() => { window.location.href = '/login' }, 1500)
         }
       } else if (mode === 'forgot') {
         const { error } = await resetPassword(email)
