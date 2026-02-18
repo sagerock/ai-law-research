@@ -1,22 +1,42 @@
 'use client'
 
-import { useState } from 'react'
-import { Mail, Loader2, Scale, ArrowLeft, MessageCircle, GraduationCap } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Mail, Loader2, Scale, ArrowLeft, MessageCircle, GraduationCap, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'newpassword'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [username, setUsername] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const { signInWithEmail, signUpWithEmail, resetPassword, isConfigured } = useAuth()
+  const { signInWithEmail, signUpWithEmail, resetPassword, changePassword, isConfigured } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Detect password recovery from Supabase redirect
+  useEffect(() => {
+    if (searchParams.get('reset') !== 'true') return
+    const supabase = createClient()
+    if (!supabase) return
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setMode('newpassword')
+        setError(null)
+        setMessage(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,7 +45,20 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      if (mode === 'forgot') {
+      if (mode === 'newpassword') {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match')
+          setIsLoading(false)
+          return
+        }
+        const { error } = await changePassword(password)
+        if (error) {
+          setError(error.message)
+        } else {
+          setMessage('Password updated successfully!')
+          setTimeout(() => router.push('/'), 1500)
+        }
+      } else if (mode === 'forgot') {
         const { error } = await resetPassword(email)
         if (error) {
           setError(error.message)
@@ -113,10 +146,12 @@ export default function LoginPage() {
         <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-8">
           {/* Header */}
           <h2 className="text-2xl font-bold text-neutral-900 mb-2">
-            {mode === 'forgot' ? 'Reset your password' : mode === 'signin' ? 'Welcome back' : 'Create an account'}
+            {mode === 'newpassword' ? 'Set new password' : mode === 'forgot' ? 'Reset your password' : mode === 'signin' ? 'Welcome back' : 'Create an account'}
           </h2>
           <p className="text-neutral-600 mb-6">
-            {mode === 'forgot'
+            {mode === 'newpassword'
+              ? 'Enter your new password below'
+              : mode === 'forgot'
               ? 'Enter your email and we\'ll send you a reset link'
               : mode === 'signin'
               ? 'Sign in to access your bookmarks and annotations'
@@ -141,25 +176,27 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="you@example.com"
-              />
-            </div>
+            {mode !== 'newpassword' && (
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="you@example.com"
+                />
+              </div>
+            )}
 
             {mode !== 'forgot' && (
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
-                  Password
+                  {mode === 'newpassword' ? 'New password' : 'Password'}
                 </label>
                 <input
                   id="password"
@@ -187,6 +224,24 @@ export default function LoginPage() {
               </div>
             )}
 
+            {mode === 'newpassword' && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Confirm new password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="••••••••"
+                />
+              </div>
+            )}
+
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                 {error}
@@ -207,19 +262,23 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{mode === 'forgot' ? 'Sending...' : mode === 'signin' ? 'Signing in...' : 'Creating account...'}</span>
+                  <span>
+                    {mode === 'newpassword' ? 'Updating...' : mode === 'forgot' ? 'Sending...' : mode === 'signin' ? 'Signing in...' : 'Creating account...'}
+                  </span>
                 </>
               ) : (
                 <>
-                  <Mail className="h-4 w-4" />
-                  <span>{mode === 'forgot' ? 'Send reset link' : mode === 'signin' ? 'Sign in' : 'Create account'}</span>
+                  {mode === 'newpassword' ? <Lock className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                  <span>
+                    {mode === 'newpassword' ? 'Update password' : mode === 'forgot' ? 'Send reset link' : mode === 'signin' ? 'Sign in' : 'Create account'}
+                  </span>
                 </>
               )}
             </button>
           </form>
 
           {/* Toggle mode */}
-          <p className="mt-6 text-center text-sm text-neutral-600">
+          {mode !== 'newpassword' && <p className="mt-6 text-center text-sm text-neutral-600">
             {mode === 'signin' ? (
               <>
                 Don&apos;t have an account?{' '}
@@ -249,7 +308,7 @@ export default function LoginPage() {
                 </button>
               </>
             )}
-          </p>
+          </p>}
         </div>
       </main>
     </div>
