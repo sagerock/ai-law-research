@@ -41,6 +41,25 @@ export interface CitatorResult {
   positive_treatments: Case[]
 }
 
+export interface Outline {
+  id: number
+  title: string
+  subject: string
+  professor: string | null
+  law_school: string | null
+  semester: string | null
+  description: string | null
+  filename: string
+  file_url: string
+  file_size: number | null
+  file_type: string | null
+  is_public?: boolean
+  download_count: number
+  created_at: string
+  username?: string
+  full_name?: string
+}
+
 export interface TransparencyStats {
   month_name: string
   month_summaries: number

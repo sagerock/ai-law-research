@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Scale, Calendar, User, FolderOpen, ExternalLink, MessageCircle } from 'lucide-react'
+import { Scale, Calendar, User, FolderOpen, ExternalLink, MessageCircle, FileText } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-law-research-production.up.railway.app'
@@ -90,6 +90,12 @@ export default async function SharedCollectionPage({ params }: PageProps) {
               </div>
             </Link>
             <nav className="flex items-center gap-4">
+              <Link
+                href="/outlines"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <FileText className="h-5 w-5" />
+              </Link>
               <a
                 href="https://discord.gg/AcGcKMmMZX"
                 target="_blank"

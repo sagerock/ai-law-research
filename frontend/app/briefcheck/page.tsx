@@ -2,7 +2,7 @@
 
 import BriefUpload from '@/components/BriefUpload'
 import Link from 'next/link'
-import { Scale, Upload, Heart, BookOpen, MessageCircle } from 'lucide-react'
+import { Scale, Upload, Heart, BookOpen, MessageCircle, FileText } from 'lucide-react'
 import { UserMenu } from '@/components/auth/UserMenu'
 
 export default function BriefCheckPage() {
@@ -40,6 +40,13 @@ export default function BriefCheckPage() {
               >
                 <BookOpen className="h-5 w-5 mr-2" />
                 My Library
+              </Link>
+              <Link
+                href="/outlines"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <FileText className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Outlines</span>
               </Link>
               <a
                 href="https://discord.gg/AcGcKMmMZX"

@@ -324,6 +324,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 <Scale className="h-6 w-6 text-neutral-700 mr-2" />
                 <span className="text-xl font-bold text-neutral-900">Sage's Law School Study Group</span>
               </Link>
+              <Link
+                href="/outlines"
+                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+              >
+                <FileText className="h-5 w-5" />
+              </Link>
               <a
                 href="https://discord.gg/AcGcKMmMZX"
                 target="_blank"
