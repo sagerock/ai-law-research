@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Scale, Brain, Upload, BookOpen, TrendingUp, Heart, MessageCircle, GraduationCap } from 'lucide-react'
+import { Scale, MessageCircle, GraduationCap } from 'lucide-react'
 import SearchInterface from '@/components/SearchInterface'
 import CaseList from '@/components/CaseList'
 import { Case } from '@/types'
@@ -27,20 +27,6 @@ export default function SearchPage() {
             </Link>
             <nav className="flex items-center space-x-4 sm:space-x-6">
               <Link
-                href="/"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
-              >
-                <BookOpen className="h-5 w-5 sm:mr-2" />
-                <span className="hidden sm:inline">Casebook</span>
-              </Link>
-              <Link
-                href="/transparency"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
-              >
-                <Heart className="h-5 w-5 sm:mr-2" />
-                <span className="hidden sm:inline">Transparency</span>
-              </Link>
-              <Link
                 href="/study"
                 className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
               >
@@ -52,9 +38,9 @@ export default function SearchPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                title="Discord"
               >
-                <MessageCircle className="h-5 w-5 sm:mr-2" />
-                <span className="hidden sm:inline">Discord</span>
+                <MessageCircle className="h-5 w-5" />
               </a>
               <UserMenu />
             </nav>

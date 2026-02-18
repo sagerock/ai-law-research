@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Scale, GraduationCap, Upload, Heart, BookOpen, MessageCircle,
+  Scale, GraduationCap, Upload, MessageCircle,
   Send, Plus, Trash2, FileText, Check, X, Loader2, Menu, ChevronRight,
   ChevronDown, AlertCircle
 } from 'lucide-react'
@@ -369,27 +369,6 @@ export default function StudyPage() {
             </Link>
             <nav className="flex items-center space-x-4 sm:space-x-6">
               <Link
-                href="/briefcheck"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
-              >
-                <Upload className="h-5 w-5 sm:mr-2" />
-                <span className="hidden sm:inline">Brief Check</span>
-              </Link>
-              <Link
-                href="/transparency"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
-              >
-                <Heart className="h-5 w-5 sm:mr-2" />
-                <span className="hidden sm:inline">Transparency</span>
-              </Link>
-              <Link
-                href="/library"
-                className="text-neutral-600 hover:text-neutral-900 transition hidden sm:flex items-center"
-              >
-                <BookOpen className="h-5 w-5 mr-2" />
-                My Library
-              </Link>
-              <Link
                 href="/study"
                 className="text-neutral-900 font-medium flex items-center"
               >
@@ -401,9 +380,9 @@ export default function StudyPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                title="Discord"
               >
-                <MessageCircle className="h-5 w-5 sm:mr-2" />
-                <span className="hidden sm:inline">Discord</span>
+                <MessageCircle className="h-5 w-5" />
               </a>
               <UserMenu />
             </nav>
