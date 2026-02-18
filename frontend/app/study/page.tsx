@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Scale, GraduationCap, Upload, Heart, BookOpen, MessageCircle,
   Send, Plus, Trash2, FileText, Check, X, Loader2, Menu, ChevronRight,
-  AlertCircle
+  ChevronDown, AlertCircle
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { UserMenu } from '@/components/auth/UserMenu'
@@ -30,6 +30,7 @@ export default function StudyPage() {
   const [streamingText, setStreamingText] = useState('')
   const [showUpload, setShowUpload] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [uploading, setUploading] = useState(false)
   const [rateLimited, setRateLimited] = useState(false)
 
@@ -308,6 +309,40 @@ export default function StudyPage() {
     )
   }
 
+  const toggleGroupCollapsed = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }
+
+  const toggleGroupSelection = (groupNoteIds: number[]) => {
+    const allSelected = groupNoteIds.every(id => selectedNoteIds.includes(id))
+    if (allSelected) {
+      setSelectedNoteIds(prev => prev.filter(id => !groupNoteIds.includes(id)))
+    } else {
+      setSelectedNoteIds(prev => [...new Set([...prev, ...groupNoteIds])])
+    }
+  }
+
+  // Group notes by subject
+  const noteGroups = useMemo(() => {
+    const groups: Record<string, StudyNote[]> = {}
+    for (const note of notes) {
+      const key = note.subject || 'Uncategorized'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(note)
+    }
+    // Sort groups alphabetically, Uncategorized last
+    return Object.entries(groups).sort(([a], [b]) => {
+      if (a === 'Uncategorized') return 1
+      if (b === 'Uncategorized') return -1
+      return a.localeCompare(b)
+    })
+  }, [notes])
+
   // Loading state
   if (authLoading) {
     return (
@@ -418,33 +453,76 @@ export default function StudyPage() {
               {notes.length === 0 ? (
                 <p className="text-xs text-neutral-400 py-2">No notes yet. Upload one to get started.</p>
               ) : (
-                <div className="space-y-1">
-                  {notes.map(note => (
-                    <div
-                      key={note.id}
-                      className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-neutral-50 group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedNoteIds.includes(note.id)}
-                        onChange={() => toggleNoteSelection(note.id)}
-                        className="h-3.5 w-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-neutral-800 truncate">{note.title}</p>
-                        <p className="text-xs text-neutral-400">
-                          {note.char_count.toLocaleString()} chars
-                          {note.subject && ` \u00b7 ${note.subject}`}
-                        </p>
+                <div className="space-y-0.5">
+                  {noteGroups.map(([group, groupNotes]) => {
+                    const groupNoteIds = groupNotes.map(n => n.id)
+                    const allSelected = groupNoteIds.every(id => selectedNoteIds.includes(id))
+                    const someSelected = groupNoteIds.some(id => selectedNoteIds.includes(id))
+                    const isCollapsed = collapsedGroups.has(group)
+
+                    return (
+                      <div key={group}>
+                        {/* Group header */}
+                        <div className="flex items-center gap-1.5 py-1.5 px-2 rounded hover:bg-neutral-50 cursor-pointer">
+                          <button
+                            onClick={() => toggleGroupCollapsed(group)}
+                            className="text-neutral-400 hover:text-neutral-600"
+                          >
+                            {isCollapsed ? (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
+                            onChange={() => toggleGroupSelection(groupNoteIds)}
+                            className="h-3.5 w-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span
+                            onClick={() => toggleGroupCollapsed(group)}
+                            className="flex-1 text-xs font-semibold text-neutral-600 uppercase tracking-wide truncate"
+                          >
+                            {group}
+                          </span>
+                          <span className="text-xs text-neutral-400">{groupNotes.length}</span>
+                        </div>
+
+                        {/* Notes in group */}
+                        {!isCollapsed && (
+                          <div className="ml-5 space-y-0.5">
+                            {groupNotes.map(note => (
+                              <div
+                                key={note.id}
+                                className="flex items-center gap-2 py-1 px-2 rounded hover:bg-neutral-50 group"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedNoteIds.includes(note.id)}
+                                  onChange={() => toggleNoteSelection(note.id)}
+                                  className="h-3.5 w-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-neutral-800 truncate">{note.title}</p>
+                                  <p className="text-xs text-neutral-400">
+                                    {note.char_count.toLocaleString()} chars
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => deleteNote(note.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 transition"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => deleteNote(note.id)}
-                        className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 transition"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
