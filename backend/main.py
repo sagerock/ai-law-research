@@ -2479,6 +2479,10 @@ class ChatMessage(BaseModel):
     conversation_id: Optional[int] = None
     note_ids: Optional[List[int]] = None
 
+class CaseAskMessage(BaseModel):
+    content: str
+    conversation_id: Optional[int] = None
+
 # --- Notes CRUD ---
 
 @app.post("/api/v1/study/notes/upload")
@@ -3004,6 +3008,260 @@ Guidelines:
             await log_api_usage(usage_type, input_tokens, output_tokens, cost)
         except Exception as e:
             print(f"Failed to save chat result: {e}")
+
+        # Final done event
+        remaining = None
+        if effective_limit is not None:
+            remaining = max(0, effective_limit - (messages_today + 1))
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining})}\n\n"
+
+    return StreamingResponse(stream_response(), media_type="text/event-stream")
+
+
+# ============================================================================
+# Case Ask AI
+# ============================================================================
+
+@app.post("/api/v1/cases/{case_id}/ask")
+async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(require_auth)):
+    """Stream AI response about a specific case via SSE"""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        # Verify case exists and fetch data
+        case_row = await conn.fetchrow(
+            "SELECT id, title, content, court_id, decision_date FROM cases WHERE id = $1",
+            case_id,
+        )
+        if not case_row:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        # Fetch cached AI brief if available
+        brief_row = await conn.fetchrow(
+            "SELECT summary FROM ai_summaries WHERE case_id = $1", case_id
+        )
+
+        # Get or create user tier (shared with study chat)
+        tier_row = await conn.fetchrow(
+            "SELECT tier, messages_today, last_message_date, daily_limit, model_override FROM user_tiers WHERE user_id = $1",
+            user_id,
+        )
+
+        if not tier_row:
+            await conn.execute(
+                "INSERT INTO user_tiers (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+                user_id,
+            )
+            tier = "free"
+            messages_today = 0
+            custom_limit = None
+            model_override = None
+        else:
+            tier = tier_row["tier"]
+            messages_today = tier_row["messages_today"]
+            if tier_row["last_message_date"] != date.today():
+                messages_today = 0
+            custom_limit = tier_row["daily_limit"]
+            model_override = tier_row["model_override"]
+
+        # Compute effective limit (shared counter with study chat)
+        if custom_limit is not None:
+            effective_limit = custom_limit
+        elif tier == "pro":
+            effective_limit = None  # unlimited
+        else:
+            effective_limit = 15
+
+        # Check daily limit
+        if effective_limit is not None and messages_today >= effective_limit:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+            )
+
+        # Select model
+        default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+        model = model_override or default_model
+
+        # Create or get conversation
+        conversation_id = msg.conversation_id
+        if not conversation_id:
+            title = f"Q about {case_row['title'] or 'case'}: {msg.content[:60].strip()}"
+            if len(title) > 100:
+                title = title[:97] + "..."
+            row = await conn.fetchrow("""
+                INSERT INTO conversations (user_id, title, note_ids, case_id)
+                VALUES ($1, $2, $3, $4)
+                RETURNING id
+            """, user_id, title, [], case_id)
+            conversation_id = row["id"]
+        else:
+            # Verify ownership AND case_id match
+            convo = await conn.fetchrow(
+                "SELECT user_id, case_id FROM conversations WHERE id = $1", conversation_id
+            )
+            if not convo or convo["user_id"] != user_id:
+                raise HTTPException(status_code=403, detail="Not your conversation")
+            if convo["case_id"] != case_id:
+                raise HTTPException(status_code=400, detail="Conversation does not belong to this case")
+
+        # Save user message
+        await conn.execute("""
+            INSERT INTO messages (conversation_id, role, content)
+            VALUES ($1, 'user', $2)
+        """, conversation_id, msg.content)
+
+        # Update conversation timestamp
+        await conn.execute(
+            "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
+            conversation_id,
+        )
+
+        # Get conversation history (last 20 messages)
+        history = await conn.fetch("""
+            SELECT role, content FROM messages
+            WHERE conversation_id = $1
+            ORDER BY created_at DESC
+            LIMIT 20
+        """, conversation_id)
+        history = list(reversed(history))
+
+    # Build case context
+    case_title = case_row["title"] or "Unknown Case"
+    case_court = case_row["court_id"] or "Unknown Court"
+    case_date = str(case_row["decision_date"]) if case_row["decision_date"] else "Unknown Date"
+    case_text = case_row["content"] or ""
+    if len(case_text) > 15000:
+        case_text = case_text[:15000] + "\n...[opinion text truncated]"
+
+    ai_brief = brief_row["summary"] if brief_row else ""
+
+    # Build system prompt
+    system_prompt = f"""You are a law school tutor helping a student understand the case: {case_title} ({case_court}, {case_date}).
+
+Guidelines:
+- Answer questions specifically about this case and its legal significance
+- Reference the opinion text and AI brief when relevant
+- Cite related cases accurately using proper legal citation format
+- Use the Socratic method when appropriate — ask guiding questions to deepen understanding
+- Structure responses clearly with headers and bullet points when helpful
+- Be concise but thorough — law students are busy
+- If you're unsure about something, say so rather than guessing
+- Help the student connect this case to broader legal principles"""
+
+    if ai_brief:
+        system_prompt += f"\n\nAI-generated case brief:\n{ai_brief}"
+    if case_text:
+        system_prompt += f"\n\nOpinion text (may be truncated):\n{case_text}"
+
+    # Build messages for API
+    api_messages = []
+    for h in history:
+        api_messages.append({"role": h["role"], "content": h["content"]})
+
+    async def stream_response():
+        full_response = ""
+        input_tokens = 0
+        output_tokens = 0
+
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": ANTHROPIC_API_KEY,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": 4096,
+                        "system": system_prompt,
+                        "messages": api_messages,
+                        "stream": True,
+                    },
+                    timeout=120.0,
+                ) as response:
+                    if response.status_code != 200:
+                        error_body = ""
+                        async for chunk in response.aiter_text():
+                            error_body += chunk
+                        yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
+                        return
+
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            event = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+
+                        event_type = event.get("type", "")
+
+                        if event_type == "content_block_delta":
+                            delta = event.get("delta", {})
+                            text = delta.get("text", "")
+                            if text:
+                                full_response += text
+                                yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+
+                        elif event_type == "message_start":
+                            usage = event.get("message", {}).get("usage", {})
+                            input_tokens = usage.get("input_tokens", 0)
+
+                        elif event_type == "message_delta":
+                            usage = event.get("usage", {})
+                            output_tokens = usage.get("output_tokens", 0)
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            return
+
+        # Calculate cost
+        if "haiku" in model:
+            cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
+            usage_type = "case_ask_haiku"
+        else:
+            cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
+            usage_type = "case_ask_sonnet"
+
+        # Save assistant message, update usage
+        try:
+            async with db_pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO messages (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+                    VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+                """, conversation_id, full_response, model, input_tokens, output_tokens, cost)
+
+                await conn.execute("""
+                    INSERT INTO user_tiers (user_id, messages_today, last_message_date, updated_at)
+                    VALUES ($1, 1, CURRENT_DATE, NOW())
+                    ON CONFLICT (user_id) DO UPDATE SET
+                        messages_today = CASE
+                            WHEN user_tiers.last_message_date = CURRENT_DATE
+                            THEN user_tiers.messages_today + 1
+                            ELSE 1
+                        END,
+                        last_message_date = CURRENT_DATE,
+                        updated_at = NOW()
+                """, user_id)
+
+                await conn.execute(
+                    "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
+                    conversation_id,
+                )
+
+            await log_api_usage(usage_type, input_tokens, output_tokens, cost)
+        except Exception as e:
+            print(f"Failed to save case ask result: {e}")
 
         # Final done event
         remaining = None

@@ -8,6 +8,7 @@ import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
+import CaseAskAI from '@/components/CaseAskAI'
 
 export interface CaseDetail {
   id: string
@@ -658,6 +659,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Ask AI About This Case */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <CaseAskAI caseId={caseId} caseTitle={caseData.title || caseData.case_name || 'this case'} />
             </div>
 
             {/* Comments Section */}

@@ -80,6 +80,7 @@ export interface Conversation {
   id: number
   title: string | null
   note_ids: number[]
+  case_id?: string | null
   message_count?: number
   created_at: string
   updated_at: string
