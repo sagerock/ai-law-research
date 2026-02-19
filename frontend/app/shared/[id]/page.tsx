@@ -86,7 +86,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
               <Scale className="h-8 w-8 text-neutral-700" />
               <div>
                 <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
-                <p className="text-sm text-neutral-600 hidden sm:block">Free AI Case Briefs for Law Students</p>
+                <p className="text-sm text-neutral-600 hidden sm:block">Free Case Briefs for Law Students</p>
               </div>
             </Link>
             <nav className="flex items-center gap-4">
@@ -215,7 +215,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
       {/* Footer */}
       <footer className="border-t bg-white mt-16">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-neutral-500">
-          <p>Law Study Group - Free AI Case Briefs for Law Students</p>
+          <p>Law Study Group - Free Case Briefs for Law Students</p>
         </div>
       </footer>
     </div>
