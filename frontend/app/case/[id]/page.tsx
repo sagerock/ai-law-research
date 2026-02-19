@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!caseData) {
     return {
-      title: 'Case Not Found | Law Study Group',
+      title: 'Case Not Found',
     }
   }
 
@@ -40,11 +40,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : ''
 
   return {
-    title: `${caseName} | Law Study Group`,
-    description: `Read the full case brief for ${caseName}${court ? ` (${court}${year ? `, ${year}` : ''})` : ''}. Free AI-powered case summaries for law students.`,
+    title: caseName,
+    description: `Read the full case brief for ${caseName}${court ? ` (${court}${year ? `, ${year}` : ''})` : ''}. Free case briefs for law students.`,
     openGraph: {
       title: `${caseName} | Law Study Group`,
-      description: `Case brief and AI summary for ${caseName}`,
+      description: `Case brief for ${caseName}`,
       type: 'article',
     },
   }

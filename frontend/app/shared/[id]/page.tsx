@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!collection) {
     return {
-      title: 'Collection Not Found | Law Study Group',
+      title: 'Collection Not Found',
     }
   }
 
@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     || `A collection of ${collection.case_count} cases${collection.subject ? ` about ${collection.subject}` : ''} by ${collection.owner_name}`
 
   return {
-    title: `${collection.name} | Law Study Group`,
+    title: collection.name,
     description,
     openGraph: {
       title: `${collection.name} | Law Study Group`,

@@ -68,8 +68,20 @@ export function UserMenu() {
 
   const displayName = profile?.display_name || profile?.username || user.email?.split('@')[0] || 'User'
   const initials = displayName.slice(0, 2).toUpperCase()
+  const isAdmin = user.email === 'sage@sagerock.com'
 
   return (
+    <>
+    {isAdmin && (
+      <Link
+        href="/admin"
+        className="text-amber-600 hover:text-amber-800 transition flex items-center"
+        title="Admin"
+      >
+        <Shield className="h-5 w-5 sm:mr-2" />
+        <span className="hidden sm:inline">Admin</span>
+      </Link>
+    )}
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
@@ -189,5 +201,6 @@ export function UserMenu() {
         </div>
       )}
     </div>
+    </>
   )
 }

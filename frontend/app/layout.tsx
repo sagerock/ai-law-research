@@ -16,8 +16,11 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Law Study Group | Free AI Case Briefs for Law Students",
-  description: "Free AI-powered case briefs for law students. Skip the $276/year Quimbee subscription.",
+  title: {
+    default: "Law Study Group | Free Case Briefs for Law Students",
+    template: "%s | Law Study Group | Free Case Briefs for Law Students",
+  },
+  description: "Free case briefs for law students. Skip the $276/year Quimbee subscription.",
 };
 
 export default function RootLayout({
