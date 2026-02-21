@@ -3137,6 +3137,33 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
             "SELECT summary FROM ai_summaries WHERE case_id = $1", case_id
         )
 
+        # Fetch citation network: cases this case cites and cases citing this case
+        cited_cases = await conn.fetch("""
+            SELECT c.id, c.title, c.reporter_cite, c.decision_date
+            FROM citations cit
+            JOIN cases c ON cit.target_case_id = c.id
+            WHERE cit.source_case_id = $1
+            LIMIT 10
+        """, case_id)
+
+        citing_cases = await conn.fetch("""
+            SELECT c.id, c.title, c.reporter_cite, c.decision_date
+            FROM citations cit
+            JOIN cases c ON cit.source_case_id = c.id
+            WHERE cit.target_case_id = $1
+            LIMIT 10
+        """, case_id)
+
+        # Fetch cached briefs for all related cases in one query
+        related_ids = [r["id"] for r in cited_cases] + [r["id"] for r in citing_cases]
+        related_briefs = {}
+        if related_ids:
+            brief_rows = await conn.fetch(
+                "SELECT case_id, summary FROM ai_summaries WHERE case_id = ANY($1)",
+                related_ids,
+            )
+            related_briefs = {r["case_id"]: r["summary"] for r in brief_rows}
+
         # Get or create user tier (shared with study chat)
         tier_row = await conn.fetchrow(
             "SELECT tier, messages_today, last_message_date, daily_limit, model_override FROM user_tiers WHERE user_id = $1",
@@ -3232,23 +3259,61 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
 
     ai_brief = brief_row["summary"] if brief_row else ""
 
+    # Build related cases context from citation network
+    def format_related_case(row, briefs_dict):
+        title = row["title"] or "Unknown"
+        cite = row["reporter_cite"] or ""
+        yr = str(row["decision_date"].year) if row["decision_date"] else ""
+        label = f"{title}, {cite} ({yr})" if cite else f"{title} ({yr})"
+        brief = briefs_dict.get(row["id"], "")
+        if brief:
+            brief = brief[:500].rstrip()
+            if len(briefs_dict.get(row["id"], "")) > 500:
+                brief += "..."
+        return label, brief
+
+    related_context = ""
+    if cited_cases or citing_cases:
+        parts = []
+        if cited_cases:
+            lines = ["CASES THIS CASE CITES:"]
+            for r in cited_cases:
+                label, brief = format_related_case(r, related_briefs)
+                lines.append(f"- {label}")
+                if brief:
+                    lines.append(f"  Brief: {brief}")
+            parts.append("\n".join(lines))
+        if citing_cases:
+            lines = ["CASES CITING THIS CASE:"]
+            for r in citing_cases:
+                label, brief = format_related_case(r, related_briefs)
+                lines.append(f"- {label}")
+                if brief:
+                    lines.append(f"  Brief: {brief}")
+            parts.append("\n".join(lines))
+        related_context = "\n\n".join(parts)
+
     # Build system prompt
     system_prompt = f"""You are a law school tutor helping a student understand the case: {case_title} ({case_court}, {case_date}).
 
 Guidelines:
 - Answer questions specifically about this case and its legal significance
 - Reference the opinion text and AI brief when relevant
+- When relevant, reference related cases from the citation network provided below
+- Use the AI briefs of related cases to explain how this case connects to broader legal principles
+- Only cite cases you have actual information about — do not hallucinate case details
 - Cite related cases accurately using proper legal citation format
 - Use the Socratic method when appropriate — ask guiding questions to deepen understanding
 - Structure responses clearly with headers and bullet points when helpful
 - Be concise but thorough — law students are busy
-- If you're unsure about something, say so rather than guessing
-- Help the student connect this case to broader legal principles"""
+- If you're unsure about something, say so rather than guessing"""
 
     if ai_brief:
         system_prompt += f"\n\nAI-generated case brief:\n{ai_brief}"
     if case_text:
         system_prompt += f"\n\nOpinion text (may be truncated):\n{case_text}"
+    if related_context:
+        system_prompt += f"\n\nRelated cases in our database (from citation network):\n\n{related_context}"
 
     # Build messages for API
     api_messages = []
