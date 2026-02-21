@@ -25,6 +25,7 @@ export interface CaseDetail {
   content_type?: string
   pdf_url?: string
   metadata?: any
+  is_stub?: boolean
 }
 
 interface CaseSummary {
@@ -265,25 +266,59 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     }
   }
 
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [localCaseData, setLocalCaseData] = useState(caseData)
+
   const generateSummary = async () => {
     setSummaryLoading(true)
+    setSummaryError(null)
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      // Send auth header (required for stub cases, optional for others)
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
       const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/summarize`, {
-        method: 'POST'
+        method: 'POST',
+        headers,
       })
-      if (!response.ok) throw new Error('Failed to generate summary')
+      if (response.status === 401) {
+        setSummaryError('sign_in_required')
+        return
+      }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || 'Failed to generate summary')
+      }
       const data = await response.json()
       setCaseSummary(data)
-    } catch (err) {
+
+      // If this was a stub case, refresh case data (content is now populated)
+      if (localCaseData.is_stub) {
+        try {
+          const caseResp = await fetch(`${API_URL}/api/v1/cases/${caseId}`)
+          if (caseResp.ok) {
+            const refreshed = await caseResp.json()
+            setLocalCaseData(refreshed)
+          }
+        } catch {
+          // Non-critical, page still works
+        }
+      }
+    } catch (err: any) {
       console.error('Failed to generate summary:', err)
+      setSummaryError(err.message || 'Failed to generate summary')
     } finally {
       setSummaryLoading(false)
     }
   }
 
   const handleCopy = () => {
-    if (caseData?.content) {
-      navigator.clipboard.writeText(caseData.content)
+    if (localCaseData?.content) {
+      navigator.clipboard.writeText(localCaseData.content)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -475,22 +510,24 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   )}
                 </div>
 
-                <button
-                  onClick={handleCopy}
-                  className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"
-                >
-                  {copied ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Text
-                    </>
-                  )}
-                </button>
+                {!localCaseData.is_stub && (
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Text
+                      </>
+                    )}
+                  </button>
+                )}
                 <button
                   onClick={handleCopyCitation}
                   className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"
@@ -524,6 +561,56 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
               </div>
             </div>
 
+            {/* Stub Case Banner */}
+            {localCaseData.is_stub && !caseSummary && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <BookOpen className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-amber-900 font-medium mb-1">
+                      This case is cited by {localCaseData.metadata?.citation_count || 'other'} case{(localCaseData.metadata?.citation_count || 0) !== 1 ? 's' : ''} in our database but doesn&apos;t have a brief yet.
+                    </p>
+                    <p className="text-amber-800 text-sm mb-3">
+                      Generate an AI brief to get the full case analysis. The opinion text will be fetched from CourtListener automatically.
+                    </p>
+                    {!user ? (
+                      <Link
+                        href="/login"
+                        className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition"
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Sign in to Generate AI Brief
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={generateSummary}
+                        disabled={summaryLoading}
+                        className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition disabled:bg-neutral-400"
+                      >
+                        {summaryLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Fetching opinion &amp; generating brief...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate AI Brief
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {summaryError === 'sign_in_required' && (
+                      <p className="text-red-600 text-sm mt-2">Please sign in to generate briefs for this case.</p>
+                    )}
+                    {summaryError && summaryError !== 'sign_in_required' && (
+                      <p className="text-red-600 text-sm mt-2">{summaryError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* AI Summary */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-4">
@@ -531,7 +618,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   <Sparkles className="h-5 w-5 mr-2 text-purple-600" />
                   AI Case Brief
                 </h2>
-                {!caseSummary && (
+                {!caseSummary && !localCaseData.is_stub && (
                   <button
                     onClick={generateSummary}
                     disabled={summaryLoading}
@@ -675,9 +762,9 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-neutral-900">Full Opinion</h2>
-                {caseData.pdf_url && (
+                {localCaseData.pdf_url && (
                   <a
-                    href={caseData.pdf_url}
+                    href={localCaseData.pdf_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
@@ -688,34 +775,34 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 )}
               </div>
 
-              {caseData.content && caseData.content.length > 50 ? (
+              {localCaseData.content && localCaseData.content.length > 50 ? (
                 <div>
                   {/* Show preview notice if content is truncated */}
-                  {caseData.content.length < 5000 && caseData.pdf_url && (
+                  {localCaseData.content.length < 5000 && localCaseData.pdf_url && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm">
                       <AlertCircle className="h-4 w-4 inline mr-2 text-amber-600" />
                       <span className="text-amber-900">
-                        This is a preview. <a href={caseData.pdf_url} target="_blank" rel="noopener noreferrer" className="underline font-medium">View the full opinion PDF</a> for complete text.
+                        This is a preview. <a href={localCaseData.pdf_url} target="_blank" rel="noopener noreferrer" className="underline font-medium">View the full opinion PDF</a> for complete text.
                       </span>
                     </div>
                   )}
 
                   <div className="prose prose-neutral max-w-none">
                     {/* Check if content contains HTML tags */}
-                    {caseData.content.includes('<') && caseData.content.includes('>') ? (
+                    {localCaseData.content.includes('<') && localCaseData.content.includes('>') ? (
                       <div
                         className="text-sm leading-relaxed text-neutral-700"
-                        dangerouslySetInnerHTML={{ __html: caseData.content }}
+                        dangerouslySetInnerHTML={{ __html: localCaseData.content }}
                       />
                     ) : (
                       <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-700">
-                        {caseData.content}
+                        {localCaseData.content}
                       </pre>
                     )}
                   </div>
 
                   {/* PDF Embed Option */}
-                  {caseData.pdf_url && (
+                  {localCaseData.pdf_url && (
                     <div className="mt-6 border-t pt-6">
                       <details className="group">
                         <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900 flex items-center">
@@ -725,7 +812,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         </summary>
                         <div className="mt-4">
                           <iframe
-                            src={caseData.pdf_url}
+                            src={localCaseData.pdf_url}
                             className="w-full border rounded-lg"
                             style={{ height: '800px' }}
                             title="Case Opinion PDF"
@@ -743,11 +830,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   </h3>
                   <p className="text-neutral-600 mb-4">
                     The complete opinion text is not available in our database.
-                    {caseData.pdf_url ? ' Please view the PDF version.' : ' Please view the full case on CourtListener.'}
+                    {localCaseData.pdf_url ? ' Please view the PDF version.' : ' Please view the full case on CourtListener.'}
                   </p>
-                  {caseData.pdf_url ? (
+                  {localCaseData.pdf_url ? (
                     <a
-                      href={caseData.pdf_url}
+                      href={localCaseData.pdf_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition"
@@ -757,7 +844,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </a>
                   ) : (
                     (() => {
-                      const courtListenerUrl = caseData.url || caseData.source_url || caseData.metadata?.absolute_url
+                      const courtListenerUrl = localCaseData.url || localCaseData.source_url || localCaseData.metadata?.absolute_url
                       if (!courtListenerUrl) return null
 
                       const fullUrl = courtListenerUrl.startsWith('http')

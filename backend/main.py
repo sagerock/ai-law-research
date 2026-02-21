@@ -511,9 +511,12 @@ async def postgres_search(query: SearchQuery):
         FROM cases c
         LEFT JOIN courts ct ON c.court_id = ct.id
         WHERE
-            to_tsvector('english', c.title) @@ plainto_tsquery('english', $1)
-            OR to_tsvector('english', COALESCE(c.content, '')) @@ plainto_tsquery('english', $1)
-            OR c.title ILIKE $2
+            c.content IS NOT NULL AND c.content != ''
+            AND (
+                to_tsvector('english', c.title) @@ plainto_tsquery('english', $1)
+                OR to_tsvector('english', c.content) @@ plainto_tsquery('english', $1)
+                OR c.title ILIKE $2
+            )
     """
 
     params = [query.query, f"%{query.query}%"]
@@ -703,6 +706,9 @@ async def get_case(case_id: str):
 
     result = dict(row)
 
+    # Add stub indicator
+    result["is_stub"] = not result.get("content")
+
     # Parse metadata if it's a JSON string
     if result.get("metadata") and isinstance(result["metadata"], str):
         try:
@@ -891,7 +897,7 @@ async def get_case_summary(case_id: str):
         }
 
 @app.post("/api/v1/cases/{case_id}/summarize")
-async def summarize_case(case_id: str):
+async def summarize_case(case_id: str, authorization: Optional[str] = Header(None)):
     """Generate an AI-powered case brief summary"""
 
     # Check if Anthropic API key is configured
@@ -969,6 +975,93 @@ async def summarize_case(case_id: str):
             }
 
     case_data = dict(row)
+    is_stub = not case_data.get("content")
+
+    # Stub cases require authentication (cost protection)
+    if is_stub:
+        user = await get_current_user(authorization)
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Sign in to generate briefs for cases not yet in our database"
+            )
+
+        # Fetch opinion text from CourtListener API
+        cluster_id = case_id
+        print(f"Fetching opinion from CourtListener for stub case {cluster_id}...")
+
+        fetched_content = None
+        try:
+            async with httpx.AsyncClient() as client:
+                # Get cluster details to find opinion IDs
+                cluster_resp = await client.get(
+                    f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
+                    headers={"Authorization": f"Token {os.getenv('COURTLISTENER_API_KEY', '')}"},
+                    timeout=30.0,
+                )
+                if cluster_resp.status_code == 200:
+                    cluster_data = cluster_resp.json()
+                    # sub_opinions is a list of opinion URLs
+                    opinion_urls = cluster_data.get("sub_opinions", [])
+
+                    for opinion_url in opinion_urls:
+                        # Extract opinion ID from URL
+                        opinion_id = opinion_url.rstrip("/").split("/")[-1]
+                        opinion_resp = await client.get(
+                            f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
+                            headers={"Authorization": f"Token {os.getenv('COURTLISTENER_API_KEY', '')}"},
+                            timeout=30.0,
+                        )
+                        if opinion_resp.status_code == 200:
+                            opinion_data = opinion_resp.json()
+                            # Try plain_text first, then html_with_citations
+                            text = opinion_data.get("plain_text") or ""
+                            if not text:
+                                html = opinion_data.get("html_with_citations") or opinion_data.get("html") or ""
+                                if html:
+                                    import re
+                                    text = re.sub('<.*?>', '', html)
+                                    text = ' '.join(text.split())
+
+                            if len(text) > 500:
+                                fetched_content = text
+                                break  # Use the first substantial opinion
+                else:
+                    print(f"CourtListener cluster API returned {cluster_resp.status_code}")
+        except Exception as e:
+            print(f"Error fetching from CourtListener: {e}")
+
+        if not fetched_content:
+            raise HTTPException(
+                status_code=404,
+                detail="Could not fetch opinion text from CourtListener. The full opinion may not be available electronically."
+            )
+
+        # Save fetched content to database ("graduate" the stub)
+        async with db_pool.acquire() as conn:
+            # Update content and remove stub flag from metadata
+            metadata = case_data.get("metadata")
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata)
+                except json.JSONDecodeError:
+                    metadata = {}
+            if isinstance(metadata, dict):
+                metadata.pop("stub", None)
+
+            await conn.execute(
+                """
+                UPDATE cases SET content = $1, metadata = $2, updated_at = NOW()
+                WHERE id = $3
+                """,
+                fetched_content,
+                json.dumps(metadata) if metadata else None,
+                case_id,
+            )
+            print(f"Saved {len(fetched_content)} chars of opinion text for case {case_id}")
+
+        # Update case_data with the fetched content for summary generation
+        case_data["content"] = fetched_content
 
     # Parse metadata if it's a JSON string
     if case_data.get("metadata") and isinstance(case_data["metadata"], str):
