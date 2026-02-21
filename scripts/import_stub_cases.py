@@ -33,6 +33,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import date as date_type
 
 import asyncpg
 from dotenv import load_dotenv
@@ -128,6 +129,15 @@ async def import_stubs(min_citations: int = 1, limit: int = 0, dry_run: bool = F
             if c.get("year"):
                 metadata["year"] = c["year"]
 
+            # Convert date string to date object for asyncpg
+            decision_date = None
+            if c.get("date_filed"):
+                try:
+                    parts = c["date_filed"].split("-")
+                    decision_date = date_type(int(parts[0]), int(parts[1]), int(parts[2]))
+                except (ValueError, IndexError):
+                    pass
+
             try:
                 await conn.execute(
                     """
@@ -137,7 +147,7 @@ async def import_stubs(min_citations: int = 1, limit: int = 0, dry_run: bool = F
                     """,
                     c["cluster_id"],
                     c["case_name"],
-                    c.get("date_filed"),  # already a string like "1966-06-13"
+                    decision_date,
                     c["citation"],
                     json.dumps(metadata),
                     f"https://www.courtlistener.com/opinion/{c['cluster_id']}/",
