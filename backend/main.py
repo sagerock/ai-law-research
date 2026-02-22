@@ -991,43 +991,84 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
         print(f"Fetching opinion from CourtListener for stub case {cluster_id}...")
 
         fetched_content = None
+        cl_token = os.getenv('COURTLISTENER_API_KEY', '')
+        cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
+
+        def extract_text_from_opinion(opinion_data: dict) -> str:
+            """Extract plain text from a CourtListener opinion response."""
+            from bs4 import BeautifulSoup as BS4
+            # Try plain text first
+            if opinion_data.get("plain_text") and len(opinion_data["plain_text"]) > 100:
+                return opinion_data["plain_text"]
+            # Try HTML fields in order of preference
+            for field in ["html_lawbox", "html_with_citations", "html", "html_columbia", "xml_harvard"]:
+                html_content = opinion_data.get(field, "")
+                if html_content:
+                    soup = BS4(html_content, 'html.parser')
+                    text = soup.get_text(separator='\n', strip=True)
+                    if len(text) > 100:
+                        return text
+            return ""
+
         try:
             async with httpx.AsyncClient() as client:
-                # Get cluster details to find opinion IDs
-                cluster_resp = await client.get(
-                    f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
-                    headers={"Authorization": f"Token {os.getenv('COURTLISTENER_API_KEY', '')}"},
-                    timeout=30.0,
-                )
-                if cluster_resp.status_code == 200:
-                    cluster_data = cluster_resp.json()
-                    # sub_opinions is a list of opinion URLs
-                    opinion_urls = cluster_data.get("sub_opinions", [])
+                # Strategy 1: Get cluster → find opinion IDs → fetch opinion text
+                if cl_headers:
+                    cluster_resp = await client.get(
+                        f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
+                        headers=cl_headers,
+                        timeout=30.0,
+                    )
+                    if cluster_resp.status_code == 200:
+                        cluster_data = cluster_resp.json()
+                        opinion_urls = cluster_data.get("sub_opinions", [])
 
-                    for opinion_url in opinion_urls:
-                        # Extract opinion ID from URL
-                        opinion_id = opinion_url.rstrip("/").split("/")[-1]
-                        opinion_resp = await client.get(
-                            f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
-                            headers={"Authorization": f"Token {os.getenv('COURTLISTENER_API_KEY', '')}"},
-                            timeout=30.0,
-                        )
-                        if opinion_resp.status_code == 200:
-                            opinion_data = opinion_resp.json()
-                            # Try plain_text first, then html_with_citations
-                            text = opinion_data.get("plain_text") or ""
-                            if not text:
-                                html = opinion_data.get("html_with_citations") or opinion_data.get("html") or ""
-                                if html:
-                                    import re
-                                    text = re.sub('<.*?>', '', html)
-                                    text = ' '.join(text.split())
+                        for opinion_url in opinion_urls:
+                            opinion_id = opinion_url.rstrip("/").split("/")[-1]
+                            opinion_resp = await client.get(
+                                f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
+                                headers=cl_headers,
+                                timeout=30.0,
+                            )
+                            if opinion_resp.status_code == 200:
+                                text = extract_text_from_opinion(opinion_resp.json())
+                                if len(text) > 500:
+                                    fetched_content = text
+                                    print(f"  Got {len(text)} chars via cluster sub_opinions")
+                                    break
+                    else:
+                        print(f"  Cluster API returned {cluster_resp.status_code}")
 
+                # Strategy 2: Try fetching opinion directly by cluster ID
+                if not fetched_content:
+                    opinion_resp = await client.get(
+                        f"https://www.courtlistener.com/api/rest/v4/opinions/{cluster_id}/",
+                        headers=cl_headers,
+                        timeout=30.0,
+                    )
+                    if opinion_resp.status_code == 200:
+                        text = extract_text_from_opinion(opinion_resp.json())
+                        if len(text) > 500:
+                            fetched_content = text
+                            print(f"  Got {len(text)} chars via direct opinion fetch")
+
+                # Strategy 3: Search for opinions by cluster (handles mismatched IDs)
+                if not fetched_content and cl_headers:
+                    search_resp = await client.get(
+                        f"https://www.courtlistener.com/api/rest/v4/opinions/",
+                        params={"cluster": cluster_id},
+                        headers=cl_headers,
+                        timeout=30.0,
+                    )
+                    if search_resp.status_code == 200:
+                        results = search_resp.json().get("results", [])
+                        for result in results:
+                            text = extract_text_from_opinion(result)
                             if len(text) > 500:
                                 fetched_content = text
-                                break  # Use the first substantial opinion
-                else:
-                    print(f"CourtListener cluster API returned {cluster_resp.status_code}")
+                                print(f"  Got {len(text)} chars via opinions search")
+                                break
+
         except Exception as e:
             print(f"Error fetching from CourtListener: {e}")
 
