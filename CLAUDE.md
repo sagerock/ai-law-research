@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Sage's Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.5, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
+**Sage's Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.6, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
 
 **Target audience**: Law students who want free case briefs without paying $276/year for Quimbee.
 
@@ -127,7 +127,7 @@ make clean   # Remove containers AND volumes
 
 **Production (Railway):**
 - **Railway PostgreSQL**: Primary database
-- **Anthropic API**: Claude Sonnet 4.5 for AI case summaries (~$0.03/summary)
+- **Anthropic API**: Claude Sonnet 4.6 for AI case summaries (~$0.03/summary)
 - **CourtListener**: Case data source (bulk CSV imports)
 - **Ko-fi**: Donation platform (webhook integration)
 - **Supabase**: User authentication (JWT tokens validated by backend)
@@ -213,7 +213,7 @@ New cases are automatically added to the sitemap when inserted into the database
 
 - Database connections use `asyncpg` with connection pooling
 - Production search uses PostgreSQL ILIKE with citation count ranking
-- AI summaries generated via Claude Sonnet 4.5, cached in `ai_summaries` table
+- AI summaries generated via Claude Sonnet 4.6, cached in `ai_summaries` table
 - AI usage logged to `api_usage_log` for transparency dashboard
 - Citation network stored in `citations` table
 - Case pages use SSR with `generateMetadata()` for SEO

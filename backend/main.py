@@ -1162,7 +1162,7 @@ Format your response with clear section headers using the emoji markers shown ab
 """
 
     try:
-        # Call Anthropic Messages API with Claude Sonnet 4.5
+        # Call Anthropic Messages API with Claude Sonnet 4.6
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
@@ -1172,7 +1172,7 @@ Format your response with clear section headers using the emoji markers shown ab
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "claude-sonnet-4-5-20250929",
+                    "model": "claude-sonnet-4-6",
                     "max_tokens": 4000,
                     "messages": [
                         {
@@ -1210,7 +1210,7 @@ Format your response with clear section headers using the emoji markers shown ab
             )
 
         # Calculate cost
-        # Claude Sonnet 4.5: $3 per 1M input tokens, $15 per 1M output tokens
+        # Claude Sonnet 4.6: $3 per 1M input tokens, $15 per 1M output tokens
         usage = result.get("usage", {})
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
@@ -1230,7 +1230,7 @@ Format your response with clear section headers using the emoji markers shown ab
                     cost = EXCLUDED.cost,
                     created_at = CURRENT_TIMESTAMP
                 """,
-                case_id, summary, "claude-sonnet-4-5-20250929", input_tokens, output_tokens, cost
+                case_id, summary, "claude-sonnet-4-6", input_tokens, output_tokens, cost
             )
 
         print(f"💾 Saved summary for case {case_id} to database")
@@ -1249,7 +1249,7 @@ Format your response with clear section headers using the emoji markers shown ab
                 "total": input_tokens + output_tokens
             },
             "cached": False,
-            "model": "claude-sonnet-4-5-20250929"
+            "model": "claude-sonnet-4-6"
         }
 
     except httpx.TimeoutException:
@@ -2835,7 +2835,7 @@ async def get_study_usage(user: dict = Depends(require_auth)):
         daily_limit = 15
 
     messages_remaining = None if daily_limit is None else max(0, daily_limit - messages_today)
-    default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+    default_model = "claude-sonnet-4-6" if tier == "pro" else "claude-haiku-4-5-20251001"
     model = row["model_override"] or default_model
 
     return {
@@ -2897,7 +2897,7 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
             )
 
         # Select model
-        default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+        default_model = "claude-sonnet-4-6" if tier == "pro" else "claude-haiku-4-5-20251001"
         model = model_override or default_model
 
         # Create or get conversation
@@ -3203,7 +3203,7 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
             )
 
         # Select model
-        default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+        default_model = "claude-sonnet-4-6" if tier == "pro" else "claude-haiku-4-5-20251001"
         model = model_override or default_model
 
         # Create or get conversation
@@ -3480,7 +3480,7 @@ async def admin_list_users(
         """, *params)
 
     default_free_model = "claude-haiku-4-5-20251001"
-    default_pro_model = "claude-sonnet-4-5-20250929"
+    default_pro_model = "claude-sonnet-4-6"
 
     users = []
     for r in rows:
@@ -3589,7 +3589,7 @@ async def admin_update_user(
             raise HTTPException(status_code=404, detail="User not found")
 
         tier = row["tier"]
-        default_model = "claude-sonnet-4-5-20250929" if tier == "pro" else "claude-haiku-4-5-20251001"
+        default_model = "claude-sonnet-4-6" if tier == "pro" else "claude-haiku-4-5-20251001"
 
         return {
             "id": str(row["id"]),
