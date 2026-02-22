@@ -544,20 +544,15 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </>
                   )}
                 </button>
-                {(caseData.url || caseData.source_url) && (
-                  <a
-                    href={(() => {
-                      const url = caseData.url || caseData.source_url || '';
-                      return url.startsWith('http') ? url : `https://www.courtlistener.com${url}`;
-                    })()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View on CourtListener
-                  </a>
-                )}
+                <a
+                  href={`https://www.courtlistener.com/?q=id%3A${caseId}&type=o`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View on CourtListener
+                </a>
               </div>
             </div>
 
@@ -844,16 +839,9 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </a>
                   ) : (
                     (() => {
-                      const courtListenerUrl = localCaseData.url || localCaseData.source_url || localCaseData.metadata?.absolute_url
-                      if (!courtListenerUrl) return null
-
-                      const fullUrl = courtListenerUrl.startsWith('http')
-                        ? courtListenerUrl
-                        : `https://www.courtlistener.com${courtListenerUrl}`
-
                       return (
                         <a
-                          href={fullUrl}
+                          href={`https://www.courtlistener.com/?q=id%3A${caseId}&type=o`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
