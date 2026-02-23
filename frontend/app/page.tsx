@@ -14,7 +14,10 @@ interface CasebookCase {
   court_name: string | null
   has_brief: boolean
   subjects: string[]
+  citation_count: number
 }
+
+type SortOption = 'most-cited' | 'newest' | 'oldest' | 'a-z'
 
 interface SubjectCount {
   subject: string
@@ -42,6 +45,7 @@ export default function HomePage() {
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [sortBy, setSortBy] = useState<SortOption>('most-cited')
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
 
@@ -67,20 +71,30 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [moreOpen])
 
-  // Reset visible count when filters change
+  // Reset visible count when filters or sort change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
-  }, [query, subjectFilter])
+  }, [query, subjectFilter, sortBy])
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim()
-    return cases.filter(c => {
+    const result = cases.filter(c => {
       if (subjectFilter !== 'all' && !c.subjects.includes(subjectFilter)) return false
       if (!q) return true
       return c.title.toLowerCase().includes(q)
         || (c.reporter_cite && c.reporter_cite.toLowerCase().includes(q))
     })
-  }, [cases, query, subjectFilter])
+    if (sortBy === 'most-cited') {
+      result.sort((a, b) => b.citation_count - a.citation_count || a.title.localeCompare(b.title))
+    } else if (sortBy === 'newest') {
+      result.sort((a, b) => (b.decision_date || '').localeCompare(a.decision_date || ''))
+    } else if (sortBy === 'oldest') {
+      result.sort((a, b) => (a.decision_date || '').localeCompare(b.decision_date || ''))
+    } else {
+      result.sort((a, b) => a.title.localeCompare(b.title))
+    }
+    return result
+  }, [cases, query, subjectFilter, sortBy])
 
   const briefCount = useMemo(() => cases.filter(c => c.has_brief).length, [cases])
 
@@ -241,10 +255,23 @@ export default function HomePage() {
             <div className="text-center py-12 text-neutral-500">Loading cases...</div>
           ) : (
             <>
-              <div className="text-sm text-neutral-500 mb-3">
-                {filtered.length === cases.length
-                  ? `${cases.length.toLocaleString()} cases`
-                  : `${filtered.length.toLocaleString()} of ${cases.length.toLocaleString()} cases`}
+              <div className="text-sm text-neutral-500 mb-3 flex items-center justify-between">
+                <span>
+                  {filtered.length === cases.length
+                    ? `${cases.length.toLocaleString()} cases`
+                    : `${filtered.length.toLocaleString()} of ${cases.length.toLocaleString()} cases`}
+                </span>
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as SortOption)}
+                  className="text-sm border border-neutral-200 rounded-md px-2 py-1 bg-white
+                             text-neutral-600 focus:outline-none focus:border-purple-400 cursor-pointer"
+                >
+                  <option value="most-cited">Most Cited</option>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="a-z">A–Z</option>
+                </select>
               </div>
 
               {filtered.length === 0 && query ? (

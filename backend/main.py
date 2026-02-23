@@ -3666,14 +3666,15 @@ async def get_casebook_cases():
             SELECT c.id, c.title, c.reporter_cite, c.decision_date,
                    ct.name as court_name,
                    CASE WHEN s.case_id IS NOT NULL THEN true ELSE false END as has_brief,
-                   array_agg(DISTINCT cb.subject) FILTER (WHERE cb.subject IS NOT NULL) as subjects
+                   array_agg(DISTINCT cb.subject) FILTER (WHERE cb.subject IS NOT NULL) as subjects,
+                   COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count
             FROM cases c
             JOIN casebook_cases cc ON cc.case_id = c.id
             JOIN casebooks cb ON cc.casebook_id = cb.id
             LEFT JOIN ai_summaries s ON s.case_id = c.id
             LEFT JOIN courts ct ON c.court_id = ct.id
-            GROUP BY c.id, c.title, c.reporter_cite, c.decision_date, ct.name, s.case_id
-            ORDER BY c.title
+            GROUP BY c.id, c.title, c.reporter_cite, c.decision_date, ct.name, s.case_id, c.metadata
+            ORDER BY citation_count DESC, c.title
         """)
 
         # Build subject counts
@@ -3697,6 +3698,7 @@ async def get_casebook_cases():
             "court_name": r["court_name"],
             "has_brief": r["has_brief"],
             "subjects": r["subjects"] or [],
+            "citation_count": r["citation_count"],
         }
         for r in rows
     ]
