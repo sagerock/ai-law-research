@@ -11,6 +11,7 @@ from opensearchpy._async.client import AsyncOpenSearch
 import redis.asyncio as redis
 import numpy as np
 from datetime import datetime, date
+import time
 import json
 from jose import jwt, JWTError
 from uuid import UUID
@@ -3650,43 +3651,64 @@ async def admin_update_user(
 # Casebook Lookup (instant search by case name)
 # ============================================================================
 
-@app.get("/api/v1/casebook-cases")
-async def get_casebook_cases(subject: str = None):
-    """Return all cases that have AI briefs, for client-side instant search."""
-    async with db_pool.acquire() as conn:
-        if subject:
-            rows = await conn.fetch("""
-                SELECT c.id, c.title, c.reporter_cite, c.decision_date,
-                       ct.name as court_name,
-                       c.metadata->>'subject' as subject
-                FROM cases c
-                JOIN ai_summaries s ON s.case_id = c.id
-                LEFT JOIN courts ct ON c.court_id = ct.id
-                WHERE c.metadata->>'subject' = $1
-                ORDER BY c.title
-            """, subject)
-        else:
-            rows = await conn.fetch("""
-                SELECT c.id, c.title, c.reporter_cite, c.decision_date,
-                       ct.name as court_name,
-                       c.metadata->>'subject' as subject
-                FROM cases c
-                JOIN ai_summaries s ON s.case_id = c.id
-                LEFT JOIN courts ct ON c.court_id = ct.id
-                ORDER BY c.title
-            """)
+_casebook_cache: Dict[str, Any] = {"data": None, "time": 0}
+CASEBOOK_CACHE_TTL = 300  # 5 minutes
 
-    return [
+@app.get("/api/v1/casebook-cases")
+async def get_casebook_cases():
+    """Return all casebook-linked cases with subject data and brief availability."""
+    now = time.time()
+    if _casebook_cache["data"] and (now - _casebook_cache["time"]) < CASEBOOK_CACHE_TTL:
+        return _casebook_cache["data"]
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.title, c.reporter_cite, c.decision_date,
+                   ct.name as court_name,
+                   CASE WHEN s.case_id IS NOT NULL THEN true ELSE false END as has_brief,
+                   array_agg(DISTINCT cb.subject) FILTER (WHERE cb.subject IS NOT NULL) as subjects
+            FROM cases c
+            JOIN casebook_cases cc ON cc.case_id = c.id
+            JOIN casebooks cb ON cc.casebook_id = cb.id
+            LEFT JOIN ai_summaries s ON s.case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            GROUP BY c.id, c.title, c.reporter_cite, c.decision_date, ct.name, s.case_id
+            ORDER BY c.title
+        """)
+
+        # Build subject counts
+        subject_counter: Dict[str, int] = {}
+        for r in rows:
+            if r["subjects"]:
+                for subj in r["subjects"]:
+                    subject_counter[subj] = subject_counter.get(subj, 0) + 1
+        subject_counts = sorted(
+            [{"subject": s, "count": c} for s, c in subject_counter.items()],
+            key=lambda x: x["count"],
+            reverse=True,
+        )
+
+    cases_list = [
         {
             "id": r["id"],
             "title": r["title"],
             "reporter_cite": r["reporter_cite"],
             "decision_date": r["decision_date"].isoformat() if r["decision_date"] else None,
             "court_name": r["court_name"],
-            "subject": r["subject"],
+            "has_brief": r["has_brief"],
+            "subjects": r["subjects"] or [],
         }
         for r in rows
     ]
+
+    result = {
+        "cases": cases_list,
+        "subject_counts": subject_counts,
+        "total": len(cases_list),
+    }
+    _casebook_cache["data"] = result
+    _casebook_cache["time"] = now
+    return result
 
 
 if __name__ == "__main__":
