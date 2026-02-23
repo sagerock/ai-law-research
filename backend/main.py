@@ -698,7 +698,10 @@ async def get_case(case_id: str):
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            """SELECT * FROM cases WHERE id = $1""",
+            """SELECT c.*, ct.name as court_name
+               FROM cases c
+               LEFT JOIN courts ct ON c.court_id = ct.id
+               WHERE c.id = $1""",
             case_id
         )
 
