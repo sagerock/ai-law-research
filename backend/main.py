@@ -243,6 +243,36 @@ async def startup():
     # Initialize PostgreSQL connection pool
     db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
 
+    # Ensure rating/voting tables exist
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS summary_ratings (
+                    id SERIAL PRIMARY KEY,
+                    case_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    rating INTEGER NOT NULL CHECK (rating IN (-1, 1)),
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(case_id, user_id)
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_summary_ratings_case_id ON summary_ratings(case_id)")
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS comment_votes (
+                    id SERIAL PRIMARY KEY,
+                    comment_id INTEGER NOT NULL,
+                    user_id TEXT NOT NULL,
+                    vote_type INTEGER NOT NULL CHECK (vote_type IN (-1, 1)),
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(comment_id, user_id)
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_comment_votes_comment_id ON comment_votes(comment_id)")
+            print("Rating/voting tables ready")
+    except Exception as e:
+        print(f"Warning: could not create rating tables: {e}")
+
     # Initialize OpenSearch client (optional)
     if OPENSEARCH_URL:
         try:
