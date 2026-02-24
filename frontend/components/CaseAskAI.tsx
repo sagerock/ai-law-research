@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Sparkles, ChevronDown, ChevronUp, Send, Loader2, AlertCircle, LogIn } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronUp, Send, Loader2, AlertCircle, LogIn, Copy, Check } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { API_URL } from '@/lib/api'
@@ -26,6 +26,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
   const [rateLimited, setRateLimited] = useState(false)
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [usageLoaded, setUsageLoaded] = useState(false)
+  const [copiedId, setCopiedId] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -231,17 +232,36 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                     key={msg.id}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div
-                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                        msg.role === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-neutral-100 text-neutral-900'
-                      }`}
-                    >
-                      {msg.role === 'assistant' ? (
-                        <FormattedMessage content={msg.content} />
-                      ) : (
-                        msg.content
+                    <div className={`max-w-[85%] ${msg.role === 'assistant' ? '' : ''}`}>
+                      <div
+                        className={`rounded-lg px-3 py-2 text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-neutral-100 text-neutral-900'
+                        }`}
+                      >
+                        {msg.role === 'assistant' ? (
+                          <FormattedMessage content={msg.content} />
+                        ) : (
+                          msg.content
+                        )}
+                      </div>
+                      {msg.role === 'assistant' && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(msg.content)
+                            setCopiedId(msg.id)
+                            setTimeout(() => setCopiedId(null), 2000)
+                          }}
+                          className="flex items-center gap-1 mt-1 ml-1 text-xs text-neutral-400
+                                     hover:text-neutral-600 transition-colors"
+                        >
+                          {copiedId === msg.id ? (
+                            <><Check className="h-3 w-3 text-green-500" /> Copied</>
+                          ) : (
+                            <><Copy className="h-3 w-3" /> Copy</>
+                          )}
+                        </button>
                       )}
                     </div>
                   </div>
