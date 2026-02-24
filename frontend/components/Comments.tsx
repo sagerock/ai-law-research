@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MessageSquare, Send, Edit2, Trash2, X, Check, Loader2 } from 'lucide-react'
+import { MessageSquare, Send, Edit2, Trash2, X, Check, Loader2, ChevronUp, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
 
@@ -22,6 +22,8 @@ interface Comment {
   is_edited: boolean
   created_at: string
   updated_at: string
+  vote_count: number
+  user_vote: number | null
   user: CommentUser
 }
 
@@ -79,29 +81,70 @@ export default function Comments({ caseId }: CommentsProps) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
   // Fetch comments
-  useEffect(() => {
-    const fetchComments = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/comments`)
-        if (response.ok) {
-          const data = await response.json()
-          setComments(data.comments)
-        }
-      } catch (error) {
-        console.error('Failed to fetch comments:', error)
-      } finally {
-        setIsLoading(false)
+  const fetchComments = async () => {
+    try {
+      const headers: Record<string, string> = {}
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
       }
+      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/comments`, { headers })
+      if (response.ok) {
+        const data = await response.json()
+        setComments(data.comments)
+      }
+    } catch (error) {
+      console.error('Failed to fetch comments:', error)
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchComments()
   }, [caseId])
+
+  // Re-fetch with auth when session becomes available (to get user_vote)
+  useEffect(() => {
+    if (session?.access_token && comments.length > 0) {
+      fetchComments()
+    }
+  }, [session?.access_token])
 
   // Get auth headers
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${session?.access_token}`,
     'Content-Type': 'application/json'
   })
+
+  // Vote on a comment
+  const voteComment = async (commentId: number, voteType: number) => {
+    if (!session?.access_token) return
+
+    const comment = comments.find(c => c.id === commentId)
+    if (!comment) return
+
+    // Toggle off if clicking same vote
+    const newVote = comment.user_vote === voteType ? 0 : voteType
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/comments/${commentId}/vote`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ vote_type: newVote })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setComments(comments.map(c =>
+          c.id === commentId
+            ? { ...c, vote_count: data.vote_count, user_vote: data.user_vote }
+            : c
+        ))
+      }
+    } catch (error) {
+      console.error('Failed to vote on comment:', error)
+    }
+  }
 
   // Submit new comment
   const handleSubmit = async (e: React.FormEvent) => {
@@ -212,118 +255,154 @@ export default function Comments({ caseId }: CommentsProps) {
       {/* Comments list */}
       {comments.length > 0 ? (
         <div className="space-y-4 mb-6">
-          {comments.map((comment) => (
-            <div key={comment.id} className="flex gap-3">
-              {/* Avatar */}
-              {comment.user.avatar_url ? (
-                <img
-                  src={comment.user.avatar_url}
-                  alt={getDisplayName(comment)}
-                  className="h-10 w-10 rounded-full object-cover flex-shrink-0"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
-                  {getInitials(comment)}
-                </div>
-              )}
-
-              {/* Comment content */}
-              <div className="flex-1 min-w-0">
-                <div className="bg-neutral-50 rounded-lg px-4 py-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    {comment.user.profile_username ? (
-                      <Link
-                        href={`/users/${comment.user.profile_username}`}
-                        className="font-medium text-neutral-900 hover:text-blue-600"
-                      >
-                        {getDisplayName(comment)}
-                      </Link>
-                    ) : (
-                      <span className="font-medium text-neutral-900">
-                        {getDisplayName(comment)}
-                      </span>
-                    )}
-                    <span className="text-xs text-neutral-500">
-                      {getRelativeTime(comment.created_at)}
-                      {comment.is_edited && ' (edited)'}
-                    </span>
-                  </div>
-
-                  {editingId === comment.id ? (
-                    // Edit mode
-                    <div className="space-y-2">
-                      <textarea
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                        rows={3}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => saveEdit(comment.id)}
-                          className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          <Check className="h-4 w-4" />
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEditing}
-                          className="flex items-center gap-1 px-3 py-1 text-sm text-neutral-600 hover:text-neutral-900"
-                        >
-                          <X className="h-4 w-4" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    // Display mode
-                    <p className="text-neutral-700 whitespace-pre-wrap">
-                      {comment.content}
-                    </p>
-                  )}
+          {comments.map((comment) => {
+            const isOwnComment = user && comment.user_id === user.id
+            return (
+              <div key={comment.id} className="flex gap-3">
+                {/* Vote column */}
+                <div className="flex flex-col items-center gap-0 flex-shrink-0 pt-1">
+                  <button
+                    onClick={() => voteComment(comment.id, 1)}
+                    disabled={!session?.access_token || !!isOwnComment}
+                    title={!session?.access_token ? 'Sign in to vote' : isOwnComment ? "Can't vote on your own comment" : comment.user_vote === 1 ? 'Remove upvote' : 'Upvote'}
+                    className={`p-0.5 rounded transition-colors ${
+                      comment.user_vote === 1
+                        ? 'text-blue-600'
+                        : 'text-neutral-300 hover:text-blue-500'
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    <ChevronUp className="h-5 w-5" />
+                  </button>
+                  <span className={`text-xs font-medium leading-none ${
+                    comment.vote_count > 0 ? 'text-blue-600' : comment.vote_count < 0 ? 'text-red-500' : 'text-neutral-400'
+                  }`}>
+                    {comment.vote_count}
+                  </span>
+                  <button
+                    onClick={() => voteComment(comment.id, -1)}
+                    disabled={!session?.access_token || !!isOwnComment}
+                    title={!session?.access_token ? 'Sign in to vote' : isOwnComment ? "Can't vote on your own comment" : comment.user_vote === -1 ? 'Remove downvote' : 'Downvote'}
+                    className={`p-0.5 rounded transition-colors ${
+                      comment.user_vote === -1
+                        ? 'text-red-500'
+                        : 'text-neutral-300 hover:text-red-400'
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    <ChevronDown className="h-5 w-5" />
+                  </button>
                 </div>
 
-                {/* Actions (only for own comments) */}
-                {user && comment.user_id === user.id && editingId !== comment.id && (
-                  <div className="flex items-center gap-3 mt-1 ml-2">
-                    <button
-                      onClick={() => startEditing(comment)}
-                      className="text-xs text-neutral-500 hover:text-neutral-700 flex items-center gap-1"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      Edit
-                    </button>
-
-                    {deleteConfirmId === comment.id ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-red-600">Delete?</span>
-                        <button
-                          onClick={() => deleteComment(comment.id)}
-                          className="text-xs text-red-600 hover:text-red-700 font-medium"
-                        >
-                          Yes
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirmId(null)}
-                          className="text-xs text-neutral-500 hover:text-neutral-700"
-                        >
-                          No
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeleteConfirmId(comment.id)}
-                        className="text-xs text-neutral-500 hover:text-red-600 flex items-center gap-1"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </button>
-                    )}
+                {/* Avatar */}
+                {comment.user.avatar_url ? (
+                  <img
+                    src={comment.user.avatar_url}
+                    alt={getDisplayName(comment)}
+                    className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
+                    {getInitials(comment)}
                   </div>
                 )}
+
+                {/* Comment content */}
+                <div className="flex-1 min-w-0">
+                  <div className="bg-neutral-50 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      {comment.user.profile_username ? (
+                        <Link
+                          href={`/users/${comment.user.profile_username}`}
+                          className="font-medium text-neutral-900 hover:text-blue-600"
+                        >
+                          {getDisplayName(comment)}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-neutral-900">
+                          {getDisplayName(comment)}
+                        </span>
+                      )}
+                      <span className="text-xs text-neutral-500">
+                        {getRelativeTime(comment.created_at)}
+                        {comment.is_edited && ' (edited)'}
+                      </span>
+                    </div>
+
+                    {editingId === comment.id ? (
+                      // Edit mode
+                      <div className="space-y-2">
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => saveEdit(comment.id)}
+                            className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                          >
+                            <Check className="h-4 w-4" />
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="flex items-center gap-1 px-3 py-1 text-sm text-neutral-600 hover:text-neutral-900"
+                          >
+                            <X className="h-4 w-4" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Display mode
+                      <p className="text-neutral-700 whitespace-pre-wrap">
+                        {comment.content}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions (only for own comments) */}
+                  {user && comment.user_id === user.id && editingId !== comment.id && (
+                    <div className="flex items-center gap-3 mt-1 ml-2">
+                      <button
+                        onClick={() => startEditing(comment)}
+                        className="text-xs text-neutral-500 hover:text-neutral-700 flex items-center gap-1"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        Edit
+                      </button>
+
+                      {deleteConfirmId === comment.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-red-600">Delete?</span>
+                          <button
+                            onClick={() => deleteComment(comment.id)}
+                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(null)}
+                            className="text-xs text-neutral-500 hover:text-neutral-700"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteConfirmId(comment.id)}
+                          className="text-xs text-neutral-500 hover:text-red-600 flex items-center gap-1"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <p className="text-neutral-500 text-center py-6 mb-6">
