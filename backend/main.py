@@ -4044,6 +4044,69 @@ async def get_trending_cases():
     return result
 
 
+# ============================================================================
+# Search Cases (homepage search-first design)
+# ============================================================================
+
+@app.get("/api/v1/search-cases")
+async def search_cases(q: str = "", limit: int = 50):
+    """Search all cases by title or citation. Returns results sorted by citation count."""
+    if len(q.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Query must be at least 2 characters")
+
+    pattern = f"%{q.strip()}%"
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.title, c.reporter_cite, c.decision_date,
+                   ct.name as court_name,
+                   CASE WHEN s.case_id IS NOT NULL THEN true ELSE false END as has_brief,
+                   COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count
+            FROM cases c
+            LEFT JOIN ai_summaries s ON s.case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE c.title ILIKE $1 OR c.reporter_cite ILIKE $1
+            ORDER BY citation_count DESC, c.title
+            LIMIT $2
+        """, pattern, min(limit, 100))
+
+    return {
+        "cases": [
+            {
+                "id": r["id"],
+                "title": r["title"],
+                "reporter_cite": r["reporter_cite"],
+                "decision_date": r["decision_date"].isoformat() if r["decision_date"] else None,
+                "court_name": r["court_name"],
+                "has_brief": r["has_brief"],
+                "citation_count": r["citation_count"],
+            }
+            for r in rows
+        ]
+    }
+
+
+# ============================================================================
+# Case Count (for homepage hero text)
+# ============================================================================
+
+_case_count_cache: Dict[str, Any] = {"count": None, "time": 0}
+CASE_COUNT_CACHE_TTL = 600  # 10 minutes
+
+@app.get("/api/v1/case-count")
+async def get_case_count():
+    """Return total number of cases in the database. Cached for 10 minutes."""
+    now = time.time()
+    if _case_count_cache["count"] is not None and (now - _case_count_cache["time"]) < CASE_COUNT_CACHE_TTL:
+        return {"count": _case_count_cache["count"]}
+
+    async with db_pool.acquire() as conn:
+        count = await conn.fetchval("SELECT COUNT(*) FROM cases")
+
+    _case_count_cache["count"] = count
+    _case_count_cache["time"] = now
+    return {"count": count}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
