@@ -3973,6 +3973,77 @@ async def get_casebook_cases():
     return result
 
 
+# ============================================================================
+# Trending Cases (community engagement)
+# ============================================================================
+
+_trending_cache: Dict[str, Any] = {"data": None, "time": 0}
+TRENDING_CACHE_TTL = 600  # 10 minutes
+
+@app.get("/api/v1/trending-cases")
+async def get_trending_cases():
+    """Return cases ranked by community engagement (ratings + comments)."""
+    now = time.time()
+    if _trending_cache["data"] and (now - _trending_cache["time"]) < TRENDING_CACHE_TTL:
+        return _trending_cache["data"]
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.title, c.reporter_cite, c.decision_date,
+                   ct.name as court_name,
+                   CASE WHEN s.case_id IS NOT NULL THEN true ELSE false END as has_brief,
+                   COALESCE(r.thumbs_up, 0) as thumbs_up,
+                   COALESCE(r.thumbs_down, 0) as thumbs_down,
+                   COALESCE(cm.comment_count, 0) as comment_count,
+                   (COALESCE(r.thumbs_up, 0) * 2
+                    + COALESCE(r.thumbs_down, 0) * 1
+                    + COALESCE(cm.comment_count, 0) * 3) as engagement_score
+            FROM cases c
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            LEFT JOIN ai_summaries s ON s.case_id = c.id
+            LEFT JOIN LATERAL (
+                SELECT sr.case_id,
+                       COUNT(*) FILTER (WHERE sr.rating = 'up') as thumbs_up,
+                       COUNT(*) FILTER (WHERE sr.rating = 'down') as thumbs_down
+                FROM public.summary_ratings sr
+                WHERE sr.case_id = c.id
+                GROUP BY sr.case_id
+            ) r ON true
+            LEFT JOIN LATERAL (
+                SELECT co.case_id, COUNT(*) as comment_count
+                FROM public.comments co
+                WHERE co.case_id = c.id
+                GROUP BY co.case_id
+            ) cm ON true
+            WHERE (COALESCE(r.thumbs_up, 0) * 2
+                   + COALESCE(r.thumbs_down, 0) * 1
+                   + COALESCE(cm.comment_count, 0) * 3) > 0
+            ORDER BY engagement_score DESC
+            LIMIT 8
+        """)
+
+    cases_list = [
+        {
+            "id": r["id"],
+            "title": r["title"],
+            "reporter_cite": r["reporter_cite"],
+            "decision_date": r["decision_date"].isoformat() if r["decision_date"] else None,
+            "court_name": r["court_name"],
+            "has_brief": r["has_brief"],
+            "thumbs_up": r["thumbs_up"],
+            "thumbs_down": r["thumbs_down"],
+            "comment_count": r["comment_count"],
+            "engagement_score": r["engagement_score"],
+        }
+        for r in rows
+    ]
+
+    result = {"cases": cases_list}
+    _trending_cache["data"] = result
+    _trending_cache["time"] = now
+    return result
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

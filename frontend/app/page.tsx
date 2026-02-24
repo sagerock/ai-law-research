@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Scale, BookOpen, Search, MessageCircle, GraduationCap, ChevronDown } from 'lucide-react'
+import { Scale, BookOpen, Search, MessageCircle, GraduationCap, ChevronDown, TrendingUp, ThumbsUp } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
@@ -15,6 +15,19 @@ interface CasebookCase {
   has_brief: boolean
   subjects: string[]
   citation_count: number
+}
+
+interface TrendingCase {
+  id: string
+  title: string
+  reporter_cite: string
+  decision_date: string | null
+  court_name: string | null
+  has_brief: boolean
+  thumbs_up: number
+  thumbs_down: number
+  comment_count: number
+  engagement_score: number
 }
 
 type SortOption = 'most-cited' | 'newest' | 'oldest' | 'a-z'
@@ -47,6 +60,7 @@ export default function HomePage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [sortBy, setSortBy] = useState<SortOption>('most-cited')
   const [moreOpen, setMoreOpen] = useState(false)
+  const [trendingCases, setTrendingCases] = useState<TrendingCase[]>([])
   const moreRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -58,6 +72,11 @@ export default function HomePage() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
+
+    fetch(`${API_URL}/api/v1/trending-cases`)
+      .then(res => res.json())
+      .then(data => setTrendingCases(data.cases || []))
+      .catch(() => {})
   }, [])
 
   // Close "More" dropdown on outside click
@@ -247,6 +266,59 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Trending Cases */}
+      {trendingCases.length > 0 && (
+        <section className="px-4 pb-6">
+          <div className="container mx-auto max-w-3xl">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              <h3 className="text-lg font-semibold text-neutral-900">Trending Cases</h3>
+              <span className="text-sm text-neutral-400 ml-1">Based on community activity</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide"
+                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {trendingCases.map(tc => (
+                <Link
+                  key={tc.id}
+                  href={`/case/${tc.id}`}
+                  className="flex-shrink-0 w-64 bg-white border border-neutral-200 rounded-lg p-4
+                             hover:border-purple-400 transition-colors group"
+                >
+                  <div className="mb-2">
+                    <p className="font-medium text-neutral-900 group-hover:text-purple-700 transition-colors
+                                  line-clamp-2 text-sm leading-snug">
+                      {tc.title}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    {tc.has_brief && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px]
+                                       font-semibold bg-purple-100 text-purple-700">
+                        Brief
+                      </span>
+                    )}
+                    {tc.court_name && (
+                      <span className="text-xs text-neutral-400 truncate">{tc.court_name}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-neutral-500">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1">
+                        <ThumbsUp className="h-3 w-3" /> {tc.thumbs_up}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="h-3 w-3" /> {tc.comment_count}
+                      </span>
+                    </div>
+                    <span className="text-neutral-400">{tc.reporter_cite}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Results */}
       <section className="px-4 pb-16">
