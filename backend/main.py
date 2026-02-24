@@ -872,7 +872,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
                 SELECT
                     COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) as thumbs_up,
                     COALESCE(SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END), 0) as thumbs_down
-                FROM summary_ratings WHERE case_id = $1
+                FROM public.summary_ratings WHERE case_id = $1
             """, case_id)
 
             if rating_row:
@@ -882,7 +882,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             # Get user's own rating if logged in
             if user:
                 ur = await conn.fetchrow(
-                    "SELECT rating FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
+                    "SELECT rating FROM public.summary_ratings WHERE case_id = $1 AND user_id = $2",
                     case_id, user["id"]
                 )
                 if ur:
@@ -946,13 +946,13 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
             if data.rating == 0:
                 # Remove existing rating
                 await conn.execute(
-                    "DELETE FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
+                    "DELETE FROM public.summary_ratings WHERE case_id = $1 AND user_id = $2",
                     case_id, str(user["id"])
                 )
             else:
                 # Upsert rating
                 await conn.execute("""
-                    INSERT INTO summary_ratings (case_id, user_id, rating, updated_at)
+                    INSERT INTO public.summary_ratings (case_id, user_id, rating, updated_at)
                     VALUES ($1, $2, $3, NOW())
                     ON CONFLICT (case_id, user_id) DO UPDATE SET rating = EXCLUDED.rating, updated_at = NOW()
                 """, case_id, str(user["id"]), int(data.rating))
@@ -962,12 +962,12 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
                 SELECT
                     COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) as thumbs_up,
                     COALESCE(SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END), 0) as thumbs_down
-                FROM summary_ratings WHERE case_id = $1
+                FROM public.summary_ratings WHERE case_id = $1
             """, case_id)
 
             # Get user's current rating
             ur = await conn.fetchrow(
-                "SELECT rating FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
+                "SELECT rating FROM public.summary_ratings WHERE case_id = $1 AND user_id = $2",
                 case_id, str(user["id"])
             )
 
@@ -2338,9 +2338,9 @@ async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_
                     LEFT JOIN profiles p ON c.user_id = p.id
                     LEFT JOIN (
                         SELECT comment_id, SUM(vote_type) as vote_count
-                        FROM comment_votes GROUP BY comment_id
+                        FROM public.comment_votes GROUP BY comment_id
                     ) vc ON c.id = vc.comment_id
-                    LEFT JOIN comment_votes uv ON c.id = uv.comment_id AND uv.user_id = $2
+                    LEFT JOIN public.comment_votes uv ON c.id = uv.comment_id AND uv.user_id = $2
                     WHERE c.case_id = $1
                     ORDER BY COALESCE(vc.vote_count, 0) DESC, c.created_at ASC
                 """, case_id, user_id)
@@ -2355,7 +2355,7 @@ async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_
                     LEFT JOIN profiles p ON c.user_id = p.id
                     LEFT JOIN (
                         SELECT comment_id, SUM(vote_type) as vote_count
-                        FROM comment_votes GROUP BY comment_id
+                        FROM public.comment_votes GROUP BY comment_id
                     ) vc ON c.id = vc.comment_id
                     WHERE c.case_id = $1
                     ORDER BY COALESCE(vc.vote_count, 0) DESC, c.created_at ASC
@@ -2487,11 +2487,11 @@ async def update_comment(comment_id: int, data: CommentUpdate, user: dict = Depe
         uv = None
         try:
             vote_count = await conn.fetchval(
-                "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
+                "SELECT COALESCE(SUM(vote_type), 0) FROM public.comment_votes WHERE comment_id = $1",
                 comment_id
             )
             uv = await conn.fetchrow(
-                "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                "SELECT vote_type FROM public.comment_votes WHERE comment_id = $1 AND user_id = $2",
                 comment_id, user["id"]
             )
         except Exception:
@@ -2536,7 +2536,7 @@ async def delete_comment(comment_id: int, user: dict = Depends(require_auth)):
         # Undo reputation from votes on this comment (graceful if table missing)
         try:
             vote_sum = await conn.fetchval(
-                "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
+                "SELECT COALESCE(SUM(vote_type), 0) FROM public.comment_votes WHERE comment_id = $1",
                 comment_id
             )
             if vote_sum != 0:
@@ -2572,7 +2572,7 @@ async def vote_comment(comment_id: int, data: CommentVote, user: dict = Depends(
 
             # Get existing vote
             existing = await conn.fetchrow(
-                "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                "SELECT vote_type FROM public.comment_votes WHERE comment_id = $1 AND user_id = $2",
                 comment_id, str(user["id"])
             )
             old_vote = existing["vote_type"] if existing else 0
@@ -2581,13 +2581,13 @@ async def vote_comment(comment_id: int, data: CommentVote, user: dict = Depends(
                 # Remove vote
                 if existing:
                     await conn.execute(
-                        "DELETE FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                        "DELETE FROM public.comment_votes WHERE comment_id = $1 AND user_id = $2",
                         comment_id, str(user["id"])
                     )
             else:
                 # Upsert vote
                 await conn.execute("""
-                    INSERT INTO comment_votes (comment_id, user_id, vote_type)
+                    INSERT INTO public.comment_votes (comment_id, user_id, vote_type)
                     VALUES ($1, $2, $3)
                     ON CONFLICT (comment_id, user_id) DO UPDATE SET vote_type = EXCLUDED.vote_type
                 """, comment_id, str(user["id"]), int(data.vote_type))
@@ -2603,13 +2603,13 @@ async def vote_comment(comment_id: int, data: CommentVote, user: dict = Depends(
 
             # Get updated vote count
             vote_count = await conn.fetchval(
-                "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
+                "SELECT COALESCE(SUM(vote_type), 0) FROM public.comment_votes WHERE comment_id = $1",
                 comment_id
             )
 
             # Get user's current vote
             uv = await conn.fetchrow(
-                "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                "SELECT vote_type FROM public.comment_votes WHERE comment_id = $1 AND user_id = $2",
                 comment_id, str(user["id"])
             )
 
