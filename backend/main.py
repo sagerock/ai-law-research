@@ -4003,8 +4003,8 @@ async def get_trending_cases():
             LEFT JOIN ai_summaries s ON s.case_id = c.id
             LEFT JOIN LATERAL (
                 SELECT sr.case_id,
-                       COUNT(*) FILTER (WHERE sr.rating = 'up') as thumbs_up,
-                       COUNT(*) FILTER (WHERE sr.rating = 'down') as thumbs_down
+                       COUNT(*) FILTER (WHERE sr.rating = 1) as thumbs_up,
+                       COUNT(*) FILTER (WHERE sr.rating = -1) as thumbs_down
                 FROM public.summary_ratings sr
                 WHERE sr.case_id = c.id
                 GROUP BY sr.case_id
