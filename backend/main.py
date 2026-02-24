@@ -865,29 +865,30 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             case_id
         )
 
-        # Get aggregate ratings
-        rating_row = await conn.fetchrow("""
-            SELECT
-                COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) as thumbs_up,
-                COALESCE(SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END), 0) as thumbs_down
-            FROM summary_ratings WHERE case_id = $1
-        """, case_id)
+        # Get aggregate ratings (graceful if table missing)
+        ratings = {"thumbs_up": 0, "thumbs_down": 0, "user_rating": None}
+        try:
+            rating_row = await conn.fetchrow("""
+                SELECT
+                    COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) as thumbs_up,
+                    COALESCE(SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END), 0) as thumbs_down
+                FROM summary_ratings WHERE case_id = $1
+            """, case_id)
 
-        # Get user's own rating if logged in
-        user_rating = None
-        if user:
-            ur = await conn.fetchrow(
-                "SELECT rating FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
-                case_id, user["id"]
-            )
-            if ur:
-                user_rating = ur["rating"]
+            if rating_row:
+                ratings["thumbs_up"] = rating_row["thumbs_up"]
+                ratings["thumbs_down"] = rating_row["thumbs_down"]
 
-        ratings = {
-            "thumbs_up": rating_row["thumbs_up"] if rating_row else 0,
-            "thumbs_down": rating_row["thumbs_down"] if rating_row else 0,
-            "user_rating": user_rating,
-        }
+            # Get user's own rating if logged in
+            if user:
+                ur = await conn.fetchrow(
+                    "SELECT rating FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
+                    case_id, user["id"]
+                )
+                if ur:
+                    ratings["user_rating"] = ur["rating"]
+        except Exception as e:
+            print(f"Warning: summary_ratings query failed: {e}")
 
         if not cached:
             return {"summary": None, "cached": False, "ratings": ratings}
@@ -2320,40 +2321,54 @@ async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
 
-        # Get comments with user profile info and vote counts
-        if user_id:
+        # Get comments with user profile info and vote counts (graceful fallback)
+        try:
+            if user_id:
+                rows = await conn.fetch("""
+                    SELECT c.id, c.case_id, c.user_id, c.content, c.is_edited,
+                           c.created_at, c.updated_at, c.author_name,
+                           p.username, p.full_name, p.avatar_url,
+                           COALESCE(vc.vote_count, 0) as vote_count,
+                           uv.vote_type as user_vote
+                    FROM comments c
+                    LEFT JOIN profiles p ON c.user_id = p.id
+                    LEFT JOIN (
+                        SELECT comment_id, SUM(vote_type) as vote_count
+                        FROM comment_votes GROUP BY comment_id
+                    ) vc ON c.id = vc.comment_id
+                    LEFT JOIN comment_votes uv ON c.id = uv.comment_id AND uv.user_id = $2
+                    WHERE c.case_id = $1
+                    ORDER BY COALESCE(vc.vote_count, 0) DESC, c.created_at ASC
+                """, case_id, user_id)
+            else:
+                rows = await conn.fetch("""
+                    SELECT c.id, c.case_id, c.user_id, c.content, c.is_edited,
+                           c.created_at, c.updated_at, c.author_name,
+                           p.username, p.full_name, p.avatar_url,
+                           COALESCE(vc.vote_count, 0) as vote_count,
+                           NULL::integer as user_vote
+                    FROM comments c
+                    LEFT JOIN profiles p ON c.user_id = p.id
+                    LEFT JOIN (
+                        SELECT comment_id, SUM(vote_type) as vote_count
+                        FROM comment_votes GROUP BY comment_id
+                    ) vc ON c.id = vc.comment_id
+                    WHERE c.case_id = $1
+                    ORDER BY COALESCE(vc.vote_count, 0) DESC, c.created_at ASC
+                """, case_id)
+            has_votes = True
+        except Exception:
+            # Fallback if comment_votes table doesn't exist
             rows = await conn.fetch("""
                 SELECT c.id, c.case_id, c.user_id, c.content, c.is_edited,
                        c.created_at, c.updated_at, c.author_name,
-                       p.username, p.full_name, p.avatar_url,
-                       COALESCE(vc.vote_count, 0) as vote_count,
-                       uv.vote_type as user_vote
+                       p.username, p.full_name, p.avatar_url
                 FROM comments c
                 LEFT JOIN profiles p ON c.user_id = p.id
-                LEFT JOIN (
-                    SELECT comment_id, SUM(vote_type) as vote_count
-                    FROM comment_votes GROUP BY comment_id
-                ) vc ON c.id = vc.comment_id
-                LEFT JOIN comment_votes uv ON c.id = uv.comment_id AND uv.user_id = $2
                 WHERE c.case_id = $1
-                ORDER BY COALESCE(vc.vote_count, 0) DESC, c.created_at ASC
-            """, case_id, user_id)
-        else:
-            rows = await conn.fetch("""
-                SELECT c.id, c.case_id, c.user_id, c.content, c.is_edited,
-                       c.created_at, c.updated_at, c.author_name,
-                       p.username, p.full_name, p.avatar_url,
-                       COALESCE(vc.vote_count, 0) as vote_count,
-                       NULL::integer as user_vote
-                FROM comments c
-                LEFT JOIN profiles p ON c.user_id = p.id
-                LEFT JOIN (
-                    SELECT comment_id, SUM(vote_type) as vote_count
-                    FROM comment_votes GROUP BY comment_id
-                ) vc ON c.id = vc.comment_id
-                WHERE c.case_id = $1
-                ORDER BY COALESCE(vc.vote_count, 0) DESC, c.created_at ASC
+                ORDER BY c.created_at ASC
             """, case_id)
+            has_votes = False
 
     return {
         "comments": [
@@ -2365,8 +2380,8 @@ async def get_comments(case_id: str, user: Optional[dict] = Depends(get_current_
                 "is_edited": row["is_edited"],
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None,
                 "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
-                "vote_count": int(row["vote_count"]),
-                "user_vote": int(row["user_vote"]) if row["user_vote"] is not None else None,
+                "vote_count": int(row["vote_count"]) if has_votes else 0,
+                "user_vote": (int(row["user_vote"]) if row["user_vote"] is not None else None) if has_votes else None,
                 "user": {
                     "username": row["author_name"] or row["username"],
                     "display_name": row["author_name"] or row["full_name"],
@@ -2463,17 +2478,20 @@ async def update_comment(comment_id: int, data: CommentUpdate, user: dict = Depe
             SELECT username, full_name, avatar_url FROM profiles WHERE id = $1
         """, user["id"])
 
-        # Get current vote count for this comment
-        vote_count = await conn.fetchval(
-            "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
-            comment_id
-        )
-
-        # Get user's vote
-        uv = await conn.fetchrow(
-            "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
-            comment_id, user["id"]
-        )
+        # Get current vote count for this comment (graceful if table missing)
+        vote_count = 0
+        uv = None
+        try:
+            vote_count = await conn.fetchval(
+                "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
+                comment_id
+            )
+            uv = await conn.fetchrow(
+                "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                comment_id, user["id"]
+            )
+        except Exception:
+            pass
 
     # Use email as fallback if no profile exists
     email_name = user.get("email", "").split("@")[0] if user.get("email") else None
@@ -2511,18 +2529,21 @@ async def delete_comment(comment_id: int, user: dict = Depends(require_auth)):
         if comment["user_id"] != user["id"]:
             raise HTTPException(status_code=403, detail="You can only delete your own comments")
 
-        # Undo reputation from votes on this comment
-        vote_sum = await conn.fetchval(
-            "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
-            comment_id
-        )
-        if vote_sum != 0:
-            await conn.execute(
-                "UPDATE profiles SET reputation = COALESCE(reputation, 0) - $1 WHERE id = $2",
-                vote_sum, comment["user_id"]
+        # Undo reputation from votes on this comment (graceful if table missing)
+        try:
+            vote_sum = await conn.fetchval(
+                "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
+                comment_id
             )
+            if vote_sum != 0:
+                await conn.execute(
+                    "UPDATE profiles SET reputation = COALESCE(reputation, 0) - $1 WHERE id = $2",
+                    vote_sum, comment["user_id"]
+                )
+        except Exception:
+            pass
 
-        # Delete comment (cascades to comment_votes)
+        # Delete comment
         await conn.execute("DELETE FROM comments WHERE id = $1", comment_id)
 
     return {"status": "deleted"}
