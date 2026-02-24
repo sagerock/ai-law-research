@@ -954,7 +954,7 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
                 await conn.execute("""
                     INSERT INTO summary_ratings (case_id, user_id, rating, updated_at)
                     VALUES ($1, $2, $3, NOW())
-                    ON CONFLICT (case_id, user_id) DO UPDATE SET rating = $3, updated_at = NOW()
+                    ON CONFLICT (case_id, user_id) DO UPDATE SET rating = EXCLUDED.rating, updated_at = NOW()
                 """, case_id, str(user["id"]), int(data.rating))
 
             # Return aggregate counts
@@ -2589,7 +2589,7 @@ async def vote_comment(comment_id: int, data: CommentVote, user: dict = Depends(
                 await conn.execute("""
                     INSERT INTO comment_votes (comment_id, user_id, vote_type)
                     VALUES ($1, $2, $3)
-                    ON CONFLICT (comment_id, user_id) DO UPDATE SET vote_type = $3
+                    ON CONFLICT (comment_id, user_id) DO UPDATE SET vote_type = EXCLUDED.vote_type
                 """, comment_id, str(user["id"]), int(data.vote_type))
 
             # Update reputation on comment author: delta = new_vote - old_vote
