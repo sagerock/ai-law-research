@@ -24,7 +24,7 @@ const FRCP_PATTERNS = [
   // "Fed. R. Civ. P. 12" or "FRCP 12" or "F.R.C.P. 12"
   /(?:Fed\.?\s*R\.?\s*Civ\.?\s*P\.?|FRCP|F\.R\.C\.P\.)\s*(\d+(?:\.\d+)?)/gi,
   // "Rule 12(b)(6)" or "Rule 56(a)"
-  /\bRule\s+(\d+(?:\.\d+)?)(?:\([a-z0-9]+\))*(?!\s*of\s+(?:the\s+)?(?:Supreme|Federal))/gi,
+  /\bRule\s+(\d+(?:\.\d+)?)(?!\d)(?:\([a-z0-9]+\))*(?!\s*of\s+(?:the\s+)?Supreme)/gi,
 ]
 
 // Federal statute citation pattern: "28 U.S.C. § 1332" or "42 U.S.C. §1983"
