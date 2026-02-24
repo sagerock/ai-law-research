@@ -688,7 +688,28 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
               {caseSummary ? (
                 <div className="space-y-4">
                   <div className="prose prose-sm max-w-none space-y-4">
-                    {caseSummary.summary.split('\n').map((line, idx) => {
+                    {(() => {
+                      // Render inline **bold** and *italic* markdown
+                      const renderInline = (text: string) => {
+                        const parts: React.ReactNode[] = []
+                        // Match **bold** or *italic* (bold first to avoid conflict)
+                        const re = /(\*\*(.+?)\*\*|\*(.+?)\*)/g
+                        let last = 0
+                        let match: RegExpExecArray | null
+                        while ((match = re.exec(text)) !== null) {
+                          if (match.index > last) parts.push(text.slice(last, match.index))
+                          if (match[2]) {
+                            parts.push(<strong key={match.index} className="font-semibold text-neutral-900">{match[2]}</strong>)
+                          } else if (match[3]) {
+                            parts.push(<em key={match.index}>{match[3]}</em>)
+                          }
+                          last = match.index + match[0].length
+                        }
+                        if (last < text.length) parts.push(text.slice(last))
+                        return parts.length > 0 ? parts : [text]
+                      }
+
+                      return caseSummary.summary.split('\n').map((line, idx) => {
                       // Main title (# Header)
                       if (line.trim().match(/^#\s+[^#]/)) {
                         const headerText = line.replace(/^#\s+/, '').trim()
@@ -711,38 +732,23 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       }
                       // Numbered list items
                       else if (line.trim().match(/^\d+\.\s+/)) {
-                        const itemText = line.trim()
                         return (
                           <p key={idx} className="text-neutral-700 leading-relaxed ml-4">
-                            {itemText}
+                            {renderInline(line.trim())}
                           </p>
                         )
                       }
-                      // Bold text without emoji
-                      else if (line.includes('**')) {
-                        const parts = line.split('**').filter(p => p.trim())
-                        return (
-                          <div key={idx} className="mb-2">
-                            {parts.map((part, i) => (
-                              i % 2 === 0 ? (
-                                <span key={i} className="text-neutral-700">{part}</span>
-                              ) : (
-                                <strong key={i} className="font-semibold text-neutral-900">{part}</strong>
-                              )
-                            ))}
-                          </div>
-                        )
-                      }
-                      // Regular paragraphs
+                      // Regular paragraphs (handles inline bold/italic)
                       else if (line.trim()) {
                         return (
                           <p key={idx} className="text-neutral-700 leading-relaxed">
-                            {line.trim()}
+                            {renderInline(line.trim())}
                           </p>
                         )
                       }
                       return null
-                    })}
+                    })})()}
+
                   </div>
 
                   {/* Rating + Token usage and cost info */}
