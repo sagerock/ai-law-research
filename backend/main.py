@@ -941,40 +941,44 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
     if data.rating not in (-1, 0, 1):
         raise HTTPException(status_code=400, detail="Rating must be -1, 0, or 1")
 
-    async with db_pool.acquire() as conn:
-        if data.rating == 0:
-            # Remove existing rating
-            await conn.execute(
-                "DELETE FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
-                case_id, user["id"]
+    try:
+        async with db_pool.acquire() as conn:
+            if data.rating == 0:
+                # Remove existing rating
+                await conn.execute(
+                    "DELETE FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
+                    case_id, str(user["id"])
+                )
+            else:
+                # Upsert rating
+                await conn.execute("""
+                    INSERT INTO summary_ratings (case_id, user_id, rating, updated_at)
+                    VALUES ($1, $2, $3, NOW())
+                    ON CONFLICT (case_id, user_id) DO UPDATE SET rating = $3, updated_at = NOW()
+                """, case_id, str(user["id"]), int(data.rating))
+
+            # Return aggregate counts
+            agg = await conn.fetchrow("""
+                SELECT
+                    COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) as thumbs_up,
+                    COALESCE(SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END), 0) as thumbs_down
+                FROM summary_ratings WHERE case_id = $1
+            """, case_id)
+
+            # Get user's current rating
+            ur = await conn.fetchrow(
+                "SELECT rating FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
+                case_id, str(user["id"])
             )
-        else:
-            # Upsert rating
-            await conn.execute("""
-                INSERT INTO summary_ratings (case_id, user_id, rating, updated_at)
-                VALUES ($1, $2, $3, NOW())
-                ON CONFLICT (case_id, user_id) DO UPDATE SET rating = $3, updated_at = NOW()
-            """, case_id, user["id"], data.rating)
 
-        # Return aggregate counts
-        agg = await conn.fetchrow("""
-            SELECT
-                COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) as thumbs_up,
-                COALESCE(SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END), 0) as thumbs_down
-            FROM summary_ratings WHERE case_id = $1
-        """, case_id)
-
-        # Get user's current rating
-        ur = await conn.fetchrow(
-            "SELECT rating FROM summary_ratings WHERE case_id = $1 AND user_id = $2",
-            case_id, user["id"]
-        )
-
-    return {
-        "thumbs_up": agg["thumbs_up"],
-        "thumbs_down": agg["thumbs_down"],
-        "user_rating": ur["rating"] if ur else None,
-    }
+        return {
+            "thumbs_up": agg["thumbs_up"],
+            "thumbs_down": agg["thumbs_down"],
+            "user_rating": ur["rating"] if ur else None,
+        }
+    except Exception as e:
+        print(f"Error in rate_summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/v1/cases/{case_id}/summarize")
@@ -2555,64 +2559,70 @@ async def vote_comment(comment_id: int, data: CommentVote, user: dict = Depends(
     if data.vote_type not in (-1, 0, 1):
         raise HTTPException(status_code=400, detail="vote_type must be -1, 0, or 1")
 
-    async with db_pool.acquire() as conn:
-        # Verify comment exists
-        comment = await conn.fetchrow("SELECT id, user_id FROM comments WHERE id = $1", comment_id)
-        if not comment:
-            raise HTTPException(status_code=404, detail="Comment not found")
+    try:
+        async with db_pool.acquire() as conn:
+            # Verify comment exists
+            comment = await conn.fetchrow("SELECT id, user_id FROM comments WHERE id = $1", comment_id)
+            if not comment:
+                raise HTTPException(status_code=404, detail="Comment not found")
 
-        # Block self-voting
-        if comment["user_id"] == user["id"]:
-            raise HTTPException(status_code=400, detail="You cannot vote on your own comment")
+            # Block self-voting
+            if comment["user_id"] == str(user["id"]):
+                raise HTTPException(status_code=400, detail="You cannot vote on your own comment")
 
-        # Get existing vote
-        existing = await conn.fetchrow(
-            "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
-            comment_id, user["id"]
-        )
-        old_vote = existing["vote_type"] if existing else 0
+            # Get existing vote
+            existing = await conn.fetchrow(
+                "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                comment_id, str(user["id"])
+            )
+            old_vote = existing["vote_type"] if existing else 0
 
-        if data.vote_type == 0:
-            # Remove vote
-            if existing:
+            if data.vote_type == 0:
+                # Remove vote
+                if existing:
+                    await conn.execute(
+                        "DELETE FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                        comment_id, str(user["id"])
+                    )
+            else:
+                # Upsert vote
+                await conn.execute("""
+                    INSERT INTO comment_votes (comment_id, user_id, vote_type)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (comment_id, user_id) DO UPDATE SET vote_type = $3
+                """, comment_id, str(user["id"]), int(data.vote_type))
+
+            # Update reputation on comment author: delta = new_vote - old_vote
+            new_vote = data.vote_type
+            delta = new_vote - old_vote
+            if delta != 0:
                 await conn.execute(
-                    "DELETE FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
-                    comment_id, user["id"]
+                    "UPDATE profiles SET reputation = COALESCE(reputation, 0) + $1 WHERE id = $2",
+                    int(delta), comment["user_id"]
                 )
-        else:
-            # Upsert vote
-            await conn.execute("""
-                INSERT INTO comment_votes (comment_id, user_id, vote_type)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (comment_id, user_id) DO UPDATE SET vote_type = $3
-            """, comment_id, user["id"], data.vote_type)
 
-        # Update reputation on comment author: delta = new_vote - old_vote
-        new_vote = data.vote_type
-        delta = new_vote - old_vote
-        if delta != 0:
-            await conn.execute(
-                "UPDATE profiles SET reputation = COALESCE(reputation, 0) + $1 WHERE id = $2",
-                delta, comment["user_id"]
+            # Get updated vote count
+            vote_count = await conn.fetchval(
+                "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
+                comment_id
             )
 
-        # Get updated vote count
-        vote_count = await conn.fetchval(
-            "SELECT COALESCE(SUM(vote_type), 0) FROM comment_votes WHERE comment_id = $1",
-            comment_id
-        )
+            # Get user's current vote
+            uv = await conn.fetchrow(
+                "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                comment_id, str(user["id"])
+            )
 
-        # Get user's current vote
-        uv = await conn.fetchrow(
-            "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
-            comment_id, user["id"]
-        )
-
-    return {
-        "comment_id": comment_id,
-        "vote_count": int(vote_count),
-        "user_vote": uv["vote_type"] if uv else None,
-    }
+        return {
+            "comment_id": comment_id,
+            "vote_count": int(vote_count),
+            "user_vote": uv["vote_type"] if uv else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in vote_comment: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================
