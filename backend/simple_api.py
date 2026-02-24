@@ -621,6 +621,120 @@ async def get_legal_text_item(doc_id: str, slug: str):
         await conn.close()
 
 
+def _build_ilike_patterns(doc_id: str, slug: str) -> list[str]:
+    """Build ILIKE search patterns from a legal text slug."""
+    if doc_id == "frcp":
+        num = slug.replace("rule-", "")
+        return [f"%Rule {num}%"]
+    elif doc_id == "federal_statutes":
+        parts = slug.split("-")
+        if len(parts) >= 3 and parts[1] == "usc":
+            title_num = parts[0]
+            section = "-".join(parts[2:])
+            return [f"%{title_num} U.S.C.%", f"%{section}%"]
+        return [f"%{slug}%"]
+    elif doc_id == "constitution":
+        if slug.startswith("amendment-"):
+            num = slug.replace("amendment-", "")
+            ordinals = {
+                "1": "First", "2": "Second", "3": "Third", "4": "Fourth",
+                "5": "Fifth", "6": "Sixth", "7": "Seventh", "8": "Eighth",
+                "9": "Ninth", "10": "Tenth", "11": "Eleventh", "12": "Twelfth",
+                "13": "Thirteenth", "14": "Fourteenth", "15": "Fifteenth",
+                "16": "Sixteenth", "17": "Seventeenth", "18": "Eighteenth",
+                "19": "Nineteenth", "20": "Twentieth", "21": "Twenty-first",
+                "22": "Twenty-second", "23": "Twenty-third", "24": "Twenty-fourth",
+                "25": "Twenty-fifth", "26": "Twenty-sixth", "27": "Twenty-seventh",
+            }
+            roman = {
+                "1": "I", "2": "II", "3": "III", "4": "IV", "5": "V",
+                "6": "VI", "7": "VII", "8": "VIII", "9": "IX", "10": "X",
+                "11": "XI", "12": "XII", "13": "XIII", "14": "XIV", "15": "XV",
+                "16": "XVI", "17": "XVII", "18": "XVIII", "19": "XIX", "20": "XX",
+                "21": "XXI", "22": "XXII", "23": "XXIII", "24": "XXIV", "25": "XXV",
+                "26": "XXVI", "27": "XXVII",
+            }
+            patterns = [f"%Amendment {roman.get(num, num)}%"]
+            if num in ordinals:
+                patterns.append(f"%{ordinals[num]} Amendment%")
+            patterns.append(f"%{num}th Amendment%")
+            return patterns
+        elif slug.startswith("article-"):
+            num = slug.replace("article-", "")
+            return [f"%Article {num}%"]
+        return [f"%{slug}%"]
+    return [f"%{slug}%"]
+
+
+@app.get("/api/v1/legal-texts/{doc_id}/{slug}/cases")
+async def get_legal_text_cases(doc_id: str, slug: str, limit: int = 20):
+    """Find cases whose AI summaries mention a legal text."""
+    patterns = _build_ilike_patterns(doc_id, slug)
+
+    if doc_id == "constitution":
+        where_parts = [f"s.content ILIKE ${i+1}" for i in range(len(patterns))]
+        where_clause = " OR ".join(where_parts)
+    elif doc_id == "federal_statutes" and len(patterns) > 1:
+        where_parts = [f"s.content ILIKE ${i+1}" for i in range(len(patterns))]
+        where_clause = " AND ".join(where_parts)
+    else:
+        where_clause = "s.content ILIKE $1"
+
+    query = f"""
+        SELECT c.id, c.title, c.decision_date,
+               ct.name as court_name,
+               COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count,
+               s.content as summary_text
+        FROM ai_summaries s
+        JOIN cases c ON c.id = s.case_id
+        LEFT JOIN courts ct ON ct.id = c.court_id
+        WHERE {where_clause}
+        ORDER BY COALESCE((c.metadata->>'citation_count')::int, 0) DESC
+        LIMIT ${len(patterns) + 1}
+    """
+
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        rows = await conn.fetch(query, *patterns, limit)
+    finally:
+        await conn.close()
+
+    results = []
+    for row in rows:
+        summary = row["summary_text"] or ""
+        snippet = ""
+        lower_summary = summary.lower()
+        for p in patterns:
+            search_term = p.strip("%").lower()
+            idx = lower_summary.find(search_term)
+            if idx != -1:
+                start = max(0, idx - 60)
+                end = min(len(summary), idx + len(search_term) + 90)
+                raw = summary[start:end].strip()
+                if start > 0:
+                    raw = "..." + raw
+                if end < len(summary):
+                    raw = raw + "..."
+                match_text = summary[idx:idx + len(search_term)]
+                snippet = raw.replace(match_text, f"<em>{match_text}</em>", 1)
+                break
+
+        year = ""
+        if row["decision_date"]:
+            year = str(row["decision_date"].year) if hasattr(row["decision_date"], "year") else str(row["decision_date"])[:4]
+
+        results.append({
+            "id": row["id"],
+            "title": row["title"],
+            "court_name": row["court_name"],
+            "year": year,
+            "citation_count": row["citation_count"],
+            "snippet": snippet,
+        })
+
+    return {"results": results, "count": len(results)}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -4,6 +4,7 @@ import { Scale, ArrowLeft, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import SubsectionTree from '@/components/SubsectionTree'
+import RelatedCases from '@/components/RelatedCases'
 import { UserMenu } from '@/components/auth/UserMenu'
 
 interface StatuteData {
@@ -85,6 +86,8 @@ export default function StatuteDetailClient({ data }: { data: StatuteData }) {
               <SubsectionTree items={content.subsections} />
             )}
           </div>
+
+          <RelatedCases docId="federal_statutes" slug={data.slug} />
         </div>
       </section>
     </div>
