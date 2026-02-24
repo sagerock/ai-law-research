@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, MessageCircle, GraduationCap, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
+import { parseLegalCitations } from '@/lib/legalCitations'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
@@ -689,24 +690,46 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 <div className="space-y-4">
                   <div className="prose prose-sm max-w-none space-y-4">
                     {(() => {
-                      // Render inline **bold** and *italic* markdown
-                      const renderInline = (text: string) => {
+                      // Render inline **bold**, *italic*, and legal citation links
+                      const renderMarkdown = (text: string, keyPrefix: string = '') => {
                         const parts: React.ReactNode[] = []
-                        // Match **bold** or *italic* (bold first to avoid conflict)
                         const re = /(\*\*(.+?)\*\*|\*(.+?)\*)/g
                         let last = 0
                         let match: RegExpExecArray | null
                         while ((match = re.exec(text)) !== null) {
                           if (match.index > last) parts.push(text.slice(last, match.index))
                           if (match[2]) {
-                            parts.push(<strong key={match.index} className="font-semibold text-neutral-900">{match[2]}</strong>)
+                            parts.push(<strong key={`${keyPrefix}b${match.index}`} className="font-semibold text-neutral-900">{match[2]}</strong>)
                           } else if (match[3]) {
-                            parts.push(<em key={match.index}>{match[3]}</em>)
+                            parts.push(<em key={`${keyPrefix}i${match.index}`}>{match[3]}</em>)
                           }
                           last = match.index + match[0].length
                         }
                         if (last < text.length) parts.push(text.slice(last))
                         return parts.length > 0 ? parts : [text]
+                      }
+
+                      const renderInline = (text: string): React.ReactNode[] => {
+                        // First pass: detect legal citations and split into segments
+                        const segments = parseLegalCitations(text)
+                        if (segments.length === 1 && !segments[0].href) {
+                          return renderMarkdown(text)
+                        }
+                        // Second pass: apply markdown to each segment, wrap linked ones in <Link>
+                        const result: React.ReactNode[] = []
+                        segments.forEach((seg, si) => {
+                          if (seg.href) {
+                            result.push(
+                              <Link key={`cite-${si}`} href={seg.href}
+                                className="text-purple-600 hover:text-purple-800 underline decoration-purple-300 hover:decoration-purple-500 transition-colors">
+                                {seg.text}
+                              </Link>
+                            )
+                          } else {
+                            result.push(...renderMarkdown(seg.text, `s${si}-`))
+                          }
+                        })
+                        return result
                       }
 
                       return caseSummary.summary.split('\n').map((line, idx) => {

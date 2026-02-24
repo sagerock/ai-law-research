@@ -465,6 +465,162 @@ async def webhook_info():
         "instructions": "Add these URLs to your CourtListener webhook configuration"
     }
 
+# ============================================================================
+# Legal Texts (Constitution, FRCP, Federal Statutes)
+# ============================================================================
+
+@app.get("/api/v1/legal-texts")
+async def list_legal_documents():
+    """List all legal text documents with item counts."""
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        rows = await conn.fetch("""
+            SELECT d.id, d.title, d.doc_type, d.metadata,
+                   COUNT(i.id) as item_count
+            FROM legal_documents d
+            LEFT JOIN legal_text_items i ON i.document_id = d.id
+            GROUP BY d.id
+            ORDER BY d.id
+        """)
+        return {
+            "documents": [
+                {
+                    "id": r["id"],
+                    "title": r["title"],
+                    "doc_type": r["doc_type"],
+                    "metadata": json.loads(r["metadata"]) if isinstance(r["metadata"], str) else r["metadata"],
+                    "item_count": r["item_count"],
+                }
+                for r in rows
+            ]
+        }
+    finally:
+        await conn.close()
+
+
+@app.get("/api/v1/legal-texts/search")
+async def search_legal_texts(q: str, doc_id: str = None, limit: int = 50):
+    """Full-text search across all legal text items."""
+    if not q or len(q.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Query must be at least 2 characters")
+
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        if doc_id:
+            rows = await conn.fetch("""
+                SELECT i.id, i.document_id, i.slug, i.title, i.citation, i.number,
+                       ts_rank(to_tsvector('english', i.body), plainto_tsquery('english', $1)) as rank,
+                       ts_headline('english', i.body, plainto_tsquery('english', $1),
+                                   'StartSel=<mark>, StopSel=</mark>, MaxWords=60, MinWords=20') as snippet
+                FROM legal_text_items i
+                WHERE i.document_id = $2
+                  AND to_tsvector('english', i.body) @@ plainto_tsquery('english', $1)
+                ORDER BY rank DESC
+                LIMIT $3
+            """, q, doc_id, limit)
+        else:
+            rows = await conn.fetch("""
+                SELECT i.id, i.document_id, i.slug, i.title, i.citation, i.number,
+                       ts_rank(to_tsvector('english', i.body), plainto_tsquery('english', $1)) as rank,
+                       ts_headline('english', i.body, plainto_tsquery('english', $1),
+                                   'StartSel=<mark>, StopSel=</mark>, MaxWords=60, MinWords=20') as snippet
+                FROM legal_text_items i
+                WHERE to_tsvector('english', i.body) @@ plainto_tsquery('english', $1)
+                ORDER BY rank DESC
+                LIMIT $2
+            """, q, limit)
+
+        return {
+            "results": [
+                {
+                    "id": r["id"],
+                    "document_id": r["document_id"],
+                    "slug": r["slug"],
+                    "title": r["title"],
+                    "citation": r["citation"],
+                    "number": r["number"],
+                    "rank": float(r["rank"]),
+                    "snippet": r["snippet"],
+                }
+                for r in rows
+            ],
+            "count": len(rows),
+            "query": q,
+        }
+    finally:
+        await conn.close()
+
+
+@app.get("/api/v1/legal-texts/{doc_id}")
+async def get_legal_document(doc_id: str):
+    """Get a legal document with all its items."""
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        doc = await conn.fetchrow(
+            "SELECT * FROM legal_documents WHERE id = $1", doc_id
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        items = await conn.fetch("""
+            SELECT id, slug, title, citation, number, sort_order
+            FROM legal_text_items
+            WHERE document_id = $1
+            ORDER BY sort_order
+        """, doc_id)
+
+        return {
+            "id": doc["id"],
+            "title": doc["title"],
+            "doc_type": doc["doc_type"],
+            "metadata": json.loads(doc["metadata"]) if isinstance(doc["metadata"], str) else doc["metadata"],
+            "items": [
+                {
+                    "id": r["id"],
+                    "slug": r["slug"],
+                    "title": r["title"],
+                    "citation": r["citation"],
+                    "number": r["number"],
+                    "sort_order": r["sort_order"],
+                }
+                for r in items
+            ],
+        }
+    finally:
+        await conn.close()
+
+
+@app.get("/api/v1/legal-texts/{doc_id}/{slug}")
+async def get_legal_text_item(doc_id: str, slug: str):
+    """Get a single legal text item with full content."""
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        row = await conn.fetchrow("""
+            SELECT i.*, d.title as doc_title
+            FROM legal_text_items i
+            JOIN legal_documents d ON d.id = i.document_id
+            WHERE i.document_id = $1 AND i.slug = $2
+        """, doc_id, slug)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        return {
+            "id": row["id"],
+            "document_id": row["document_id"],
+            "doc_title": row["doc_title"],
+            "slug": row["slug"],
+            "title": row["title"],
+            "citation": row["citation"],
+            "number": row["number"],
+            "body": row["body"],
+            "content": json.loads(row["content"]) if isinstance(row["content"], str) else row["content"],
+            "sort_order": row["sort_order"],
+        }
+    finally:
+        await conn.close()
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

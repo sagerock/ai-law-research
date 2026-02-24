@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Scale, BookOpen, Search, MessageCircle, GraduationCap, TrendingUp, ThumbsUp } from 'lucide-react'
+import { Scale, BookOpen, Search, MessageCircle, GraduationCap, TrendingUp, ThumbsUp, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import { UserMenu } from '@/components/auth/UserMenu'
@@ -110,6 +110,26 @@ export default function HomePage() {
                 <GraduationCap className="h-5 w-5 sm:mr-2" />
                 <span className="hidden sm:inline">Study</span>
               </Link>
+              <div className="relative group">
+                <button className="text-neutral-600 hover:text-neutral-900 transition flex items-center">
+                  <BookOpen className="h-5 w-5 sm:mr-1" />
+                  <span className="hidden sm:inline">Reference</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-0.5 hidden sm:block" />
+                </button>
+                <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-neutral-200
+                                rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100
+                                group-hover:visible transition-all z-50">
+                  <Link href="/rules" className="block px-4 py-2.5 text-sm text-neutral-700 hover:bg-purple-50 hover:text-purple-700 rounded-t-lg">
+                    Federal Rules (FRCP)
+                  </Link>
+                  <Link href="/constitution" className="block px-4 py-2.5 text-sm text-neutral-700 hover:bg-purple-50 hover:text-purple-700">
+                    U.S. Constitution
+                  </Link>
+                  <Link href="/statutes" className="block px-4 py-2.5 text-sm text-neutral-700 hover:bg-purple-50 hover:text-purple-700 rounded-b-lg">
+                    Federal Statutes
+                  </Link>
+                </div>
+              </div>
               <a
                 href="https://discord.gg/AcGcKMmMZX"
                 target="_blank"
