@@ -17,8 +17,15 @@ export default function LoginPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [recoveryToken, setRecoveryToken] = useState<string | null>(null)
 
-  const { signInWithEmail, signUpWithEmail, resetPassword, isConfigured } = useAuth()
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, resetPassword, isConfigured } = useAuth()
   const router = useRouter()
+
+  // Redirect if already authenticated (unless doing password recovery)
+  useEffect(() => {
+    if (!authLoading && user && mode !== 'newpassword') {
+      router.replace('/')
+    }
+  }, [authLoading, user, mode, router])
 
   // Detect password recovery from Supabase redirect
   // Capture access_token immediately before the Supabase client consumes the hash
@@ -67,12 +74,8 @@ export default function LoginPage() {
           const data = await res.json().catch(() => ({}))
           setError(data.msg || data.message || 'Failed to update password')
         } else {
-          // Clear recovery session and redirect
-          Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('sb-')) localStorage.removeItem(key)
-          })
           setMessage('Password updated successfully! Redirecting...')
-          setTimeout(() => { window.location.href = '/login' }, 1500)
+          setTimeout(() => { router.push('/login') }, 1500)
         }
       } else if (mode === 'forgot') {
         const { error } = await resetPassword(email)

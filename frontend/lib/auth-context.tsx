@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient, Profile, isSupabaseConfigured } from './supabase'
 
@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  // Monotonic counter to prevent stale async operations from clobbering fresh state
+  const authVersionRef = useRef(0)
 
   const supabase = createClient()
 
@@ -93,41 +96,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true
     let timeoutId: NodeJS.Timeout
 
+    // Helper to apply session state with version check
+    const applySession = async (newSession: Session | null, version: number) => {
+      if (!mounted || version < authVersionRef.current) return
+
+      setSession(newSession)
+      setUser(newSession?.user ?? null)
+
+      if (newSession?.user) {
+        const profileData = await fetchProfile(newSession.user.id)
+        // Check version again after async fetch — a newer event may have arrived
+        if (mounted && version >= authVersionRef.current) {
+          setProfile(profileData)
+        }
+      } else {
+        setProfile(null)
+      }
+
+      setIsLoading(false)
+    }
+
     const initAuth = async () => {
+      const version = ++authVersionRef.current
+
       try {
         // Get initial session
         const { data: { session: initialSession }, error } = await supabase.auth.getSession()
 
         if (error) {
           console.error('Error getting session:', error)
-          // Clear any stale state
-          if (mounted) {
-            setSession(null)
-            setUser(null)
-            setProfile(null)
-          }
-          return
         }
 
-        if (initialSession?.user && mounted) {
-          setSession(initialSession)
-          setUser(initialSession.user)
-          const profileData = await fetchProfile(initialSession.user.id)
-          if (mounted) setProfile(profileData)
-        } else if (mounted) {
-          // Explicitly clear state if no valid session
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-        }
+        await applySession(
+          error ? null : (initialSession ?? null),
+          version
+        )
       } catch (error) {
         console.error('Error initializing auth:', error)
-        // Clear state on error
-        if (mounted) {
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-        }
+        await applySession(null, version)
       } finally {
         if (mounted) {
           clearTimeout(timeoutId)
@@ -151,42 +157,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, newSession) => {
         if (!mounted) return
 
-        // Handle token refresh failure - clear state
-        if (event === 'TOKEN_REFRESHED' && !newSession) {
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-          setIsLoading(false)
-          return
-        }
+        // Bump version — this ensures any in-flight initAuth or older
+        // event handler won't overwrite this newer state
+        const version = ++authVersionRef.current
 
         // Handle sign out
         if (event === 'SIGNED_OUT') {
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-          setIsLoading(false)
+          await applySession(null, version)
           return
         }
 
-        setSession(newSession)
-        setUser(newSession?.user ?? null)
-
-        if (newSession?.user) {
-          const profileData = await fetchProfile(newSession.user.id)
-          if (mounted) setProfile(profileData)
-        } else {
-          setProfile(null)
+        // Handle token refresh failure — only clear if no fresh sign-in
+        // arrived in the meantime
+        if (event === 'TOKEN_REFRESHED' && !newSession) {
+          await applySession(null, version)
+          return
         }
 
-        setIsLoading(false)
+        await applySession(newSession, version)
       }
     )
+
+    // Listen for cross-tab logout (localStorage cleared by another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.startsWith('sb-') && e.newValue === null) {
+        const version = ++authVersionRef.current
+        applySession(null, version)
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
 
     return () => {
       mounted = false
       clearTimeout(timeoutId)
       subscription.unsubscribe()
+      window.removeEventListener('storage', handleStorageChange)
     }
   }, [])
 
@@ -250,15 +255,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null }
   }
 
-  // Sign out — clear auth data directly to avoid hanging Supabase client
+  // Sign out — call Supabase signOut (invalidates server session + notifies other tabs)
+  // with a timeout fallback in case the Supabase client hangs
   const signOut = async () => {
-    // Clear Supabase auth tokens from localStorage directly
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('sb-')) localStorage.removeItem(key)
-    })
+    // Clear local state immediately so UI updates
     setUser(null)
     setProfile(null)
     setSession(null)
+
+    try {
+      // Give Supabase 3 seconds to sign out properly (invalidates refresh token server-side)
+      await withTimeout(supabase.auth.signOut(), 3000)
+    } catch {
+      // Fallback: manually clear localStorage if signOut hangs or fails
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-')) localStorage.removeItem(key)
+      })
+    }
+
     window.location.href = '/'
   }
 
