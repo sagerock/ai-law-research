@@ -27,7 +27,6 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [usageLoaded, setUsageLoaded] = useState(false)
 
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
@@ -45,9 +44,12 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
     }
   }, [expanded, user, session?.access_token])
 
-  // Auto-scroll on new messages
+  // Auto-scroll chat container (not the page) on new messages
+  const chatContainerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+    }
   }, [messages, streamingText])
 
   const fetchUsage = async () => {
@@ -217,7 +219,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
               )}
 
               {/* Messages */}
-              <div className="max-h-[500px] overflow-y-auto space-y-3 mb-3">
+              <div ref={chatContainerRef} className="max-h-[500px] overflow-y-auto space-y-3 mb-3">
                 {messages.length === 0 && !streaming && (
                   <p className="text-sm text-neutral-500 italic">
                     Ask a question about <strong>{caseTitle}</strong> — e.g. &quot;What was the dissent&apos;s argument?&quot; or &quot;How does this relate to Marbury v. Madison?&quot;
@@ -261,7 +263,6 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                   </div>
                 )}
 
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Input */}
