@@ -672,19 +672,19 @@ async def get_legal_text_cases(doc_id: str, slug: str, limit: int = 20):
     patterns = _build_ilike_patterns(doc_id, slug)
 
     if doc_id == "constitution":
-        where_parts = [f"s.content ILIKE ${i+1}" for i in range(len(patterns))]
+        where_parts = [f"s.summary ILIKE ${i+1}" for i in range(len(patterns))]
         where_clause = " OR ".join(where_parts)
     elif doc_id == "federal_statutes" and len(patterns) > 1:
-        where_parts = [f"s.content ILIKE ${i+1}" for i in range(len(patterns))]
+        where_parts = [f"s.summary ILIKE ${i+1}" for i in range(len(patterns))]
         where_clause = " AND ".join(where_parts)
     else:
-        where_clause = "s.content ILIKE $1"
+        where_clause = "s.summary ILIKE $1"
 
     query = f"""
         SELECT c.id, c.title, c.decision_date,
                ct.name as court_name,
                COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count,
-               s.content as summary_text
+               s.summary as summary_text
         FROM ai_summaries s
         JOIN cases c ON c.id = s.case_id
         LEFT JOIN courts ct ON ct.id = c.court_id
