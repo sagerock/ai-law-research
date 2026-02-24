@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, MessageCircle, GraduationCap, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
-import { parseLegalCitations } from '@/lib/legalCitations'
+import { parseLegalCitations, extractLegalTextRefs } from '@/lib/legalCitations'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
@@ -823,6 +823,41 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       </div>
                     </div>
                   </div>
+
+                  {/* Referenced Legal Texts */}
+                  {(() => {
+                    const refs = extractLegalTextRefs(caseSummary.summary)
+                    if (refs.length === 0) return null
+                    const rules = refs.filter(r => r.type === 'rule')
+                    const statutes = refs.filter(r => r.type === 'statute')
+                    const constitution = refs.filter(r => r.type === 'constitution')
+                    const groups = [
+                      { label: 'Rules', items: rules },
+                      { label: 'Statutes', items: statutes },
+                      { label: 'Constitution', items: constitution },
+                    ].filter(g => g.items.length > 0)
+                    return (
+                      <div className="mt-4 pt-4 border-t border-neutral-200">
+                        <h4 className="text-sm font-semibold text-neutral-700 mb-3">Referenced Legal Texts</h4>
+                        <div className="space-y-2">
+                          {groups.map(group => (
+                            <div key={group.label} className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-medium text-neutral-500 w-20 shrink-0">{group.label}</span>
+                              {group.items.map(ref => (
+                                <Link
+                                  key={ref.href}
+                                  href={ref.href}
+                                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                                >
+                                  {ref.label}
+                                </Link>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               ) : (
                 <div className="text-center py-8">
