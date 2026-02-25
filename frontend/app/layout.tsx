@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
+import { Instrument_Serif, DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff2",
-  variable: "--font-geist-sans",
-  weight: "100 900",
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
 });
 
 const geistMono = localFont({
@@ -18,8 +27,8 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Law Study Group | Free Case Briefs for Law Students",
-    template: "%s | Law Study Group | Free Case Briefs for Law Students",
+    default: "Sage's Study Group | Free AI Case Briefs for Law Students",
+    template: "%s | Sage's Study Group",
   },
   description: "Free case briefs for law students. Skip the $276/year Quimbee subscription.",
 };
@@ -46,7 +55,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${instrumentSerif.variable} ${dmSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           {children}
