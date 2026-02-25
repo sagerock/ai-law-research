@@ -638,7 +638,7 @@ export default function LibraryPage() {
                       </div>
                     </div>
 
-                    {/* Items in Collection */}
+                    {/* Items in Collection — unified list sorted by added_at */}
                     {selectedCollection.cases.length === 0 && (!selectedCollection.legal_texts || selectedCollection.legal_texts.length === 0) ? (
                       <div className="text-center py-12 text-neutral-500">
                         <p>No items in this collection yet</p>
@@ -646,53 +646,66 @@ export default function LibraryPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {/* Cases */}
-                        {selectedCollection.cases.length > 0 && (
-                          <>
-                            {(selectedCollection.legal_texts && selectedCollection.legal_texts.length > 0) && (
-                              <h4 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">Cases</h4>
-                            )}
-                            {selectedCollection.cases.map(c => (
-                              <div
-                                key={c.collection_case_id}
-                                className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition"
-                              >
-                                <Link
-                                  href={`/case/${c.id}`}
-                                  className="flex-1 min-w-0"
+                        {[
+                          ...selectedCollection.cases.map(c => ({
+                            type: 'case' as const,
+                            key: `case-${c.collection_case_id}`,
+                            added_at: c.added_at,
+                            data: c
+                          })),
+                          ...(selectedCollection.legal_texts || []).map(lt => ({
+                            type: 'legal_text' as const,
+                            key: `lt-${lt.collection_lt_id}`,
+                            added_at: lt.added_at,
+                            data: lt
+                          }))
+                        ]
+                          .sort((a, b) => {
+                            if (!a.added_at) return 1
+                            if (!b.added_at) return -1
+                            return new Date(b.added_at).getTime() - new Date(a.added_at).getTime()
+                          })
+                          .map(item => {
+                            if (item.type === 'case') {
+                              const c = item.data as CollectionCase
+                              return (
+                                <div
+                                  key={item.key}
+                                  className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition"
                                 >
-                                  <h4 className="font-medium text-neutral-900 hover:text-blue-600 truncate">
-                                    {c.title}
-                                  </h4>
-                                  <p className="text-sm text-neutral-500">
-                                    {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
-                                  </p>
-                                  {c.notes && (
-                                    <p className="text-sm text-neutral-600 mt-1 italic">{c.notes}</p>
-                                  )}
-                                </Link>
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    removeCaseFromCollection(selectedCollection.id, c.id)
-                                  }}
-                                  className="p-2 text-neutral-400 hover:text-red-500 transition"
-                                  title="Remove from collection"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ))}
-                          </>
-                        )}
-
-                        {/* Legal Texts */}
-                        {selectedCollection.legal_texts && selectedCollection.legal_texts.length > 0 && (
-                          <>
-                            {selectedCollection.cases.length > 0 && (
-                              <h4 className="text-sm font-medium text-neutral-500 uppercase tracking-wide mt-4">Legal Texts</h4>
-                            )}
-                            {selectedCollection.legal_texts.map(lt => {
+                                  <Link
+                                    href={`/case/${c.id}`}
+                                    className="flex-1 min-w-0"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-block text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                                        Case
+                                      </span>
+                                      <h4 className="font-medium text-neutral-900 hover:text-blue-600 truncate">
+                                        {c.title}
+                                      </h4>
+                                    </div>
+                                    <p className="text-sm text-neutral-500 mt-0.5">
+                                      {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
+                                    </p>
+                                    {c.notes && (
+                                      <p className="text-sm text-neutral-600 mt-1 italic">{c.notes}</p>
+                                    )}
+                                  </Link>
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      removeCaseFromCollection(selectedCollection.id, c.id)
+                                    }}
+                                    className="p-2 text-neutral-400 hover:text-red-500 transition"
+                                    title="Remove from collection"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              )
+                            } else {
+                              const lt = item.data as CollectionLegalText
                               const route = lt.document_id === 'frcp' ? '/rules'
                                 : lt.document_id === 'constitution' ? '/constitution'
                                 : '/statutes'
@@ -701,23 +714,25 @@ export default function LibraryPage() {
                                 : 'Statute'
                               return (
                                 <div
-                                  key={lt.collection_lt_id}
+                                  key={item.key}
                                   className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition"
                                 >
                                   <Link
                                     href={`${route}/${lt.slug}`}
                                     className="flex-1 min-w-0"
                                   >
-                                    <h4 className="font-medium text-neutral-900 hover:text-blue-600 truncate">
-                                      {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
-                                      {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
-                                    </h4>
-                                    <p className="text-sm text-neutral-500">
-                                      <span className="inline-block text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-block text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex-shrink-0">
                                         {typeLabel}
                                       </span>
-                                      {lt.citation && <span className="ml-2">{lt.citation}</span>}
-                                    </p>
+                                      <h4 className="font-medium text-neutral-900 hover:text-blue-600 truncate">
+                                        {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
+                                        {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
+                                      </h4>
+                                    </div>
+                                    {lt.citation && (
+                                      <p className="text-sm text-neutral-500 mt-0.5">{lt.citation}</p>
+                                    )}
                                     {lt.notes && (
                                       <p className="text-sm text-neutral-600 mt-1 italic">{lt.notes}</p>
                                     )}
@@ -734,9 +749,9 @@ export default function LibraryPage() {
                                   </button>
                                 </div>
                               )
-                            })}
-                          </>
-                        )}
+                            }
+                          })
+                        }
                       </div>
                     )}
                   </div>

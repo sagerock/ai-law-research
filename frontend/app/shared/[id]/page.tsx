@@ -162,102 +162,111 @@ export default async function SharedCollectionPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Cases List */}
+          {/* All Items — unified list */}
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-neutral-900 mb-4">
-              Cases in this Collection
+              Items in this Collection
             </h2>
 
-            {collection.cases.length === 0 ? (
+            {collection.cases.length === 0 && (!collection.legal_texts || collection.legal_texts.length === 0) ? (
               <div className="text-center py-12 text-neutral-500">
                 <p>This collection is empty</p>
               </div>
             ) : (
-              collection.cases.map(caseItem => (
-                <Link
-                  key={caseItem.id}
-                  href={`/case/${caseItem.id}`}
-                  className="block bg-white rounded-lg border border-neutral-200 p-5 hover:border-blue-300 hover:shadow-md transition"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-neutral-900 text-lg hover:text-blue-600 transition">
-                        {caseItem.title}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-neutral-500">
-                        {caseItem.court_name && (
-                          <span>{caseItem.court_name}</span>
-                        )}
-                        {caseItem.decision_date && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(caseItem.decision_date).getFullYear()}
-                          </span>
-                        )}
-                        {caseItem.reporter_cite && (
-                          <span className="text-neutral-400">{caseItem.reporter_cite}</span>
-                        )}
+              [...collection.cases.map(c => ({
+                type: 'case' as const,
+                key: `case-${c.id}`,
+                data: c
+              })),
+              ...(collection.legal_texts || []).map(lt => ({
+                type: 'legal_text' as const,
+                key: `lt-${lt.item_id}`,
+                data: lt
+              }))].map(item => {
+                if (item.type === 'case') {
+                  const caseItem = item.data as SharedCase
+                  return (
+                    <Link
+                      key={item.key}
+                      href={`/case/${caseItem.id}`}
+                      className="block bg-white rounded-lg border border-neutral-200 p-5 hover:border-blue-300 hover:shadow-md transition"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">
+                              Case
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-neutral-900 text-lg hover:text-blue-600 transition">
+                            {caseItem.title}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-neutral-500">
+                            {caseItem.court_name && (
+                              <span>{caseItem.court_name}</span>
+                            )}
+                            {caseItem.decision_date && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(caseItem.decision_date).getFullYear()}
+                              </span>
+                            )}
+                            {caseItem.reporter_cite && (
+                              <span className="text-neutral-400">{caseItem.reporter_cite}</span>
+                            )}
+                          </div>
+                          {caseItem.notes && (
+                            <p className="mt-3 text-sm text-neutral-600 italic border-l-2 border-blue-200 pl-3">
+                              {caseItem.notes}
+                            </p>
+                          )}
+                        </div>
+                        <ExternalLink className="h-5 w-5 text-neutral-400 flex-shrink-0 ml-4" />
                       </div>
-                      {caseItem.notes && (
-                        <p className="mt-3 text-sm text-neutral-600 italic border-l-2 border-blue-200 pl-3">
-                          {caseItem.notes}
-                        </p>
-                      )}
-                    </div>
-                    <ExternalLink className="h-5 w-5 text-neutral-400 flex-shrink-0 ml-4" />
-                  </div>
-                </Link>
-              ))
+                    </Link>
+                  )
+                } else {
+                  const lt = item.data as SharedLegalText
+                  const route = lt.document_id === 'frcp' ? '/rules'
+                    : lt.document_id === 'constitution' ? '/constitution'
+                    : '/statutes'
+                  const typeLabel = lt.document_id === 'frcp' ? 'FRCP'
+                    : lt.document_id === 'constitution' ? 'Constitution'
+                    : 'Statute'
+                  return (
+                    <Link
+                      key={item.key}
+                      href={`${route}/${lt.slug}`}
+                      className="block bg-white rounded-lg border border-neutral-200 p-5 hover:border-purple-300 hover:shadow-md transition"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
+                              {typeLabel}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-neutral-900 text-lg hover:text-purple-600 transition">
+                            {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
+                            {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
+                          </h3>
+                          {lt.citation && (
+                            <p className="text-sm text-neutral-400 mt-1">{lt.citation}</p>
+                          )}
+                          {lt.notes && (
+                            <p className="mt-3 text-sm text-neutral-600 italic border-l-2 border-purple-200 pl-3">
+                              {lt.notes}
+                            </p>
+                          )}
+                        </div>
+                        <ExternalLink className="h-5 w-5 text-neutral-400 flex-shrink-0 ml-4" />
+                      </div>
+                    </Link>
+                  )
+                }
+              })
             )}
           </div>
-
-          {/* Legal Texts List */}
-          {collection.legal_texts && collection.legal_texts.length > 0 && (
-            <div className="space-y-4 mt-8">
-              <h2 className="text-xl font-semibold text-neutral-900 mb-4">
-                Legal Texts in this Collection
-              </h2>
-
-              {collection.legal_texts.map(lt => {
-                const route = lt.document_id === 'frcp' ? '/rules'
-                  : lt.document_id === 'constitution' ? '/constitution'
-                  : '/statutes'
-                const typeLabel = lt.document_id === 'frcp' ? 'FRCP'
-                  : lt.document_id === 'constitution' ? 'Constitution'
-                  : 'Statute'
-                return (
-                  <Link
-                    key={`lt-${lt.item_id}`}
-                    href={`${route}/${lt.slug}`}
-                    className="block bg-white rounded-lg border border-neutral-200 p-5 hover:border-purple-300 hover:shadow-md transition"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
-                            {typeLabel}
-                          </span>
-                        </div>
-                        <h3 className="font-semibold text-neutral-900 text-lg hover:text-purple-600 transition">
-                          {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
-                          {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
-                        </h3>
-                        {lt.citation && (
-                          <p className="text-sm text-neutral-400 mt-1">{lt.citation}</p>
-                        )}
-                        {lt.notes && (
-                          <p className="mt-3 text-sm text-neutral-600 italic border-l-2 border-purple-200 pl-3">
-                            {lt.notes}
-                          </p>
-                        )}
-                      </div>
-                      <ExternalLink className="h-5 w-5 text-neutral-400 flex-shrink-0 ml-4" />
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
 
           {/* Footer CTA */}
           <div className="mt-12 text-center">
