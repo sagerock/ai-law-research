@@ -96,6 +96,11 @@ class AddCaseToCollection(BaseModel):
     notes: Optional[str] = None
 
 
+class AddLegalTextToCollection(BaseModel):
+    legal_text_item_id: int
+    notes: Optional[str] = None
+
+
 class BookmarkCreate(BaseModel):
     case_id: str
     folder: Optional[str] = None
@@ -1694,9 +1699,11 @@ async def list_collections(user: dict = Depends(require_auth)):
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT c.id, c.name, c.description, c.subject, c.is_public, c.created_at,
-                   COUNT(cc.id) as case_count
+                   COUNT(DISTINCT cc.id) as case_count,
+                   COUNT(DISTINCT clt.id) as legal_text_count
             FROM collections c
             LEFT JOIN collection_cases cc ON c.id = cc.collection_id
+            LEFT JOIN collection_legal_texts clt ON c.id = clt.collection_id
             WHERE c.user_id = $1
             GROUP BY c.id
             ORDER BY c.created_at DESC
@@ -1711,6 +1718,8 @@ async def list_collections(user: dict = Depends(require_auth)):
                 "subject": row["subject"],
                 "is_public": row["is_public"],
                 "case_count": row["case_count"],
+                "legal_text_count": row["legal_text_count"],
+                "item_count": row["case_count"] + row["legal_text_count"],
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None
             }
             for row in rows
@@ -1770,6 +1779,16 @@ async def get_collection(collection_id: str, user: dict = Depends(require_auth))
             ORDER BY cc.added_at DESC
         """, coll_id)
 
+        # Get legal texts in collection
+        legal_texts = await conn.fetch("""
+            SELECT clt.id as collection_lt_id, clt.notes, clt.added_at,
+                   i.id as item_id, i.document_id, i.slug, i.title, i.citation, i.number
+            FROM collection_legal_texts clt
+            JOIN legal_text_items i ON clt.legal_text_item_id = i.id
+            WHERE clt.collection_id = $1
+            ORDER BY clt.added_at DESC
+        """, coll_id)
+
     return {
         "id": str(collection["id"]),
         "name": collection["name"],
@@ -1789,6 +1808,20 @@ async def get_collection(collection_id: str, user: dict = Depends(require_auth))
                 "added_at": c["added_at"].isoformat() if c["added_at"] else None
             }
             for c in cases
+        ],
+        "legal_texts": [
+            {
+                "collection_lt_id": str(lt["collection_lt_id"]),
+                "item_id": lt["item_id"],
+                "document_id": lt["document_id"],
+                "slug": lt["slug"],
+                "title": lt["title"],
+                "citation": lt["citation"],
+                "number": lt["number"],
+                "notes": lt["notes"],
+                "added_at": lt["added_at"].isoformat() if lt["added_at"] else None
+            }
+            for lt in legal_texts
         ]
     }
 
@@ -1941,6 +1974,73 @@ async def remove_case_from_collection(collection_id: str, case_id: str, user: di
     return {"status": "removed"}
 
 
+@app.post("/api/v1/library/collections/{collection_id}/legal-texts")
+async def add_legal_text_to_collection(collection_id: str, data: AddLegalTextToCollection, user: dict = Depends(require_auth)):
+    """Add a legal text to a collection"""
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
+    async with db_pool.acquire() as conn:
+        # Verify collection ownership
+        collection = await conn.fetchrow("""
+            SELECT id FROM collections WHERE id = $1 AND user_id = $2
+        """, coll_id, user["id"])
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        # Verify legal text item exists
+        item = await conn.fetchrow("SELECT id FROM legal_text_items WHERE id = $1", data.legal_text_item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Legal text item not found")
+
+        # Add to collection (upsert)
+        try:
+            row = await conn.fetchrow("""
+                INSERT INTO collection_legal_texts (collection_id, legal_text_item_id, notes)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (collection_id, legal_text_item_id) DO UPDATE SET notes = $3
+                RETURNING id, added_at
+            """, coll_id, data.legal_text_item_id, data.notes)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "collection_lt_id": str(row["id"]),
+        "added_at": row["added_at"].isoformat() if row["added_at"] else None
+    }
+
+
+@app.delete("/api/v1/library/collections/{collection_id}/legal-texts/{item_id}")
+async def remove_legal_text_from_collection(collection_id: str, item_id: int, user: dict = Depends(require_auth)):
+    """Remove a legal text from a collection"""
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
+    async with db_pool.acquire() as conn:
+        # Verify collection ownership
+        collection = await conn.fetchrow("""
+            SELECT id FROM collections WHERE id = $1 AND user_id = $2
+        """, coll_id, user["id"])
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        result = await conn.execute("""
+            DELETE FROM collection_legal_texts
+            WHERE collection_id = $1 AND legal_text_item_id = $2
+        """, coll_id, item_id)
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Legal text not in collection")
+
+    return {"status": "removed"}
+
+
 # ============================================================================
 # Bookmarks Endpoints
 # ============================================================================
@@ -2069,6 +2169,16 @@ async def get_shared_collection(collection_id: str):
             ORDER BY cc.added_at DESC
         """, coll_id)
 
+        # Get legal texts in collection
+        legal_texts = await conn.fetch("""
+            SELECT clt.notes,
+                   i.id as item_id, i.document_id, i.slug, i.title, i.citation, i.number
+            FROM collection_legal_texts clt
+            JOIN legal_text_items i ON clt.legal_text_item_id = i.id
+            WHERE clt.collection_id = $1
+            ORDER BY clt.added_at DESC
+        """, coll_id)
+
     return {
         "id": str(collection["id"]),
         "name": collection["name"],
@@ -2087,7 +2197,21 @@ async def get_shared_collection(collection_id: str):
             }
             for c in cases
         ],
-        "case_count": len(cases)
+        "legal_texts": [
+            {
+                "item_id": lt["item_id"],
+                "document_id": lt["document_id"],
+                "slug": lt["slug"],
+                "title": lt["title"],
+                "citation": lt["citation"],
+                "number": lt["number"],
+                "notes": lt["notes"]
+            }
+            for lt in legal_texts
+        ],
+        "case_count": len(cases),
+        "legal_text_count": len(legal_texts),
+        "item_count": len(cases) + len(legal_texts)
     }
 
 

@@ -14,7 +14,10 @@ interface SharedCollection {
   owner_name: string
   created_at: string | null
   cases: SharedCase[]
+  legal_texts: SharedLegalText[]
   case_count: number
+  legal_text_count: number
+  item_count: number
 }
 
 interface SharedCase {
@@ -23,6 +26,16 @@ interface SharedCase {
   decision_date: string | null
   reporter_cite: string | null
   court_name: string | null
+  notes: string | null
+}
+
+interface SharedLegalText {
+  item_id: number
+  document_id: string
+  slug: string
+  title: string
+  citation: string | null
+  number: string | null
   notes: string | null
 }
 
@@ -53,8 +66,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 
+  const totalItems = (collection.item_count ?? collection.case_count) || 0
   const description = collection.description
-    || `A collection of ${collection.case_count} cases${collection.subject ? ` about ${collection.subject}` : ''} by ${collection.owner_name}`
+    || `A collection of ${totalItems} items${collection.subject ? ` about ${collection.subject}` : ''} by ${collection.owner_name}`
 
   return {
     title: collection.name,
@@ -141,7 +155,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                     </span>
                   )}
                   <span>
-                    {collection.case_count} {collection.case_count === 1 ? 'case' : 'cases'}
+                    {(collection.item_count ?? collection.case_count)} {(collection.item_count ?? collection.case_count) === 1 ? 'item' : 'items'}
                   </span>
                 </div>
               </div>
@@ -196,6 +210,54 @@ export default async function SharedCollectionPage({ params }: PageProps) {
               ))
             )}
           </div>
+
+          {/* Legal Texts List */}
+          {collection.legal_texts && collection.legal_texts.length > 0 && (
+            <div className="space-y-4 mt-8">
+              <h2 className="text-xl font-semibold text-neutral-900 mb-4">
+                Legal Texts in this Collection
+              </h2>
+
+              {collection.legal_texts.map(lt => {
+                const route = lt.document_id === 'frcp' ? '/rules'
+                  : lt.document_id === 'constitution' ? '/constitution'
+                  : '/statutes'
+                const typeLabel = lt.document_id === 'frcp' ? 'FRCP'
+                  : lt.document_id === 'constitution' ? 'Constitution'
+                  : 'Statute'
+                return (
+                  <Link
+                    key={`lt-${lt.item_id}`}
+                    href={`${route}/${lt.slug}`}
+                    className="block bg-white rounded-lg border border-neutral-200 p-5 hover:border-purple-300 hover:shadow-md transition"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
+                            {typeLabel}
+                          </span>
+                        </div>
+                        <h3 className="font-semibold text-neutral-900 text-lg hover:text-purple-600 transition">
+                          {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
+                          {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
+                        </h3>
+                        {lt.citation && (
+                          <p className="text-sm text-neutral-400 mt-1">{lt.citation}</p>
+                        )}
+                        {lt.notes && (
+                          <p className="mt-3 text-sm text-neutral-600 italic border-l-2 border-purple-200 pl-3">
+                            {lt.notes}
+                          </p>
+                        )}
+                      </div>
+                      <ExternalLink className="h-5 w-5 text-neutral-400 flex-shrink-0 ml-4" />
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
 
           {/* Footer CTA */}
           <div className="mt-12 text-center">

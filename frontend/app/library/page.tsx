@@ -30,11 +30,14 @@ interface Collection {
   subject: string | null
   is_public: boolean
   case_count: number
+  legal_text_count: number
+  item_count: number
   created_at: string | null
 }
 
 interface CollectionDetail extends Collection {
   cases: CollectionCase[]
+  legal_texts: CollectionLegalText[]
 }
 
 interface CollectionCase {
@@ -44,6 +47,18 @@ interface CollectionCase {
   decision_date: string | null
   reporter_cite: string | null
   court_name: string | null
+  notes: string | null
+  added_at: string | null
+}
+
+interface CollectionLegalText {
+  collection_lt_id: string
+  item_id: number
+  document_id: string
+  slug: string
+  title: string
+  citation: string | null
+  number: string | null
   notes: string | null
   added_at: string | null
 }
@@ -227,11 +242,40 @@ export default function LibraryPage() {
         })
         // Update count in list
         setCollections(prev => prev.map(c =>
-          c.id === collectionId ? { ...c, case_count: c.case_count - 1 } : c
+          c.id === collectionId
+            ? { ...c, case_count: c.case_count - 1, item_count: c.item_count - 1 }
+            : c
         ))
       }
     } catch (err) {
       console.error('Failed to remove case:', err)
+    }
+  }
+
+  // Remove legal text from collection
+  const removeLegalTextFromCollection = async (collectionId: string, itemId: number) => {
+    if (!session?.access_token) return
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/library/collections/${collectionId}/legal-texts/${itemId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+
+      if (response.ok && selectedCollection) {
+        setSelectedCollection({
+          ...selectedCollection,
+          legal_texts: selectedCollection.legal_texts.filter(lt => lt.item_id !== itemId)
+        })
+        // Update count in list
+        setCollections(prev => prev.map(c =>
+          c.id === collectionId
+            ? { ...c, legal_text_count: c.legal_text_count - 1, item_count: c.item_count - 1 }
+            : c
+        ))
+      }
+    } catch (err) {
+      console.error('Failed to remove legal text:', err)
     }
   }
 
@@ -518,7 +562,7 @@ export default function LibraryPage() {
                                 </span>
                               )}
                               <span className="text-xs text-neutral-500">
-                                {collection.case_count} {collection.case_count === 1 ? 'case' : 'cases'}
+                                {collection.item_count} {collection.item_count === 1 ? 'item' : 'items'}
                               </span>
                               {collection.is_public && (
                                 <span className="text-xs text-green-600 flex items-center gap-1">
@@ -594,45 +638,105 @@ export default function LibraryPage() {
                       </div>
                     </div>
 
-                    {/* Cases in Collection */}
-                    {selectedCollection.cases.length === 0 ? (
+                    {/* Items in Collection */}
+                    {selectedCollection.cases.length === 0 && (!selectedCollection.legal_texts || selectedCollection.legal_texts.length === 0) ? (
                       <div className="text-center py-12 text-neutral-500">
-                        <p>No cases in this collection yet</p>
-                        <p className="text-sm mt-1">Search for cases and add them to this collection</p>
+                        <p>No items in this collection yet</p>
+                        <p className="text-sm mt-1">Search for cases or visit legal texts to add them</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {selectedCollection.cases.map(c => (
-                          <div
-                            key={c.collection_case_id}
-                            className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition"
-                          >
-                            <Link
-                              href={`/case/${c.id}`}
-                              className="flex-1 min-w-0"
-                            >
-                              <h4 className="font-medium text-neutral-900 hover:text-blue-600 truncate">
-                                {c.title}
-                              </h4>
-                              <p className="text-sm text-neutral-500">
-                                {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
-                              </p>
-                              {c.notes && (
-                                <p className="text-sm text-neutral-600 mt-1 italic">{c.notes}</p>
-                              )}
-                            </Link>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault()
-                                removeCaseFromCollection(selectedCollection.id, c.id)
-                              }}
-                              className="p-2 text-neutral-400 hover:text-red-500 transition"
-                              title="Remove from collection"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
+                        {/* Cases */}
+                        {selectedCollection.cases.length > 0 && (
+                          <>
+                            {(selectedCollection.legal_texts && selectedCollection.legal_texts.length > 0) && (
+                              <h4 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">Cases</h4>
+                            )}
+                            {selectedCollection.cases.map(c => (
+                              <div
+                                key={c.collection_case_id}
+                                className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition"
+                              >
+                                <Link
+                                  href={`/case/${c.id}`}
+                                  className="flex-1 min-w-0"
+                                >
+                                  <h4 className="font-medium text-neutral-900 hover:text-blue-600 truncate">
+                                    {c.title}
+                                  </h4>
+                                  <p className="text-sm text-neutral-500">
+                                    {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
+                                  </p>
+                                  {c.notes && (
+                                    <p className="text-sm text-neutral-600 mt-1 italic">{c.notes}</p>
+                                  )}
+                                </Link>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    removeCaseFromCollection(selectedCollection.id, c.id)
+                                  }}
+                                  className="p-2 text-neutral-400 hover:text-red-500 transition"
+                                  title="Remove from collection"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </>
+                        )}
+
+                        {/* Legal Texts */}
+                        {selectedCollection.legal_texts && selectedCollection.legal_texts.length > 0 && (
+                          <>
+                            {selectedCollection.cases.length > 0 && (
+                              <h4 className="text-sm font-medium text-neutral-500 uppercase tracking-wide mt-4">Legal Texts</h4>
+                            )}
+                            {selectedCollection.legal_texts.map(lt => {
+                              const route = lt.document_id === 'frcp' ? '/rules'
+                                : lt.document_id === 'constitution' ? '/constitution'
+                                : '/statutes'
+                              const typeLabel = lt.document_id === 'frcp' ? 'FRCP'
+                                : lt.document_id === 'constitution' ? 'Constitution'
+                                : 'Statute'
+                              return (
+                                <div
+                                  key={lt.collection_lt_id}
+                                  className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition"
+                                >
+                                  <Link
+                                    href={`${route}/${lt.slug}`}
+                                    className="flex-1 min-w-0"
+                                  >
+                                    <h4 className="font-medium text-neutral-900 hover:text-blue-600 truncate">
+                                      {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
+                                      {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
+                                    </h4>
+                                    <p className="text-sm text-neutral-500">
+                                      <span className="inline-block text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                                        {typeLabel}
+                                      </span>
+                                      {lt.citation && <span className="ml-2">{lt.citation}</span>}
+                                    </p>
+                                    {lt.notes && (
+                                      <p className="text-sm text-neutral-600 mt-1 italic">{lt.notes}</p>
+                                    )}
+                                  </Link>
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      removeLegalTextFromCollection(selectedCollection.id, lt.item_id)
+                                    }}
+                                    className="p-2 text-neutral-400 hover:text-red-500 transition"
+                                    title="Remove from collection"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

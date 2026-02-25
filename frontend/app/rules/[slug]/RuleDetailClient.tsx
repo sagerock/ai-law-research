@@ -6,8 +6,10 @@ import { useState } from 'react'
 import SubsectionTree from '@/components/SubsectionTree'
 import RelatedCases from '@/components/RelatedCases'
 import { UserMenu } from '@/components/auth/UserMenu'
+import AddToCollectionDropdown from '@/components/AddToCollectionDropdown'
 
 interface RuleData {
+  id: number
   slug: string
   title: string
   number: string | null
@@ -62,18 +64,21 @@ export default function RuleDetailClient({ data }: { data: RuleData }) {
           <div className="bg-white rounded-xl border border-neutral-200 p-6 sm:p-8">
             <div className="flex items-start justify-between gap-4 mb-6">
               <h2 className="text-2xl font-bold text-neutral-900">{displayTitle}</h2>
-              <button
-                onClick={handleCopyAll}
-                className="flex-shrink-0 flex items-center gap-1.5 text-sm text-neutral-500
-                           hover:text-neutral-700 transition-colors"
-                title="Copy full text"
-              >
-                {copied ? (
-                  <><Check className="h-4 w-4 text-green-500" /> Copied</>
-                ) : (
-                  <><Copy className="h-4 w-4" /> Copy</>
-                )}
-              </button>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button
+                  onClick={handleCopyAll}
+                  className="flex items-center gap-1.5 text-sm text-neutral-500
+                             hover:text-neutral-700 transition-colors"
+                  title="Copy full text"
+                >
+                  {copied ? (
+                    <><Check className="h-4 w-4 text-green-500" /> Copied</>
+                  ) : (
+                    <><Copy className="h-4 w-4" /> Copy</>
+                  )}
+                </button>
+                <AddToCollectionDropdown itemType="legal_text" itemId={String(data.id)} />
+              </div>
             </div>
 
             {/* Main text */}
