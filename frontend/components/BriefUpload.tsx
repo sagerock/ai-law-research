@@ -106,17 +106,17 @@ export default function BriefUpload() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-neutral-900 mb-2">Brief Check</h2>
-        <p className="text-neutral-600">
+        <h2 className="text-2xl font-bold text-stone-900 mb-2">Brief Check</h2>
+        <p className="text-stone-600">
           Upload your legal brief to extract citations, validate authorities, and get AI-powered suggestions.
         </p>
       </div>
 
       {/* Upload Area */}
       {!result && (
-        <div className="bg-white rounded-lg border-2 border-dashed border-neutral-300 p-8">
+        <div className="bg-white rounded-lg border-2 border-dashed border-stone-200 p-8">
           <div
-            className={`relative ${dragActive ? 'bg-blue-50' : ''}`}
+            className={`relative ${dragActive ? 'bg-sage-50' : ''}`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -134,21 +134,21 @@ export default function BriefUpload() {
               htmlFor="file-upload"
               className="flex flex-col items-center cursor-pointer"
             >
-              <Upload className="h-12 w-12 text-neutral-400 mb-4" />
-              <p className="text-lg font-medium text-neutral-700">
+              <Upload className="h-12 w-12 text-stone-400 mb-4" />
+              <p className="text-lg font-medium text-stone-700">
                 Drop your brief here or click to browse
               </p>
-              <p className="text-sm text-neutral-500 mt-2">
+              <p className="text-sm text-stone-500 mt-2">
                 Supports PDF, DOCX, and TXT files
               </p>
             </label>
           </div>
 
           {file && (
-            <div className="mt-6 flex items-center justify-between bg-neutral-50 p-4 rounded-lg">
+            <div className="mt-6 flex items-center justify-between bg-stone-50 p-4 rounded-lg">
               <div className="flex items-center">
-                <FileText className="h-5 w-5 text-neutral-600 mr-3" />
-                <span className="text-neutral-700">{file.name}</span>
+                <FileText className="h-5 w-5 text-stone-600 mr-3" />
+                <span className="text-stone-700">{file.name}</span>
               </div>
               <button
                 onClick={() => setFile(null)}
@@ -160,24 +160,24 @@ export default function BriefUpload() {
           )}
 
           {/* AI Toggle */}
-          <div className="mt-6 flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+          <div className="mt-6 flex items-center justify-between p-4 bg-sage-50 rounded-lg">
             <div className="flex items-center">
               <input
                 type="checkbox"
                 id="use-ai"
                 checked={useAI}
                 onChange={(e) => setUseAI(e.target.checked)}
-                className="mr-3 h-4 w-4 text-blue-600 rounded"
+                className="mr-3 h-4 w-4 text-sage-600 rounded"
               />
               <label htmlFor="use-ai" className="flex items-center">
-                <span className="text-neutral-700 font-medium">Enable AI Analysis</span>
-                <span className="ml-2 text-sm text-neutral-600">
+                <span className="text-stone-700 font-medium">Enable AI Analysis</span>
+                <span className="ml-2 text-sm text-stone-600">
                   (~$0.002 per brief with GPT-5-mini)
                 </span>
                 <DollarSign className="h-3 w-3 text-green-600 ml-1" />
               </label>
             </div>
-            <div className="text-xs text-neutral-500">
+            <div className="text-xs text-stone-500">
               Adds case suggestions & summary
             </div>
           </div>
@@ -193,7 +193,7 @@ export default function BriefUpload() {
             <button
               onClick={analyzeBrief}
               disabled={isAnalyzing}
-              className="mt-6 w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-neutral-400 flex items-center justify-center"
+              className="mt-6 w-full bg-sage-700 text-white py-3 px-6 rounded-lg hover:bg-sage-600 disabled:bg-neutral-400 flex items-center justify-center"
             >
               {isAnalyzing ? (
                 <>
@@ -216,27 +216,27 @@ export default function BriefUpload() {
         <div className="space-y-6">
           {/* Summary Stats */}
           <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Analysis Summary</h3>
+            <h3 className="text-lg font-semibold text-stone-900 mb-4">Analysis Summary</h3>
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{result.total_citations}</div>
-                <div className="text-sm text-neutral-600">Citations Found</div>
+                <div className="text-2xl font-bold text-sage-600">{result.total_citations}</div>
+                <div className="text-sm text-stone-600">Citations Found</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">{result.validated_citations.length}</div>
-                <div className="text-sm text-neutral-600">Valid Citations</div>
+                <div className="text-sm text-stone-600">Valid Citations</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-600">{result.problematic_citations.length}</div>
-                <div className="text-sm text-neutral-600">Issues Found</div>
+                <div className="text-sm text-stone-600">Issues Found</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{result.missing_authorities.length}</div>
-                <div className="text-sm text-neutral-600">Missing Cases</div>
+                <div className="text-2xl font-bold text-sage-600">{result.missing_authorities.length}</div>
+                <div className="text-sm text-stone-600">Missing Cases</div>
               </div>
             </div>
             {result.analysis_cost > 0 && (
-              <div className="mt-4 text-sm text-neutral-600 text-center">
+              <div className="mt-4 text-sm text-stone-600 text-center">
                 Analysis cost: ${result.analysis_cost.toFixed(4)}
               </div>
             )}
@@ -245,7 +245,7 @@ export default function BriefUpload() {
           {/* Validated Citations */}
           {result.validated_citations.length > 0 && (
             <div className="bg-green-50 rounded-lg border border-green-200 p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center">
+              <h3 className="text-lg font-semibold text-stone-900 mb-4 flex items-center">
                 <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
                 Valid Citations Found in Database
               </h3>
@@ -255,12 +255,12 @@ export default function BriefUpload() {
                     <div className="flex items-start">
                       <CheckCircle className="h-4 w-4 text-green-600 mt-1 mr-3 flex-shrink-0" />
                       <div>
-                        <div className="font-medium text-neutral-700">
+                        <div className="font-medium text-stone-700">
                           {cite.citation.text || cite.citation.case_name ||
                            `${cite.citation.volume} ${cite.citation.reporter} ${cite.citation.page}`}
                         </div>
                         {cite.found_case && (
-                          <div className="text-sm text-neutral-600 mt-1">
+                          <div className="text-sm text-stone-600 mt-1">
                             Database: {cite.found_case.case_name}
                             {cite.found_case.date_filed && (
                               <span className="ml-2">
@@ -282,17 +282,17 @@ export default function BriefUpload() {
 
           {/* AI Summary */}
           {result.ai_summary && (
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
-              <h3 className="text-xl font-bold text-neutral-900 mb-4 flex items-center">
+            <div className="bg-gradient-to-r from-sage-50 to-stone-50 rounded-lg border border-sage-200 p-6">
+              <h3 className="text-xl font-bold text-stone-900 mb-4 flex items-center">
                 <span className="mr-2">🤖</span> AI Case Analysis
               </h3>
-              <div className="prose prose-sm max-w-none text-neutral-700">
+              <div className="prose prose-sm max-w-none text-stone-700">
                 {result.ai_summary.split('\n').map((line, idx) => {
                   // Style headers differently
                   if (line.includes('📋') || line.includes('⚖️') || line.includes('📚') ||
                       line.includes('💡') || line.includes('🎯')) {
                     return (
-                      <h4 key={idx} className="font-bold text-neutral-800 mt-4 mb-2">
+                      <h4 key={idx} className="font-bold text-stone-800 mt-4 mb-2">
                         {line}
                       </h4>
                     )
@@ -300,7 +300,7 @@ export default function BriefUpload() {
                   // Style bullet points
                   else if (line.trim().startsWith('-')) {
                     return (
-                      <p key={idx} className="ml-4 text-neutral-700 mb-1">
+                      <p key={idx} className="ml-4 text-stone-700 mb-1">
                         {line}
                       </p>
                     )
@@ -308,7 +308,7 @@ export default function BriefUpload() {
                   // Regular paragraphs
                   else if (line.trim()) {
                     return (
-                      <p key={idx} className="text-neutral-700 mb-2">
+                      <p key={idx} className="text-stone-700 mb-2">
                         {line}
                       </p>
                     )
@@ -316,11 +316,11 @@ export default function BriefUpload() {
                   return null
                 })}
               </div>
-              <div className="mt-4 pt-4 border-t border-blue-100 flex justify-between items-center">
-                <span className="text-xs text-neutral-600">
+              <div className="mt-4 pt-4 border-t border-sage-100 flex justify-between items-center">
+                <span className="text-xs text-stone-600">
                   Powered by GPT-5-mini
                 </span>
-                <span className="text-xs text-neutral-600">
+                <span className="text-xs text-stone-600">
                   Analysis cost: ${result.analysis_cost.toFixed(4)}
                 </span>
               </div>
@@ -330,12 +330,12 @@ export default function BriefUpload() {
           {/* Key Arguments */}
           {result.key_arguments.length > 0 && (
             <div className="bg-white rounded-lg border p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4">Key Arguments Identified</h3>
+              <h3 className="text-lg font-semibold text-stone-900 mb-4">Key Arguments Identified</h3>
               <ul className="space-y-3">
                 {result.key_arguments.map((arg, idx) => (
                   <li key={idx} className="flex items-start">
-                    <span className="text-blue-600 mr-2">•</span>
-                    <span className="text-neutral-700">{arg}</span>
+                    <span className="text-sage-600 mr-2">•</span>
+                    <span className="text-stone-700">{arg}</span>
                   </li>
                 ))}
               </ul>
@@ -345,7 +345,7 @@ export default function BriefUpload() {
           {/* Problematic Citations */}
           {result.problematic_citations.length > 0 && (
             <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center">
+              <h3 className="text-lg font-semibold text-stone-900 mb-4 flex items-center">
                 <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
                 Citations Needing Attention
               </h3>
@@ -354,7 +354,7 @@ export default function BriefUpload() {
                   <div key={idx} className="flex items-start">
                     {getCitationBadge(cite.status)}
                     <div className="ml-3">
-                      <div className="font-medium text-neutral-700">
+                      <div className="font-medium text-stone-700">
                         {typeof cite.citation.text === 'string' && cite.citation.text.trim()
                           ? cite.citation.text
                           : cite.citation.case_name ||
@@ -362,7 +362,7 @@ export default function BriefUpload() {
                               ? `${cite.citation.volume} ${cite.citation.reporter} ${cite.citation.page}`
                               : 'Unknown Citation')}
                       </div>
-                      <div className="text-sm text-neutral-600">{cite.problem}</div>
+                      <div className="text-sm text-stone-600">{cite.problem}</div>
                     </div>
                   </div>
                 ))}
@@ -372,17 +372,17 @@ export default function BriefUpload() {
 
           {/* Missing Authorities */}
           {result.missing_authorities.length > 0 && (
-            <div className="bg-purple-50 rounded-lg border border-purple-200 p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+            <div className="bg-sage-50 rounded-lg border border-sage-200 p-6">
+              <h3 className="text-lg font-semibold text-stone-900 mb-4">
                 Suggested Foundation Cases
               </h3>
               <div className="space-y-3">
                 {result.missing_authorities.map((auth, idx) => (
                   <div key={idx} className="bg-white p-3 rounded-lg">
-                    <div className="font-medium text-neutral-700">
+                    <div className="font-medium text-stone-700">
                       {auth.case?.case_name || 'Unknown Case'}
                     </div>
-                    <div className="text-sm text-neutral-600 mt-1">
+                    <div className="text-sm text-stone-600 mt-1">
                       {auth.reason} • Importance: {auth.importance}
                     </div>
                   </div>
@@ -393,8 +393,8 @@ export default function BriefUpload() {
 
           {/* AI Suggested Cases */}
           {result.suggested_cases.length > 0 && (
-            <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center">
+            <div className="bg-sage-50 rounded-lg border border-sage-200 p-6">
+              <h3 className="text-lg font-semibold text-stone-900 mb-4 flex items-center">
                 <span className="mr-2">✨</span> AI-Suggested Similar Cases
               </h3>
               <div className="space-y-3">
@@ -402,14 +402,14 @@ export default function BriefUpload() {
                   <div key={idx} className="bg-white p-3 rounded-lg">
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="font-medium text-neutral-700">
+                        <div className="font-medium text-stone-700">
                           {sugg.case?.case_name || 'Unknown Case'}
                         </div>
-                        <div className="text-sm text-neutral-600 mt-1">
+                        <div className="text-sm text-stone-600 mt-1">
                           Matched: "{sugg.argument_matched || ''}"
                         </div>
                       </div>
-                      <div className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                      <div className="text-sm bg-sage-50 text-sage-700 px-2 py-1 rounded">
                         {((sugg.similarity || 0) * 100).toFixed(0)}% match
                       </div>
                     </div>

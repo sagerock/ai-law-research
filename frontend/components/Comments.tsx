@@ -237,7 +237,7 @@ export default function Comments({ caseId }: CommentsProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-stone-400" />
       </div>
     )
   }
@@ -246,8 +246,8 @@ export default function Comments({ caseId }: CommentsProps) {
     <div>
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <MessageSquare className="h-5 w-5 text-neutral-600" />
-        <h3 className="text-lg font-semibold text-neutral-900">
+        <MessageSquare className="h-5 w-5 text-stone-600" />
+        <h3 className="text-lg font-semibold text-stone-900">
           Discussion ({comments.length})
         </h3>
       </div>
@@ -267,14 +267,14 @@ export default function Comments({ caseId }: CommentsProps) {
                     title={!session?.access_token ? 'Sign in to vote' : isOwnComment ? "Can't vote on your own comment" : comment.user_vote === 1 ? 'Remove upvote' : 'Upvote'}
                     className={`p-0.5 rounded transition-colors ${
                       comment.user_vote === 1
-                        ? 'text-blue-600'
-                        : 'text-neutral-300 hover:text-blue-500'
+                        ? 'text-sage-600'
+                        : 'text-stone-300 hover:text-sage-500'
                     } disabled:opacity-40 disabled:cursor-not-allowed`}
                   >
                     <ChevronUp className="h-5 w-5" />
                   </button>
                   <span className={`text-xs font-medium leading-none ${
-                    comment.vote_count > 0 ? 'text-blue-600' : comment.vote_count < 0 ? 'text-red-500' : 'text-neutral-400'
+                    comment.vote_count > 0 ? 'text-sage-600' : comment.vote_count < 0 ? 'text-red-500' : 'text-stone-400'
                   }`}>
                     {comment.vote_count}
                   </span>
@@ -285,7 +285,7 @@ export default function Comments({ caseId }: CommentsProps) {
                     className={`p-0.5 rounded transition-colors ${
                       comment.user_vote === -1
                         ? 'text-red-500'
-                        : 'text-neutral-300 hover:text-red-400'
+                        : 'text-stone-300 hover:text-red-400'
                     } disabled:opacity-40 disabled:cursor-not-allowed`}
                   >
                     <ChevronDown className="h-5 w-5" />
@@ -300,28 +300,28 @@ export default function Comments({ caseId }: CommentsProps) {
                     className="h-10 w-10 rounded-full object-cover flex-shrink-0"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
+                  <div className="h-10 w-10 rounded-full bg-sage-700 text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
                     {getInitials(comment)}
                   </div>
                 )}
 
                 {/* Comment content */}
                 <div className="flex-1 min-w-0">
-                  <div className="bg-neutral-50 rounded-lg px-4 py-3">
+                  <div className="bg-stone-50 rounded-lg px-4 py-3">
                     <div className="flex items-center gap-2 mb-1">
                       {comment.user.profile_username ? (
                         <Link
                           href={`/users/${comment.user.profile_username}`}
-                          className="font-medium text-neutral-900 hover:text-blue-600"
+                          className="font-medium text-stone-900 hover:text-sage-600"
                         >
                           {getDisplayName(comment)}
                         </Link>
                       ) : (
-                        <span className="font-medium text-neutral-900">
+                        <span className="font-medium text-stone-900">
                           {getDisplayName(comment)}
                         </span>
                       )}
-                      <span className="text-xs text-neutral-500">
+                      <span className="text-xs text-stone-500">
                         {getRelativeTime(comment.created_at)}
                         {comment.is_edited && ' (edited)'}
                       </span>
@@ -333,20 +333,20 @@ export default function Comments({ caseId }: CommentsProps) {
                         <textarea
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                          className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 resize-none"
                           rows={3}
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={() => saveEdit(comment.id)}
-                            className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            className="flex items-center gap-1 px-3 py-1 text-sm bg-sage-700 text-white rounded-lg hover:bg-sage-600"
                           >
                             <Check className="h-4 w-4" />
                             Save
                           </button>
                           <button
                             onClick={cancelEditing}
-                            className="flex items-center gap-1 px-3 py-1 text-sm text-neutral-600 hover:text-neutral-900"
+                            className="flex items-center gap-1 px-3 py-1 text-sm text-stone-600 hover:text-stone-900"
                           >
                             <X className="h-4 w-4" />
                             Cancel
@@ -355,7 +355,7 @@ export default function Comments({ caseId }: CommentsProps) {
                       </div>
                     ) : (
                       // Display mode
-                      <p className="text-neutral-700 whitespace-pre-wrap">
+                      <p className="text-stone-700 whitespace-pre-wrap">
                         {comment.content}
                       </p>
                     )}
@@ -366,7 +366,7 @@ export default function Comments({ caseId }: CommentsProps) {
                     <div className="flex items-center gap-3 mt-1 ml-2">
                       <button
                         onClick={() => startEditing(comment)}
-                        className="text-xs text-neutral-500 hover:text-neutral-700 flex items-center gap-1"
+                        className="text-xs text-stone-500 hover:text-stone-700 flex items-center gap-1"
                       >
                         <Edit2 className="h-3 w-3" />
                         Edit
@@ -383,7 +383,7 @@ export default function Comments({ caseId }: CommentsProps) {
                           </button>
                           <button
                             onClick={() => setDeleteConfirmId(null)}
-                            className="text-xs text-neutral-500 hover:text-neutral-700"
+                            className="text-xs text-stone-500 hover:text-stone-700"
                           >
                             No
                           </button>
@@ -391,7 +391,7 @@ export default function Comments({ caseId }: CommentsProps) {
                       ) : (
                         <button
                           onClick={() => setDeleteConfirmId(comment.id)}
-                          className="text-xs text-neutral-500 hover:text-red-600 flex items-center gap-1"
+                          className="text-xs text-stone-500 hover:text-red-600 flex items-center gap-1"
                         >
                           <Trash2 className="h-3 w-3" />
                           Delete
@@ -405,7 +405,7 @@ export default function Comments({ caseId }: CommentsProps) {
           })}
         </div>
       ) : (
-        <p className="text-neutral-500 text-center py-6 mb-6">
+        <p className="text-stone-500 text-center py-6 mb-6">
           No comments yet. Be the first to start the discussion!
         </p>
       )}
@@ -413,7 +413,7 @@ export default function Comments({ caseId }: CommentsProps) {
       {/* Comment input */}
       {user ? (
         <form onSubmit={handleSubmit} className="flex gap-3">
-          <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
+          <div className="h-10 w-10 rounded-full bg-sage-700 text-white flex items-center justify-center text-sm font-medium flex-shrink-0">
             {user.email?.slice(0, 2).toUpperCase() || 'ME'}
           </div>
           <div className="flex-1">
@@ -421,14 +421,14 @@ export default function Comments({ caseId }: CommentsProps) {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Add a comment..."
-              className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full px-4 py-3 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 resize-none"
               rows={2}
             />
             <div className="flex justify-end mt-2">
               <button
                 type="submit"
                 disabled={!newComment.trim() || isSubmitting}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -441,11 +441,11 @@ export default function Comments({ caseId }: CommentsProps) {
           </div>
         </form>
       ) : (
-        <div className="text-center py-4 bg-neutral-50 rounded-lg">
-          <p className="text-neutral-600 mb-2">Sign in to join the discussion</p>
+        <div className="text-center py-4 bg-stone-50 rounded-lg">
+          <p className="text-stone-600 mb-2">Sign in to join the discussion</p>
           <Link
             href="/login"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+            className="inline-flex items-center px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 text-sm font-medium"
           >
             Sign In
           </Link>

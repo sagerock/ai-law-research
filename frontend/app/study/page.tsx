@@ -363,8 +363,8 @@ export default function StudyPage() {
   // Loading state
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
       </div>
     )
   }
@@ -372,22 +372,24 @@ export default function StudyPage() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100 flex flex-col">
+    <div className="min-h-screen bg-cream flex flex-col">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b bg-cream/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center space-x-3">
-              <Scale className="h-8 w-8 text-neutral-700" />
-              <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
-                <p className="text-sm text-neutral-600 hidden sm:block">Free Case Briefs for Law Students</p>
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-sage-600 transition-colors">
+                <Scale className="h-[18px] w-[18px] text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <span className="font-display text-xl text-stone-900 leading-none">Law Study Group</span>
+                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">Free Case Briefs for Law Students</span>
               </div>
             </Link>
             <nav className="flex items-center space-x-4 sm:space-x-6">
               <Link
                 href="/study"
-                className="text-neutral-900 font-medium flex items-center"
+                className="text-stone-900 font-medium flex items-center"
               >
                 <GraduationCap className="h-5 w-5 sm:mr-2" />
                 <span className="hidden sm:inline">Study</span>
@@ -396,7 +398,7 @@ export default function StudyPage() {
                 href="https://discord.gg/AcGcKMmMZX"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                className="text-stone-600 hover:text-stone-900 transition flex items-center"
                 title="Discord"
               >
                 <MessageCircle className="h-5 w-5" />
@@ -412,7 +414,7 @@ export default function StudyPage() {
         {/* Mobile sidebar toggle */}
         <button
           onClick={() => setShowSidebar(!showSidebar)}
-          className="md:hidden fixed bottom-4 left-4 z-40 bg-blue-600 text-white p-3 rounded-full shadow-lg"
+          className="md:hidden fixed bottom-4 left-4 z-40 bg-sage-700 text-white p-3 rounded-full shadow-lg"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -423,7 +425,7 @@ export default function StudyPage() {
           <div className="p-3 border-b">
             <button
               onClick={startNewChat}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-sage-700 hover:bg-sage-600 text-white rounded-lg text-sm font-medium transition"
             >
               <Plus className="h-4 w-4" />
               New Chat
@@ -434,12 +436,12 @@ export default function StudyPage() {
             {/* Notes section */}
             <div className="p-3 border-b">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
                   My Notes
                 </h3>
                 <button
                   onClick={() => setShowUpload(true)}
-                  className="text-blue-600 hover:text-blue-700"
+                  className="text-sage-600 hover:text-sage-700"
                   title="Upload note"
                 >
                   <Plus className="h-4 w-4" />
@@ -447,7 +449,7 @@ export default function StudyPage() {
               </div>
 
               {notes.length === 0 ? (
-                <p className="text-xs text-neutral-400 py-2">No notes yet. Upload one to get started.</p>
+                <p className="text-xs text-stone-400 py-2">No notes yet. Upload one to get started.</p>
               ) : (
                 <div className="space-y-0.5">
                   {noteGroups.map(([group, groupNotes]) => {
@@ -459,10 +461,10 @@ export default function StudyPage() {
                     return (
                       <div key={group}>
                         {/* Group header */}
-                        <div className="flex items-center gap-1.5 py-1.5 px-2 rounded hover:bg-neutral-50 cursor-pointer">
+                        <div className="flex items-center gap-1.5 py-1.5 px-2 rounded hover:bg-stone-50 cursor-pointer">
                           <button
                             onClick={() => toggleGroupCollapsed(group)}
-                            className="text-neutral-400 hover:text-neutral-600"
+                            className="text-stone-400 hover:text-stone-600"
                           >
                             {isCollapsed ? (
                               <ChevronRight className="h-3.5 w-3.5" />
@@ -475,15 +477,15 @@ export default function StudyPage() {
                             checked={allSelected}
                             ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
                             onChange={() => toggleGroupSelection(groupNoteIds)}
-                            className="h-3.5 w-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                            className="h-3.5 w-3.5 rounded border-stone-200 text-sage-600 focus:ring-sage-200"
                           />
                           <span
                             onClick={() => toggleGroupCollapsed(group)}
-                            className="flex-1 text-xs font-semibold text-neutral-600 uppercase tracking-wide truncate"
+                            className="flex-1 text-xs font-semibold text-stone-600 uppercase tracking-wide truncate"
                           >
                             {group}
                           </span>
-                          <span className="text-xs text-neutral-400">{groupNotes.length}</span>
+                          <span className="text-xs text-stone-400">{groupNotes.length}</span>
                         </div>
 
                         {/* Notes in group */}
@@ -492,28 +494,28 @@ export default function StudyPage() {
                             {groupNotes.map(note => (
                               <div
                                 key={note.id}
-                                className="flex items-center gap-2 py-1 px-2 rounded hover:bg-neutral-50 group"
+                                className="flex items-center gap-2 py-1 px-2 rounded hover:bg-stone-50 group"
                               >
                                 <input
                                   type="checkbox"
                                   checked={selectedNoteIds.includes(note.id)}
                                   onChange={() => toggleNoteSelection(note.id)}
-                                  className="h-3.5 w-3.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                                  className="h-3.5 w-3.5 rounded border-stone-200 text-sage-600 focus:ring-sage-200"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-neutral-800 truncate">{note.title}</p>
+                                  <p className="text-sm text-stone-800 truncate">{note.title}</p>
                                   <div className="flex items-center gap-1 flex-wrap">
-                                    <span className="text-xs text-neutral-400">
+                                    <span className="text-xs text-stone-400">
                                       {note.char_count.toLocaleString()} chars
                                     </span>
                                     {(note.tags || []).filter(t => t !== group).map(t => (
-                                      <span key={t} className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0 rounded-full">{t}</span>
+                                      <span key={t} className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0 rounded-full">{t}</span>
                                     ))}
                                   </div>
                                 </div>
                                 <button
                                   onClick={() => deleteNote(note.id)}
-                                  className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 transition"
+                                  className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-500 transition"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -530,11 +532,11 @@ export default function StudyPage() {
 
             {/* Conversations section */}
             <div className="p-3">
-              <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">
                 Conversations
               </h3>
               {conversations.length === 0 ? (
-                <p className="text-xs text-neutral-400 py-2">No conversations yet.</p>
+                <p className="text-xs text-stone-400 py-2">No conversations yet.</p>
               ) : (
                 <div className="space-y-1">
                   {conversations.map(convo => (
@@ -543,14 +545,14 @@ export default function StudyPage() {
                       onClick={() => loadConversation(convo.id)}
                       className={`flex items-center gap-2 py-1.5 px-2 rounded cursor-pointer group ${
                         activeConversation === convo.id
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'hover:bg-neutral-50 text-neutral-700'
+                          ? 'bg-sage-50 text-sage-700'
+                          : 'hover:bg-stone-50 text-stone-700'
                       }`}
                     >
                       <MessageCircle className="h-3.5 w-3.5 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate">{convo.title || 'Untitled'}</p>
-                        <p className="text-xs text-neutral-400">
+                        <p className="text-xs text-stone-400">
                           {convo.message_count || 0} msgs
                         </p>
                       </div>
@@ -559,7 +561,7 @@ export default function StudyPage() {
                           e.stopPropagation()
                           deleteConversation(convo.id)
                         }}
-                        className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 transition"
+                        className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-500 transition"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -572,7 +574,7 @@ export default function StudyPage() {
 
           {/* Usage info at bottom of sidebar */}
           {usage && (
-            <div className="p-3 border-t text-xs text-neutral-500">
+            <div className="p-3 border-t text-xs text-stone-500">
               <div className="flex items-center justify-between">
                 <span className="capitalize">{usage.tier} tier</span>
                 {usage.tier === 'free' && (
@@ -590,16 +592,16 @@ export default function StudyPage() {
             {messages.length === 0 && !streaming && (
               <div className="flex-1 flex items-center justify-center h-full">
                 <div className="text-center py-20">
-                  <GraduationCap className="h-16 w-16 mx-auto mb-4 text-neutral-300" />
-                  <h2 className="text-xl font-semibold text-neutral-700 mb-2">
+                  <GraduationCap className="h-16 w-16 mx-auto mb-4 text-stone-300" />
+                  <h2 className="text-xl font-semibold text-stone-700 mb-2">
                     AI Study Assistant
                   </h2>
-                  <p className="text-neutral-500 max-w-md mx-auto mb-4">
+                  <p className="text-stone-500 max-w-md mx-auto mb-4">
                     Upload your class notes, select them in the sidebar, then ask questions.
                     The AI will reference your notes and our case brief database.
                   </p>
                   {selectedNoteIds.length > 0 && (
-                    <p className="text-sm text-blue-600">
+                    <p className="text-sm text-sage-600">
                       <Check className="h-4 w-4 inline mr-1" />
                       {selectedNoteIds.length} note{selectedNoteIds.length > 1 ? 's' : ''} selected
                     </p>
@@ -616,8 +618,8 @@ export default function StudyPage() {
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-3 ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white border text-neutral-800'
+                      ? 'bg-sage-700 text-white'
+                      : 'bg-white border text-stone-800'
                   }`}
                 >
                   <div className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -634,10 +636,10 @@ export default function StudyPage() {
             {/* Streaming response */}
             {streaming && streamingText && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-white border text-neutral-800">
+                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-white border text-stone-800">
                   <div className="text-sm whitespace-pre-wrap leading-relaxed">
                     <FormattedMessage content={streamingText} />
-                    <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-0.5" />
+                    <span className="inline-block w-2 h-4 bg-sage-500 animate-pulse ml-0.5" />
                   </div>
                 </div>
               </div>
@@ -646,7 +648,7 @@ export default function StudyPage() {
             {streaming && !streamingText && (
               <div className="flex justify-start">
                 <div className="max-w-[80%] rounded-lg px-4 py-3 bg-white border">
-                  <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+                  <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
                 </div>
               </div>
             )}
@@ -683,7 +685,7 @@ export default function StudyPage() {
                 placeholder={rateLimited ? 'Daily limit reached...' : 'Ask about your notes or any legal topic...'}
                 disabled={streaming || rateLimited}
                 rows={1}
-                className="flex-1 resize-none rounded-lg border border-neutral-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-neutral-50 disabled:text-neutral-400"
+                className="flex-1 resize-none rounded-lg border border-stone-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sage-200 focus:border-sage-400 disabled:bg-stone-50 disabled:text-stone-400"
                 style={{ minHeight: '42px', maxHeight: '120px' }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement
@@ -694,13 +696,13 @@ export default function StudyPage() {
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || streaming || rateLimited}
-                className="flex-shrink-0 p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-neutral-300 disabled:cursor-not-allowed transition"
+                className="flex-shrink-0 p-2.5 bg-sage-700 hover:bg-sage-600 text-white rounded-lg disabled:bg-stone-300 disabled:cursor-not-allowed transition"
               >
                 <Send className="h-5 w-5" />
               </button>
             </div>
             {usage && usage.tier === 'free' && !rateLimited && (
-              <p className="text-xs text-neutral-400 text-center mt-2">
+              <p className="text-xs text-stone-400 text-center mt-2">
                 {usage.messages_remaining}/{usage.daily_limit} messages remaining today
               </p>
             )}
@@ -790,8 +792,8 @@ function UploadModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-neutral-900">Upload Study Note</h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600">
+          <h2 className="text-lg font-semibold text-stone-900">Upload Study Note</h2>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -809,10 +811,10 @@ function UploadModal({
           onClick={() => fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition mb-4 ${
             dragOver
-              ? 'border-blue-500 bg-blue-50'
+              ? 'border-sage-500 bg-sage-50'
               : file
               ? 'border-green-300 bg-green-50'
-              : 'border-neutral-300 hover:border-neutral-400'
+              : 'border-stone-200 hover:border-stone-300'
           }`}
         >
           <input
@@ -828,18 +830,18 @@ function UploadModal({
           {file ? (
             <div>
               <Check className="h-8 w-8 mx-auto mb-2 text-green-600" />
-              <p className="text-sm font-medium text-neutral-800">{file.name}</p>
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-sm font-medium text-stone-800">{file.name}</p>
+              <p className="text-xs text-stone-500 mt-1">
                 {(file.size / 1024).toFixed(0)} KB
               </p>
             </div>
           ) : (
             <div>
-              <FileText className="h-8 w-8 mx-auto mb-2 text-neutral-400" />
-              <p className="text-sm text-neutral-600">
+              <FileText className="h-8 w-8 mx-auto mb-2 text-stone-400" />
+              <p className="text-sm text-stone-600">
                 Drag & drop or click to select
               </p>
-              <p className="text-xs text-neutral-400 mt-1">
+              <p className="text-xs text-stone-400 mt-1">
                 PDF, DOCX, or TXT (max 10MB)
               </p>
             </div>
@@ -848,30 +850,30 @@ function UploadModal({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-200"
               placeholder="e.g. Property Law - Week 5 Notes"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Tags (optional)</label>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Tags (optional)</label>
             <div
-              className="w-full border border-neutral-300 rounded-lg px-2 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent min-h-[38px] cursor-text"
+              className="w-full border border-stone-200 rounded-lg px-2 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:ring-2 focus-within:ring-sage-200 focus-within:border-transparent min-h-[38px] cursor-text"
               onClick={() => tagInputRef.current?.focus()}
             >
               {selectedTags.map(tag => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full"
+                  className="inline-flex items-center gap-1 bg-sage-50 text-sage-800 text-xs font-medium px-2 py-0.5 rounded-full"
                 >
                   {tag}
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); removeTag(tag) }}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-sage-600 hover:text-sage-800"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -899,16 +901,16 @@ function UploadModal({
                   placeholder={selectedTags.length === 0 ? 'e.g. Property Law, Torts' : ''}
                 />
                 {showDropdown && tagInput && filteredTags.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
                     {filteredTags.map(tc => (
                       <button
                         key={tc.tag}
                         type="button"
                         onMouseDown={(e) => { e.preventDefault(); addTag(tc.tag) }}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between"
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-sage-50 flex items-center justify-between"
                       >
                         <span>{tc.tag}</span>
-                        <span className="text-xs text-neutral-400">{tc.count} note{tc.count !== 1 ? 's' : ''}</span>
+                        <span className="text-xs text-stone-400">{tc.count} note{tc.count !== 1 ? 's' : ''}</span>
                       </button>
                     ))}
                   </div>
@@ -921,7 +923,7 @@ function UploadModal({
         <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 rounded-lg transition"
+            className="px-4 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-lg transition"
           >
             Cancel
           </button>
@@ -932,7 +934,7 @@ function UploadModal({
               }
             }}
             disabled={!file || !title.trim() || uploading}
-            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-neutral-300 disabled:cursor-not-allowed transition flex items-center gap-2"
+            className="px-4 py-2 text-sm bg-sage-700 hover:bg-sage-600 text-white rounded-lg disabled:bg-stone-300 disabled:cursor-not-allowed transition flex items-center gap-2"
           >
             {uploading ? (
               <>

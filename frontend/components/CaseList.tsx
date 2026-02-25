@@ -13,8 +13,8 @@ export default function CaseList({ cases, isLoading }: CaseListProps) {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-3 text-lg text-neutral-600">Searching cases...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-sage-600" />
+        <span className="ml-3 text-lg text-stone-600">Searching cases...</span>
       </div>
     )
   }
@@ -22,7 +22,7 @@ export default function CaseList({ cases, isLoading }: CaseListProps) {
   if (cases.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-lg text-neutral-600">No cases found. Try a different search.</p>
+        <p className="text-lg text-stone-600">No cases found. Try a different search.</p>
       </div>
     )
   }
@@ -30,14 +30,14 @@ export default function CaseList({ cases, isLoading }: CaseListProps) {
   return (
     <div>
       <div className="mb-6 flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-neutral-900">
+        <h3 className="text-xl font-semibold text-stone-900">
           Found {cases.length} relevant cases
         </h3>
         <div className="flex gap-2">
-          <button className="px-3 py-1 text-sm border rounded-lg hover:bg-neutral-50">
+          <button className="px-3 py-1 text-sm border rounded-lg hover:bg-stone-50">
             Sort by Relevance
           </button>
-          <button className="px-3 py-1 text-sm border rounded-lg hover:bg-neutral-50">
+          <button className="px-3 py-1 text-sm border rounded-lg hover:bg-stone-50">
             Filter
           </button>
         </div>

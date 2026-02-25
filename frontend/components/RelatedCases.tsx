@@ -30,15 +30,15 @@ export default function RelatedCases({ docId, slug }: { docId: string; slug: str
 
   return (
     <div className="mt-8">
-      <h3 className="text-lg font-semibold text-neutral-900 mb-4">Cases Citing This Provision</h3>
+      <h3 className="text-lg font-semibold text-stone-900 mb-4">Cases Citing This Provision</h3>
       <div className="space-y-3">
         {cases.map(c => (
           <Link key={c.id} href={`/case/${c.id}`} className="block">
-            <div className="bg-white p-4 rounded-lg border border-neutral-200 hover:border-blue-300 hover:shadow-md transition">
-              <h4 className="font-semibold text-neutral-900 hover:text-blue-600 transition text-sm">
+            <div className="bg-white p-4 rounded-lg border border-stone-200 hover:border-sage-200 hover:shadow-md transition">
+              <h4 className="font-semibold text-stone-900 hover:text-sage-600 transition text-sm">
                 {c.title}
               </h4>
-              <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-500">
+              <div className="flex items-center gap-3 mt-1.5 text-xs text-stone-500">
                 {c.court_name && (
                   <span className="flex items-center">
                     <FileText className="h-3 w-3 mr-1" />
@@ -60,11 +60,11 @@ export default function RelatedCases({ docId, slug }: { docId: string; slug: str
               </div>
               {c.snippet && (
                 <p
-                  className="text-xs text-neutral-600 mt-2 line-clamp-2"
+                  className="text-xs text-stone-600 mt-2 line-clamp-2"
                   dangerouslySetInnerHTML={{
                     __html: c.snippet.replace(
                       /<em>/g,
-                      '<em class="font-semibold text-blue-700 not-italic bg-blue-50 px-0.5 rounded">'
+                      '<em class="font-semibold text-sage-700 not-italic bg-sage-50 px-0.5 rounded">'
                     )
                   }}
                 />

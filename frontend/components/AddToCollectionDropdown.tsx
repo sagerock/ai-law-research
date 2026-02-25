@@ -142,7 +142,7 @@ export default function AddToCollectionDropdown({ itemType, itemId }: AddToColle
           }
           setShowDropdown(!showDropdown)
         }}
-        className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+        className="flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-700 transition-colors"
         title="Add to collection"
       >
         <FolderPlus className="h-4 w-4" />
@@ -151,13 +151,13 @@ export default function AddToCollectionDropdown({ itemType, itemId }: AddToColle
       </button>
 
       {showDropdown && (
-        <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50">
+        <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-stone-200 py-2 z-50">
           {collections.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-neutral-500">
+            <div className="px-4 py-3 text-sm text-stone-500">
               <p>No collections yet</p>
               <Link
                 href="/library"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sage-600 hover:text-sage-700 font-medium"
                 onClick={() => setShowDropdown(false)}
               >
                 Create one in My Library
@@ -165,7 +165,7 @@ export default function AddToCollectionDropdown({ itemType, itemId }: AddToColle
             </div>
           ) : (
             <>
-              <div className="px-4 py-2 text-xs font-medium text-neutral-500 uppercase tracking-wide border-b">
+              <div className="px-4 py-2 text-xs font-medium text-stone-500 uppercase tracking-wide border-b">
                 Your Collections
               </div>
               {collections.map(collection => (
@@ -173,16 +173,16 @@ export default function AddToCollectionDropdown({ itemType, itemId }: AddToColle
                   key={collection.id}
                   onClick={() => toggleCollection(collection.id)}
                   disabled={addingTo === collection.id}
-                  className="w-full flex items-center justify-between px-4 py-2 hover:bg-neutral-50 text-left"
+                  className="w-full flex items-center justify-between px-4 py-2 hover:bg-stone-50 text-left"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-neutral-900 truncate">{collection.name}</p>
+                    <p className="font-medium text-stone-900 truncate">{collection.name}</p>
                     {collection.subject && (
-                      <p className="text-xs text-neutral-500">{collection.subject}</p>
+                      <p className="text-xs text-stone-500">{collection.subject}</p>
                     )}
                   </div>
                   {addingTo === collection.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-neutral-400 flex-shrink-0" />
+                    <Loader2 className="h-4 w-4 animate-spin text-stone-400 flex-shrink-0" />
                   ) : itemInCollections.has(collection.id) ? (
                     <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                   ) : null}
@@ -191,7 +191,7 @@ export default function AddToCollectionDropdown({ itemType, itemId }: AddToColle
               <div className="border-t mt-2 pt-2">
                 <Link
                   href="/library"
-                  className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                  className="flex items-center px-4 py-2 text-sm text-sage-600 hover:bg-sage-50"
                   onClick={() => setShowDropdown(false)}
                 >
                   <FolderPlus className="h-4 w-4 mr-2" />

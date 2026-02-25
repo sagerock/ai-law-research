@@ -16,7 +16,7 @@ function formatInline(text: string): React.ReactNode[] {
       parts.push(<em key={`i${match.index}`}>{match[3]}</em>)
     } else if (match[4]) {
       parts.push(
-        <code key={`c${match.index}`} className="bg-neutral-200 text-neutral-800 px-1 py-0.5 rounded text-xs font-mono">
+        <code key={`c${match.index}`} className="bg-stone-200 text-stone-800 px-1 py-0.5 rounded text-xs font-mono">
           {match[4]}
         </code>
       )
@@ -38,19 +38,19 @@ export function FormattedMessage({ content }: { content: string }) {
         const trimmed = line.trimStart()
         // Headers
         if (trimmed.startsWith('### ')) {
-          return <h4 key={i} className="font-semibold text-neutral-900 mt-3 mb-1">{formatInline(trimmed.slice(4))}</h4>
+          return <h4 key={i} className="font-semibold text-stone-900 mt-3 mb-1">{formatInline(trimmed.slice(4))}</h4>
         }
         if (trimmed.startsWith('## ')) {
-          return <h3 key={i} className="font-bold text-neutral-900 mt-3 mb-1">{formatInline(trimmed.slice(3))}</h3>
+          return <h3 key={i} className="font-bold text-stone-900 mt-3 mb-1">{formatInline(trimmed.slice(3))}</h3>
         }
         if (trimmed.startsWith('# ')) {
-          return <h2 key={i} className="text-lg font-bold text-neutral-900 mt-3 mb-1">{formatInline(trimmed.slice(2))}</h2>
+          return <h2 key={i} className="text-lg font-bold text-stone-900 mt-3 mb-1">{formatInline(trimmed.slice(2))}</h2>
         }
         // Bullet points (- or * at start of line followed by space)
         if (trimmed.match(/^[-*]\s/)) {
           return (
             <div key={i} className="flex gap-2 ml-2">
-              <span className="text-neutral-400 select-none">&bull;</span>
+              <span className="text-stone-400 select-none">&bull;</span>
               <span>{formatInline(trimmed.slice(2))}</span>
             </div>
           )

@@ -76,16 +76,16 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600"
+          className="absolute top-4 right-4 text-stone-400 hover:text-stone-600"
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Header */}
-        <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+        <h2 className="text-2xl font-bold text-stone-900 mb-2">
           {mode === 'signin' ? 'Welcome back' : 'Create an account'}
         </h2>
-        <p className="text-neutral-600 mb-6">
+        <p className="text-stone-600 mb-6">
           {mode === 'signin'
             ? 'Sign in to access your bookmarks and annotations'
             : 'Join to save cases and participate in discussions'}
@@ -95,7 +95,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         <div className="space-y-3 mb-6">
           <button
             onClick={() => handleOAuth('google')}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -115,25 +115,25 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            <span className="text-neutral-700 font-medium">Continue with Google</span>
+            <span className="text-stone-700 font-medium">Continue with Google</span>
           </button>
 
           <button
             onClick={() => handleOAuth('github')}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
           >
-            <Github className="h-5 w-5 text-neutral-900" />
-            <span className="text-neutral-700 font-medium">Continue with GitHub</span>
+            <Github className="h-5 w-5 text-stone-900" />
+            <span className="text-stone-700 font-medium">Continue with GitHub</span>
           </button>
         </div>
 
         {/* Divider */}
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-neutral-200" />
+            <div className="w-full border-t border-stone-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-neutral-500">or continue with email</span>
+            <span className="px-2 bg-white text-stone-500">or continue with email</span>
           </div>
         </div>
 
@@ -141,7 +141,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-neutral-700 mb-1">
+              <label htmlFor="username" className="block text-sm font-medium text-stone-700 mb-1">
                 Username
               </label>
               <input
@@ -149,14 +149,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 focus:border-sage-400"
                 placeholder="johndoe"
               />
             </div>
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-1">
               Email
             </label>
             <input
@@ -165,13 +165,13 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 focus:border-sage-400"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-stone-700 mb-1">
               Password
             </label>
             <input
@@ -181,7 +181,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 focus:border-sage-400"
               placeholder="••••••••"
             />
           </div>
@@ -201,7 +201,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-sage-700 text-white font-medium rounded-lg hover:bg-sage-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? (
               <>
@@ -218,7 +218,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         </form>
 
         {/* Toggle mode */}
-        <p className="mt-6 text-center text-sm text-neutral-600">
+        <p className="mt-6 text-center text-sm text-stone-600">
           {mode === 'signin' ? (
             <>
               Don&apos;t have an account?{' '}
@@ -228,7 +228,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   setError(null)
                   setMessage(null)
                 }}
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sage-600 hover:text-sage-700 font-medium"
               >
                 Sign up
               </button>
@@ -242,7 +242,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   setError(null)
                   setMessage(null)
                 }}
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sage-600 hover:text-sage-700 font-medium"
               >
                 Sign in
               </button>

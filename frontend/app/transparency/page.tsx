@@ -26,7 +26,7 @@ function ProgressBar({
   max,
   label,
   sublabel,
-  colorClass = 'bg-blue-600',
+  colorClass = 'bg-sage-700',
 }: {
   value: number
   max: number
@@ -40,16 +40,16 @@ function ProgressBar({
     <div className="space-y-2">
       <div className="flex justify-between items-end">
         <div>
-          <span className="text-sm font-medium text-neutral-700">{label}</span>
+          <span className="text-sm font-medium text-stone-700">{label}</span>
           {sublabel && (
-            <span className="text-xs text-neutral-500 ml-2">{sublabel}</span>
+            <span className="text-xs text-stone-500 ml-2">{sublabel}</span>
           )}
         </div>
-        <span className="text-lg font-bold text-neutral-900">
+        <span className="text-lg font-bold text-stone-900">
           ${value.toFixed(2)}
         </span>
       </div>
-      <div className="h-3 bg-neutral-200 rounded-full overflow-hidden">
+      <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
         <div
           className={`h-full ${colorClass} rounded-full transition-all duration-500 ease-out`}
           style={{ width: `${percentage}%` }}
@@ -65,7 +65,7 @@ function StatCard({
   label,
   value,
   subtext,
-  colorClass = 'text-blue-600'
+  colorClass = 'text-sage-600'
 }: {
   icon: React.ElementType
   label: string
@@ -76,9 +76,9 @@ function StatCard({
   return (
     <div className="bg-white rounded-lg border p-6 text-center">
       <Icon className={`h-8 w-8 mx-auto mb-3 ${colorClass}`} />
-      <div className="text-3xl font-bold text-neutral-900 mb-1">{value}</div>
-      <div className="text-sm font-medium text-neutral-700">{label}</div>
-      {subtext && <div className="text-xs text-neutral-500 mt-1">{subtext}</div>}
+      <div className="text-3xl font-bold text-stone-900 mb-1">{value}</div>
+      <div className="text-sm font-medium text-stone-700">{label}</div>
+      {subtext && <div className="text-xs text-stone-500 mt-1">{subtext}</div>}
     </div>
   )
 }
@@ -108,13 +108,13 @@ export default function TransparencyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100">
+      <div className="min-h-screen bg-cream">
         <div className="container mx-auto px-4 py-8">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-neutral-200 rounded w-1/3"></div>
+            <div className="h-8 bg-stone-200 rounded w-1/3"></div>
             <div className="grid md:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-32 bg-neutral-200 rounded-lg"></div>
+                <div key={i} className="h-32 bg-stone-200 rounded-lg"></div>
               ))}
             </div>
           </div>
@@ -124,22 +124,24 @@ export default function TransparencyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100">
+    <div className="min-h-screen bg-cream">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50 overflow-visible">
+      <header className="border-b bg-cream/80 backdrop-blur-md sticky top-0 z-50 overflow-visible">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center space-x-3">
-              <Scale className="h-8 w-8 text-neutral-700" />
-              <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
-                <p className="text-sm text-neutral-600 hidden sm:block">Free Case Briefs for Law Students</p>
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-sage-600 transition-colors">
+                <Scale className="h-[18px] w-[18px] text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <span className="font-display text-xl text-stone-900 leading-none">Law Study Group</span>
+                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">Free Case Briefs for Law Students</span>
               </div>
             </Link>
             <nav className="flex items-center space-x-4 sm:space-x-6">
               <Link
                 href="/study"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                className="text-stone-600 hover:text-stone-900 transition flex items-center"
               >
                 <GraduationCap className="h-5 w-5 sm:mr-2" />
                 <span className="hidden sm:inline">Study</span>
@@ -148,7 +150,7 @@ export default function TransparencyPage() {
                 href="https://discord.gg/AcGcKMmMZX"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                className="text-stone-600 hover:text-stone-900 transition flex items-center"
                 title="Discord"
               >
                 <MessageCircle className="h-5 w-5" />
@@ -162,10 +164,10 @@ export default function TransparencyPage() {
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Personal Introduction */}
         <div className="bg-white rounded-lg border p-8 mb-8 text-center">
-          <h1 className="text-3xl font-bold text-neutral-900 mb-4">
+          <h1 className="text-3xl font-bold text-stone-900 mb-4">
             Transparency Dashboard
           </h1>
-          <p className="text-lg text-neutral-600 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed">
             This tool was built to help law students access legal research
             without expensive subscriptions. Here's exactly what it costs to run, because you
             deserve to know where your support goes.
@@ -186,7 +188,7 @@ export default function TransparencyPage() {
           <>
             {/* This Month's Costs */}
             <section className="bg-white rounded-lg border p-6 mb-8">
-              <h2 className="text-xl font-bold text-neutral-900 mb-6 flex items-center">
+              <h2 className="text-xl font-bold text-stone-900 mb-6 flex items-center">
                 <DollarSign className="h-6 w-6 mr-2 text-green-600" />
                 {stats.month_name} Costs
               </h2>
@@ -198,9 +200,9 @@ export default function TransparencyPage() {
                   max={stats.monthly_goal}
                   label="AI Summaries"
                   sublabel={`(${stats.month_summaries} generated)`}
-                  colorClass="bg-purple-500"
+                  colorClass="bg-sage-500"
                 />
-                <p className="text-xs text-neutral-500 -mt-4">
+                <p className="text-xs text-stone-500 -mt-4">
                   Claude AI generates case briefs at ~$0.03 each
                 </p>
 
@@ -209,27 +211,27 @@ export default function TransparencyPage() {
                   value={stats.month_hosting_cost}
                   max={stats.monthly_goal}
                   label="Hosting (Railway)"
-                  colorClass="bg-blue-500"
+                  colorClass="bg-sage-500"
                 />
-                <p className="text-xs text-neutral-500 -mt-4">
+                <p className="text-xs text-stone-500 -mt-4">
                   Database, API server, and frontend hosting
                 </p>
 
                 {/* Total Costs */}
                 <div className="pt-4 border-t">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-semibold text-neutral-900">Total Monthly Costs</span>
-                    <span className="text-xl font-bold text-neutral-900">
+                    <span className="text-sm font-semibold text-stone-900">Total Monthly Costs</span>
+                    <span className="text-xl font-bold text-stone-900">
                       ${stats.month_total_cost.toFixed(2)}
                     </span>
                   </div>
-                  <div className="h-4 bg-neutral-200 rounded-full overflow-hidden">
+                  <div className="h-4 bg-stone-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-sage-600 to-sage-400 rounded-full transition-all duration-500"
                       style={{ width: `${stats.goal_percent}%` }}
                     />
                   </div>
-                  <div className="text-xs text-neutral-500 mt-1">
+                  <div className="text-xs text-stone-500 mt-1">
                     {stats.goal_percent.toFixed(1)}% of ${stats.monthly_goal} monthly goal
                   </div>
                 </div>
@@ -237,10 +239,10 @@ export default function TransparencyPage() {
                 {/* Donations vs Costs */}
                 <div className="pt-4 border-t mt-4">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-semibold text-neutral-900">
+                    <span className="text-sm font-semibold text-stone-900">
                       Donations This Month
                       {stats.monthly_donations_count > 0 && (
-                        <span className="text-neutral-500 font-normal ml-1">
+                        <span className="text-stone-500 font-normal ml-1">
                           ({stats.monthly_donations_count} supporter{stats.monthly_donations_count !== 1 ? 's' : ''})
                         </span>
                       )}
@@ -249,7 +251,7 @@ export default function TransparencyPage() {
                       ${stats.monthly_donations.toFixed(2)}
                     </span>
                   </div>
-                  <div className="h-4 bg-neutral-200 rounded-full overflow-hidden">
+                  <div className="h-4 bg-stone-200 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-green-500 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, (stats.monthly_donations / stats.month_total_cost) * 100)}%` }}
@@ -261,7 +263,7 @@ export default function TransparencyPage() {
                         Fully funded! Surplus goes to {stats.charity_name}
                       </span>
                     ) : (
-                      <span className="text-neutral-500">
+                      <span className="text-stone-500">
                         ${(stats.month_total_cost - stats.monthly_donations).toFixed(2)} still needed to cover costs
                       </span>
                     )}
@@ -272,8 +274,8 @@ export default function TransparencyPage() {
 
             {/* All-Time Stats */}
             <section className="mb-8">
-              <h2 className="text-xl font-bold text-neutral-900 mb-4 flex items-center">
-                <TrendingUp className="h-6 w-6 mr-2 text-blue-600" />
+              <h2 className="text-xl font-bold text-stone-900 mb-4 flex items-center">
+                <TrendingUp className="h-6 w-6 mr-2 text-sage-600" />
                 All-Time Impact
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -282,7 +284,7 @@ export default function TransparencyPage() {
                   label="Case Briefs"
                   value={stats.total_summaries}
                   subtext="AI-powered"
-                  colorClass="text-purple-600"
+                  colorClass="text-sage-600"
                 />
                 <StatCard
                   icon={DollarSign}
@@ -303,7 +305,7 @@ export default function TransparencyPage() {
                   label="Students Helped"
                   value={`${Math.max(10, Math.floor(stats.total_summaries / 3))}+`}
                   subtext="And counting!"
-                  colorClass="text-blue-600"
+                  colorClass="text-sage-600"
                 />
               </div>
             </section>
@@ -312,10 +314,10 @@ export default function TransparencyPage() {
             <section className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200 p-8">
               <div className="text-center mb-6">
                 <Heart className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+                <h2 className="text-2xl font-bold text-stone-900 mb-2">
                   Support This Project
                 </h2>
-                <p className="text-neutral-600 max-w-lg mx-auto">
+                <p className="text-stone-600 max-w-lg mx-auto">
                   Any donations beyond monthly costs go directly to <strong>{stats.charity_name}</strong>
                   {stats.charity_description && ` - ${stats.charity_description.toLowerCase()}`}.
                 </p>
@@ -337,7 +339,7 @@ export default function TransparencyPage() {
                 </div>
               ) : (
                 <div className="flex justify-center mb-6">
-                  <div className="px-8 py-4 bg-neutral-100 text-neutral-500 rounded-lg text-center">
+                  <div className="px-8 py-4 bg-stone-100 text-stone-500 rounded-lg text-center">
                     <Coffee className="h-6 w-6 mx-auto mb-2" />
                     <p className="text-sm">Donation link coming soon!</p>
                   </div>
@@ -347,7 +349,7 @@ export default function TransparencyPage() {
               {/* Charity Info */}
               {stats.charity_url ? (
                 <div className="bg-white/50 rounded-lg p-4 text-center">
-                  <p className="text-sm text-neutral-600 mb-2">
+                  <p className="text-sm text-stone-600 mb-2">
                     Surplus donations support:
                   </p>
                   <a
@@ -362,7 +364,7 @@ export default function TransparencyPage() {
                 </div>
               ) : (
                 <div className="bg-white/50 rounded-lg p-4 text-center">
-                  <p className="text-sm text-neutral-600">
+                  <p className="text-sm text-stone-600">
                     Surplus donations support: <strong>{stats.charity_name}</strong>
                   </p>
                 </div>
@@ -371,10 +373,10 @@ export default function TransparencyPage() {
 
             {/* Why This Matters */}
             <section className="mt-8 bg-white rounded-lg border p-6">
-              <h2 className="text-xl font-bold text-neutral-900 mb-4">
+              <h2 className="text-xl font-bold text-stone-900 mb-4">
                 Why Transparency Matters
               </h2>
-              <div className="prose prose-neutral max-w-none text-neutral-600 space-y-4">
+              <div className="prose prose-neutral max-w-none text-stone-600 space-y-4">
                 <p>
                   As law students, we get free Westlaw and Lexis access. But Quimbee? That's $276/year
                   out of our own pockets - on top of tuition, books, and everything else. I built this
@@ -389,25 +391,25 @@ export default function TransparencyPage() {
             </section>
 
             {/* Cost Breakdown */}
-            <section className="mt-8 bg-neutral-50 rounded-lg border p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+            <section className="mt-8 bg-stone-50 rounded-lg border p-6">
+              <h3 className="text-lg font-semibold text-stone-900 mb-4">
                 How Costs Break Down
               </h3>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-start space-x-3">
-                  <Bot className="h-5 w-5 text-purple-600 mt-0.5" />
+                  <Bot className="h-5 w-5 text-sage-600 mt-0.5" />
                   <div>
-                    <p className="font-medium text-neutral-900">AI Summaries (~$0.03 each)</p>
-                    <p className="text-neutral-600">
+                    <p className="font-medium text-stone-900">AI Summaries (~$0.03 each)</p>
+                    <p className="text-stone-600">
                       Claude AI reads the full case opinion and generates a structured brief with facts, issues, holding, and reasoning.
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <Server className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <Server className="h-5 w-5 text-sage-600 mt-0.5" />
                   <div>
-                    <p className="font-medium text-neutral-900">Hosting (~$5-20/month)</p>
-                    <p className="text-neutral-600">
+                    <p className="font-medium text-stone-900">Hosting (~$5-20/month)</p>
+                    <p className="text-stone-600">
                       Railway hosts the database, API server, and frontend. Costs scale with usage.
                     </p>
                   </div>
@@ -420,7 +422,7 @@ export default function TransparencyPage() {
 
       {/* Footer */}
       <footer className="border-t bg-white py-6 mt-12">
-        <div className="container mx-auto px-4 text-center text-sm text-neutral-500">
+        <div className="container mx-auto px-4 text-center text-sm text-stone-500">
           <p>Built with care for law students everywhere.</p>
         </div>
       </footer>

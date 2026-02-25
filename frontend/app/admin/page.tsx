@@ -144,7 +144,7 @@ export default function AdminPage() {
   if (authLoading || !user || user.email !== ADMIN_EMAIL) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-sage-600" />
       </div>
     )
   }
@@ -156,15 +156,17 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-stone-50">
       {/* Header */}
-      <header className="bg-white border-b border-neutral-200 sticky top-0 z-40">
+      <header className="bg-white border-b border-stone-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2">
-                <Scale className="h-6 w-6 text-blue-600" />
-                <span className="font-semibold text-lg text-neutral-900">Law Study Group</span>
+              <Link href="/" className="flex items-center gap-2.5 group">
+                <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center group-hover:bg-sage-600 transition-colors">
+                  <Scale className="h-[16px] w-[16px] text-white" />
+                </div>
+                <span className="font-display text-lg text-stone-900">Law Study Group</span>
               </Link>
               <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
                 <Shield className="h-4 w-4" />
@@ -180,19 +182,19 @@ export default function AdminPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
             <input
               type="text"
               placeholder="Search by email, username, or name..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-200"
             />
           </div>
           <select
             value={tierFilter}
             onChange={e => setTierFilter(e.target.value)}
-            className="px-3 py-2 border border-neutral-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-stone-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sage-200"
           >
             <option value="">All tiers</option>
             <option value="free">Free</option>
@@ -201,23 +203,23 @@ export default function AdminPage() {
         </div>
 
         {/* User count */}
-        <p className="text-sm text-neutral-500 mb-4">
+        <p className="text-sm text-stone-500 mb-4">
           {users.length} user{users.length !== 1 ? 's' : ''}
           {loading && <Loader2 className="inline h-3 w-3 ml-2 animate-spin" />}
         </p>
 
         {/* Table */}
-        <div className="bg-white rounded-lg border border-neutral-200 overflow-x-auto">
+        <div className="bg-white rounded-lg border border-stone-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-50">
-                <th className="text-left px-4 py-3 font-medium text-neutral-600">Email</th>
-                <th className="text-left px-4 py-3 font-medium text-neutral-600">Username</th>
-                <th className="text-left px-4 py-3 font-medium text-neutral-600">Tier</th>
-                <th className="text-left px-4 py-3 font-medium text-neutral-600">Msgs Today</th>
-                <th className="text-left px-4 py-3 font-medium text-neutral-600">Daily Limit</th>
-                <th className="text-left px-4 py-3 font-medium text-neutral-600">Model</th>
-                <th className="text-left px-4 py-3 font-medium text-neutral-600">Last Active</th>
+              <tr className="border-b border-stone-200 bg-stone-50">
+                <th className="text-left px-4 py-3 font-medium text-stone-600">Email</th>
+                <th className="text-left px-4 py-3 font-medium text-stone-600">Username</th>
+                <th className="text-left px-4 py-3 font-medium text-stone-600">Tier</th>
+                <th className="text-left px-4 py-3 font-medium text-stone-600">Msgs Today</th>
+                <th className="text-left px-4 py-3 font-medium text-stone-600">Daily Limit</th>
+                <th className="text-left px-4 py-3 font-medium text-stone-600">Model</th>
+                <th className="text-left px-4 py-3 font-medium text-stone-600">Last Active</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -230,24 +232,24 @@ export default function AdminPage() {
                 const currentModel = edit.model_override ?? (u.model_override || '')
 
                 return (
-                  <tr key={u.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                    <td className="px-4 py-3 text-neutral-900">{u.email || <span className="text-neutral-400">-</span>}</td>
-                    <td className="px-4 py-3 text-neutral-600">{u.username || <span className="text-neutral-400">-</span>}</td>
+                  <tr key={u.id} className="border-b border-stone-100 hover:bg-stone-50">
+                    <td className="px-4 py-3 text-stone-900">{u.email || <span className="text-stone-400">-</span>}</td>
+                    <td className="px-4 py-3 text-stone-600">{u.username || <span className="text-stone-400">-</span>}</td>
                     <td className="px-4 py-3">
                       <select
                         value={currentTier}
                         onChange={e => updateEdit(u.id, 'tier', e.target.value)}
                         className={`px-2 py-1 rounded text-xs font-medium border ${
                           currentTier === 'pro'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-neutral-50 text-neutral-700 border-neutral-200'
+                            ? 'bg-sage-50 text-sage-700 border-sage-200'
+                            : 'bg-stone-50 text-stone-700 border-stone-200'
                         }`}
                       >
                         <option value="free">Free</option>
                         <option value="pro">Pro</option>
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">{u.messages_today}</td>
+                    <td className="px-4 py-3 text-stone-600">{u.messages_today}</td>
                     <td className="px-4 py-3">
                       <input
                         type="number"
@@ -255,21 +257,21 @@ export default function AdminPage() {
                         placeholder={currentTier === 'pro' ? '∞' : '15'}
                         value={currentLimit}
                         onChange={e => updateEdit(u.id, 'daily_limit', e.target.value)}
-                        className="w-20 px-2 py-1 border border-neutral-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-20 px-2 py-1 border border-stone-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-sage-200"
                       />
                     </td>
                     <td className="px-4 py-3">
                       <select
                         value={currentModel}
                         onChange={e => updateEdit(u.id, 'model_override', e.target.value)}
-                        className="px-2 py-1 border border-neutral-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="px-2 py-1 border border-stone-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-sage-200"
                       >
                         {MODEL_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-neutral-400 text-xs">
+                    <td className="px-4 py-3 text-stone-400 text-xs">
                       {u.last_active
                         ? new Date(u.last_active).toLocaleDateString()
                         : '-'}
@@ -283,8 +285,8 @@ export default function AdminPage() {
                           disabled={!hasEdits || savingId === u.id}
                           className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                             hasEdits
-                              ? 'bg-blue-600 text-white hover:bg-blue-700'
-                              : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                              ? 'bg-sage-700 text-white hover:bg-sage-600'
+                              : 'bg-stone-100 text-stone-400 cursor-not-allowed'
                           }`}
                         >
                           {savingId === u.id ? (
@@ -300,7 +302,7 @@ export default function AdminPage() {
               })}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-stone-400">
                     No users found
                   </td>
                 </tr>

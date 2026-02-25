@@ -82,15 +82,17 @@ export default function StatutesPage() {
   const showSearch = query.trim().length >= 2
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-cream">
+      <header className="border-b bg-cream/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center space-x-3">
-              <Scale className="h-8 w-8 text-neutral-700" />
-              <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
-                <p className="text-sm text-neutral-600 hidden sm:block">Free Case Briefs for Law Students</p>
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-sage-600 transition-colors">
+                <Scale className="h-[18px] w-[18px] text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <span className="font-display text-xl text-stone-900 leading-none">Law Study Group</span>
+                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">Free Case Briefs for Law Students</span>
               </div>
             </Link>
             <UserMenu />
@@ -100,33 +102,33 @@ export default function StatutesPage() {
 
       <section className="py-8 px-4">
         <div className="container mx-auto max-w-3xl">
-          <Link href="/" className="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-700 mb-4">
+          <Link href="/" className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700 mb-4">
             <ArrowLeft className="h-4 w-4 mr-1" /> Home
           </Link>
 
           <div className="flex items-center gap-3 mb-2">
-            <BookOpen className="h-7 w-7 text-purple-600" />
-            <h2 className="text-3xl font-bold text-neutral-900">Federal Statutes</h2>
+            <BookOpen className="h-7 w-7 text-sage-600" />
+            <h2 className="text-3xl font-bold text-stone-900">Federal Statutes</h2>
           </div>
-          <p className="text-neutral-600 mb-6">Browse {items.length || '...'} key federal statutes.</p>
+          <p className="text-stone-600 mb-6">Browse {items.length || '...'} key federal statutes.</p>
 
           {/* Search */}
           <div className="relative max-w-xl mb-8">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-stone-400" />
             <input
               type="text"
               value={query}
               onChange={e => handleQueryChange(e.target.value)}
               placeholder="Search statutes..."
-              className="w-full pl-12 pr-4 py-3 border-2 border-neutral-200 rounded-xl
-                         text-lg focus:border-purple-500 focus:outline-none transition-colors
+              className="w-full pl-12 pr-4 py-3 border-2 border-stone-200 rounded-xl
+                         text-lg focus:border-sage-500 focus:outline-none transition-colors
                          bg-white shadow-sm"
             />
             {query && (
               <button
                 onClick={() => handleQueryChange('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400
-                           hover:text-neutral-600 text-sm font-medium"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400
+                           hover:text-stone-600 text-sm font-medium"
               >
                 Clear
               </button>
@@ -137,24 +139,24 @@ export default function StatutesPage() {
           {showSearch && (
             <div className="mb-8">
               {searching ? (
-                <p className="text-neutral-500">Searching...</p>
+                <p className="text-stone-500">Searching...</p>
               ) : searchResults.length === 0 ? (
-                <p className="text-neutral-500">No results found.</p>
+                <p className="text-stone-500">No results found.</p>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-neutral-500">{searchResults.length} results</p>
+                  <p className="text-sm text-stone-500">{searchResults.length} results</p>
                   {searchResults.map(r => (
                     <Link
                       key={r.slug}
                       href={`/statutes/${r.slug}`}
-                      className="block bg-white p-4 rounded-lg border border-neutral-200
-                                 hover:border-purple-400 transition-colors"
+                      className="block bg-white p-4 rounded-lg border border-stone-200
+                                 hover:border-sage-300 transition-colors"
                     >
-                      <h3 className="font-semibold text-neutral-900">
+                      <h3 className="font-semibold text-stone-900">
                         {r.citation} &mdash; {r.title}
                       </h3>
                       <p
-                        className="text-sm text-neutral-600 mt-1 line-clamp-3"
+                        className="text-sm text-stone-600 mt-1 line-clamp-3"
                         dangerouslySetInnerHTML={{ __html: r.snippet }}
                       />
                     </Link>
@@ -167,24 +169,24 @@ export default function StatutesPage() {
           {/* Full list grouped by title */}
           {!showSearch && (
             loading ? (
-              <p className="text-neutral-500">Loading statutes...</p>
+              <p className="text-stone-500">Loading statutes...</p>
             ) : (
               <div className="space-y-8">
                 {Object.entries(grouped).map(([group, statutes]) => (
                   <div key={group}>
-                    <h3 className="text-lg font-semibold text-neutral-900 mb-3">{group}</h3>
+                    <h3 className="text-lg font-semibold text-stone-900 mb-3">{group}</h3>
                     <div className="space-y-1">
                       {statutes.map(item => (
                         <Link
                           key={item.slug}
                           href={`/statutes/${item.slug}`}
                           className="flex items-baseline gap-3 py-2.5 px-3 rounded-lg
-                                     hover:bg-purple-50 transition-colors group"
+                                     hover:bg-sage-50 transition-colors group"
                         >
-                          <span className="text-sm text-purple-600 flex-shrink-0 whitespace-nowrap">
+                          <span className="text-sm text-sage-600 flex-shrink-0 whitespace-nowrap">
                             {item.citation}
                           </span>
-                          <span className="text-neutral-800 group-hover:text-purple-700 transition-colors">
+                          <span className="text-stone-800 group-hover:text-sage-700 transition-colors">
                             {item.title}
                           </span>
                         </Link>

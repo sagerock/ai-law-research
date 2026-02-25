@@ -96,8 +96,8 @@ export default function SearchInterface({ onSearch, setIsLoading }: SearchInterf
             onClick={() => setSearchType('hybrid')}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 transition ${
               searchType === 'hybrid'
-                ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                : 'bg-white text-neutral-600 border-2 border-neutral-200 hover:border-neutral-300'
+                ? 'bg-sage-50 text-sage-700 border-2 border-sage-200'
+                : 'bg-white text-stone-600 border-2 border-stone-200 hover:border-stone-200'
             }`}
           >
             <Search className="h-4 w-4" />
@@ -109,8 +109,8 @@ export default function SearchInterface({ onSearch, setIsLoading }: SearchInterf
             onClick={() => setSearchType('semantic')}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 transition ${
               searchType === 'semantic'
-                ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                : 'bg-white text-neutral-600 border-2 border-neutral-200 hover:border-neutral-300'
+                ? 'bg-sage-50 text-sage-700 border-2 border-sage-200'
+                : 'bg-white text-stone-600 border-2 border-stone-200 hover:border-stone-200'
             }`}
           >
             <Sparkles className="h-4 w-4" />
@@ -121,8 +121,8 @@ export default function SearchInterface({ onSearch, setIsLoading }: SearchInterf
             onClick={() => setSearchType('keyword')}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 transition ${
               searchType === 'keyword'
-                ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                : 'bg-white text-neutral-600 border-2 border-neutral-200 hover:border-neutral-300'
+                ? 'bg-sage-50 text-sage-700 border-2 border-sage-200'
+                : 'bg-white text-stone-600 border-2 border-stone-200 hover:border-stone-200'
             }`}
           >
             <Hash className="h-4 w-4" />
@@ -143,18 +143,18 @@ export default function SearchInterface({ onSearch, setIsLoading }: SearchInterf
                 ? "Enter exact keywords..."
                 : "Search cases by keyword or concept..."
             }
-            className="w-full px-6 py-4 pr-14 text-lg border-2 border-neutral-200 rounded-xl focus:outline-none focus:border-blue-500 transition"
+            className="w-full px-6 py-4 pr-14 text-lg border-2 border-stone-200 rounded-xl focus:outline-none focus:border-sage-500 transition"
           />
           <button
             type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-sage-700 text-white rounded-lg hover:bg-sage-600 transition"
           >
             <Search className="h-5 w-5" />
           </button>
         </div>
 
         {/* Search Tips */}
-        <div className="text-sm text-neutral-600 text-center">
+        <div className="text-sm text-stone-600 text-center">
           {searchType === 'semantic' && (
             <p>💡 Try: "Cases about employer liability for remote worker injuries"</p>
           )}

@@ -128,31 +128,33 @@ export default function PublicProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-sage-600" />
       </div>
     )
   }
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-stone-50">
         <header className="border-b bg-white">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <Scale className="h-6 w-6 text-blue-600" />
-              <span className="text-xl font-semibold">Law Study Group</span>
+              <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
+                <Scale className="h-[16px] w-[16px] text-white" />
+              </div>
+              <span className="font-display text-lg text-stone-900">Law Study Group</span>
             </Link>
             <UserMenu />
           </div>
         </header>
         <main className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <User className="h-16 w-16 text-neutral-300 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-neutral-900 mb-2">{error || 'User not found'}</h1>
-          <p className="text-neutral-600 mb-6">The profile you&apos;re looking for doesn&apos;t exist.</p>
+          <User className="h-16 w-16 text-stone-300 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">{error || 'User not found'}</h1>
+          <p className="text-stone-600 mb-6">The profile you&apos;re looking for doesn&apos;t exist.</p>
           <Link
             href="/"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            className="inline-flex items-center px-6 py-3 bg-sage-700 text-white rounded-lg hover:bg-sage-600 font-medium"
           >
             Go Home
           </Link>
@@ -164,33 +166,35 @@ export default function PublicProfilePage() {
   // Private profile
   if (!profile.is_public) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-stone-50">
         <header className="border-b bg-white">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <Link href="/" className="flex items-center gap-2">
-                  <Scale className="h-6 w-6 text-blue-600" />
-                  <span className="text-xl font-semibold">Law Study Group</span>
+                  <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
+                <Scale className="h-[16px] w-[16px] text-white" />
+              </div>
+              <span className="font-display text-lg text-stone-900">Law Study Group</span>
                 </Link>
                 <nav className="hidden md:flex items-center gap-4">
                   <Link
                     href="/briefcheck"
-                    className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                    className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                   >
                     <FileText className="h-4 w-4" />
                     Brief Check
                   </Link>
                   <Link
                     href="/library"
-                    className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                    className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                   >
                     <FolderOpen className="h-4 w-4" />
                     My Library
                   </Link>
                   <Link
                     href="/transparency"
-                    className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                    className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                   >
                     <Heart className="h-4 w-4" />
                     Transparency
@@ -211,13 +215,13 @@ export default function PublicProfilePage() {
                 className="h-24 w-24 rounded-full object-cover border-4 border-white shadow"
               />
             ) : (
-              <div className="h-24 w-24 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xl font-medium border-4 border-white shadow">
+              <div className="h-24 w-24 rounded-full bg-sage-700 text-white flex items-center justify-center text-2xl font-medium border-4 border-white shadow">
                 {getInitials(profile.username)}
               </div>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900 mb-2">@{profile.username}</h1>
-          <div className="flex items-center justify-center gap-2 text-neutral-500 mb-6">
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">@{profile.username}</h1>
+          <div className="flex items-center justify-center gap-2 text-stone-500 mb-6">
             <Lock className="h-5 w-5" />
             <span>This profile is private</span>
           </div>
@@ -228,34 +232,36 @@ export default function PublicProfilePage() {
 
   // Public profile
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-stone-50">
       {/* Header */}
       <header className="border-b bg-white">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center gap-2">
-                <Scale className="h-6 w-6 text-blue-600" />
-                <span className="text-xl font-semibold">Law Study Group</span>
+                <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
+                <Scale className="h-[16px] w-[16px] text-white" />
+              </div>
+              <span className="font-display text-lg text-stone-900">Law Study Group</span>
               </Link>
               <nav className="hidden md:flex items-center gap-4">
                 <Link
                   href="/briefcheck"
-                  className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                 >
                   <FileText className="h-4 w-4" />
                   Brief Check
                 </Link>
                 <Link
                   href="/library"
-                  className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                 >
                   <FolderOpen className="h-4 w-4" />
                   My Library
                 </Link>
                 <Link
                   href="/transparency"
-                  className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                 >
                   <Heart className="h-4 w-4" />
                   Transparency
@@ -279,23 +285,23 @@ export default function PublicProfilePage() {
                 className="h-24 w-24 rounded-full object-cover border-4 border-white shadow"
               />
             ) : (
-              <div className="h-24 w-24 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xl font-medium border-4 border-white shadow flex-shrink-0">
+              <div className="h-24 w-24 rounded-full bg-sage-700 text-white flex items-center justify-center text-2xl font-medium border-4 border-white shadow flex-shrink-0">
                 {getInitials(profile.full_name || profile.username)}
               </div>
             )}
 
             {/* Info */}
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-neutral-900">
+              <h1 className="text-2xl font-bold text-stone-900">
                 {profile.full_name || profile.username}
               </h1>
-              <p className="text-neutral-500">@{profile.username}</p>
+              <p className="text-stone-500">@{profile.username}</p>
 
               {profile.bio && (
-                <p className="text-neutral-700 mt-3">{profile.bio}</p>
+                <p className="text-stone-700 mt-3">{profile.bio}</p>
               )}
 
-              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-neutral-500">
+              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-stone-500">
                 {profile.law_school && (
                   <div className="flex items-center gap-1">
                     <Building className="h-4 w-4" />
@@ -320,17 +326,17 @@ export default function PublicProfilePage() {
 
         {/* Comments */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-stone-900 mb-4 flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Comments ({comments.length})
           </h2>
 
           {isLoadingComments ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-stone-400" />
             </div>
           ) : comments.length === 0 ? (
-            <p className="text-neutral-500 text-center py-8">
+            <p className="text-stone-500 text-center py-8">
               No comments yet.
             </p>
           ) : (
@@ -339,25 +345,25 @@ export default function PublicProfilePage() {
                 <Link
                   key={comment.id}
                   href={`/case/${comment.case_id}`}
-                  className="block p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
+                  className="block p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-neutral-900 truncate">
+                      <p className="font-medium text-stone-900 truncate">
                         {comment.case_title}
                       </p>
                       {comment.case_cite && (
-                        <p className="text-sm text-neutral-500">{comment.case_cite}</p>
+                        <p className="text-sm text-stone-500">{comment.case_cite}</p>
                       )}
-                      <p className="text-sm text-neutral-700 mt-1 line-clamp-2">
+                      <p className="text-sm text-stone-700 mt-1 line-clamp-2">
                         &ldquo;{comment.content}&rdquo;
                       </p>
-                      <p className="text-xs text-neutral-400 mt-1">
+                      <p className="text-xs text-stone-400 mt-1">
                         {formatRelativeTime(comment.created_at)}
                         {comment.is_edited && ' (edited)'}
                       </p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-neutral-400 flex-shrink-0" />
+                    <ChevronRight className="h-5 w-5 text-stone-400 flex-shrink-0" />
                   </div>
                 </Link>
               ))}

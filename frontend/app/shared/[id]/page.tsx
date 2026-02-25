@@ -91,22 +91,24 @@ export default async function SharedCollectionPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
+    <div className="min-h-screen bg-cream">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm">
+      <header className="border-b bg-cream/80 backdrop-blur-md">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-3">
-              <Scale className="h-8 w-8 text-neutral-700" />
-              <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
-                <p className="text-sm text-neutral-600 hidden sm:block">Free Case Briefs for Law Students</p>
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-sage-600 transition-colors">
+                <Scale className="h-[18px] w-[18px] text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <span className="font-display text-xl text-stone-900 leading-none">Law Study Group</span>
+                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">Free Case Briefs for Law Students</span>
               </div>
             </Link>
             <nav className="flex items-center gap-4">
               <Link
                 href="/study"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                className="text-stone-600 hover:text-stone-900 transition flex items-center"
               >
                 <GraduationCap className="h-5 w-5" />
               </Link>
@@ -114,11 +116,11 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                 href="https://discord.gg/AcGcKMmMZX"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                className="text-stone-600 hover:text-stone-900 transition flex items-center"
               >
                 <MessageCircle className="h-5 w-5" />
               </a>
-              <Link href="/" className="text-neutral-600 hover:text-neutral-900 transition">
+              <Link href="/" className="text-stone-600 hover:text-stone-900 transition">
                 Search Cases
               </Link>
             </nav>
@@ -130,27 +132,27 @@ export default async function SharedCollectionPage({ params }: PageProps) {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Collection Header */}
-          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-8 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-8 mb-8">
             <div className="flex items-start gap-4 mb-6">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <FolderOpen className="h-8 w-8 text-blue-600" />
+              <div className="p-3 bg-sage-50 rounded-lg">
+                <FolderOpen className="h-8 w-8 text-sage-600" />
               </div>
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+                <h1 className="text-3xl font-bold text-stone-900 mb-2">
                   {collection.name}
                 </h1>
                 {collection.description && (
-                  <p className="text-neutral-600 text-lg mb-4">
+                  <p className="text-stone-600 text-lg mb-4">
                     {collection.description}
                   </p>
                 )}
-                <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-500">
+                <div className="flex flex-wrap items-center gap-4 text-sm text-stone-500">
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
                     Shared by {collection.owner_name}
                   </span>
                   {collection.subject && (
-                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                    <span className="bg-sage-50 text-sage-700 px-2 py-0.5 rounded">
                       {collection.subject}
                     </span>
                   )}
@@ -164,12 +166,12 @@ export default async function SharedCollectionPage({ params }: PageProps) {
 
           {/* All Items — unified list */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-neutral-900 mb-4">
+            <h2 className="text-xl font-semibold text-stone-900 mb-4">
               Items in this Collection
             </h2>
 
             {collection.cases.length === 0 && (!collection.legal_texts || collection.legal_texts.length === 0) ? (
-              <div className="text-center py-12 text-neutral-500">
+              <div className="text-center py-12 text-stone-500">
                 <p>This collection is empty</p>
               </div>
             ) : (
@@ -189,19 +191,19 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                     <Link
                       key={item.key}
                       href={`/case/${caseItem.id}`}
-                      className="block bg-white rounded-lg border border-neutral-200 p-5 hover:border-blue-300 hover:shadow-md transition"
+                      className="block bg-white rounded-lg border border-stone-200 p-5 hover:border-sage-200 hover:shadow-md transition"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">
+                            <span className="text-xs bg-sage-50 text-sage-700 px-2 py-0.5 rounded font-medium">
                               Case
                             </span>
                           </div>
-                          <h3 className="font-semibold text-neutral-900 text-lg hover:text-blue-600 transition">
+                          <h3 className="font-semibold text-stone-900 text-lg hover:text-sage-600 transition">
                             {caseItem.title}
                           </h3>
-                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-neutral-500">
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-stone-500">
                             {caseItem.court_name && (
                               <span>{caseItem.court_name}</span>
                             )}
@@ -212,16 +214,16 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                               </span>
                             )}
                             {caseItem.reporter_cite && (
-                              <span className="text-neutral-400">{caseItem.reporter_cite}</span>
+                              <span className="text-stone-400">{caseItem.reporter_cite}</span>
                             )}
                           </div>
                           {caseItem.notes && (
-                            <p className="mt-3 text-sm text-neutral-600 italic border-l-2 border-blue-200 pl-3">
+                            <p className="mt-3 text-sm text-stone-600 italic border-l-2 border-sage-200 pl-3">
                               {caseItem.notes}
                             </p>
                           )}
                         </div>
-                        <ExternalLink className="h-5 w-5 text-neutral-400 flex-shrink-0 ml-4" />
+                        <ExternalLink className="h-5 w-5 text-stone-400 flex-shrink-0 ml-4" />
                       </div>
                     </Link>
                   )
@@ -237,29 +239,29 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                     <Link
                       key={item.key}
                       href={`${route}/${lt.slug}`}
-                      className="block bg-white rounded-lg border border-neutral-200 p-5 hover:border-purple-300 hover:shadow-md transition"
+                      className="block bg-white rounded-lg border border-stone-200 p-5 hover:border-sage-300 hover:shadow-md transition"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
+                            <span className="text-xs bg-sage-50 text-sage-700 px-2 py-0.5 rounded font-medium">
                               {typeLabel}
                             </span>
                           </div>
-                          <h3 className="font-semibold text-neutral-900 text-lg hover:text-purple-600 transition">
+                          <h3 className="font-semibold text-stone-900 text-lg hover:text-sage-600 transition">
                             {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
                             {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
                           </h3>
                           {lt.citation && (
-                            <p className="text-sm text-neutral-400 mt-1">{lt.citation}</p>
+                            <p className="text-sm text-stone-400 mt-1">{lt.citation}</p>
                           )}
                           {lt.notes && (
-                            <p className="mt-3 text-sm text-neutral-600 italic border-l-2 border-purple-200 pl-3">
+                            <p className="mt-3 text-sm text-stone-600 italic border-l-2 border-sage-200 pl-3">
                               {lt.notes}
                             </p>
                           )}
                         </div>
-                        <ExternalLink className="h-5 w-5 text-neutral-400 flex-shrink-0 ml-4" />
+                        <ExternalLink className="h-5 w-5 text-stone-400 flex-shrink-0 ml-4" />
                       </div>
                     </Link>
                   )
@@ -270,12 +272,12 @@ export default async function SharedCollectionPage({ params }: PageProps) {
 
           {/* Footer CTA */}
           <div className="mt-12 text-center">
-            <p className="text-neutral-600 mb-4">
+            <p className="text-stone-600 mb-4">
               Want to create your own case collections?
             </p>
             <Link
               href="/login"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+              className="inline-flex items-center px-6 py-3 bg-sage-700 text-white rounded-lg font-medium hover:bg-sage-600 transition"
             >
               Sign up for free
             </Link>
@@ -285,7 +287,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
 
       {/* Footer */}
       <footer className="border-t bg-white mt-16">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-neutral-500">
+        <div className="container mx-auto px-4 py-6 text-center text-sm text-stone-500">
           <p>Law Study Group - Free Case Briefs for Law Students</p>
         </div>
       </footer>

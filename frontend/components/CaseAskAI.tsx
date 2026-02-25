@@ -185,13 +185,13 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
         className="w-full flex items-center justify-between text-left"
       >
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-600" />
-          <h2 className="text-lg font-semibold text-neutral-900">Ask AI About This Case</h2>
+          <Sparkles className="h-5 w-5 text-sage-600" />
+          <h2 className="text-lg font-semibold text-stone-900">Ask AI About This Case</h2>
         </div>
         {expanded ? (
-          <ChevronUp className="h-5 w-5 text-neutral-400" />
+          <ChevronUp className="h-5 w-5 text-stone-400" />
         ) : (
-          <ChevronDown className="h-5 w-5 text-neutral-400" />
+          <ChevronDown className="h-5 w-5 text-stone-400" />
         )}
       </button>
 
@@ -199,11 +199,11 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
         <div className="mt-4">
           {/* Not signed in */}
           {!user ? (
-            <div className="bg-neutral-50 rounded-lg p-6 text-center">
-              <p className="text-neutral-600 mb-3">Sign in to ask AI questions about this case</p>
+            <div className="bg-stone-50 rounded-lg p-6 text-center">
+              <p className="text-stone-600 mb-3">Sign in to ask AI questions about this case</p>
               <button
                 onClick={() => router.push('/login')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-sage-700 hover:bg-sage-600 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 <LogIn className="h-4 w-4" />
                 Sign In
@@ -222,7 +222,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
               {/* Messages */}
               <div ref={chatContainerRef} className="max-h-[500px] overflow-y-auto space-y-3 mb-3">
                 {messages.length === 0 && !streaming && (
-                  <p className="text-sm text-neutral-500 italic">
+                  <p className="text-sm text-stone-500 italic">
                     Ask a question about <strong>{caseTitle}</strong> — e.g. &quot;What was the dissent&apos;s argument?&quot; or &quot;How does this relate to Marbury v. Madison?&quot;
                   </p>
                 )}
@@ -236,8 +236,8 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                       <div
                         className={`rounded-lg px-3 py-2 text-sm ${
                           msg.role === 'user'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-neutral-100 text-neutral-900'
+                            ? 'bg-sage-700 text-white'
+                            : 'bg-stone-100 text-stone-900'
                         }`}
                       >
                         {msg.role === 'assistant' ? (
@@ -253,8 +253,8 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                             setCopiedId(msg.id)
                             setTimeout(() => setCopiedId(null), 2000)
                           }}
-                          className="flex items-center gap-1 mt-1 ml-1 text-xs text-neutral-400
-                                     hover:text-neutral-600 transition-colors"
+                          className="flex items-center gap-1 mt-1 ml-1 text-xs text-stone-400
+                                     hover:text-stone-600 transition-colors"
                         >
                           {copiedId === msg.id ? (
                             <><Check className="h-3 w-3 text-green-500" /> Copied</>
@@ -270,15 +270,15 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 {/* Streaming indicator */}
                 {streaming && streamingText && (
                   <div className="flex justify-start">
-                    <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm bg-neutral-100 text-neutral-900">
+                    <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm bg-stone-100 text-stone-900">
                       <FormattedMessage content={streamingText} />
                     </div>
                   </div>
                 )}
                 {streaming && !streamingText && (
                   <div className="flex justify-start">
-                    <div className="rounded-lg px-3 py-2 bg-neutral-100">
-                      <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                    <div className="rounded-lg px-3 py-2 bg-stone-100">
+                      <Loader2 className="h-4 w-4 animate-spin text-stone-400" />
                     </div>
                   </div>
                 )}
@@ -295,12 +295,12 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                   placeholder={rateLimited ? 'Daily limit reached' : `Ask about ${caseTitle}...`}
                   disabled={streaming || rateLimited}
                   rows={1}
-                  className="flex-1 resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-neutral-50"
+                  className="flex-1 resize-none rounded-lg border border-stone-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-200 focus:border-sage-400 disabled:opacity-50 disabled:bg-stone-50"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={!input.trim() || streaming || rateLimited}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-2 bg-sage-700 hover:bg-sage-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {streaming ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -312,7 +312,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
 
               {/* Usage counter */}
               {usage && usage.messages_remaining !== null && (
-                <p className="text-xs text-neutral-400 mt-2 text-right">
+                <p className="text-xs text-stone-400 mt-2 text-right">
                   {usage.messages_remaining}/{usage.daily_limit || 15} messages remaining today
                 </p>
               )}

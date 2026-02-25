@@ -389,7 +389,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100">
+    <div className="min-h-screen bg-cream">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -402,19 +402,19 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   router.push('/')
                 }
               }}
-              className="flex items-center text-neutral-600 hover:text-neutral-900"
+              className="flex items-center text-stone-600 hover:text-stone-900"
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Cases
             </button>
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center">
-                <Scale className="h-6 w-6 text-neutral-700 mr-2" />
-                <span className="text-xl font-bold text-neutral-900">Law Study Group</span>
+                <Scale className="h-6 w-6 text-stone-700 mr-2" />
+                <span className="text-xl font-bold text-stone-900">Law Study Group</span>
               </Link>
               <Link
                 href="/study"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                className="text-stone-600 hover:text-stone-900 transition flex items-center"
               >
                 <GraduationCap className="h-5 w-5" />
               </Link>
@@ -422,7 +422,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 href="https://discord.gg/AcGcKMmMZX"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-600 hover:text-neutral-900 transition flex items-center"
+                className="text-stone-600 hover:text-stone-900 transition flex items-center"
               >
                 <MessageCircle className="h-5 w-5" />
               </a>
@@ -439,12 +439,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
           <div className="lg:col-span-2 space-y-6">
             {/* Case Header */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h1 className="text-2xl font-bold text-neutral-900 mb-4">
+              <h1 className="text-2xl font-bold text-stone-900 mb-4">
                 {caseData.title || caseData.case_name}
               </h1>
 
               {/* Case Metadata */}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-600 mb-4">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-stone-600 mb-4">
                 <span className="flex items-center">
                   <FileText className="h-4 w-4 mr-1" />
                   {caseData.court_name || caseData.court_id}
@@ -465,7 +465,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
               {/* Citation Info */}
               {caseData.metadata?.citation && (
-                <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded inline-block mb-4">
+                <div className="bg-sage-50 text-sage-700 px-3 py-2 rounded inline-block mb-4">
                   Citation: {caseData.metadata.citation}
                 </div>
               )}
@@ -479,7 +479,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   className={`flex items-center px-4 py-2 rounded-lg transition ${
                     isBookmarked
                       ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                   }`}
                   title={user ? (isBookmarked ? 'Remove bookmark' : 'Bookmark this case') : 'Login to bookmark'}
                 >
@@ -501,7 +501,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       }
                       setShowCollectionDropdown(!showCollectionDropdown)
                     }}
-                    className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"
+                    className="flex items-center px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-stone-700"
                   >
                     <FolderPlus className="h-4 w-4 mr-2" />
                     Add to Collection
@@ -509,13 +509,13 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   </button>
 
                   {showCollectionDropdown && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50">
+                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-stone-200 py-2 z-50">
                       {collections.length === 0 ? (
-                        <div className="px-4 py-3 text-sm text-neutral-500">
+                        <div className="px-4 py-3 text-sm text-stone-500">
                           <p>No collections yet</p>
                           <Link
                             href="/library"
-                            className="text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-sage-600 hover:text-sage-700 font-medium"
                             onClick={() => setShowCollectionDropdown(false)}
                           >
                             Create one in My Library
@@ -523,7 +523,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         </div>
                       ) : (
                         <>
-                          <div className="px-4 py-2 text-xs font-medium text-neutral-500 uppercase tracking-wide border-b">
+                          <div className="px-4 py-2 text-xs font-medium text-stone-500 uppercase tracking-wide border-b">
                             Your Collections
                           </div>
                           {collections.map(collection => (
@@ -531,16 +531,16 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                               key={collection.id}
                               onClick={() => toggleCollection(collection.id)}
                               disabled={addingToCollection === collection.id}
-                              className="w-full flex items-center justify-between px-4 py-2 hover:bg-neutral-50 text-left"
+                              className="w-full flex items-center justify-between px-4 py-2 hover:bg-stone-50 text-left"
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-neutral-900 truncate">{collection.name}</p>
+                                <p className="font-medium text-stone-900 truncate">{collection.name}</p>
                                 {collection.subject && (
-                                  <p className="text-xs text-neutral-500">{collection.subject}</p>
+                                  <p className="text-xs text-stone-500">{collection.subject}</p>
                                 )}
                               </div>
                               {addingToCollection === collection.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400 flex-shrink-0" />
+                                <Loader2 className="h-4 w-4 animate-spin text-stone-400 flex-shrink-0" />
                               ) : caseInCollections.has(collection.id) ? (
                                 <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                               ) : null}
@@ -549,7 +549,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           <div className="border-t mt-2 pt-2">
                             <Link
                               href="/library"
-                              className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                              className="flex items-center px-4 py-2 text-sm text-sage-600 hover:bg-sage-50"
                               onClick={() => setShowCollectionDropdown(false)}
                             >
                               <FolderPlus className="h-4 w-4 mr-2" />
@@ -565,7 +565,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 {!localCaseData.is_stub && (
                   <button
                     onClick={handleCopy}
-                    className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"
+                    className="flex items-center px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-stone-700"
                   >
                     {copied ? (
                       <>
@@ -582,7 +582,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 )}
                 <button
                   onClick={handleCopyCitation}
-                  className="flex items-center px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-neutral-700"
+                  className="flex items-center px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-stone-700"
                 >
                   {copiedCitation ? (
                     <>
@@ -600,7 +600,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   href={`https://www.courtlistener.com/?q=id%3A${caseId}&type=o`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                  className="flex items-center px-4 py-2 bg-sage-700 hover:bg-sage-600 text-white rounded-lg"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View on CourtListener
@@ -623,7 +623,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     {!user ? (
                       <Link
                         href="/login"
-                        className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition"
+                        className="inline-flex items-center px-4 py-2 bg-sage-700 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition"
                       >
                         <Sparkles className="h-4 w-4 mr-2" />
                         Sign in to Generate AI Brief
@@ -632,7 +632,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       <button
                         onClick={generateSummary}
                         disabled={summaryLoading}
-                        className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition disabled:bg-neutral-400"
+                        className="inline-flex items-center px-4 py-2 bg-sage-700 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition disabled:bg-neutral-400"
                       >
                         {summaryLoading ? (
                           <>
@@ -661,15 +661,15 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             {/* AI Summary */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-neutral-900 flex items-center">
-                  <Sparkles className="h-5 w-5 mr-2 text-purple-600" />
+                <h2 className="text-lg font-semibold text-stone-900 flex items-center">
+                  <Sparkles className="h-5 w-5 mr-2 text-sage-600" />
                   AI Case Brief
                 </h2>
                 {!caseSummary && !localCaseData.is_stub && (
                   <button
                     onClick={generateSummary}
                     disabled={summaryLoading}
-                    className="flex items-center px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm disabled:bg-neutral-400"
+                    className="flex items-center px-3 py-1.5 bg-sage-700 hover:bg-purple-700 text-white rounded-lg text-sm disabled:bg-neutral-400"
                   >
                     {summaryLoading ? (
                       <>
@@ -699,7 +699,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         while ((match = re.exec(text)) !== null) {
                           if (match.index > last) parts.push(text.slice(last, match.index))
                           if (match[2]) {
-                            parts.push(<strong key={`${keyPrefix}b${match.index}`} className="font-semibold text-neutral-900">{match[2]}</strong>)
+                            parts.push(<strong key={`${keyPrefix}b${match.index}`} className="font-semibold text-stone-900">{match[2]}</strong>)
                           } else if (match[3]) {
                             parts.push(<em key={`${keyPrefix}i${match.index}`}>{match[3]}</em>)
                           }
@@ -721,7 +721,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           if (seg.href) {
                             result.push(
                               <Link key={`cite-${si}`} href={seg.href}
-                                className="text-purple-600 hover:text-purple-800 underline decoration-purple-300 hover:decoration-purple-500 transition-colors">
+                                className="text-sage-600 hover:text-sage-800 underline decoration-purple-300 hover:decoration-purple-500 transition-colors">
                                 {seg.text}
                               </Link>
                             )
@@ -737,7 +737,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       if (line.trim().match(/^#\s+[^#]/)) {
                         const headerText = line.replace(/^#\s+/, '').trim()
                         return (
-                          <h3 key={idx} className="text-xl font-bold text-neutral-900 mb-4">
+                          <h3 key={idx} className="text-xl font-bold text-stone-900 mb-4">
                             {headerText}
                           </h3>
                         )
@@ -747,7 +747,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         const headerText = line.replace(/^##\s+/, '').replace(/\*\*/g, '').trim()
                         return (
                           <div key={idx} className="mt-6 first:mt-0">
-                            <h4 className="text-lg font-bold text-neutral-900 mb-2 flex items-center">
+                            <h4 className="text-lg font-bold text-stone-900 mb-2 flex items-center">
                               {headerText}
                             </h4>
                           </div>
@@ -756,7 +756,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       // Numbered list items
                       else if (line.trim().match(/^\d+\.\s+/)) {
                         return (
-                          <p key={idx} className="text-neutral-700 leading-relaxed ml-4">
+                          <p key={idx} className="text-stone-700 leading-relaxed ml-4">
                             {renderInline(line.trim())}
                           </p>
                         )
@@ -764,7 +764,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       // Regular paragraphs (handles inline bold/italic)
                       else if (line.trim()) {
                         return (
-                          <p key={idx} className="text-neutral-700 leading-relaxed">
+                          <p key={idx} className="text-stone-700 leading-relaxed">
                             {renderInline(line.trim())}
                           </p>
                         )
@@ -775,11 +775,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   </div>
 
                   {/* Rating + Token usage and cost info */}
-                  <div className="mt-6 pt-4 border-t border-neutral-200 space-y-3">
+                  <div className="mt-6 pt-4 border-t border-stone-200 space-y-3">
                     {/* Was this helpful? */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 text-sm">
-                        <span className="text-neutral-500">Was this helpful?</span>
+                        <span className="text-stone-500">Was this helpful?</span>
                         <button
                           onClick={() => rateSummary(1)}
                           disabled={ratingLoading || !session?.access_token}
@@ -787,7 +787,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${
                             summaryRating === 1
                               ? 'bg-green-100 text-green-700'
-                              : 'text-neutral-400 hover:text-green-600 hover:bg-green-50'
+                              : 'text-stone-400 hover:text-green-600 hover:bg-green-50'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           <ThumbsUp className="h-4 w-4" />
@@ -800,7 +800,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${
                             summaryRating === -1
                               ? 'bg-red-100 text-red-700'
-                              : 'text-neutral-400 hover:text-red-600 hover:bg-red-50'
+                              : 'text-stone-400 hover:text-red-600 hover:bg-red-50'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           <ThumbsDown className="h-4 w-4" />
@@ -810,15 +810,15 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </div>
                     {/* Model info + cost */}
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-4 text-neutral-600">
+                      <div className="flex items-center gap-4 text-stone-600">
                         <span>🤖 Generated by {caseSummary.model || 'Claude'}</span>
                         {caseSummary.tokens_used && (
-                          <span className="text-neutral-500">
+                          <span className="text-stone-500">
                             {caseSummary.tokens_used.total.toLocaleString()} tokens
                           </span>
                         )}
                       </div>
-                      <div className="text-neutral-600">
+                      <div className="text-stone-600">
                         Cost: ${caseSummary.cost.toFixed(4)}
                       </div>
                     </div>
@@ -837,17 +837,17 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       { label: 'Constitution', items: constitution },
                     ].filter(g => g.items.length > 0)
                     return (
-                      <div className="mt-4 pt-4 border-t border-neutral-200">
-                        <h4 className="text-sm font-semibold text-neutral-700 mb-3">Referenced Legal Texts</h4>
+                      <div className="mt-4 pt-4 border-t border-stone-200">
+                        <h4 className="text-sm font-semibold text-stone-700 mb-3">Referenced Legal Texts</h4>
                         <div className="space-y-2">
                           {groups.map(group => (
                             <div key={group.label} className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs font-medium text-neutral-500 w-20 shrink-0">{group.label}</span>
+                              <span className="text-xs font-medium text-stone-500 w-20 shrink-0">{group.label}</span>
                               {group.items.map(ref => (
                                 <Link
                                   key={ref.href}
                                   href={ref.href}
-                                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-sage-50 text-sage-700 hover:bg-sage-50 transition-colors"
                                 >
                                   {ref.label}
                                 </Link>
@@ -861,10 +861,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-neutral-600 mb-4">
+                  <p className="text-stone-600 mb-4">
                     Generate an AI-powered case brief with:
                   </p>
-                  <div className="grid grid-cols-2 gap-3 max-w-md mx-auto text-sm text-neutral-700">
+                  <div className="grid grid-cols-2 gap-3 max-w-md mx-auto text-sm text-stone-700">
                     <div className="flex items-center">
                       <span className="mr-2">📋</span>
                       <span>Key Facts</span>
@@ -886,7 +886,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       <span>Significance</span>
                     </div>
                   </div>
-                  <p className="text-xs text-neutral-500 mt-4">
+                  <p className="text-xs text-stone-500 mt-4">
                     Estimated cost: $0.001 - $0.003 per brief
                   </p>
                 </div>
@@ -906,7 +906,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             {/* Case Text */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-neutral-900">Full Opinion</h2>
+                <h2 className="text-lg font-semibold text-stone-900">Full Opinion</h2>
                 {localCaseData.pdf_url && (
                   <a
                     href={localCaseData.pdf_url}
@@ -936,11 +936,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     {/* Check if content contains HTML tags */}
                     {localCaseData.content.includes('<') && localCaseData.content.includes('>') ? (
                       <div
-                        className="text-sm leading-relaxed text-neutral-700"
+                        className="text-sm leading-relaxed text-stone-700"
                         dangerouslySetInnerHTML={{ __html: localCaseData.content }}
                       />
                     ) : (
-                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-700">
+                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-stone-700">
                         {localCaseData.content}
                       </pre>
                     )}
@@ -950,10 +950,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   {localCaseData.pdf_url && (
                     <div className="mt-6 border-t pt-6">
                       <details className="group">
-                        <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900 flex items-center">
-                          <FileText className="h-4 w-4 mr-2 text-neutral-500" />
+                        <summary className="cursor-pointer text-sm font-medium text-stone-700 hover:text-stone-900 flex items-center">
+                          <FileText className="h-4 w-4 mr-2 text-stone-500" />
                           View PDF inline
-                          <span className="ml-2 text-neutral-400 group-open:rotate-180 transition-transform">▼</span>
+                          <span className="ml-2 text-stone-400 group-open:rotate-180 transition-transform">▼</span>
                         </summary>
                         <div className="mt-4">
                           <iframe
@@ -968,12 +968,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   )}
                 </div>
               ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                  <AlertCircle className="h-12 w-12 text-blue-600 mx-auto mb-3" />
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                <div className="bg-sage-50 border border-sage-200 rounded-lg p-6 text-center">
+                  <AlertCircle className="h-12 w-12 text-sage-600 mx-auto mb-3" />
+                  <h3 className="text-lg font-semibold text-stone-900 mb-2">
                     Full Opinion Text Not Available
                   </h3>
-                  <p className="text-neutral-600 mb-4">
+                  <p className="text-stone-600 mb-4">
                     The complete opinion text is not available in our database.
                     {localCaseData.pdf_url ? ' Please view the PDF version.' : ' Please view the full case on CourtListener.'}
                   </p>
@@ -994,7 +994,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           href={`https://www.courtlistener.com/?q=id%3A${caseId}&type=o`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                          className="inline-flex items-center px-6 py-3 bg-sage-700 hover:bg-sage-600 text-white rounded-lg font-medium transition"
                         >
                           <ExternalLink className="h-5 w-5 mr-2" />
                           View Full Opinion on CourtListener
@@ -1012,15 +1012,15 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             {/* Citation Network Panel */}
             {citations && (citations.citing_count > 0 || citations.cited_count > 0) && (
               <div className="bg-white rounded-lg shadow-sm border p-4">
-                <h3 className="text-md font-semibold text-neutral-900 mb-4 flex items-center">
-                  <Scale className="h-4 w-4 mr-2 text-purple-600" />
+                <h3 className="text-md font-semibold text-stone-900 mb-4 flex items-center">
+                  <Scale className="h-4 w-4 mr-2 text-sage-600" />
                   Citation Network
                 </h3>
 
                 {/* Cases Citing This Case */}
                 {citations.citing_cases.length > 0 && (
                   <div className="mb-4">
-                    <h4 className="text-sm font-medium text-neutral-700 mb-2 flex items-center">
+                    <h4 className="text-sm font-medium text-stone-700 mb-2 flex items-center">
                       <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
                       Cited By ({citations.citing_count})
                     </h4>
@@ -1029,12 +1029,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         <Link
                           key={c.id}
                           href={`/case/${c.id}`}
-                          className="block p-2 hover:bg-neutral-50 rounded border border-transparent hover:border-neutral-200"
+                          className="block p-2 hover:bg-stone-50 rounded border border-transparent hover:border-stone-200"
                         >
-                          <p className="text-sm font-medium text-blue-600 hover:text-blue-700 line-clamp-2">
+                          <p className="text-sm font-medium text-sage-600 hover:text-sage-700 line-clamp-2">
                             {c.title || c.case_name || 'Untitled Case'}
                           </p>
-                          <p className="text-xs text-neutral-500 mt-1">
+                          <p className="text-xs text-stone-500 mt-1">
                             {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${new Date(c.decision_date).getFullYear()}` : ''}
                           </p>
                         </Link>
@@ -1046,8 +1046,8 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 {/* Cases This Case Cites */}
                 {citations.cited_cases.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium text-neutral-700 mb-2 flex items-center">
-                      <Gavel className="h-3 w-3 mr-1 text-blue-600" />
+                    <h4 className="text-sm font-medium text-stone-700 mb-2 flex items-center">
+                      <Gavel className="h-3 w-3 mr-1 text-sage-600" />
                       Cites ({citations.cited_count})
                     </h4>
                     <div className="space-y-2">
@@ -1055,12 +1055,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         <Link
                           key={c.id}
                           href={`/case/${c.id}`}
-                          className="block p-2 hover:bg-neutral-50 rounded border border-transparent hover:border-neutral-200"
+                          className="block p-2 hover:bg-stone-50 rounded border border-transparent hover:border-stone-200"
                         >
-                          <p className="text-sm font-medium text-blue-600 hover:text-blue-700 line-clamp-2">
+                          <p className="text-sm font-medium text-sage-600 hover:text-sage-700 line-clamp-2">
                             {c.title || c.case_name || 'Untitled Case'}
                           </p>
-                          <p className="text-xs text-neutral-500 mt-1">
+                          <p className="text-xs text-stone-500 mt-1">
                             {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${new Date(c.decision_date).getFullYear()}` : ''}
                           </p>
                         </Link>
@@ -1074,7 +1074,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             {/* Additional Metadata */}
             {caseData.metadata && Object.keys(caseData.metadata).length > 0 && (
               <div className="bg-white rounded-lg shadow-sm border p-4">
-                <h3 className="text-md font-semibold text-neutral-900 mb-3">Additional Information</h3>
+                <h3 className="text-md font-semibold text-stone-900 mb-3">Additional Information</h3>
                 <dl className="space-y-3">
                   {Object.entries(caseData.metadata)
                     .filter(([key, value]) => {
@@ -1087,11 +1087,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       return true
                     })
                     .map(([key, value]) => (
-                      <div key={key} className="pb-2 border-b border-neutral-100 last:border-0">
-                        <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
+                      <div key={key} className="pb-2 border-b border-stone-100 last:border-0">
+                        <dt className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
                           {key.replace(/_/g, ' ')}
                         </dt>
-                        <dd className="text-sm text-neutral-900 break-words">
+                        <dd className="text-sm text-stone-900 break-words">
                           {String(value)}
                         </dd>
                       </div>

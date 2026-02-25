@@ -211,30 +211,32 @@ export default function ProfilePage() {
   // Show login prompt if not authenticated
   if (!mounted || authLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-sage-600" />
       </div>
     )
   }
 
   if (!isConfigured || !user) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-stone-50">
         <header className="border-b bg-white">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <Scale className="h-6 w-6 text-blue-600" />
-              <span className="text-xl font-semibold">Law Study Group</span>
+              <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
+                <Scale className="h-[16px] w-[16px] text-white" />
+              </div>
+              <span className="font-display text-lg text-stone-900">Law Study Group</span>
             </Link>
           </div>
         </header>
         <main className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <User className="h-16 w-16 text-neutral-300 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-neutral-900 mb-2">Sign in to view your profile</h1>
-          <p className="text-neutral-600 mb-6">You need to be signed in to manage your profile settings.</p>
+          <User className="h-16 w-16 text-stone-300 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">Sign in to view your profile</h1>
+          <p className="text-stone-600 mb-6">You need to be signed in to manage your profile settings.</p>
           <Link
             href="/login"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            className="inline-flex items-center px-6 py-3 bg-sage-700 text-white rounded-lg hover:bg-sage-600 font-medium"
           >
             Sign In
           </Link>
@@ -244,34 +246,36 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-stone-50">
       {/* Header */}
       <header className="border-b bg-white">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center gap-2">
-                <Scale className="h-6 w-6 text-blue-600" />
-                <span className="text-xl font-semibold">Law Study Group</span>
+                <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
+                <Scale className="h-[16px] w-[16px] text-white" />
+              </div>
+              <span className="font-display text-lg text-stone-900">Law Study Group</span>
               </Link>
               <nav className="hidden md:flex items-center gap-4">
                 <Link
                   href="/briefcheck"
-                  className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                 >
                   <FileText className="h-4 w-4" />
                   Brief Check
                 </Link>
                 <Link
                   href="/library"
-                  className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                 >
                   <FolderOpen className="h-4 w-4" />
                   My Library
                 </Link>
                 <Link
                   href="/transparency"
-                  className="flex items-center gap-1 text-sm text-neutral-600 hover:text-blue-600"
+                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
                 >
                   <Heart className="h-4 w-4" />
                   Transparency
@@ -284,7 +288,7 @@ export default function ProfilePage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-neutral-900 mb-8 flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-stone-900 mb-8 flex items-center gap-2">
           <User className="h-6 w-6" />
           My Profile
         </h1>
@@ -292,7 +296,7 @@ export default function ProfilePage() {
         <div className="grid gap-6">
           {/* Profile Information */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-stone-900 mb-4 flex items-center gap-2">
               <Settings className="h-5 w-5" />
               Profile Information
             </h2>
@@ -321,12 +325,12 @@ export default function ProfilePage() {
                     className="h-16 w-16 rounded-full object-cover border"
                   />
                 ) : (
-                  <div className="h-16 w-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-xl font-medium">
+                  <div className="h-16 w-16 rounded-full bg-sage-700 text-white flex items-center justify-center text-xl font-medium">
                     {(fullName || username || user.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
                     Avatar URL
                   </label>
                   <input
@@ -334,7 +338,7 @@ export default function ProfilePage() {
                     value={avatarUrl}
                     onChange={(e) => setAvatarUrl(e.target.value)}
                     placeholder="https://example.com/avatar.jpg"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500"
                   />
                 </div>
               </div>
@@ -342,7 +346,7 @@ export default function ProfilePage() {
               {/* Name and Username */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
                     Display Name
                   </label>
                   <input
@@ -350,11 +354,11 @@ export default function ProfilePage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="John Doe"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
                     Username
                   </label>
                   <input
@@ -362,15 +366,15 @@ export default function ProfilePage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                     placeholder="johndoe"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500"
                   />
-                  <p className="text-xs text-neutral-500 mt-1">Lowercase letters, numbers, and underscores only</p>
+                  <p className="text-xs text-stone-500 mt-1">Lowercase letters, numbers, and underscores only</p>
                 </div>
               </div>
 
               {/* Bio */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label className="block text-sm font-medium text-stone-700 mb-1">
                   Bio
                 </label>
                 <textarea
@@ -378,14 +382,14 @@ export default function ProfilePage() {
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell others about yourself..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 resize-none"
                 />
               </div>
 
               {/* Education */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1 flex items-center gap-1">
                     <Building className="h-4 w-4" />
                     Law School
                   </label>
@@ -394,11 +398,11 @@ export default function ProfilePage() {
                     value={lawSchool}
                     onChange={(e) => setLawSchool(e.target.value)}
                     placeholder="Harvard Law School"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1 flex items-center gap-1">
                     <GraduationCap className="h-4 w-4" />
                     Graduation Year
                   </label>
@@ -409,22 +413,22 @@ export default function ProfilePage() {
                     placeholder="2025"
                     min="1900"
                     max="2100"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500"
                   />
                 </div>
               </div>
 
               {/* Public Profile Toggle */}
-              <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-stone-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   {isPublic ? (
                     <Eye className="h-5 w-5 text-green-600" />
                   ) : (
-                    <EyeOff className="h-5 w-5 text-neutral-400" />
+                    <EyeOff className="h-5 w-5 text-stone-400" />
                   )}
                   <div>
-                    <p className="font-medium text-neutral-900">Public Profile</p>
-                    <p className="text-sm text-neutral-500">
+                    <p className="font-medium text-stone-900">Public Profile</p>
+                    <p className="text-sm text-stone-500">
                       {isPublic
                         ? 'Others can see your profile and comments'
                         : 'Your profile is private'}
@@ -435,7 +439,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => setIsPublic(!isPublic)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isPublic ? 'bg-green-600' : 'bg-neutral-300'
+                    isPublic ? 'bg-green-600' : 'bg-stone-300'
                   }`}
                 >
                   <span
@@ -451,7 +455,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 disabled:opacity-50"
                 >
                   {isSaving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -466,7 +470,7 @@ export default function ProfilePage() {
 
           {/* Password Change */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-stone-900 mb-4 flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Security
             </h2>
@@ -488,14 +492,14 @@ export default function ProfilePage() {
             {!showPasswordForm ? (
               <button
                 onClick={() => setShowPasswordForm(true)}
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sage-600 hover:text-sage-700 font-medium"
               >
                 Change Password
               </button>
             ) : (
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
                     New Password
                   </label>
                   <input
@@ -503,11 +507,11 @@ export default function ProfilePage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
                     Confirm Password
                   </label>
                   <input
@@ -515,14 +519,14 @@ export default function ProfilePage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500"
                   />
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="submit"
                     disabled={isChangingPassword}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 disabled:opacity-50"
                   >
                     {isChangingPassword ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -539,7 +543,7 @@ export default function ProfilePage() {
                       setConfirmPassword('')
                       setPasswordError(null)
                     }}
-                    className="px-4 py-2 text-neutral-600 hover:text-neutral-900"
+                    className="px-4 py-2 text-stone-600 hover:text-stone-900"
                   >
                     Cancel
                   </button>
@@ -550,17 +554,17 @@ export default function ProfilePage() {
 
           {/* My Comments */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-stone-900 mb-4 flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               My Comments ({comments.length})
             </h2>
 
             {isLoadingComments ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-stone-400" />
               </div>
             ) : comments.length === 0 ? (
-              <p className="text-neutral-500 text-center py-8">
+              <p className="text-stone-500 text-center py-8">
                 You haven&apos;t made any comments yet.
               </p>
             ) : (
@@ -569,25 +573,25 @@ export default function ProfilePage() {
                   <Link
                     key={comment.id}
                     href={`/case/${comment.case_id}`}
-                    className="block p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
+                    className="block p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-neutral-900 truncate">
+                        <p className="font-medium text-stone-900 truncate">
                           {comment.case_title}
                         </p>
                         {comment.case_cite && (
-                          <p className="text-sm text-neutral-500">{comment.case_cite}</p>
+                          <p className="text-sm text-stone-500">{comment.case_cite}</p>
                         )}
-                        <p className="text-sm text-neutral-700 mt-1 line-clamp-2">
+                        <p className="text-sm text-stone-700 mt-1 line-clamp-2">
                           {comment.content}
                         </p>
-                        <p className="text-xs text-neutral-400 mt-1">
+                        <p className="text-xs text-stone-400 mt-1">
                           {formatRelativeTime(comment.created_at)}
                           {comment.is_edited && ' (edited)'}
                         </p>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-neutral-400 flex-shrink-0" />
+                      <ChevronRight className="h-5 w-5 text-stone-400 flex-shrink-0" />
                     </div>
                   </Link>
                 ))}

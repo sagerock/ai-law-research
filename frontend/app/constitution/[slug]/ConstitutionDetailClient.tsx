@@ -35,15 +35,15 @@ export default function ConstitutionDetailClient({ data }: { data: ConstitutionD
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-cream">
+      <header className="border-b bg-cream/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             <Link href="/" className="flex items-center space-x-3">
-              <Scale className="h-8 w-8 text-neutral-700" />
+              <Scale className="h-8 w-8 text-stone-700" />
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Law Study Group</h1>
-                <p className="text-sm text-neutral-600 hidden sm:block">Free Case Briefs for Law Students</p>
+                <h1 className="text-2xl font-bold text-stone-900">Law Study Group</h1>
+                <p className="text-sm text-stone-600 hidden sm:block">Free Case Briefs for Law Students</p>
               </div>
             </Link>
             <UserMenu />
@@ -53,18 +53,18 @@ export default function ConstitutionDetailClient({ data }: { data: ConstitutionD
 
       <section className="py-8 px-4">
         <div className="container mx-auto max-w-3xl">
-          <Link href="/constitution" className="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-700 mb-4">
+          <Link href="/constitution" className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700 mb-4">
             <ArrowLeft className="h-4 w-4 mr-1" /> U.S. Constitution
           </Link>
 
-          <div className="bg-white rounded-xl border border-neutral-200 p-6 sm:p-8">
+          <div className="bg-white rounded-xl border border-stone-200 p-6 sm:p-8">
             <div className="flex items-start justify-between gap-4 mb-6">
-              <h2 className="text-2xl font-bold text-neutral-900">{data.title}</h2>
+              <h2 className="text-2xl font-bold text-stone-900">{data.title}</h2>
               <div className="flex items-center gap-3 flex-shrink-0">
                 <button
                   onClick={handleCopyAll}
-                  className="flex items-center gap-1.5 text-sm text-neutral-500
-                             hover:text-neutral-700 transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-stone-500
+                             hover:text-stone-700 transition-colors"
                   title="Copy full text"
                 >
                   {copied ? (
@@ -79,17 +79,17 @@ export default function ConstitutionDetailClient({ data }: { data: ConstitutionD
 
             {/* Main text (for amendments without sections) */}
             {content.text && (
-              <p className="text-neutral-800 leading-relaxed mb-4">{content.text}</p>
+              <p className="text-stone-800 leading-relaxed mb-4">{content.text}</p>
             )}
 
             {/* Sections (for articles) */}
             {content.sections && content.sections.length > 0 && (
               <div className="space-y-6">
                 {content.sections.map((section: any) => (
-                  <div key={section.id} className="border-t border-neutral-100 pt-4 first:border-0 first:pt-0">
-                    <h3 className="font-semibold text-neutral-900 mb-2">{section.title}</h3>
+                  <div key={section.id} className="border-t border-stone-100 pt-4 first:border-0 first:pt-0">
+                    <h3 className="font-semibold text-stone-900 mb-2">{section.title}</h3>
                     {section.text && (
-                      <p className="text-neutral-800 leading-relaxed">{section.text}</p>
+                      <p className="text-stone-800 leading-relaxed">{section.text}</p>
                     )}
                     {section.subsections && section.subsections.length > 0 && (
                       <div className="mt-2">

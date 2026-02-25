@@ -50,7 +50,7 @@ function SubsectionNode({ item, depth = 0, defaultExpanded = false }: {
         onClick={hasChildren ? () => setExpanded(!expanded) : undefined}
       >
         {hasChildren ? (
-          <button className="mt-0.5 flex-shrink-0 text-neutral-400 hover:text-neutral-600">
+          <button className="mt-0.5 flex-shrink-0 text-stone-400 hover:text-stone-600">
             {expanded ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
@@ -62,9 +62,9 @@ function SubsectionNode({ item, depth = 0, defaultExpanded = false }: {
         )}
 
         <div className="flex-1 min-w-0">
-          <p className="text-neutral-800 leading-relaxed">
+          <p className="text-stone-800 leading-relaxed">
             {label && (
-              <span className="font-semibold text-neutral-900">{label} </span>
+              <span className="font-semibold text-stone-900">{label} </span>
             )}
             {text}
           </p>
@@ -73,7 +73,7 @@ function SubsectionNode({ item, depth = 0, defaultExpanded = false }: {
         <button
           onClick={handleCopy}
           className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity
-                     text-neutral-400 hover:text-neutral-600 mt-0.5"
+                     text-stone-400 hover:text-stone-600 mt-0.5"
           title="Copy text"
         >
           {copied ? (
@@ -85,7 +85,7 @@ function SubsectionNode({ item, depth = 0, defaultExpanded = false }: {
       </div>
 
       {hasChildren && expanded && (
-        <div className="border-l border-neutral-200 ml-2">
+        <div className="border-l border-stone-200 ml-2">
           {children.map((child, i) => (
             <SubsectionNode
               key={child.id || child.label || i}

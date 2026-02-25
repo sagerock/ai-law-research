@@ -49,13 +49,13 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
 
   return (
     <Link href={`/case/${caseItem.id}`} className="block">
-      <div className="bg-white p-6 rounded-lg border border-neutral-200 hover:border-blue-300 hover:shadow-md transition cursor-pointer">
+      <div className="bg-white p-6 rounded-lg border border-stone-200 hover:border-sage-200 hover:shadow-md transition cursor-pointer">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
-            <h4 className="text-lg font-semibold text-neutral-900 hover:text-blue-600 transition">
+            <h4 className="text-lg font-semibold text-stone-900 hover:text-sage-600 transition">
               {caseItem.title || caseItem.case_name || 'Untitled Case'}
             </h4>
-            <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
+            <div className="flex items-center gap-4 mt-2 text-sm text-stone-600">
               {courtName && (
                 <span className="flex items-center">
                   <FileText className="h-3 w-3 mr-1" />
@@ -82,10 +82,10 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
         {/* Snippet or Content Preview */}
         {(caseItem.snippet || caseItem.content) && (
           <p
-            className="text-sm text-neutral-700 line-clamp-3 mb-3"
+            className="text-sm text-stone-700 line-clamp-3 mb-3"
             dangerouslySetInnerHTML={{
               __html: (caseItem.snippet || caseItem.content || '').replace(
-                /<em>/g, '<em class="font-semibold text-blue-700 not-italic bg-blue-50 px-1 rounded">'
+                /<em>/g, '<em class="font-semibold text-sage-700 not-italic bg-sage-50 px-1 rounded">'
               )
             }}
           />
@@ -95,7 +95,7 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
         {(caseItem.similarity !== undefined || caseItem.score !== undefined) && (
           <div className="flex items-center gap-4">
             {caseItem.similarity !== undefined && (
-              <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+              <div className="text-xs bg-sage-50 text-sage-700 px-2 py-1 rounded">
                 AI Match: {(caseItem.similarity * 100).toFixed(1)}%
               </div>
             )}
@@ -109,8 +109,8 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
 
         {/* Citations if available */}
         {caseItem.citations && caseItem.citations.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-neutral-100">
-            <p className="text-xs text-neutral-600">
+          <div className="mt-3 pt-3 border-t border-stone-100">
+            <p className="text-xs text-stone-600">
               Citations: {caseItem.citations.slice(0, 2).join(' • ')}
               {caseItem.citations.length > 2 && ` • +${caseItem.citations.length - 2} more`}
             </p>
