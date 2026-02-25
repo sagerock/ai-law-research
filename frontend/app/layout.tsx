@@ -27,8 +27,8 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Sage's Study Group | Free AI Case Briefs for Law Students",
-    template: "%s | Sage's Study Group",
+    default: "Law Study Group | Free Case Briefs for Law Students",
+    template: "%s | Law Study Group",
   },
   description: "Free case briefs for law students. Skip the $276/year Quimbee subscription.",
 };

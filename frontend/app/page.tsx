@@ -104,11 +104,11 @@ export default function HomePage() {
                 <Scale className="h-[18px] w-[18px] text-white" />
               </div>
               <div className="hidden sm:block">
-                <span className="font-display italic text-[22px] text-stone-900 leading-none">
-                  Sage&apos;s
+                <span className="font-display text-xl text-stone-900 leading-none">
+                  Law Study Group
                 </span>
-                <span className="text-[13px] text-stone-500 block -mt-0.5 tracking-wide">
-                  Study Group
+                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">
+                  Free Case Briefs for Law Students
                 </span>
               </div>
             </Link>
