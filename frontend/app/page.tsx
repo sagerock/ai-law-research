@@ -40,7 +40,19 @@ export default function HomePage() {
   const [searched, setSearched] = useState(false)
   const [caseCount, setCaseCount] = useState<number | null>(null)
   const [trendingCases, setTrendingCases] = useState<TrendingCase[]>([])
+  const [refDropdownOpen, setRefDropdownOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (refDropdownRef.current && !refDropdownRef.current.contains(e.target as Node)) {
+        setRefDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     fetch(`${API_URL}/api/v1/case-count`)
@@ -123,29 +135,33 @@ export default function HomePage() {
                 <span className="hidden sm:inline">Study</span>
               </Link>
 
-              <div className="relative group">
-                <button className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
-                                   rounded-lg transition-all flex items-center gap-1.5">
+              <div className="relative" ref={refDropdownRef}>
+                <button
+                  onClick={() => setRefDropdownOpen(!refDropdownOpen)}
+                  className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+                                   rounded-lg transition-all flex items-center gap-1.5"
+                >
                   <BookOpen className="h-4 w-4" />
                   <span className="hidden sm:inline">Reference</span>
-                  <ChevronDown className="h-3 w-3 hidden sm:block" />
+                  <ChevronDown className={`h-3 w-3 hidden sm:block transition-transform ${refDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-                <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-stone-200
-                                rounded-xl shadow-lg shadow-stone-200/50 opacity-0 invisible
-                                group-hover:opacity-100 group-hover:visible transition-all z-50 py-1.5">
-                  <Link href="/rules" className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
-                                                 hover:bg-sage-50 hover:text-sage-700 transition-colors">
-                    Federal Rules (FRCP)
-                  </Link>
-                  <Link href="/constitution" className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
-                                                        hover:bg-sage-50 hover:text-sage-700 transition-colors">
-                    U.S. Constitution
-                  </Link>
-                  <Link href="/statutes" className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
-                                                    hover:bg-sage-50 hover:text-sage-700 transition-colors">
-                    Federal Statutes
-                  </Link>
-                </div>
+                {refDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-stone-200
+                                  rounded-xl shadow-lg shadow-stone-200/50 z-50 py-1.5">
+                    <Link href="/rules" onClick={() => setRefDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
+                                                   hover:bg-sage-50 hover:text-sage-700 transition-colors">
+                      Federal Rules (FRCP)
+                    </Link>
+                    <Link href="/constitution" onClick={() => setRefDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
+                                                          hover:bg-sage-50 hover:text-sage-700 transition-colors">
+                      U.S. Constitution
+                    </Link>
+                    <Link href="/statutes" onClick={() => setRefDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
+                                                      hover:bg-sage-50 hover:text-sage-700 transition-colors">
+                      Federal Statutes
+                    </Link>
+                  </div>
+                )}
               </div>
 
               <a
