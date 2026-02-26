@@ -4,19 +4,16 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Scale,
   User,
   MessageSquare,
   Loader2,
   Lock,
   GraduationCap,
   Building,
-  FileText,
   ChevronRight,
   FolderOpen,
-  Heart
 } from 'lucide-react'
-import { UserMenu } from '@/components/auth/UserMenu'
+import Header from '@/components/Header'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -137,17 +134,7 @@ export default function PublicProfilePage() {
   if (error || !profile) {
     return (
       <div className="min-h-screen bg-stone-50">
-        <header className="border-b bg-white">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
-                <Scale className="h-[16px] w-[16px] text-white" />
-              </div>
-              <span className="font-display text-lg text-stone-900">Law Study Group</span>
-            </Link>
-            <UserMenu />
-          </div>
-        </header>
+        <Header />
         <main className="max-w-2xl mx-auto px-4 py-16 text-center">
           <User className="h-16 w-16 text-stone-300 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-stone-900 mb-2">{error || 'User not found'}</h1>
@@ -167,44 +154,7 @@ export default function PublicProfilePage() {
   if (!profile.is_public) {
     return (
       <div className="min-h-screen bg-stone-50">
-        <header className="border-b bg-white">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <Link href="/" className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
-                <Scale className="h-[16px] w-[16px] text-white" />
-              </div>
-              <span className="font-display text-lg text-stone-900">Law Study Group</span>
-                </Link>
-                <nav className="hidden md:flex items-center gap-4">
-                  <Link
-                    href="/briefcheck"
-                    className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Brief Check
-                  </Link>
-                  <Link
-                    href="/library"
-                    className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
-                  >
-                    <FolderOpen className="h-4 w-4" />
-                    My Library
-                  </Link>
-                  <Link
-                    href="/transparency"
-                    className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
-                  >
-                    <Heart className="h-4 w-4" />
-                    Transparency
-                  </Link>
-                </nav>
-              </div>
-              <UserMenu />
-            </div>
-          </div>
-        </header>
+        <Header />
 
         <main className="max-w-2xl mx-auto px-4 py-16 text-center">
           <div className="flex justify-center mb-4">
@@ -233,45 +183,7 @@ export default function PublicProfilePage() {
   // Public profile
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Header */}
-      <header className="border-b bg-white">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center">
-                <Scale className="h-[16px] w-[16px] text-white" />
-              </div>
-              <span className="font-display text-lg text-stone-900">Law Study Group</span>
-              </Link>
-              <nav className="hidden md:flex items-center gap-4">
-                <Link
-                  href="/briefcheck"
-                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
-                >
-                  <FileText className="h-4 w-4" />
-                  Brief Check
-                </Link>
-                <Link
-                  href="/library"
-                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  My Library
-                </Link>
-                <Link
-                  href="/transparency"
-                  className="flex items-center gap-1 text-sm text-stone-600 hover:text-sage-600"
-                >
-                  <Heart className="h-4 w-4" />
-                  Transparency
-                </Link>
-              </nav>
-            </div>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Profile Header */}

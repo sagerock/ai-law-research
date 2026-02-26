@@ -1,7 +1,8 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Scale, Calendar, User, FolderOpen, ExternalLink, MessageCircle, GraduationCap } from 'lucide-react'
+import { Calendar, User, FolderOpen, ExternalLink } from 'lucide-react'
+import Header from '@/components/Header'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-law-research-production.up.railway.app'
@@ -92,41 +93,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-cream">
-      {/* Header */}
-      <header className="border-b bg-cream/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-sage-600 transition-colors">
-                <Scale className="h-[18px] w-[18px] text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <span className="font-display text-xl text-stone-900 leading-none">Law Study Group</span>
-                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">Free Case Briefs for Law Students</span>
-              </div>
-            </Link>
-            <nav className="flex items-center gap-4">
-              <Link
-                href="/study"
-                className="text-stone-600 hover:text-stone-900 transition flex items-center"
-              >
-                <GraduationCap className="h-5 w-5" />
-              </Link>
-              <a
-                href="https://discord.gg/AcGcKMmMZX"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-stone-600 hover:text-stone-900 transition flex items-center"
-              >
-                <MessageCircle className="h-5 w-5" />
-              </a>
-              <Link href="/" className="text-stone-600 hover:text-stone-900 transition">
-                Search Cases
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

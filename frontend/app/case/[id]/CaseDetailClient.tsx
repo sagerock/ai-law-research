@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, MessageCircle, GraduationCap, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 import { parseLegalCitations, extractLegalTextRefs } from '@/lib/legalCitations'
-import { UserMenu } from '@/components/auth/UserMenu'
+import Header from '@/components/Header'
 import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
 import CaseAskAI from '@/components/CaseAskAI'
@@ -390,47 +390,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
   return (
     <div className="min-h-screen bg-cream">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => {
-                if (window.history.length > 1) {
-                  router.back()
-                } else {
-                  router.push('/')
-                }
-              }}
-              className="flex items-center text-stone-600 hover:text-stone-900"
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back to Cases
-            </button>
-            <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center">
-                <Scale className="h-6 w-6 text-stone-700 mr-2" />
-                <span className="text-xl font-bold text-stone-900">Law Study Group</span>
-              </Link>
-              <Link
-                href="/study"
-                className="text-stone-600 hover:text-stone-900 transition flex items-center"
-              >
-                <GraduationCap className="h-5 w-5" />
-              </Link>
-              <a
-                href="https://discord.gg/AcGcKMmMZX"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-stone-600 hover:text-stone-900 transition flex items-center"
-              >
-                <MessageCircle className="h-5 w-5" />
-              </a>
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Case Content */}
       <main className="container mx-auto px-4 py-8 max-w-6xl">

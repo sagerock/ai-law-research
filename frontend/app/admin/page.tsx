@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Scale, Shield, Search, Check, Loader2 } from 'lucide-react'
+import { Shield, Search, Check, Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { UserMenu } from '@/components/auth/UserMenu'
+import Header from '@/components/Header'
 import type { AdminUser } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -157,26 +157,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Header */}
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2.5 group">
-                <div className="w-8 h-8 bg-sage-700 rounded-xl flex items-center justify-center group-hover:bg-sage-600 transition-colors">
-                  <Scale className="h-[16px] w-[16px] text-white" />
-                </div>
-                <span className="font-display text-lg text-stone-900">Law Study Group</span>
-              </Link>
-              <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-                <Shield className="h-4 w-4" />
-                Admin Panel
-              </div>
-            </div>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}

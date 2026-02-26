@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Scale, Search, BookOpen, ArrowLeft } from 'lucide-react'
+import { Search, BookOpen, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
-import { UserMenu } from '@/components/auth/UserMenu'
+import Header from '@/components/Header'
 
 interface RuleItem {
   id: number
@@ -73,22 +73,7 @@ export default function RulesPage() {
 
   return (
     <div className="min-h-screen bg-cream">
-      <header className="border-b bg-cream/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-sage-600 transition-colors">
-                <Scale className="h-[18px] w-[18px] text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <span className="font-display text-xl text-stone-900 leading-none">Law Study Group</span>
-                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">Free Case Briefs for Law Students</span>
-              </div>
-            </Link>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <section className="py-8 px-4">
         <div className="container mx-auto max-w-3xl">

@@ -1,11 +1,11 @@
 'use client'
 
-import { Scale, ArrowLeft, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import SubsectionTree from '@/components/SubsectionTree'
 import RelatedCases from '@/components/RelatedCases'
-import { UserMenu } from '@/components/auth/UserMenu'
+import Header from '@/components/Header'
 import AddToCollectionDropdown from '@/components/AddToCollectionDropdown'
 
 interface ConstitutionData {
@@ -36,20 +36,7 @@ export default function ConstitutionDetailClient({ data }: { data: ConstitutionD
 
   return (
     <div className="min-h-screen bg-cream">
-      <header className="border-b bg-cream/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center space-x-3">
-              <Scale className="h-8 w-8 text-stone-700" />
-              <div>
-                <h1 className="text-2xl font-bold text-stone-900">Law Study Group</h1>
-                <p className="text-sm text-stone-600 hidden sm:block">Free Case Briefs for Law Students</p>
-              </div>
-            </Link>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <section className="py-8 px-4">
         <div className="container mx-auto max-w-3xl">

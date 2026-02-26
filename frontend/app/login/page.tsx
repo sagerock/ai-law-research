@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Mail, Loader2, Scale, ArrowLeft, Lock } from 'lucide-react'
+import { Mail, Loader2, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Header from '@/components/Header'
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'newpassword'>('signin')
@@ -138,35 +139,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-cream">
-      {/* Header */}
-      <header className="border-b border-stone-200/80 bg-cream/80 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center
-                              shadow-sm group-hover:bg-sage-600 transition-colors">
-                <Scale className="h-[18px] w-[18px] text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <span className="font-display text-xl text-stone-900 leading-none">
-                  Law Study Group
-                </span>
-                <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">
-                  Free Case Briefs for Law Students
-                </span>
-              </div>
-            </Link>
-            <Link
-              href="/"
-              className="flex items-center gap-2 px-3 py-2 text-sm text-stone-600
-                         hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Search</span>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Login Form */}
       <main className="flex items-center justify-center py-16 sm:py-24 px-4">
