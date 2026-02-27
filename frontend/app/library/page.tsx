@@ -15,6 +15,7 @@ import {
   Copy,
   Check,
   X,
+  Pencil,
 } from 'lucide-react'
 import Header from '@/components/Header'
 
@@ -94,6 +95,9 @@ export default function LibraryPage() {
 
   // Share link copy state
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // Note editing state
+  const [editingNote, setEditingNote] = useState<{ itemKey: string; value: string } | null>(null)
 
   // Get auth headers
   const getAuthHeaders = (): Record<string, string> => {
@@ -300,6 +304,47 @@ export default function LibraryPage() {
     navigator.clipboard.writeText(url)
     setCopiedId(collectionId)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  // Save note for a collection item
+  const saveNote = async (collectionId: string, itemType: 'case' | 'legal_text', itemId: string | number, note: string) => {
+    if (!session?.access_token) return
+
+    const trimmed = note.trim()
+    try {
+      if (itemType === 'case') {
+        await fetch(`${API_URL}/api/v1/library/collections/${collectionId}/cases`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ case_id: itemId, notes: trimmed || null })
+        })
+        if (selectedCollection) {
+          setSelectedCollection({
+            ...selectedCollection,
+            cases: selectedCollection.cases.map(c =>
+              c.id === itemId ? { ...c, notes: trimmed || null } : c
+            )
+          })
+        }
+      } else {
+        await fetch(`${API_URL}/api/v1/library/collections/${collectionId}/legal-texts`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ legal_text_item_id: itemId, notes: trimmed || null })
+        })
+        if (selectedCollection) {
+          setSelectedCollection({
+            ...selectedCollection,
+            legal_texts: selectedCollection.legal_texts.map(lt =>
+              lt.item_id === itemId ? { ...lt, notes: trimmed || null } : lt
+            )
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save note:', err)
+    }
+    setEditingNote(null)
   }
 
   // Toggle collection public status
@@ -601,40 +646,88 @@ export default function LibraryPage() {
                           .map(item => {
                             if (item.type === 'case') {
                               const c = item.data as CollectionCase
+                              const isEditing = editingNote?.itemKey === item.key
                               return (
                                 <div
                                   key={item.key}
-                                  className="flex items-center justify-between p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition"
+                                  className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition"
                                 >
-                                  <Link
-                                    href={`/case/${c.id}`}
-                                    className="flex-1 min-w-0"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
-                                        Case
-                                      </span>
-                                      <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
-                                        {c.title}
-                                      </h4>
+                                  <div className="flex items-center justify-between">
+                                    <Link
+                                      href={`/case/${c.id}`}
+                                      className="flex-1 min-w-0"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                                          Case
+                                        </span>
+                                        <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
+                                          {c.title}
+                                        </h4>
+                                      </div>
+                                      <p className="text-sm text-stone-500 mt-0.5">
+                                        {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
+                                      </p>
+                                    </Link>
+                                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          setEditingNote(isEditing ? null : { itemKey: item.key, value: c.notes || '' })
+                                        }}
+                                        className={`p-2 transition ${isEditing ? 'text-sage-600' : 'text-stone-400 hover:text-sage-600'}`}
+                                        title="Edit note"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          removeCaseFromCollection(selectedCollection.id, c.id)
+                                        }}
+                                        className="p-2 text-stone-400 hover:text-red-500 transition"
+                                        title="Remove from collection"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </button>
                                     </div>
-                                    <p className="text-sm text-stone-500 mt-0.5">
-                                      {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
-                                    </p>
-                                    {c.notes && (
-                                      <p className="text-sm text-stone-600 mt-1 italic">{c.notes}</p>
-                                    )}
-                                  </Link>
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      removeCaseFromCollection(selectedCollection.id, c.id)
-                                    }}
-                                    className="p-2 text-stone-400 hover:text-red-500 transition"
-                                    title="Remove from collection"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </button>
+                                  </div>
+                                  {!isEditing && c.notes && (
+                                    <p className="text-sm text-stone-600 mt-1 italic">{c.notes}</p>
+                                  )}
+                                  {isEditing && (
+                                    <div className="mt-2">
+                                      <textarea
+                                        autoFocus
+                                        value={editingNote.value}
+                                        onChange={(e) => setEditingNote({ ...editingNote, value: e.target.value })}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Escape') setEditingNote(null)
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault()
+                                            saveNote(selectedCollection.id, 'case', c.id, editingNote.value)
+                                          }
+                                        }}
+                                        placeholder="Add a note..."
+                                        rows={2}
+                                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 resize-none"
+                                      />
+                                      <div className="flex justify-end gap-2 mt-1">
+                                        <button
+                                          onClick={() => setEditingNote(null)}
+                                          className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => saveNote(selectedCollection.id, 'case', c.id, editingNote.value)}
+                                          className="px-3 py-1 text-xs bg-sage-700 text-white rounded hover:bg-sage-600 transition"
+                                        >
+                                          Save
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )
                             } else {
@@ -645,41 +738,89 @@ export default function LibraryPage() {
                               const typeLabel = lt.document_id === 'frcp' ? 'FRCP'
                                 : lt.document_id === 'constitution' ? 'Constitution'
                                 : 'Statute'
+                              const isEditing = editingNote?.itemKey === item.key
                               return (
                                 <div
                                   key={item.key}
-                                  className="flex items-center justify-between p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition"
+                                  className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition"
                                 >
-                                  <Link
-                                    href={`${route}/${lt.slug}`}
-                                    className="flex-1 min-w-0"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
-                                        {typeLabel}
-                                      </span>
-                                      <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
-                                        {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
-                                        {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
-                                      </h4>
+                                  <div className="flex items-center justify-between">
+                                    <Link
+                                      href={`${route}/${lt.slug}`}
+                                      className="flex-1 min-w-0"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                                          {typeLabel}
+                                        </span>
+                                        <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
+                                          {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
+                                          {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
+                                        </h4>
+                                      </div>
+                                      {lt.citation && (
+                                        <p className="text-sm text-stone-500 mt-0.5">{lt.citation}</p>
+                                      )}
+                                    </Link>
+                                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          setEditingNote(isEditing ? null : { itemKey: item.key, value: lt.notes || '' })
+                                        }}
+                                        className={`p-2 transition ${isEditing ? 'text-sage-600' : 'text-stone-400 hover:text-sage-600'}`}
+                                        title="Edit note"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          removeLegalTextFromCollection(selectedCollection.id, lt.item_id)
+                                        }}
+                                        className="p-2 text-stone-400 hover:text-red-500 transition"
+                                        title="Remove from collection"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </button>
                                     </div>
-                                    {lt.citation && (
-                                      <p className="text-sm text-stone-500 mt-0.5">{lt.citation}</p>
-                                    )}
-                                    {lt.notes && (
-                                      <p className="text-sm text-stone-600 mt-1 italic">{lt.notes}</p>
-                                    )}
-                                  </Link>
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      removeLegalTextFromCollection(selectedCollection.id, lt.item_id)
-                                    }}
-                                    className="p-2 text-stone-400 hover:text-red-500 transition"
-                                    title="Remove from collection"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </button>
+                                  </div>
+                                  {!isEditing && lt.notes && (
+                                    <p className="text-sm text-stone-600 mt-1 italic">{lt.notes}</p>
+                                  )}
+                                  {isEditing && (
+                                    <div className="mt-2">
+                                      <textarea
+                                        autoFocus
+                                        value={editingNote.value}
+                                        onChange={(e) => setEditingNote({ ...editingNote, value: e.target.value })}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Escape') setEditingNote(null)
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault()
+                                            saveNote(selectedCollection.id, 'legal_text', lt.item_id, editingNote.value)
+                                          }
+                                        }}
+                                        placeholder="Add a note..."
+                                        rows={2}
+                                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 resize-none"
+                                      />
+                                      <div className="flex justify-end gap-2 mt-1">
+                                        <button
+                                          onClick={() => setEditingNote(null)}
+                                          className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => saveNote(selectedCollection.id, 'legal_text', lt.item_id, editingNote.value)}
+                                          className="px-3 py-1 text-xs bg-sage-700 text-white rounded hover:bg-sage-600 transition"
+                                        >
+                                          Save
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )
                             }
