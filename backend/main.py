@@ -101,6 +101,15 @@ class AddLegalTextToCollection(BaseModel):
     notes: Optional[str] = None
 
 
+class ReorderItem(BaseModel):
+    type: str       # "case" or "legal_text"
+    id: str         # case_id or str(legal_text_item_id)
+
+
+class ReorderRequest(BaseModel):
+    items: List[ReorderItem]
+
+
 class BookmarkCreate(BaseModel):
     case_id: str
     folder: Optional[str] = None
@@ -1769,24 +1778,24 @@ async def get_collection(collection_id: str, user: dict = Depends(require_auth))
 
         # Get cases in collection
         cases = await conn.fetch("""
-            SELECT cc.id as collection_case_id, cc.notes, cc.added_at,
+            SELECT cc.id as collection_case_id, cc.notes, cc.added_at, cc.position,
                    c.id, c.title, c.decision_date, c.reporter_cite,
                    ct.name as court_name
             FROM collection_cases cc
             JOIN cases c ON cc.case_id = c.id
             LEFT JOIN courts ct ON c.court_id = ct.id
             WHERE cc.collection_id = $1
-            ORDER BY cc.added_at DESC
+            ORDER BY cc.position ASC, cc.added_at DESC
         """, coll_id)
 
         # Get legal texts in collection
         legal_texts = await conn.fetch("""
-            SELECT clt.id as collection_lt_id, clt.notes, clt.added_at,
+            SELECT clt.id as collection_lt_id, clt.notes, clt.added_at, clt.position,
                    i.id as item_id, i.document_id, i.slug, i.title, i.citation, i.number
             FROM collection_legal_texts clt
             JOIN legal_text_items i ON clt.legal_text_item_id = i.id
             WHERE clt.collection_id = $1
-            ORDER BY clt.added_at DESC
+            ORDER BY clt.position ASC, clt.added_at DESC
         """, coll_id)
 
     return {
@@ -1805,7 +1814,8 @@ async def get_collection(collection_id: str, user: dict = Depends(require_auth))
                 "reporter_cite": c["reporter_cite"],
                 "court_name": c["court_name"],
                 "notes": c["notes"],
-                "added_at": c["added_at"].isoformat() if c["added_at"] else None
+                "added_at": c["added_at"].isoformat() if c["added_at"] else None,
+                "position": c["position"] if c["position"] is not None else 0
             }
             for c in cases
         ],
@@ -1819,7 +1829,8 @@ async def get_collection(collection_id: str, user: dict = Depends(require_auth))
                 "citation": lt["citation"],
                 "number": lt["number"],
                 "notes": lt["notes"],
-                "added_at": lt["added_at"].isoformat() if lt["added_at"] else None
+                "added_at": lt["added_at"].isoformat() if lt["added_at"] else None,
+                "position": lt["position"] if lt["position"] is not None else 0
             }
             for lt in legal_texts
         ]
@@ -1930,12 +1941,22 @@ async def add_case_to_collection(collection_id: str, data: AddCaseToCollection, 
 
         # Add to collection (ignore if already exists)
         try:
+            # Compute next position across both tables
+            max_pos = await conn.fetchval("""
+                SELECT COALESCE(MAX(pos), -1) FROM (
+                    SELECT position AS pos FROM collection_cases WHERE collection_id = $1
+                    UNION ALL
+                    SELECT position AS pos FROM collection_legal_texts WHERE collection_id = $1
+                ) sub
+            """, coll_id)
+            next_pos = (max_pos or 0) + 1
+
             row = await conn.fetchrow("""
-                INSERT INTO collection_cases (collection_id, case_id, notes)
-                VALUES ($1, $2, $3)
+                INSERT INTO collection_cases (collection_id, case_id, notes, position)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (collection_id, case_id) DO UPDATE SET notes = $3
                 RETURNING id, added_at
-            """, coll_id, data.case_id, data.notes)
+            """, coll_id, data.case_id, data.notes, next_pos)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -1998,12 +2019,22 @@ async def add_legal_text_to_collection(collection_id: str, data: AddLegalTextToC
 
         # Add to collection (upsert)
         try:
+            # Compute next position across both tables
+            max_pos = await conn.fetchval("""
+                SELECT COALESCE(MAX(pos), -1) FROM (
+                    SELECT position AS pos FROM collection_cases WHERE collection_id = $1
+                    UNION ALL
+                    SELECT position AS pos FROM collection_legal_texts WHERE collection_id = $1
+                ) sub
+            """, coll_id)
+            next_pos = (max_pos or 0) + 1
+
             row = await conn.fetchrow("""
-                INSERT INTO collection_legal_texts (collection_id, legal_text_item_id, notes)
-                VALUES ($1, $2, $3)
+                INSERT INTO collection_legal_texts (collection_id, legal_text_item_id, notes, position)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (collection_id, legal_text_item_id) DO UPDATE SET notes = $3
                 RETURNING id, added_at
-            """, coll_id, data.legal_text_item_id, data.notes)
+            """, coll_id, data.legal_text_item_id, data.notes, next_pos)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -2039,6 +2070,46 @@ async def remove_legal_text_from_collection(collection_id: str, item_id: int, us
         raise HTTPException(status_code=404, detail="Legal text not in collection")
 
     return {"status": "removed"}
+
+
+@app.put("/api/v1/library/collections/{collection_id}/reorder")
+async def reorder_collection_items(collection_id: str, data: ReorderRequest, user: dict = Depends(require_auth)):
+    """Reorder items in a collection via drag-and-drop"""
+    try:
+        coll_id = int(collection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid collection ID")
+
+    async with db_pool.acquire() as conn:
+        # Verify collection ownership
+        collection = await conn.fetchrow("""
+            SELECT id FROM collections WHERE id = $1 AND user_id = $2
+        """, coll_id, user["id"])
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        # Assign positions in a transaction
+        async with conn.transaction():
+            for idx, item in enumerate(data.items):
+                if item.type == "case":
+                    await conn.execute("""
+                        UPDATE collection_cases
+                        SET position = $1
+                        WHERE collection_id = $2 AND case_id = $3
+                    """, idx, coll_id, item.id)
+                elif item.type == "legal_text":
+                    try:
+                        lt_item_id = int(item.id)
+                    except ValueError:
+                        continue
+                    await conn.execute("""
+                        UPDATE collection_legal_texts
+                        SET position = $1
+                        WHERE collection_id = $2 AND legal_text_item_id = $3
+                    """, idx, coll_id, lt_item_id)
+
+    return {"status": "ok"}
 
 
 # ============================================================================
@@ -2159,24 +2230,24 @@ async def get_shared_collection(collection_id: str):
 
         # Get cases in collection
         cases = await conn.fetch("""
-            SELECT cc.notes, cc.added_at,
+            SELECT cc.notes, cc.added_at, cc.position,
                    c.id, c.title, c.decision_date, c.reporter_cite,
                    ct.name as court_name
             FROM collection_cases cc
             JOIN cases c ON cc.case_id = c.id
             LEFT JOIN courts ct ON c.court_id = ct.id
             WHERE cc.collection_id = $1
-            ORDER BY cc.added_at DESC
+            ORDER BY cc.position ASC, cc.added_at DESC
         """, coll_id)
 
         # Get legal texts in collection
         legal_texts = await conn.fetch("""
-            SELECT clt.notes,
+            SELECT clt.notes, clt.position,
                    i.id as item_id, i.document_id, i.slug, i.title, i.citation, i.number
             FROM collection_legal_texts clt
             JOIN legal_text_items i ON clt.legal_text_item_id = i.id
             WHERE clt.collection_id = $1
-            ORDER BY clt.added_at DESC
+            ORDER BY clt.position ASC, clt.added_at DESC
         """, coll_id)
 
     return {
@@ -2193,7 +2264,8 @@ async def get_shared_collection(collection_id: str):
                 "decision_date": c["decision_date"].isoformat() if c["decision_date"] else None,
                 "reporter_cite": c["reporter_cite"],
                 "court_name": c["court_name"],
-                "notes": c["notes"]
+                "notes": c["notes"],
+                "position": c["position"] if c["position"] is not None else 0
             }
             for c in cases
         ],
@@ -2205,7 +2277,8 @@ async def get_shared_collection(collection_id: str):
                 "title": lt["title"],
                 "citation": lt["citation"],
                 "number": lt["number"],
-                "notes": lt["notes"]
+                "notes": lt["notes"],
+                "position": lt["position"] if lt["position"] is not None else 0
             }
             for lt in legal_texts
         ],

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
@@ -18,6 +18,21 @@ import {
   Pencil,
 } from 'lucide-react'
 import Header from '@/components/Header'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensors,
+  useSensor,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import SortableCollectionItem from '@/components/SortableCollectionItem'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -47,6 +62,7 @@ interface CollectionCase {
   court_name: string | null
   notes: string | null
   added_at: string | null
+  position: number
 }
 
 interface CollectionLegalText {
@@ -59,6 +75,7 @@ interface CollectionLegalText {
   number: string | null
   notes: string | null
   added_at: string | null
+  position: number
 }
 
 interface BookmarkItem {
@@ -98,6 +115,90 @@ export default function LibraryPage() {
 
   // Note editing state
   const [editingNote, setEditingNote] = useState<{ itemKey: string; value: string } | null>(null)
+
+  // DnD sensors
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  const keyboardSensor = useSensor(KeyboardSensor)
+  const sensors = useSensors(pointerSensor, keyboardSensor)
+
+  // Unified items sorted by position
+  const unifiedItems = useMemo(() => {
+    if (!selectedCollection) return []
+    return [
+      ...selectedCollection.cases.map(c => ({
+        type: 'case' as const,
+        key: `case-${c.id}`,
+        sortId: `case-${c.id}`,
+        position: c.position ?? 0,
+        added_at: c.added_at,
+        data: c
+      })),
+      ...(selectedCollection.legal_texts || []).map(lt => ({
+        type: 'legal_text' as const,
+        key: `lt-${lt.item_id}`,
+        sortId: `lt-${lt.item_id}`,
+        position: lt.position ?? 0,
+        added_at: lt.added_at,
+        data: lt
+      }))
+    ].sort((a, b) => {
+      if (a.position !== b.position) return a.position - b.position
+      if (!a.added_at) return 1
+      if (!b.added_at) return -1
+      return new Date(b.added_at).getTime() - new Date(a.added_at).getTime()
+    })
+  }, [selectedCollection])
+
+  // Reorder API call
+  const reorderItems = async (collectionId: string, items: { type: string; id: string }[]) => {
+    if (!session?.access_token) return
+    try {
+      await fetch(`${API_URL}/api/v1/library/collections/${collectionId}/reorder`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ items })
+      })
+    } catch (err) {
+      console.error('Failed to reorder items:', err)
+    }
+  }
+
+  // Handle drag end
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id || !selectedCollection) return
+
+    const oldIndex = unifiedItems.findIndex(item => item.sortId === active.id)
+    const newIndex = unifiedItems.findIndex(item => item.sortId === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(unifiedItems, oldIndex, newIndex)
+
+    // Optimistically update state
+    const updatedCases = selectedCollection.cases.map(c => {
+      const idx = reordered.findIndex(r => r.type === 'case' && (r.data as CollectionCase).id === c.id)
+      return { ...c, position: idx >= 0 ? idx : c.position }
+    })
+    const updatedLegalTexts = (selectedCollection.legal_texts || []).map(lt => {
+      const idx = reordered.findIndex(r => r.type === 'legal_text' && (r.data as CollectionLegalText).item_id === lt.item_id)
+      return { ...lt, position: idx >= 0 ? idx : lt.position }
+    })
+
+    setSelectedCollection({
+      ...selectedCollection,
+      cases: updatedCases,
+      legal_texts: updatedLegalTexts
+    })
+
+    // Fire API call
+    const apiItems = reordered.map(item => ({
+      type: item.type,
+      id: item.type === 'case'
+        ? (item.data as CollectionCase).id
+        : String((item.data as CollectionLegalText).item_id)
+    }))
+    reorderItems(selectedCollection.id, apiItems)
+  }
 
   // Get auth headers
   const getAuthHeaders = (): Record<string, string> => {
@@ -616,217 +717,199 @@ export default function LibraryPage() {
                       </div>
                     </div>
 
-                    {/* Items in Collection — unified list sorted by added_at */}
+                    {/* Items in Collection — unified list sorted by position */}
                     {selectedCollection.cases.length === 0 && (!selectedCollection.legal_texts || selectedCollection.legal_texts.length === 0) ? (
                       <div className="text-center py-12 text-stone-500">
                         <p>No items in this collection yet</p>
                         <p className="text-sm mt-1">Search for cases or visit legal texts to add them</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {[
-                          ...selectedCollection.cases.map(c => ({
-                            type: 'case' as const,
-                            key: `case-${c.collection_case_id}`,
-                            added_at: c.added_at,
-                            data: c
-                          })),
-                          ...(selectedCollection.legal_texts || []).map(lt => ({
-                            type: 'legal_text' as const,
-                            key: `lt-${lt.collection_lt_id}`,
-                            added_at: lt.added_at,
-                            data: lt
-                          }))
-                        ]
-                          .sort((a, b) => {
-                            if (!a.added_at) return 1
-                            if (!b.added_at) return -1
-                            return new Date(b.added_at).getTime() - new Date(a.added_at).getTime()
-                          })
-                          .map(item => {
-                            if (item.type === 'case') {
-                              const c = item.data as CollectionCase
-                              const isEditing = editingNote?.itemKey === item.key
-                              return (
-                                <div
-                                  key={item.key}
-                                  className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <Link
-                                      href={`/case/${c.id}`}
-                                      className="flex-1 min-w-0"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
-                                          Case
-                                        </span>
-                                        <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
-                                          {c.title}
-                                        </h4>
-                                      </div>
-                                      <p className="text-sm text-stone-500 mt-0.5">
-                                        {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
-                                      </p>
-                                    </Link>
-                                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                                      <button
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          setEditingNote(isEditing ? null : { itemKey: item.key, value: c.notes || '' })
-                                        }}
-                                        className={`p-2 transition ${isEditing ? 'text-sage-600' : 'text-stone-400 hover:text-sage-600'}`}
-                                        title="Edit note"
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          removeCaseFromCollection(selectedCollection.id, c.id)
-                                        }}
-                                        className="p-2 text-stone-400 hover:text-red-500 transition"
-                                        title="Remove from collection"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                  {!isEditing && c.notes && (
-                                    <p className="text-sm text-stone-600 mt-1 italic">{c.notes}</p>
-                                  )}
-                                  {isEditing && (
-                                    <div className="mt-2">
-                                      <textarea
-                                        autoFocus
-                                        value={editingNote.value}
-                                        onChange={(e) => setEditingNote({ ...editingNote, value: e.target.value })}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Escape') setEditingNote(null)
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault()
-                                            saveNote(selectedCollection.id, 'case', c.id, editingNote.value)
-                                          }
-                                        }}
-                                        placeholder="Add a note..."
-                                        rows={2}
-                                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 resize-none"
-                                      />
-                                      <div className="flex justify-end gap-2 mt-1">
-                                        <button
-                                          onClick={() => setEditingNote(null)}
-                                          className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition"
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={unifiedItems.map(i => i.sortId)} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-3">
+                            {unifiedItems.map(item => {
+                              if (item.type === 'case') {
+                                const c = item.data as CollectionCase
+                                const isEditing = editingNote?.itemKey === item.key
+                                return (
+                                  <SortableCollectionItem key={item.key} id={item.sortId}>
+                                    <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition">
+                                      <div className="flex items-center justify-between">
+                                        <Link
+                                          href={`/case/${c.id}`}
+                                          className="flex-1 min-w-0"
                                         >
-                                          Cancel
-                                        </button>
-                                        <button
-                                          onClick={() => saveNote(selectedCollection.id, 'case', c.id, editingNote.value)}
-                                          className="px-3 py-1 text-xs bg-sage-700 text-white rounded hover:bg-sage-600 transition"
-                                        >
-                                          Save
-                                        </button>
+                                          <div className="flex items-center gap-2">
+                                            <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                                              Case
+                                            </span>
+                                            <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
+                                              {c.title}
+                                            </h4>
+                                          </div>
+                                          <p className="text-sm text-stone-500 mt-0.5">
+                                            {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
+                                          </p>
+                                        </Link>
+                                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              setEditingNote(isEditing ? null : { itemKey: item.key, value: c.notes || '' })
+                                            }}
+                                            className={`p-2 transition ${isEditing ? 'text-sage-600' : 'text-stone-400 hover:text-sage-600'}`}
+                                            title="Edit note"
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              removeCaseFromCollection(selectedCollection.id, c.id)
+                                            }}
+                                            className="p-2 text-stone-400 hover:text-red-500 transition"
+                                            title="Remove from collection"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            } else {
-                              const lt = item.data as CollectionLegalText
-                              const route = lt.document_id === 'frcp' ? '/rules'
-                                : lt.document_id === 'constitution' ? '/constitution'
-                                : '/statutes'
-                              const typeLabel = lt.document_id === 'frcp' ? 'FRCP'
-                                : lt.document_id === 'constitution' ? 'Constitution'
-                                : 'Statute'
-                              const isEditing = editingNote?.itemKey === item.key
-                              return (
-                                <div
-                                  key={item.key}
-                                  className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <Link
-                                      href={`${route}/${lt.slug}`}
-                                      className="flex-1 min-w-0"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
-                                          {typeLabel}
-                                        </span>
-                                        <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
-                                          {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
-                                          {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
-                                        </h4>
-                                      </div>
-                                      {lt.citation && (
-                                        <p className="text-sm text-stone-500 mt-0.5">{lt.citation}</p>
+                                      {!isEditing && c.notes && (
+                                        <p className="text-sm text-stone-600 mt-1 italic">{c.notes}</p>
                                       )}
-                                    </Link>
-                                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                                      <button
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          setEditingNote(isEditing ? null : { itemKey: item.key, value: lt.notes || '' })
-                                        }}
-                                        className={`p-2 transition ${isEditing ? 'text-sage-600' : 'text-stone-400 hover:text-sage-600'}`}
-                                        title="Edit note"
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          removeLegalTextFromCollection(selectedCollection.id, lt.item_id)
-                                        }}
-                                        className="p-2 text-stone-400 hover:text-red-500 transition"
-                                        title="Remove from collection"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </button>
+                                      {isEditing && (
+                                        <div className="mt-2">
+                                          <textarea
+                                            autoFocus
+                                            value={editingNote.value}
+                                            onChange={(e) => setEditingNote({ ...editingNote, value: e.target.value })}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Escape') setEditingNote(null)
+                                              if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault()
+                                                saveNote(selectedCollection.id, 'case', c.id, editingNote.value)
+                                              }
+                                            }}
+                                            placeholder="Add a note..."
+                                            rows={2}
+                                            className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 resize-none"
+                                          />
+                                          <div className="flex justify-end gap-2 mt-1">
+                                            <button
+                                              onClick={() => setEditingNote(null)}
+                                              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition"
+                                            >
+                                              Cancel
+                                            </button>
+                                            <button
+                                              onClick={() => saveNote(selectedCollection.id, 'case', c.id, editingNote.value)}
+                                              className="px-3 py-1 text-xs bg-sage-700 text-white rounded hover:bg-sage-600 transition"
+                                            >
+                                              Save
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
-                                  </div>
-                                  {!isEditing && lt.notes && (
-                                    <p className="text-sm text-stone-600 mt-1 italic">{lt.notes}</p>
-                                  )}
-                                  {isEditing && (
-                                    <div className="mt-2">
-                                      <textarea
-                                        autoFocus
-                                        value={editingNote.value}
-                                        onChange={(e) => setEditingNote({ ...editingNote, value: e.target.value })}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Escape') setEditingNote(null)
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault()
-                                            saveNote(selectedCollection.id, 'legal_text', lt.item_id, editingNote.value)
-                                          }
-                                        }}
-                                        placeholder="Add a note..."
-                                        rows={2}
-                                        className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 resize-none"
-                                      />
-                                      <div className="flex justify-end gap-2 mt-1">
-                                        <button
-                                          onClick={() => setEditingNote(null)}
-                                          className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition"
+                                  </SortableCollectionItem>
+                                )
+                              } else {
+                                const lt = item.data as CollectionLegalText
+                                const route = lt.document_id === 'frcp' ? '/rules'
+                                  : lt.document_id === 'constitution' ? '/constitution'
+                                  : '/statutes'
+                                const typeLabel = lt.document_id === 'frcp' ? 'FRCP'
+                                  : lt.document_id === 'constitution' ? 'Constitution'
+                                  : 'Statute'
+                                const isEditing = editingNote?.itemKey === item.key
+                                return (
+                                  <SortableCollectionItem key={item.key} id={item.sortId}>
+                                    <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition">
+                                      <div className="flex items-center justify-between">
+                                        <Link
+                                          href={`${route}/${lt.slug}`}
+                                          className="flex-1 min-w-0"
                                         >
-                                          Cancel
-                                        </button>
-                                        <button
-                                          onClick={() => saveNote(selectedCollection.id, 'legal_text', lt.item_id, editingNote.value)}
-                                          className="px-3 py-1 text-xs bg-sage-700 text-white rounded hover:bg-sage-600 transition"
-                                        >
-                                          Save
-                                        </button>
+                                          <div className="flex items-center gap-2">
+                                            <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                                              {typeLabel}
+                                            </span>
+                                            <h4 className="font-medium text-stone-900 hover:text-sage-600 truncate">
+                                              {lt.number ? `${typeLabel} ${lt.number}` : lt.title}
+                                              {lt.number && lt.title ? ` \u2014 ${lt.title}` : ''}
+                                            </h4>
+                                          </div>
+                                          {lt.citation && (
+                                            <p className="text-sm text-stone-500 mt-0.5">{lt.citation}</p>
+                                          )}
+                                        </Link>
+                                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              setEditingNote(isEditing ? null : { itemKey: item.key, value: lt.notes || '' })
+                                            }}
+                                            className={`p-2 transition ${isEditing ? 'text-sage-600' : 'text-stone-400 hover:text-sage-600'}`}
+                                            title="Edit note"
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              removeLegalTextFromCollection(selectedCollection.id, lt.item_id)
+                                            }}
+                                            className="p-2 text-stone-400 hover:text-red-500 transition"
+                                            title="Remove from collection"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </div>
                                       </div>
+                                      {!isEditing && lt.notes && (
+                                        <p className="text-sm text-stone-600 mt-1 italic">{lt.notes}</p>
+                                      )}
+                                      {isEditing && (
+                                        <div className="mt-2">
+                                          <textarea
+                                            autoFocus
+                                            value={editingNote.value}
+                                            onChange={(e) => setEditingNote({ ...editingNote, value: e.target.value })}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Escape') setEditingNote(null)
+                                              if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault()
+                                                saveNote(selectedCollection.id, 'legal_text', lt.item_id, editingNote.value)
+                                              }
+                                            }}
+                                            placeholder="Add a note..."
+                                            rows={2}
+                                            className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage-200 resize-none"
+                                          />
+                                          <div className="flex justify-end gap-2 mt-1">
+                                            <button
+                                              onClick={() => setEditingNote(null)}
+                                              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition"
+                                            >
+                                              Cancel
+                                            </button>
+                                            <button
+                                              onClick={() => saveNote(selectedCollection.id, 'legal_text', lt.item_id, editingNote.value)}
+                                              className="px-3 py-1 text-xs bg-sage-700 text-white rounded hover:bg-sage-600 transition"
+                                            >
+                                              Save
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              )
-                            }
-                          })
-                        }
-                      </div>
+                                  </SortableCollectionItem>
+                                )
+                              }
+                            })}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
                     )}
                   </div>
                 )}

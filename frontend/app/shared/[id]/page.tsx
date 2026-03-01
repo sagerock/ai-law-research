@@ -28,6 +28,7 @@ interface SharedCase {
   reporter_cite: string | null
   court_name: string | null
   notes: string | null
+  position: number
 }
 
 interface SharedLegalText {
@@ -38,6 +39,7 @@ interface SharedLegalText {
   citation: string | null
   number: string | null
   notes: string | null
+  position: number
 }
 
 interface PageProps {
@@ -145,13 +147,17 @@ export default async function SharedCollectionPage({ params }: PageProps) {
               [...collection.cases.map(c => ({
                 type: 'case' as const,
                 key: `case-${c.id}`,
+                position: c.position ?? 0,
                 data: c
               })),
               ...(collection.legal_texts || []).map(lt => ({
                 type: 'legal_text' as const,
                 key: `lt-${lt.item_id}`,
+                position: lt.position ?? 0,
                 data: lt
-              }))].map(item => {
+              }))]
+              .sort((a, b) => a.position - b.position)
+              .map(item => {
                 if (item.type === 'case') {
                   const caseItem = item.data as SharedCase
                   return (
