@@ -28,6 +28,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>
   updateProfile: (data: ProfileUpdateData) => Promise<{ error: Error | null }>
   changePassword: (newPassword: string) => Promise<{ error: Error | null }>
+  getAccessToken: () => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           refreshProfile: async () => {},
           updateProfile: async () => ({ error: new Error('Supabase not configured') }),
           changePassword: async () => ({ error: new Error('Supabase not configured') }),
+          getAccessToken: async () => null,
         }}
       >
         {children}
@@ -341,6 +343,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null }
   }
 
+  // Get a fresh access token (refreshes if expired or about to expire)
+  const getAccessToken = async (): Promise<string | null> => {
+    const { data: { session: currentSession } } = await supabase.auth.getSession()
+    if (!currentSession) return null
+
+    // If token expires within 60 seconds, force a refresh
+    const expiresAt = currentSession.expires_at
+    if (expiresAt && expiresAt * 1000 < Date.now() + 60000) {
+      const { data } = await supabase.auth.refreshSession()
+      return data.session?.access_token ?? null
+    }
+
+    return currentSession.access_token
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -357,6 +374,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshProfile,
         updateProfile,
         changePassword,
+        getAccessToken,
       }}
     >
       {children}

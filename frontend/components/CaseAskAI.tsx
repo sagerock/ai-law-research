@@ -14,7 +14,7 @@ interface CaseAskAIProps {
 }
 
 export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
-  const { user, session } = useAuth()
+  const { user, session, getAccessToken } = useAuth()
   const router = useRouter()
 
   const [expanded, setExpanded] = useState(false)
@@ -24,19 +24,21 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
   const [streaming, setStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [rateLimited, setRateLimited] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [usageLoaded, setUsageLoaded] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const getAuthHeaders = useCallback((): Record<string, string> => {
-    if (!session?.access_token) return {}
+  const getFreshAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const token = await getAccessToken()
+    if (!token) return {}
     return {
-      'Authorization': `Bearer ${session.access_token}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     }
-  }, [session?.access_token])
+  }, [getAccessToken])
 
   // Fetch usage when section expands and user is signed in
   useEffect(() => {
@@ -55,8 +57,9 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
 
   const fetchUsage = async () => {
     try {
+      const headers = await getFreshAuthHeaders()
       const res = await fetch(`${API_URL}/api/v1/study/usage`, {
-        headers: getAuthHeaders(),
+        headers,
       })
       if (res.ok) {
         const data = await res.json()
@@ -76,6 +79,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
     setInput('')
     setStreaming(true)
     setStreamingText('')
+    setError(null)
 
     const tempUserMsg: ChatMessageType = {
       id: Date.now(),
@@ -87,9 +91,16 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
     setMessages(prev => [...prev, tempUserMsg])
 
     try {
+      const headers = await getFreshAuthHeaders()
+      if (!headers['Authorization']) {
+        setError('Your session has expired. Please sign in again.')
+        setStreaming(false)
+        return
+      }
+
       const res = await fetch(`${API_URL}/api/v1/cases/${caseId}/ask`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers,
         body: JSON.stringify({
           content,
           conversation_id: conversationId,
@@ -102,7 +113,14 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
         return
       }
 
+      if (res.status === 401) {
+        setError('Your session has expired. Please sign in again.')
+        setStreaming(false)
+        return
+      }
+
       if (!res.ok || !res.body) {
+        setError('Something went wrong. Please try again.')
         setStreaming(false)
         return
       }
@@ -216,6 +234,14 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-3 text-sm text-amber-800">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <span>Daily message limit reached. Upgrade to Pro for unlimited messages.</span>
+                </div>
+              )}
+
+              {/* Error banner */}
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-3 text-sm text-red-800">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
