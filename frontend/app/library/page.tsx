@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import {
@@ -91,8 +91,17 @@ interface BookmarkItem {
 }
 
 export default function LibraryPage() {
+  return (
+    <Suspense>
+      <LibraryPageContent />
+    </Suspense>
+  )
+}
+
+function LibraryPageContent() {
   const { user, session, isLoading: authLoading, isConfigured } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
 
   const [activeTab, setActiveTab] = useState<'collections' | 'bookmarks'>('collections')
@@ -501,7 +510,13 @@ export default function LibraryPage() {
       }
     }
 
-    loadData()
+    loadData().then(() => {
+      // Auto-open collection if linked from a case page
+      const collectionId = searchParams.get('collection')
+      if (collectionId) {
+        fetchCollectionDetails(collectionId)
+      }
+    })
   }, [mounted, authLoading, user, session])
 
   // Show login prompt before mount or if no user
@@ -736,7 +751,7 @@ export default function LibraryPage() {
                                     <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition">
                                       <div className="flex items-center justify-between">
                                         <Link
-                                          href={`/case/${c.id}`}
+                                          href={`/case/${c.id}?collection=${selectedCollection.id}`}
                                           className="flex-1 min-w-0"
                                         >
                                           <div className="flex items-center gap-2">

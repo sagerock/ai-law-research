@@ -163,7 +163,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                   return (
                     <Link
                       key={item.key}
-                      href={`/case/${caseItem.id}`}
+                      href={`/case/${caseItem.id}?shared_collection=${id}`}
                       className="block bg-white rounded-lg border border-stone-200 p-5 hover:border-sage-200 hover:shadow-md transition"
                     >
                       <div className="flex items-start justify-between">

@@ -90,6 +90,9 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
     }
     setMessages(prev => [...prev, tempUserMsg])
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 90000)
+
     try {
       const headers = await getFreshAuthHeaders()
       if (!headers['Authorization']) {
@@ -101,6 +104,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
       const res = await fetch(`${API_URL}/api/v1/cases/${caseId}/ask`, {
         method: 'POST',
         headers,
+        signal: controller.signal,
         body: JSON.stringify({
           content,
           conversation_id: conversationId,
@@ -180,9 +184,15 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
         }
         setMessages(prev => [...prev, assistantMsg])
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Case ask error:', e)
+      if (e?.name === 'AbortError') {
+        setError('Request timed out. Please try again.')
+      } else {
+        setError('Something went wrong. Please try again.')
+      }
     } finally {
+      clearTimeout(timeout)
       setStreaming(false)
       setStreamingText('')
     }

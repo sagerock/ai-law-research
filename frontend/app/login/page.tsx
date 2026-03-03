@@ -75,8 +75,13 @@ export default function LoginPage() {
           const data = await res.json().catch(() => ({}))
           setError(data.msg || data.message || 'Failed to update password')
         } else {
-          setMessage('Password updated successfully! Redirecting...')
-          setTimeout(() => { router.push('/login') }, 1500)
+          setMessage('Password updated successfully! Sign in with your new password.')
+          setRecoveryToken(null)
+          setTimeout(() => {
+            setMode('signin')
+            setPassword('')
+            setConfirmPassword('')
+          }, 1500)
         }
       } else if (mode === 'forgot') {
         const { error } = await resetPassword(email)

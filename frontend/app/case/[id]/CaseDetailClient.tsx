@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
@@ -81,12 +81,18 @@ interface UserCollection {
 
 export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, session } = useAuth()
   const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
   const [citations, setCitations] = useState<CitationData | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
+
+  // Collection back-navigation context
+  const collectionId = searchParams.get('collection')
+  const sharedCollectionId = searchParams.get('shared_collection')
+  const [collectionName, setCollectionName] = useState<string | null>(null)
 
   // Summary rating state
   const [summaryRating, setSummaryRating] = useState<number | null>(null)
@@ -131,6 +137,23 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       fetchUserCollections()
     }
   }, [user, session, caseId])
+
+  // Fetch collection name for back-navigation breadcrumb
+  useEffect(() => {
+    if (collectionId && session?.access_token) {
+      fetch(`${API_URL}/api/v1/library/collections/${collectionId}`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.name) setCollectionName(data.name) })
+        .catch(() => {})
+    } else if (sharedCollectionId) {
+      fetch(`${API_URL}/api/v1/shared/${sharedCollectionId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.name) setCollectionName(data.name) })
+        .catch(() => {})
+    }
+  }, [collectionId, sharedCollectionId, session?.access_token])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -394,6 +417,19 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
       {/* Case Content */}
       <main className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Back to collection breadcrumb */}
+        {(collectionId || sharedCollectionId) && (
+          <div className="mb-4">
+            <Link
+              href={collectionId ? `/library?collection=${collectionId}` : `/shared/${sharedCollectionId}`}
+              className="inline-flex items-center gap-1.5 text-sm text-sage-600 hover:text-sage-700 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {collectionName ? `Back to ${collectionName}` : 'Back to collection'}
+            </Link>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content - Left 2/3 */}
           <div className="lg:col-span-2 space-y-6">

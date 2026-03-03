@@ -34,6 +34,7 @@ export default function StudyPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [uploading, setUploading] = useState(false)
   const [rateLimited, setRateLimited] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [availableTags, setAvailableTags] = useState<TagCount[]>([])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -209,6 +210,7 @@ export default function StudyPage() {
     setInput('')
     setStreaming(true)
     setStreamingText('')
+    setError(null)
 
     // Optimistic UI: add user message
     const tempUserMsg: ChatMessageType = {
@@ -220,10 +222,14 @@ export default function StudyPage() {
     }
     setMessages(prev => [...prev, tempUserMsg])
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 90000)
+
     try {
       const res = await fetch(`${API_URL}/api/v1/study/chat`, {
         method: 'POST',
         headers: getAuthHeaders(),
+        signal: controller.signal,
         body: JSON.stringify({
           content,
           conversation_id: activeConversation,
@@ -300,9 +306,15 @@ export default function StudyPage() {
         }
         setMessages(prev => [...prev, assistantMsg])
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Chat error:', e)
+      if (e?.name === 'AbortError') {
+        setError('Request timed out. Please try again.')
+      } else {
+        setError('Something went wrong. Please try again.')
+      }
     } finally {
+      clearTimeout(timeout)
       setStreaming(false)
       setStreamingText('')
     }
@@ -621,6 +633,14 @@ export default function StudyPage() {
 
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Error banner */}
+          {error && (
+            <div className="mx-4 mb-2 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-sm text-red-800">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Rate limit banner */}
           {rateLimited && (
