@@ -3501,6 +3501,8 @@ Guidelines:
         api_messages.append({"role": h["role"], "content": h["content"]})
 
     async def stream_response():
+        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+
         full_response = ""
         input_tokens = 0
         output_tokens = 0
@@ -3528,6 +3530,7 @@ Guidelines:
                         error_body = ""
                         async for chunk in response.aiter_text():
                             error_body += chunk
+                        print(f"Study chat API error {response.status_code}: {error_body[:500]}")
                         yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
                         return
 
@@ -3560,6 +3563,7 @@ Guidelines:
                             output_tokens = usage.get("output_tokens", 0)
 
         except Exception as e:
+            print(f"Study chat stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
@@ -3607,7 +3611,14 @@ Guidelines:
             remaining = max(0, effective_limit - (messages_today + 1))
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining})}\n\n"
 
-    return StreamingResponse(stream_response(), media_type="text/event-stream")
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ============================================================================
@@ -3821,6 +3832,8 @@ Guidelines:
         api_messages.append({"role": h["role"], "content": h["content"]})
 
     async def stream_response():
+        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+
         full_response = ""
         input_tokens = 0
         output_tokens = 0
@@ -3848,6 +3861,7 @@ Guidelines:
                         error_body = ""
                         async for chunk in response.aiter_text():
                             error_body += chunk
+                        print(f"Case ask API error {response.status_code}: {error_body[:500]}")
                         yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
                         return
 
@@ -3880,6 +3894,7 @@ Guidelines:
                             output_tokens = usage.get("output_tokens", 0)
 
         except Exception as e:
+            print(f"Case ask stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
@@ -3927,7 +3942,14 @@ Guidelines:
             remaining = max(0, effective_limit - (messages_today + 1))
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining})}\n\n"
 
-    return StreamingResponse(stream_response(), media_type="text/event-stream")
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ============================================================================

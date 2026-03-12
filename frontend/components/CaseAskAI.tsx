@@ -133,10 +133,19 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
       const decoder = new TextDecoder()
       let accumulatedText = ''
       let buffer = ''
+      let receivedData = false
+
+      // If no data received within 30s, abort
+      const dataTimeout = setTimeout(() => {
+        if (!receivedData) controller.abort()
+      }, 30000)
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
+
+        receivedData = true
+        clearTimeout(dataTimeout)
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
@@ -165,8 +174,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 if (event.messages_remaining === 0) setRateLimited(true)
               }
             } else if (event.type === 'error') {
-              accumulatedText += `\n\n*Error: ${event.error}*`
-              setStreamingText(accumulatedText)
+              setError(event.error || 'Something went wrong. Please try again.')
             }
           } catch {
             // Skip malformed JSON
@@ -183,6 +191,8 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
           created_at: new Date().toISOString(),
         }
         setMessages(prev => [...prev, assistantMsg])
+      } else if (!error) {
+        setError('No response received. Please try again.')
       }
     } catch (e: any) {
       console.error('Case ask error:', e)
