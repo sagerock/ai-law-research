@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { MessageSquare, Send, Edit2, Trash2, X, Check, Loader2, ChevronUp, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
+import { FormattedMessage } from '@/components/FormattedMessage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -355,9 +356,9 @@ export default function Comments({ caseId }: CommentsProps) {
                       </div>
                     ) : (
                       // Display mode
-                      <p className="text-stone-700 whitespace-pre-wrap">
-                        {comment.content}
-                      </p>
+                      <div className="text-stone-700 text-sm">
+                        <FormattedMessage content={comment.content} />
+                      </div>
                     )}
                   </div>
 
