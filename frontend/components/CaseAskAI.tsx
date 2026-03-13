@@ -133,19 +133,17 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
       const decoder = new TextDecoder()
       let accumulatedText = ''
       let buffer = ''
-      let receivedData = false
+      let receivedText = false
+      let hadError = false
 
-      // If no data received within 30s, abort
-      const dataTimeout = setTimeout(() => {
-        if (!receivedData) controller.abort()
-      }, 30000)
+      // If no actual AI text within 45s, abort
+      const textTimeout = setTimeout(() => {
+        if (!receivedText) controller.abort()
+      }, 45000)
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
-        receivedData = true
-        clearTimeout(dataTimeout)
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
@@ -159,9 +157,14 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
           try {
             const event = JSON.parse(dataStr)
             if (event.type === 'text') {
+              if (!receivedText) {
+                receivedText = true
+                clearTimeout(textTimeout)
+              }
               accumulatedText += event.text
               setStreamingText(accumulatedText)
             } else if (event.type === 'done') {
+              clearTimeout(textTimeout)
               if (!conversationId && event.conversation_id) {
                 setConversationId(event.conversation_id)
               }
@@ -174,6 +177,8 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 if (event.messages_remaining === 0) setRateLimited(true)
               }
             } else if (event.type === 'error') {
+              clearTimeout(textTimeout)
+              hadError = true
               setError(event.error || 'Something went wrong. Please try again.')
             }
           } catch {
@@ -181,6 +186,8 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
           }
         }
       }
+
+      clearTimeout(textTimeout)
 
       if (accumulatedText) {
         const assistantMsg: ChatMessageType = {
@@ -191,7 +198,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
           created_at: new Date().toISOString(),
         }
         setMessages(prev => [...prev, assistantMsg])
-      } else if (!error) {
+      } else if (!hadError) {
         setError('No response received. Please try again.')
       }
     } catch (e: any) {
