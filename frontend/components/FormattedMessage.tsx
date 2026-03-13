@@ -36,7 +36,10 @@ export function FormattedMessage({ content }: { content: string }) {
     <div className="space-y-1">
       {lines.map((line, i) => {
         const trimmed = line.trimStart()
-        // Headers
+        // Headers (check longest prefix first)
+        if (trimmed.startsWith('#### ')) {
+          return <h5 key={i} className="font-semibold text-stone-800 mt-2 mb-1">{formatInline(trimmed.slice(5))}</h5>
+        }
         if (trimmed.startsWith('### ')) {
           return <h4 key={i} className="font-semibold text-stone-900 mt-3 mb-1">{formatInline(trimmed.slice(4))}</h4>
         }
