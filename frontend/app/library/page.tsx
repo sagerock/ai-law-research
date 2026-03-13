@@ -674,7 +674,7 @@ function LibraryPageContent() {
 
                 {/* Collection Detail */}
                 {selectedCollection && (
-                  <div className="flex-1 bg-white rounded-lg border border-stone-200 p-6">
+                  <div className="flex-1 min-w-0 bg-white rounded-lg border border-stone-200 p-6 overflow-hidden">
                     <div className="flex items-start justify-between mb-6">
                       <div>
                         <h3 className="text-xl font-bold text-stone-900">{selectedCollection.name}</h3>
