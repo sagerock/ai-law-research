@@ -748,11 +748,11 @@ function LibraryPageContent() {
                                 const isEditing = editingNote?.itemKey === item.key
                                 return (
                                   <SortableCollectionItem key={item.key} id={item.sortId}>
-                                    <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition">
+                                    <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition overflow-hidden">
                                       <div className="flex items-center justify-between">
                                         <Link
                                           href={`/case/${c.id}?collection=${selectedCollection.id}`}
-                                          className="flex-1 min-w-0"
+                                          className="flex-1 min-w-0 overflow-hidden"
                                         >
                                           <div className="flex items-center gap-2">
                                             <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
@@ -762,7 +762,7 @@ function LibraryPageContent() {
                                               {c.title}
                                             </h4>
                                           </div>
-                                          <p className="text-sm text-stone-500 mt-0.5">
+                                          <p className="text-sm text-stone-500 mt-0.5 truncate">
                                             {c.court_name}{c.decision_date && ` (${new Date(c.decision_date).getFullYear()})`}
                                           </p>
                                         </Link>
@@ -790,7 +790,7 @@ function LibraryPageContent() {
                                         </div>
                                       </div>
                                       {!isEditing && c.notes && (
-                                        <p className="text-sm text-stone-600 mt-1 italic">{c.notes}</p>
+                                        <p className="text-sm text-stone-600 mt-1 italic break-words overflow-hidden">{c.notes}</p>
                                       )}
                                       {isEditing && (
                                         <div className="mt-2">
@@ -839,11 +839,11 @@ function LibraryPageContent() {
                                 const isEditing = editingNote?.itemKey === item.key
                                 return (
                                   <SortableCollectionItem key={item.key} id={item.sortId}>
-                                    <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition">
+                                    <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition overflow-hidden">
                                       <div className="flex items-center justify-between">
                                         <Link
                                           href={`${route}/${lt.slug}`}
-                                          className="flex-1 min-w-0"
+                                          className="flex-1 min-w-0 overflow-hidden"
                                         >
                                           <div className="flex items-center gap-2">
                                             <span className="inline-block text-xs bg-sage-50 text-sage-700 px-1.5 py-0.5 rounded flex-shrink-0">
@@ -855,7 +855,7 @@ function LibraryPageContent() {
                                             </h4>
                                           </div>
                                           {lt.citation && (
-                                            <p className="text-sm text-stone-500 mt-0.5">{lt.citation}</p>
+                                            <p className="text-sm text-stone-500 mt-0.5 truncate">{lt.citation}</p>
                                           )}
                                         </Link>
                                         <div className="flex items-center gap-1 flex-shrink-0 ml-2">
@@ -882,7 +882,7 @@ function LibraryPageContent() {
                                         </div>
                                       </div>
                                       {!isEditing && lt.notes && (
-                                        <p className="text-sm text-stone-600 mt-1 italic">{lt.notes}</p>
+                                        <p className="text-sm text-stone-600 mt-1 italic break-words overflow-hidden">{lt.notes}</p>
                                       )}
                                       {isEditing && (
                                         <div className="mt-2">
