@@ -5388,18 +5388,26 @@ async def session_respond(session_id: int, body: SessionRespond, user: dict = De
     parent_text = breadcrumb[-1] if breadcrumb else "General"
     eval_prompt = f"""You are quizzing a law student with ADHD. Keep ALL responses under 100 words. Never write walls of text.
 
+The question asked was: "{session['current_question']}"
 The topic is: "{parent_text}"
 Correct answer involves: "{node['text']}"
-{f'Subtopics they should know: {", ".join(children_texts)}' if children_texts else ''}
+{f'Related subtopics (for your reference only, NOT required in the answer): {", ".join(children_texts)}' if children_texts else ''}
 {case_context}
 {rule_context}
 
 The student answered: "{body.answer}"
 
+GRADING RULES:
+- Grade ONLY against what the question actually asked — not against the full topic tree
+- If the student correctly answers the specific question, verdict is CORRECT even if they didn't mention subtopics
+- PARTIAL means they got the right idea but with a meaningful error or confusion
+- INCORRECT means they got the core concept wrong
+- Do NOT mark PARTIAL just because they didn't list extra details the question didn't ask for
+
 Evaluate:
 1. What they got right (1 sentence)
-2. What they missed (max 3 bullet points)
-3. Verdict: CORRECT, PARTIAL, or INCORRECT
+2. What they could explore next (1-2 brief pointers, framed as "next time you could also mention..." NOT as things they got wrong)
+3. Verdict
 
 Be encouraging. No lectures.
 
