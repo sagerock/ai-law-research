@@ -5170,14 +5170,23 @@ Be encouraging. No lectures. End with exactly one of these words on its own line
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
-        # Step 2: Determine verdict
-        response_upper = full_response.upper()
-        if "CORRECT" in response_upper and "INCORRECT" not in response_upper:
-            verdict = "CORRECT"
-        elif "PARTIAL" in response_upper:
-            verdict = "PARTIAL"
-        else:
-            verdict = "INCORRECT"
+        # Step 2: Determine verdict from last non-empty line
+        verdict = "INCORRECT"
+        for line in reversed(full_response.strip().splitlines()):
+            line_upper = line.strip().upper()
+            if line_upper in ("CORRECT", "PARTIAL", "INCORRECT"):
+                verdict = line_upper
+                break
+            # Also match "Verdict: CORRECT" style
+            if "INCORRECT" in line_upper:
+                verdict = "INCORRECT"
+                break
+            elif "PARTIAL" in line_upper:
+                verdict = "PARTIAL"
+                break
+            elif "CORRECT" in line_upper:
+                verdict = "CORRECT"
+                break
 
         # Step 3: Update node_progress and session
         try:
@@ -5271,11 +5280,14 @@ Be encouraging. No lectures. End with exactly one of these words on its own line
                         WHERE id = $1
                     """, session_id, new_streak, new_max_streak, mastered_count, total_correct, total_incorrect)
                 else:
-                    # Advance to next unmastered (skip current if mastered)
-                    next_candidates = [n for n in unmastered if n["node_id"] != current_node_id]
-                    if not next_candidates:
-                        next_candidates = unmastered
-                    next_node = next_candidates[0]
+                    # Stay on current node until mastered, then advance
+                    current_still_unmastered = [n for n in unmastered if n["node_id"] == current_node_id]
+                    if current_still_unmastered:
+                        next_node = current_still_unmastered[0]
+                    else:
+                        # Current node is mastered — move to next unmastered
+                        other = [n for n in unmastered if n["node_id"] != current_node_id]
+                        next_node = other[0] if other else unmastered[0]
 
                     # Get context for next question
                     next_node_full, next_breadcrumb, next_children, _ = await get_node_context(conn, mindmap_id, next_node["node_id"])
