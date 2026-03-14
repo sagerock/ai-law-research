@@ -5111,7 +5111,12 @@ Evaluate:
 2. What they missed (max 3 bullet points)
 3. Verdict: CORRECT, PARTIAL, or INCORRECT
 
-Be encouraging. No lectures. End with exactly one of these words on its own line: CORRECT, PARTIAL, or INCORRECT"""
+Be encouraging. No lectures.
+
+Your FINAL line must be ONLY one of these three words, nothing else:
+CORRECT
+PARTIAL
+INCORRECT"""
 
     async def stream_response():
         yield f"data: {json.dumps({'type': 'ping'})}\n\n"
@@ -5170,23 +5175,34 @@ Be encouraging. No lectures. End with exactly one of these words on its own line
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
-        # Step 2: Determine verdict from last non-empty line
+        # Step 2: Determine verdict
+        # Search from bottom up for the verdict keyword
         verdict = "INCORRECT"
-        for line in reversed(full_response.strip().splitlines()):
-            line_upper = line.strip().upper()
-            if line_upper in ("CORRECT", "PARTIAL", "INCORRECT"):
-                verdict = line_upper
+        # Strip markdown formatting for matching
+        clean = full_response.replace("*", "").replace("#", "").strip()
+        print(f"[SESSION DEBUG] Full response last 200 chars: {clean[-200:]}")
+        for line in reversed(clean.splitlines()):
+            stripped = line.strip().upper()
+            # Remove common prefixes like "3." or "Verdict:" or "**"
+            stripped = re.sub(r'^[\d.\-\s*#]+', '', stripped).strip()
+            stripped = re.sub(r'^VERDICT[:\s]*', '', stripped).strip()
+            if stripped in ("CORRECT", "PARTIAL", "INCORRECT"):
+                verdict = stripped
                 break
-            # Also match "Verdict: CORRECT" style
-            if "INCORRECT" in line_upper:
+        # Fallback: scan entire response if no clean line match
+        if verdict == "INCORRECT":
+            # Check if response contains positive signals but no INCORRECT
+            upper = clean.upper()
+            has_incorrect = "INCORRECT" in upper
+            has_correct = "CORRECT" in upper
+            has_partial = "PARTIAL" in upper
+            if has_incorrect:
                 verdict = "INCORRECT"
-                break
-            elif "PARTIAL" in line_upper:
+            elif has_partial:
                 verdict = "PARTIAL"
-                break
-            elif "CORRECT" in line_upper:
+            elif has_correct:
                 verdict = "CORRECT"
-                break
+        print(f"[SESSION DEBUG] Verdict resolved: {verdict}")
 
         # Step 3: Update node_progress and session
         try:
