@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, ChevronDown } from 'lucide-react'
+import { ChevronRight, ChevronDown, Play } from 'lucide-react'
 import type { MindmapNode } from '@/types'
 
 interface MindmapTreeProps {
   nodes: MindmapNode[]
   currentNodeId: string | null
   onNodeClick: (nodeId: string) => void
+  onStartBranch?: (nodeId: string) => void
 }
 
 interface TreeNode {
@@ -47,14 +48,17 @@ function TreeNodeItem({
   treeNode,
   currentNodeId,
   onNodeClick,
+  onStartBranch,
   depth,
 }: {
   treeNode: TreeNode
   currentNodeId: string | null
   onNodeClick: (nodeId: string) => void
+  onStartBranch?: (nodeId: string) => void
   depth: number
 }) {
   const [expanded, setExpanded] = useState(depth < 2)
+  const [hovering, setHovering] = useState(false)
   const { node, children } = treeNode
   const isCurrent = node.node_id === currentNodeId
   const hasChildren = children.length > 0
@@ -64,10 +68,12 @@ function TreeNodeItem({
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1 px-2 rounded cursor-pointer text-sm hover:bg-sage-50 transition-colors ${
+        className={`group flex items-center gap-1 py-1 px-2 rounded cursor-pointer text-sm hover:bg-sage-50 transition-colors ${
           isCurrent ? 'bg-sage-100 font-semibold text-sage-800' : 'text-stone-600'
         }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
         onClick={() => {
           if (hasChildren) setExpanded(!expanded)
           onNodeClick(node.node_id)
@@ -83,7 +89,19 @@ function TreeNodeItem({
           <span className="w-3" />
         )}
         <span className="shrink-0 text-xs">{masteryIcon(node.mastery)}</span>
-        <span className="truncate">{label}</span>
+        <span className="truncate flex-1">{label}</span>
+        {hasChildren && hovering && onStartBranch && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onStartBranch(node.node_id)
+            }}
+            className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-sage-600 text-white text-xs hover:bg-sage-700 transition-colors"
+            title="Study this branch"
+          >
+            <Play className="w-2.5 h-2.5" /> Focus
+          </button>
+        )}
       </div>
       {expanded && hasChildren && (
         <div>
@@ -93,6 +111,7 @@ function TreeNodeItem({
               treeNode={child}
               currentNodeId={currentNodeId}
               onNodeClick={onNodeClick}
+              onStartBranch={onStartBranch}
               depth={depth + 1}
             />
           ))}
@@ -102,7 +121,7 @@ function TreeNodeItem({
   )
 }
 
-export default function MindmapTree({ nodes, currentNodeId, onNodeClick }: MindmapTreeProps) {
+export default function MindmapTree({ nodes, currentNodeId, onNodeClick, onStartBranch }: MindmapTreeProps) {
   const tree = buildTree(nodes)
 
   return (
@@ -114,6 +133,7 @@ export default function MindmapTree({ nodes, currentNodeId, onNodeClick }: Mindm
           treeNode={root}
           currentNodeId={currentNodeId}
           onNodeClick={onNodeClick}
+          onStartBranch={onStartBranch}
           depth={0}
         />
       ))}

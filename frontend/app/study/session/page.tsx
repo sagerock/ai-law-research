@@ -47,6 +47,8 @@ export default function StudySessionPage() {
   const [error, setError] = useState<string | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
   const [pendingNext, setPendingNext] = useState<any>(null)
+  const [browsingMindmapId, setBrowsingMindmapId] = useState<number | null>(null)
+  const [browseNodes, setBrowseNodes] = useState<MindmapNode[]>([])
 
 
   const submitTimeRef = useRef(Date.now())
@@ -83,6 +85,25 @@ export default function StudySessionPage() {
       if (res.ok) {
         const data = await res.json()
         setNodes(data.nodes || [])
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Load nodes for browsing (pre-session tree picker)
+  const toggleBrowse = async (mindmapId: number) => {
+    if (browsingMindmapId === mindmapId) {
+      setBrowsingMindmapId(null)
+      setBrowseNodes([])
+      return
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/v1/study/mindmaps/${mindmapId}`, { headers: getAuthHeaders() })
+      if (res.ok) {
+        const data = await res.json()
+        setBrowseNodes(data.nodes || [])
+        setBrowsingMindmapId(mindmapId)
       }
     } catch {
       // ignore
@@ -303,10 +324,16 @@ export default function StudySessionPage() {
     }
   }
 
-  // Tree node click - jump to branch
+  // Tree node click
   const handleNodeClick = useCallback((nodeId: string) => {
-    // Just highlight for now; could be used to start a branch session
+    // Highlight only
   }, [])
+
+  // Start a focused branch session from the tree
+  const handleStartBranch = useCallback((nodeId: string) => {
+    if (!activeMindmapId) return
+    startSession(activeMindmapId, nodeId)
+  }, [activeMindmapId])
 
   // Auth loading
   if (authLoading) {
@@ -379,6 +406,7 @@ export default function StudySessionPage() {
               nodes={nodes}
               currentNodeId={currentNodeId}
               onNodeClick={handleNodeClick}
+              onStartBranch={handleStartBranch}
             />
           </div>
 
@@ -498,41 +526,64 @@ export default function StudySessionPage() {
             {mindmaps.map((mm) => (
               <div
                 key={mm.id}
-                className="bg-white rounded-xl border border-stone-200 p-4 flex items-center justify-between hover:border-sage-300 transition-colors"
+                className="bg-white rounded-xl border border-stone-200 hover:border-sage-300 transition-colors"
               >
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-stone-800 truncate">{mm.name}</h3>
-                  <div className="flex items-center gap-3 text-xs text-stone-400 mt-1">
-                    <span>{mm.node_count} nodes</span>
-                    <span>{mm.max_depth} levels</span>
-                    <span>{mm.nodes_mastered}/{mm.node_count} mastered</span>
-                  </div>
-                  {mm.node_count > 0 && (
-                    <div className="mt-2 h-1.5 w-40 bg-stone-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-sage-500 rounded-full"
-                        style={{ width: `${Math.round((mm.nodes_mastered / mm.node_count) * 100)}%` }}
-                      />
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-stone-800 truncate">{mm.name}</h3>
+                    <div className="flex items-center gap-3 text-xs text-stone-400 mt-1">
+                      <span>{mm.node_count} nodes</span>
+                      <span>{mm.max_depth} levels</span>
+                      <span>{mm.nodes_mastered}/{mm.node_count} mastered</span>
                     </div>
-                  )}
+                    {mm.node_count > 0 && (
+                      <div className="mt-2 h-1.5 w-40 bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-sage-500 rounded-full"
+                          style={{ width: `${Math.round((mm.nodes_mastered / mm.node_count) * 100)}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <button
+                      onClick={() => startSession(mm.id)}
+                      className="px-4 py-2 bg-sage-600 text-white rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors"
+                    >
+                      Study All
+                    </button>
+                    <button
+                      onClick={() => toggleBrowse(mm.id)}
+                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                        browsingMindmapId === mm.id
+                          ? 'border-sage-400 bg-sage-50 text-sage-700'
+                          : 'border-stone-300 text-stone-600 hover:border-sage-300'
+                      }`}
+                    >
+                      Pick Topic
+                    </button>
+                    <button
+                      onClick={() => handleDelete(mm.id)}
+                      className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                      title="Delete mindmap"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <button
-                    onClick={() => startSession(mm.id)}
-                    className="px-4 py-2 bg-sage-600 text-white rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors"
-                  >
-                    Study
-                  </button>
-                  <button
-                    onClick={() => handleDelete(mm.id)}
-                    className="p-2 text-stone-400 hover:text-red-500 transition-colors"
-                    title="Delete mindmap"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
+                {browsingMindmapId === mm.id && browseNodes.length > 0 && (
+                  <div className="border-t border-stone-200 p-3 max-h-72 overflow-y-auto">
+                    <p className="text-xs text-stone-400 mb-2">Click <span className="font-semibold text-sage-600">Focus</span> on any branch to study just that topic</p>
+                    <MindmapTree
+                      nodes={browseNodes}
+                      currentNodeId={null}
+                      onNodeClick={() => {}}
+                      onStartBranch={(nodeId) => startSession(mm.id, nodeId)}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
