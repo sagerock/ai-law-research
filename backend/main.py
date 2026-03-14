@@ -4716,6 +4716,292 @@ async def upload_mindmap(
     }
 
 
+async def walk_and_save_nodes(conn, mindmap_id, tree_data):
+    """Shared helper: flatten tree, resolve refs, insert mindmap_nodes rows. Returns (node_count, max_depth)."""
+    root = tree_data.get("root", tree_data)
+    counter = [0]
+    flat_nodes = walk_mindmap_tree(root, counter=counter)
+    node_count = len(flat_nodes)
+    max_depth = max(n["depth"] for n in flat_nodes) if flat_nodes else 0
+
+    for node in flat_nodes:
+        case_refs = []
+        for case_name in node["case_names"]:
+            case_row = await conn.fetchrow(
+                "SELECT id, title FROM cases WHERE title ILIKE '%' || $1 || '%' LIMIT 1",
+                case_name.strip()
+            )
+            if case_row:
+                case_refs.append({"name": case_name, "case_id": case_row["id"]})
+            else:
+                case_refs.append({"name": case_name, "case_id": None})
+
+        rule_refs = []
+        for rule_num in node["rule_numbers"]:
+            main_num = rule_num.split("(")[0]
+            rule_row = await conn.fetchrow(
+                "SELECT id, slug, title FROM legal_text_items WHERE document_id = 'frcp' AND number = $1 LIMIT 1",
+                main_num
+            )
+            if rule_row:
+                rule_refs.append({"ref": rule_num, "item_id": rule_row["id"], "slug": rule_row["slug"]})
+            else:
+                rule_refs.append({"ref": rule_num, "item_id": None, "slug": None})
+
+        await conn.execute("""
+            INSERT INTO mindmap_nodes (mindmap_id, node_id, parent_node_id, depth, text, is_leaf, case_refs, rule_refs, sort_order)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        """, mindmap_id, node["node_id"], node["parent_node_id"], node["depth"],
+            node["text"], node["is_leaf"], json.dumps(case_refs), json.dumps(rule_refs), node["sort_order"])
+
+    return node_count, max_depth
+
+
+class MindmapSave(BaseModel):
+    name: str
+    tree: dict
+
+
+@app.post("/api/v1/study/mindmaps/save")
+async def save_new_mindmap(body: MindmapSave, user: dict = Depends(require_auth)):
+    """Create a new mindmap from editor (JSON body instead of file upload)"""
+    user_id = user["id"]
+    tree_data = body.tree
+
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow("""
+                INSERT INTO mindmaps (user_id, name, tree, node_count, max_depth)
+                VALUES ($1, $2, $3, 0, 0)
+                RETURNING id, created_at
+            """, user_id, body.name, json.dumps(tree_data))
+            mindmap_id = row["id"]
+
+            node_count, max_depth = await walk_and_save_nodes(conn, mindmap_id, tree_data)
+
+            await conn.execute(
+                "UPDATE mindmaps SET node_count = $1, max_depth = $2 WHERE id = $3",
+                node_count, max_depth, mindmap_id
+            )
+
+    return {
+        "id": mindmap_id,
+        "name": body.name,
+        "node_count": node_count,
+        "max_depth": max_depth,
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.put("/api/v1/study/mindmaps/{mindmap_id}")
+async def update_mindmap(mindmap_id: int, body: MindmapSave, user: dict = Depends(require_auth)):
+    """Save edited mindmap — re-flattens tree, preserves node_progress"""
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        existing = await conn.fetchrow(
+            "SELECT id FROM mindmaps WHERE id = $1 AND user_id = $2", mindmap_id, user_id
+        )
+        if not existing:
+            raise HTTPException(status_code=404, detail="Mindmap not found")
+
+        async with conn.transaction():
+            # Delete old nodes (node_progress is keyed separately, not cascade-deleted here)
+            await conn.execute("DELETE FROM mindmap_nodes WHERE mindmap_id = $1", mindmap_id)
+
+            # Re-insert from new tree
+            tree_data = body.tree
+            node_count, max_depth = await walk_and_save_nodes(conn, mindmap_id, tree_data)
+
+            await conn.execute("""
+                UPDATE mindmaps SET name = $1, tree = $2, node_count = $3, max_depth = $4, updated_at = NOW()
+                WHERE id = $5
+            """, body.name, json.dumps(tree_data), node_count, max_depth, mindmap_id)
+
+    return {"ok": True, "node_count": node_count, "max_depth": max_depth}
+
+
+class MindmapGenerate(BaseModel):
+    topic: str
+    subject: Optional[str] = None
+    depth: Optional[int] = 3
+
+
+@app.post("/api/v1/study/mindmaps/generate")
+async def generate_mindmap(body: MindmapGenerate, user: dict = Depends(require_auth)):
+    """AI-generate a mindmap tree from a topic prompt"""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    depth = max(2, min(4, body.depth or 3))
+    subject_ctx = f" in the context of {body.subject}" if body.subject else ""
+
+    system_prompt = f"""You are a law school study aid. Generate a hierarchical mind map for studying.
+Output ONLY valid JSON with this exact structure — no markdown fences, no explanation:
+{{"version":1,"name":"Topic Name","root":{{"id":"node_1","text":"Topic Name","collapsed":false,"children":[{{"id":"node_2","text":"Subtopic","collapsed":false,"children":[]}}]}}}}
+
+Rules:
+- Create a tree with up to {depth} levels deep
+- Each node needs a unique id like "node_1", "node_2", etc.
+- Include key cases (e.g. "Erie Railroad v. Tompkins") and rules (e.g. "Rule 12(b)(6)") in node text where relevant
+- Leaf nodes should be specific enough to quiz on
+- Every node must have: id, text, collapsed (false), children (array)
+- Target 15-30 total nodes for depth 3"""
+
+    user_prompt = f"Create a mind map for: {body.topic}{subject_ctx}"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 4096,
+                    "system": system_prompt,
+                    "messages": [{"role": "user", "content": user_prompt}],
+                },
+                timeout=30.0,
+            )
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"AI service error: {response.status_code}")
+
+        data = response.json()
+        raw_text = data["content"][0]["text"]
+
+        # Parse JSON — handle potential markdown fences
+        cleaned = raw_text.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+
+        tree = json.loads(cleaned)
+
+        # Validate structure
+        root = tree.get("root", tree)
+        if not root.get("id") or not root.get("text"):
+            raise HTTPException(status_code=502, detail="AI generated invalid mindmap structure")
+
+        # Ensure proper structure
+        if "root" not in tree:
+            tree = {"version": 1, "name": root.get("text", body.topic), "root": root}
+
+        return tree
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=502, detail="AI returned invalid JSON. Please try again.")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="AI generation timed out. Please try again.")
+
+
+@app.get("/api/v1/study/mindmaps/community")
+async def community_mindmaps(subject: Optional[str] = None):
+    """Browse public mindmaps shared by the community"""
+    async with db_pool.acquire() as conn:
+        if subject:
+            rows = await conn.fetch("""
+                SELECT m.id, m.name, m.node_count, m.max_depth, m.subject, m.created_at,
+                       p.username, p.full_name
+                FROM mindmaps m
+                LEFT JOIN profiles p ON m.user_id = p.id
+                WHERE m.is_public = true AND m.subject = $1
+                ORDER BY m.created_at DESC
+                LIMIT 50
+            """, subject)
+        else:
+            rows = await conn.fetch("""
+                SELECT m.id, m.name, m.node_count, m.max_depth, m.subject, m.created_at,
+                       p.username, p.full_name
+                FROM mindmaps m
+                LEFT JOIN profiles p ON m.user_id = p.id
+                WHERE m.is_public = true
+                ORDER BY m.created_at DESC
+                LIMIT 50
+            """)
+
+    return [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "node_count": r["node_count"],
+            "max_depth": r["max_depth"],
+            "subject": r["subject"],
+            "author": r["username"] or r["full_name"] or "Anonymous",
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/v1/study/mindmaps/{mindmap_id}/clone")
+async def clone_mindmap(mindmap_id: int, user: dict = Depends(require_auth)):
+    """Clone a public mindmap to the current user's account"""
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        source = await conn.fetchrow(
+            "SELECT id, name, tree, is_public, user_id FROM mindmaps WHERE id = $1",
+            mindmap_id
+        )
+        if not source:
+            raise HTTPException(status_code=404, detail="Mindmap not found")
+        if not source["is_public"] and source["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="This mindmap is not public")
+
+        tree_data = json.loads(source["tree"]) if isinstance(source["tree"], str) else source["tree"]
+
+        async with conn.transaction():
+            row = await conn.fetchrow("""
+                INSERT INTO mindmaps (user_id, name, tree, node_count, max_depth)
+                VALUES ($1, $2, $3, 0, 0)
+                RETURNING id, created_at
+            """, user_id, source["name"], source["tree"] if isinstance(source["tree"], str) else json.dumps(tree_data))
+            new_id = row["id"]
+
+            node_count, max_depth = await walk_and_save_nodes(conn, new_id, tree_data)
+
+            await conn.execute(
+                "UPDATE mindmaps SET node_count = $1, max_depth = $2 WHERE id = $3",
+                node_count, max_depth, new_id
+            )
+
+    return {
+        "id": new_id,
+        "name": source["name"],
+        "node_count": node_count,
+        "max_depth": max_depth,
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+class MindmapShare(BaseModel):
+    is_public: bool
+    subject: Optional[str] = None
+
+
+@app.patch("/api/v1/study/mindmaps/{mindmap_id}/share")
+async def toggle_mindmap_sharing(mindmap_id: int, body: MindmapShare, user: dict = Depends(require_auth)):
+    """Toggle public sharing and set subject for a mindmap"""
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        result = await conn.execute("""
+            UPDATE mindmaps SET is_public = $1, subject = $2, updated_at = NOW()
+            WHERE id = $3 AND user_id = $4
+        """, body.is_public, body.subject, mindmap_id, user_id)
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Mindmap not found")
+
+    return {"ok": True}
+
+
 @app.get("/api/v1/study/mindmaps")
 async def list_mindmaps(user: dict = Depends(require_auth)):
     """List user's mindmaps with mastery counts"""
@@ -4723,6 +5009,7 @@ async def list_mindmaps(user: dict = Depends(require_auth)):
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT m.id, m.name, m.node_count, m.max_depth, m.created_at,
+                   m.is_public, m.subject,
                    COALESCE(p.mastered, 0) as nodes_mastered
             FROM mindmaps m
             LEFT JOIN (
@@ -4741,6 +5028,8 @@ async def list_mindmaps(user: dict = Depends(require_auth)):
             "node_count": r["node_count"],
             "max_depth": r["max_depth"],
             "nodes_mastered": r["nodes_mastered"],
+            "is_public": r["is_public"] or False,
+            "subject": r["subject"],
             "created_at": r["created_at"].isoformat() if r["created_at"] else None,
         }
         for r in rows

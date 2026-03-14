@@ -2,15 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, ArrowLeft, Pause, Flame, Loader2 } from 'lucide-react'
+import { Upload, ArrowLeft, Pause, Flame, Loader2, Plus, Sparkles, Pencil, Globe, Copy, Share2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Header from '@/components/Header'
 import MindmapUpload from '@/components/study/MindmapUpload'
+import MindmapEditor from '@/components/study/MindmapEditor'
+import GenerateMindmapModal from '@/components/study/GenerateMindmapModal'
 import MindmapTree from '@/components/study/MindmapTree'
 import QuizCard from '@/components/study/QuizCard'
 import ProgressPanel from '@/components/study/ProgressPanel'
 import DopamineFlash from '@/components/study/DopamineFlash'
-import type { Mindmap, MindmapNode, StudySession, NodeRef } from '@/types'
+import type { Mindmap, MindmapNode, StudySession, NodeRef, CommunityMindmap } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -50,6 +52,15 @@ export default function StudySessionPage() {
   const [browsingMindmapId, setBrowsingMindmapId] = useState<number | null>(null)
   const [browseNodes, setBrowseNodes] = useState<MindmapNode[]>([])
 
+  // Editor & generation state
+  const [showEditor, setShowEditor] = useState(false)
+  const [editorMindmapId, setEditorMindmapId] = useState<number | null>(null)
+  const [editorInitialData, setEditorInitialData] = useState<any>(null)
+  const [showGenerate, setShowGenerate] = useState(false)
+  const [showCommunity, setShowCommunity] = useState(false)
+  const [communityMaps, setCommunityMaps] = useState<CommunityMindmap[]>([])
+  const [communityLoading, setCommunityLoading] = useState(false)
+  const [cloning, setCloning] = useState<number | null>(null)
 
   const submitTimeRef = useRef(Date.now())
 
@@ -75,6 +86,93 @@ export default function StudySessionPage() {
       // ignore
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Open editor for new blank map
+  const handleCreateNew = () => {
+    setEditorMindmapId(null)
+    setEditorInitialData(null)
+    setShowEditor(true)
+  }
+
+  // Open editor for existing map
+  const handleEdit = (mm: Mindmap) => {
+    setEditorMindmapId(mm.id)
+    setEditorInitialData(null)
+    setShowEditor(true)
+  }
+
+  // Handle AI-generated map
+  const handleGenerated = (tree: any) => {
+    setShowGenerate(false)
+    setEditorMindmapId(null)
+    setEditorInitialData(tree)
+    setShowEditor(true)
+  }
+
+  // Editor save callback
+  const handleEditorSave = (id: number) => {
+    fetchMindmaps()
+  }
+
+  // Close editor
+  const handleEditorClose = () => {
+    setShowEditor(false)
+    setEditorMindmapId(null)
+    setEditorInitialData(null)
+    fetchMindmaps()
+  }
+
+  // Load community mindmaps
+  const loadCommunity = async () => {
+    setCommunityLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/v1/study/mindmaps/community`)
+      if (res.ok) setCommunityMaps(await res.json())
+    } catch {
+      // ignore
+    } finally {
+      setCommunityLoading(false)
+    }
+  }
+
+  const toggleCommunity = () => {
+    if (!showCommunity) loadCommunity()
+    setShowCommunity(!showCommunity)
+  }
+
+  // Clone a community mindmap
+  const handleClone = async (mapId: number) => {
+    setCloning(mapId)
+    try {
+      const res = await fetch(`${API_URL}/api/v1/study/mindmaps/${mapId}/clone`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setMindmaps(prev => [{ ...data, nodes_mastered: 0 }, ...prev])
+      }
+    } catch {
+      // ignore
+    } finally {
+      setCloning(null)
+    }
+  }
+
+  // Toggle public sharing
+  const handleToggleShare = async (mm: Mindmap) => {
+    const newPublic = !mm.is_public
+    try {
+      await fetch(`${API_URL}/api/v1/study/mindmaps/${mm.id}/share`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ is_public: newPublic, subject: mm.subject }),
+      })
+      setMindmaps(prev => prev.map(m => m.id === mm.id ? { ...m, is_public: newPublic } : m))
+    } catch {
+      // ignore
     }
   }
 
@@ -496,19 +594,51 @@ export default function StudySessionPage() {
           onClose={() => setShowUpload(false)}
         />
       )}
+      {showEditor && (
+        <MindmapEditor
+          apiUrl={API_URL}
+          getAuthHeaders={getAuthHeaders}
+          mindmapId={editorMindmapId}
+          initialData={editorInitialData}
+          onSave={handleEditorSave}
+          onClose={handleEditorClose}
+        />
+      )}
+      {showGenerate && (
+        <GenerateMindmapModal
+          apiUrl={API_URL}
+          getAuthHeaders={getAuthHeaders}
+          onGenerated={handleGenerated}
+          onClose={() => setShowGenerate(false)}
+        />
+      )}
 
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-stone-800">Study Sessions</h1>
-            <p className="text-sm text-stone-500 mt-1">Upload a mindmap and study node-by-node with active recall</p>
+            <p className="text-sm text-stone-500 mt-1">Create, generate, or upload mindmaps and study with active recall</p>
           </div>
-          <button
-            onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-sage-600 text-white rounded-lg hover:bg-sage-700 transition-colors"
-          >
-            <Upload className="w-4 h-4" /> Upload Mindmap
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCreateNew}
+              className="flex items-center gap-1.5 px-3 py-2 bg-sage-600 text-white rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Create New
+            </button>
+            <button
+              onClick={() => setShowGenerate(true)}
+              className="flex items-center gap-1.5 px-3 py-2 border border-sage-300 text-sage-700 rounded-lg text-sm font-medium hover:bg-sage-50 transition-colors"
+            >
+              <Sparkles className="w-4 h-4" /> Generate with AI
+            </button>
+            <button
+              onClick={() => setShowUpload(true)}
+              className="flex items-center gap-1.5 px-3 py-2 border border-stone-300 text-stone-600 rounded-lg text-sm font-medium hover:border-sage-300 transition-colors"
+            >
+              <Upload className="w-4 h-4" /> Upload
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -517,9 +647,23 @@ export default function StudySessionPage() {
           </div>
         ) : mindmaps.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-stone-200">
-            <Upload className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+            <Plus className="w-10 h-10 text-stone-300 mx-auto mb-3" />
             <p className="text-stone-500">No mindmaps yet</p>
-            <p className="text-sm text-stone-400 mt-1">Upload a .mindmap.json file to get started</p>
+            <p className="text-sm text-stone-400 mt-1">Create a new mindmap or generate one with AI</p>
+            <div className="flex gap-3 justify-center mt-4">
+              <button
+                onClick={handleCreateNew}
+                className="px-4 py-2 bg-sage-600 text-white rounded-lg text-sm hover:bg-sage-700"
+              >
+                Create New
+              </button>
+              <button
+                onClick={() => setShowGenerate(true)}
+                className="px-4 py-2 border border-sage-300 text-sage-700 rounded-lg text-sm hover:bg-sage-50"
+              >
+                Generate with AI
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -530,11 +674,17 @@ export default function StudySessionPage() {
               >
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-stone-800 truncate">{mm.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-stone-800 truncate">{mm.name}</h3>
+                      {mm.is_public && (
+                        <span className="text-xs bg-sage-100 text-sage-700 px-1.5 py-0.5 rounded-full">public</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 text-xs text-stone-400 mt-1">
                       <span>{mm.node_count} nodes</span>
                       <span>{mm.max_depth} levels</span>
                       <span>{mm.nodes_mastered}/{mm.node_count} mastered</span>
+                      {mm.subject && <span className="text-sage-600">{mm.subject}</span>}
                     </div>
                     {mm.node_count > 0 && (
                       <div className="mt-2 h-1.5 w-40 bg-stone-100 rounded-full overflow-hidden">
@@ -563,6 +713,20 @@ export default function StudySessionPage() {
                       Pick Topic
                     </button>
                     <button
+                      onClick={() => handleEdit(mm)}
+                      className="p-2 text-stone-400 hover:text-sage-600 transition-colors"
+                      title="Edit mindmap"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleToggleShare(mm)}
+                      className={`p-2 transition-colors ${mm.is_public ? 'text-sage-600 hover:text-sage-800' : 'text-stone-400 hover:text-sage-600'}`}
+                      title={mm.is_public ? 'Make private' : 'Share publicly'}
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(mm.id)}
                       className="p-2 text-stone-400 hover:text-red-500 transition-colors"
                       title="Delete mindmap"
@@ -588,6 +752,54 @@ export default function StudySessionPage() {
             ))}
           </div>
         )}
+
+        {/* Community Section */}
+        <div className="mt-8">
+          <button
+            onClick={toggleCommunity}
+            className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-sage-700 transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            {showCommunity ? 'Hide Community Mindmaps' : 'Browse Community Mindmaps'}
+          </button>
+
+          {showCommunity && (
+            <div className="mt-4 space-y-3">
+              {communityLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-sage-600" />
+                </div>
+              ) : communityMaps.length === 0 ? (
+                <p className="text-sm text-stone-400 py-4">No public mindmaps shared yet. Be the first!</p>
+              ) : (
+                communityMaps.map(cm => (
+                  <div key={cm.id} className="bg-white rounded-xl border border-stone-200 p-4 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-stone-800 truncate">{cm.name}</h4>
+                      <div className="flex items-center gap-3 text-xs text-stone-400 mt-1">
+                        <span>by {cm.author}</span>
+                        <span>{cm.node_count} nodes</span>
+                        {cm.subject && <span className="text-sage-600">{cm.subject}</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleClone(cm.id)}
+                      disabled={cloning === cm.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-sage-600 text-white rounded-lg text-sm font-medium hover:bg-sage-700 disabled:opacity-50 transition-colors"
+                    >
+                      {cloning === cm.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      Clone & Study
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
 
         {error && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

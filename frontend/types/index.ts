@@ -125,6 +125,18 @@ export interface Mindmap {
   node_count: number
   max_depth: number
   nodes_mastered: number
+  is_public?: boolean
+  subject?: string | null
+  created_at: string
+}
+
+export interface CommunityMindmap {
+  id: number
+  name: string
+  node_count: number
+  max_depth: number
+  subject: string | null
+  author: string
   created_at: string
 }
 
