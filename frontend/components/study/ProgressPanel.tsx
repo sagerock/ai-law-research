@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Flame, Clock, Brain } from 'lucide-react'
+import { Flame, Brain } from 'lucide-react'
 
 interface ProgressPanelProps {
   streak: number
@@ -11,7 +10,6 @@ interface ProgressPanelProps {
   totalCorrect: number
   totalIncorrect: number
   mode: string
-  startedAt: number
 }
 
 export default function ProgressPanel({
@@ -22,20 +20,7 @@ export default function ProgressPanel({
   totalCorrect,
   totalIncorrect,
   mode,
-  startedAt,
 }: ProgressPanelProps) {
-  const [elapsed, setElapsed] = useState('0:00')
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const secs = Math.floor((Date.now() - startedAt) / 1000)
-      const m = Math.floor(secs / 60)
-      const s = secs % 60
-      setElapsed(`${m}:${s.toString().padStart(2, '0')}`)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [startedAt])
-
   const pct = totalNodes > 0 ? Math.round((nodesMastered / totalNodes) * 100) : 0
 
   const modeLabels: Record<string, string> = {
@@ -85,12 +70,6 @@ export default function ProgressPanel({
       {/* Mode */}
       <div className="text-xs text-stone-500">
         Mode: <span className="font-medium text-stone-700">{modeLabels[mode] || mode}</span>
-      </div>
-
-      {/* Timer */}
-      <div className="flex items-center gap-2 text-xs text-stone-400">
-        <Clock className="w-4 h-4" />
-        <span>{elapsed}</span>
       </div>
     </div>
   )

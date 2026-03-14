@@ -45,8 +45,9 @@ export default function StudySessionPage() {
   const [dopamineEvent, setDopamineEvent] = useState<string | null>(null)
   const [completed, setCompleted] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [startedAt] = useState(Date.now())
   const [showSidebar, setShowSidebar] = useState(false)
+  const [pendingNext, setPendingNext] = useState<any>(null)
+
 
   const submitTimeRef = useRef(Date.now())
 
@@ -202,18 +203,8 @@ export default function StudySessionPage() {
                 setDopamineEvent(event.event)
                 break
               case 'next_question':
-                // Slight delay so user can read feedback
-                setTimeout(() => {
-                  setCurrentNodeId(event.node_id)
-                  setQuestion(event.text)
-                  setBreadcrumb(event.breadcrumb || [])
-                  setNodeText(event.node_text || '')
-                  setCaseRefs(event.case_refs || [])
-                  setRuleRefs(event.rule_refs || [])
-                  setMode(event.mode || 'quiz')
-                  setFeedbackText('')
-                  submitTimeRef.current = Date.now()
-                }, 2000)
+                // Store pending — user clicks "Next" to advance
+                setPendingNext(event)
                 break
               case 'complete':
                 setCompleted(true)
@@ -266,6 +257,22 @@ export default function StudySessionPage() {
       setError(e.message)
     }
   }, [sessionId, streaming, getAuthHeaders, totalNodes])
+
+  // Advance to next question (user clicks "Next")
+  const advanceToNext = useCallback(() => {
+    if (!pendingNext) return
+    const event = pendingNext
+    setCurrentNodeId(event.node_id)
+    setQuestion(event.text)
+    setBreadcrumb(event.breadcrumb || [])
+    setNodeText(event.node_text || '')
+    setCaseRefs(event.case_refs || [])
+    setRuleRefs(event.rule_refs || [])
+    setMode(event.mode || 'quiz')
+    setFeedbackText('')
+    setPendingNext(null)
+    submitTimeRef.current = Date.now()
+  }, [pendingNext])
 
   // Pause
   const handlePause = useCallback(async () => {
@@ -394,6 +401,8 @@ export default function StudySessionPage() {
               feedbackText={feedbackText}
               onSubmit={handleSubmit}
               onSkip={handleSkip}
+              onNext={advanceToNext}
+              nextReady={!!pendingNext}
             />
           </div>
 
@@ -407,7 +416,6 @@ export default function StudySessionPage() {
               totalCorrect={totalCorrect}
               totalIncorrect={totalIncorrect}
               mode={mode}
-              startedAt={startedAt}
             />
           </div>
         </div>

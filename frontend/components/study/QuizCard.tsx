@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, SkipForward, Loader2 } from 'lucide-react'
+import { Send, SkipForward, Loader2, ArrowRight } from 'lucide-react'
 import { FormattedMessage } from '@/components/FormattedMessage'
 import type { NodeRef } from '@/types'
 
@@ -16,6 +16,8 @@ interface QuizCardProps {
   feedbackText: string
   onSubmit: (answer: string) => void
   onSkip: () => void
+  onNext: () => void
+  nextReady: boolean
 }
 
 export default function QuizCard({
@@ -29,6 +31,8 @@ export default function QuizCard({
   feedbackText,
   onSubmit,
   onSkip,
+  onNext,
+  nextReady,
 }: QuizCardProps) {
   const [answer, setAnswer] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -116,6 +120,14 @@ export default function QuizCard({
           <div className="text-sm text-stone-700">
             <FormattedMessage content={feedbackText} />
           </div>
+          {nextReady && (
+            <button
+              onClick={onNext}
+              className="mt-4 flex items-center gap-2 px-5 py-2.5 bg-sage-600 text-white rounded-lg text-sm font-semibold hover:bg-sage-700 transition-colors"
+            >
+              Next <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 
