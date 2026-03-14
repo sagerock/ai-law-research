@@ -151,7 +151,9 @@ export function initMindmapper(container, callbacks = {}) {
     { label: '✕', title: 'Delete (Del)', action: () => deleteSelected() },
     { label: '↑', title: 'Move up (Alt+↑)', action: () => moveNode(-1) },
     { label: '↓', title: 'Move down (Alt+↓)', action: () => moveNode(1) },
-    { label: '⊞', title: 'Fit view', action: () => fitView() },
+    { label: '⊟', title: 'Collapse all', action: () => collapseAll() },
+    { label: '⊞', title: 'Expand all + fit', action: () => expandAll() },
+    { label: '⌖', title: 'Center / fit view', action: () => fitView() },
     { label: '−', title: 'Zoom out', action: () => applyZoom(1 / 1.2) },
     { label: null, title: null, action: null, isLabel: true }, // zoom label
     { label: '+', title: 'Zoom in', action: () => applyZoom(1.2) },
@@ -567,6 +569,27 @@ export function initMindmapper(container, callbacks = {}) {
     state.zoom = Math.max(0.3, Math.min(3, state.zoom * factor));
     if (zoomLabel) zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
     render();
+  }
+
+  // ── Collapse / Expand All ──────────────────────────────────
+  function setCollapsedAll(node, collapsed) {
+    if (node.children.length > 0) node.collapsed = collapsed;
+    for (const c of node.children) setCollapsedAll(c, collapsed);
+  }
+
+  function collapseAll() {
+    if (!state.root) return;
+    setCollapsedAll(state.root, true);
+    state.root.collapsed = false; // keep root open
+    render();
+    fitView();
+  }
+
+  function expandAll() {
+    if (!state.root) return;
+    setCollapsedAll(state.root, false);
+    render();
+    fitView();
   }
 
   // ── Fit View ──────────────────────────────────────────────
