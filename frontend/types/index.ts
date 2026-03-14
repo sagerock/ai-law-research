@@ -118,6 +118,69 @@ export interface AdminUser {
   last_active: string | null
 }
 
+// Study Session Engine types
+export interface Mindmap {
+  id: number
+  name: string
+  node_count: number
+  max_depth: number
+  nodes_mastered: number
+  created_at: string
+}
+
+export interface MindmapNode {
+  node_id: string
+  parent_node_id: string | null
+  depth: number
+  text: string
+  is_leaf: boolean
+  case_refs: NodeRef[]
+  rule_refs: NodeRef[]
+  sort_order: number
+  mastery: 'unseen' | 'learning' | 'mastered'
+  correct_streak: number
+  total_attempts: number
+}
+
+export interface NodeRef {
+  name?: string
+  case_id?: string | null
+  ref?: string
+  item_id?: number | null
+  slug?: string | null
+}
+
+export interface StudySession {
+  session_id: number
+  resumed?: boolean
+  completed?: boolean
+  current_node_id: string
+  question: string
+  breadcrumb: string[]
+  mode: string
+  streak: number
+  max_streak: number
+  nodes_visited: number
+  nodes_mastered: number
+  total_correct: number
+  total_incorrect: number
+  total_nodes: number
+  node_text: string
+  case_refs: NodeRef[]
+  rule_refs: NodeRef[]
+  message?: string
+}
+
+export interface NodeProgress {
+  node_id: string
+  text: string
+  depth: number
+  is_leaf: boolean
+  mastery: 'unseen' | 'learning' | 'mastered'
+  correct_streak: number
+  total_attempts: number
+}
+
 export interface TransparencyStats {
   month_name: string
   month_summaries: number

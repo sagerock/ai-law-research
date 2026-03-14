@@ -13,6 +13,8 @@ import numpy as np
 from datetime import datetime, date
 import time
 import json
+import re
+import random
 from jose import jwt, JWTError
 from uuid import UUID
 
@@ -3075,6 +3077,14 @@ class CaseAskMessage(BaseModel):
     content: str
     conversation_id: Optional[int] = None
 
+class SessionStart(BaseModel):
+    mindmap_id: int
+    branch_node_id: Optional[str] = None
+
+class SessionRespond(BaseModel):
+    answer: str
+    response_time_ms: int = 0
+
 # --- Notes CRUD ---
 
 @app.post("/api/v1/study/notes/upload")
@@ -4589,6 +4599,846 @@ async def get_legal_text_cases(doc_id: str, slug: str, limit: int = 20):
         })
 
     return {"results": results, "count": len(results)}
+
+
+# ============================================================================
+# Study Session Engine - Mindmap Upload & Session Management
+# ============================================================================
+
+def walk_mindmap_tree(node, parent_id=None, depth=0, counter=[0]):
+    """Recursively flatten a mindmap tree into node rows."""
+    nodes = []
+    node_id = node.get("id", f"node_{counter[0]}")
+    text = node.get("text", node.get("name", ""))
+    children = node.get("children", [])
+
+    case_pattern = re.compile(r'([A-Z][a-zA-Z.\']+\s+v\.?\s+[A-Z][a-zA-Z.\',& ]+)')
+    rule_pattern = re.compile(r'(?:Rule|FRCP)\s+(\d+(?:\([a-z]\)(?:\(\d+\))?)?)')
+
+    case_matches = case_pattern.findall(text)
+    rule_matches = rule_pattern.findall(text)
+
+    nodes.append({
+        "node_id": node_id,
+        "parent_node_id": parent_id,
+        "depth": depth,
+        "text": text,
+        "is_leaf": len(children) == 0,
+        "case_names": case_matches,
+        "rule_numbers": rule_matches,
+        "sort_order": counter[0],
+    })
+    counter[0] += 1
+
+    for child in children:
+        nodes.extend(walk_mindmap_tree(child, node_id, depth + 1, counter))
+
+    return nodes
+
+
+@app.post("/api/v1/study/mindmaps/upload")
+async def upload_mindmap(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_auth),
+):
+    """Upload and parse a .mindmap.json file"""
+    filename = file.filename or "untitled"
+    if not filename.endswith(".mindmap.json") and not filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="Only .mindmap.json or .json files are supported")
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size limit is 10MB")
+
+    try:
+        data = json.loads(content.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+
+    name = data.get("name", filename.replace(".mindmap.json", "").replace(".json", ""))
+    root = data.get("root", data)
+
+    # Flatten tree
+    counter = [0]
+    flat_nodes = walk_mindmap_tree(root, counter=counter)
+    node_count = len(flat_nodes)
+    max_depth = max(n["depth"] for n in flat_nodes) if flat_nodes else 0
+
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            # Insert mindmap
+            row = await conn.fetchrow("""
+                INSERT INTO mindmaps (user_id, name, tree, node_count, max_depth)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id, created_at
+            """, user_id, name, json.dumps(data), node_count, max_depth)
+            mindmap_id = row["id"]
+
+            # Resolve case and rule references, then insert nodes
+            for node in flat_nodes:
+                case_refs = []
+                for case_name in node["case_names"]:
+                    case_row = await conn.fetchrow(
+                        "SELECT id, title FROM cases WHERE title ILIKE '%' || $1 || '%' LIMIT 1",
+                        case_name.strip()
+                    )
+                    if case_row:
+                        case_refs.append({"name": case_name, "case_id": case_row["id"]})
+                    else:
+                        case_refs.append({"name": case_name, "case_id": None})
+
+                rule_refs = []
+                for rule_num in node["rule_numbers"]:
+                    main_num = rule_num.split("(")[0]
+                    rule_row = await conn.fetchrow(
+                        "SELECT id, slug, title FROM legal_text_items WHERE document_id = 'frcp' AND number = $1 LIMIT 1",
+                        main_num
+                    )
+                    if rule_row:
+                        rule_refs.append({"ref": rule_num, "item_id": rule_row["id"], "slug": rule_row["slug"]})
+                    else:
+                        rule_refs.append({"ref": rule_num, "item_id": None, "slug": None})
+
+                await conn.execute("""
+                    INSERT INTO mindmap_nodes (mindmap_id, node_id, parent_node_id, depth, text, is_leaf, case_refs, rule_refs, sort_order)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                """, mindmap_id, node["node_id"], node["parent_node_id"], node["depth"],
+                    node["text"], node["is_leaf"], json.dumps(case_refs), json.dumps(rule_refs), node["sort_order"])
+
+    return {
+        "id": mindmap_id,
+        "name": name,
+        "node_count": node_count,
+        "max_depth": max_depth,
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.get("/api/v1/study/mindmaps")
+async def list_mindmaps(user: dict = Depends(require_auth)):
+    """List user's mindmaps with mastery counts"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT m.id, m.name, m.node_count, m.max_depth, m.created_at,
+                   COALESCE(p.mastered, 0) as nodes_mastered
+            FROM mindmaps m
+            LEFT JOIN (
+                SELECT mindmap_id, COUNT(*) as mastered
+                FROM node_progress
+                WHERE user_id = $1 AND mastery = 'mastered'
+                GROUP BY mindmap_id
+            ) p ON p.mindmap_id = m.id
+            WHERE m.user_id = $1
+            ORDER BY m.created_at DESC
+        """, user_id)
+    return [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "node_count": r["node_count"],
+            "max_depth": r["max_depth"],
+            "nodes_mastered": r["nodes_mastered"],
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/v1/study/mindmaps/{mindmap_id}")
+async def get_mindmap(mindmap_id: int, user: dict = Depends(require_auth)):
+    """Get full mindmap with node progress overlay"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        mm = await conn.fetchrow(
+            "SELECT id, name, tree, node_count, max_depth, created_at FROM mindmaps WHERE id = $1 AND user_id = $2",
+            mindmap_id, user_id
+        )
+        if not mm:
+            raise HTTPException(status_code=404, detail="Mindmap not found")
+
+        nodes = await conn.fetch("""
+            SELECT n.node_id, n.parent_node_id, n.depth, n.text, n.is_leaf, n.case_refs, n.rule_refs, n.sort_order,
+                   COALESCE(p.mastery, 'unseen') as mastery, COALESCE(p.correct_streak, 0) as correct_streak,
+                   COALESCE(p.total_attempts, 0) as total_attempts
+            FROM mindmap_nodes n
+            LEFT JOIN node_progress p ON p.mindmap_id = n.mindmap_id AND p.node_id = n.node_id AND p.user_id = $2
+            WHERE n.mindmap_id = $1
+            ORDER BY n.sort_order
+        """, mindmap_id, user_id)
+
+    return {
+        "id": mm["id"],
+        "name": mm["name"],
+        "tree": json.loads(mm["tree"]) if isinstance(mm["tree"], str) else mm["tree"],
+        "node_count": mm["node_count"],
+        "max_depth": mm["max_depth"],
+        "created_at": mm["created_at"].isoformat() if mm["created_at"] else None,
+        "nodes": [
+            {
+                "node_id": n["node_id"],
+                "parent_node_id": n["parent_node_id"],
+                "depth": n["depth"],
+                "text": n["text"],
+                "is_leaf": n["is_leaf"],
+                "case_refs": json.loads(n["case_refs"]) if isinstance(n["case_refs"], str) else n["case_refs"],
+                "rule_refs": json.loads(n["rule_refs"]) if isinstance(n["rule_refs"], str) else n["rule_refs"],
+                "sort_order": n["sort_order"],
+                "mastery": n["mastery"],
+                "correct_streak": n["correct_streak"],
+                "total_attempts": n["total_attempts"],
+            }
+            for n in nodes
+        ],
+    }
+
+
+@app.delete("/api/v1/study/mindmaps/{mindmap_id}")
+async def delete_mindmap(mindmap_id: int, user: dict = Depends(require_auth)):
+    """Delete a mindmap and all associated data"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM mindmaps WHERE id = $1 AND user_id = $2", mindmap_id, user_id
+        )
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Mindmap not found")
+    return {"ok": True}
+
+
+async def get_quizzable_nodes(conn, mindmap_id, user_id, branch_node_id=None):
+    """Get unmastered quizzable nodes in DFS order, optionally scoped to a branch."""
+    if branch_node_id:
+        # Get all descendants of the branch node
+        nodes = await conn.fetch("""
+            WITH RECURSIVE descendants AS (
+                SELECT node_id, parent_node_id, depth, text, is_leaf, case_refs, rule_refs, sort_order
+                FROM mindmap_nodes WHERE mindmap_id = $1 AND node_id = $2
+                UNION ALL
+                SELECT n.node_id, n.parent_node_id, n.depth, n.text, n.is_leaf, n.case_refs, n.rule_refs, n.sort_order
+                FROM mindmap_nodes n
+                INNER JOIN descendants d ON n.parent_node_id = d.node_id AND n.mindmap_id = $1
+            )
+            SELECT d.*, COALESCE(p.mastery, 'unseen') as mastery
+            FROM descendants d
+            LEFT JOIN node_progress p ON p.mindmap_id = $1 AND p.node_id = d.node_id AND p.user_id = $3
+            WHERE (d.is_leaf = true OR length(d.text) > 30)
+            ORDER BY d.sort_order
+        """, mindmap_id, branch_node_id, user_id)
+    else:
+        nodes = await conn.fetch("""
+            SELECT n.node_id, n.parent_node_id, n.depth, n.text, n.is_leaf, n.case_refs, n.rule_refs, n.sort_order,
+                   COALESCE(p.mastery, 'unseen') as mastery
+            FROM mindmap_nodes n
+            LEFT JOIN node_progress p ON p.mindmap_id = n.mindmap_id AND p.node_id = n.node_id AND p.user_id = $2
+            WHERE n.mindmap_id = $1 AND (n.is_leaf = true OR length(n.text) > 30)
+            ORDER BY n.sort_order
+        """, mindmap_id, user_id)
+    return nodes
+
+
+async def get_node_context(conn, mindmap_id, node_id):
+    """Get parent chain and children for a node."""
+    node = await conn.fetchrow(
+        "SELECT * FROM mindmap_nodes WHERE mindmap_id = $1 AND node_id = $2",
+        mindmap_id, node_id
+    )
+    if not node:
+        return None, [], [], []
+
+    # Get parent chain (breadcrumb)
+    breadcrumb = []
+    current_parent = node["parent_node_id"]
+    while current_parent:
+        parent = await conn.fetchrow(
+            "SELECT node_id, text, parent_node_id FROM mindmap_nodes WHERE mindmap_id = $1 AND node_id = $2",
+            mindmap_id, current_parent
+        )
+        if parent:
+            breadcrumb.insert(0, parent["text"])
+            current_parent = parent["parent_node_id"]
+        else:
+            break
+
+    # Get children
+    children = await conn.fetch(
+        "SELECT text FROM mindmap_nodes WHERE mindmap_id = $1 AND parent_node_id = $2 ORDER BY sort_order",
+        mindmap_id, node_id
+    )
+    children_texts = [c["text"] for c in children]
+
+    return node, breadcrumb, children_texts, []
+
+
+async def generate_question_via_claude(node_text, breadcrumb, children_texts, mode, case_context="", rule_context=""):
+    """Generate a study question using Claude API."""
+    mode_instructions = {
+        "quiz": "Ask a direct recall question about this concept. Be specific.",
+        "story": "Ask the student to tell you the story of this concept — what happened, who was involved, what was decided.",
+        "analogy": "Frame this concept using an everyday analogy. Ask the student to explain it back using that analogy.",
+        "hypo": "You're setting up a hypothetical. Create a short fact pattern (2-3 sentences) and ask the student to apply this concept.",
+        "go_deeper": "The student is doing well. Ask a more challenging question that connects this concept to related topics or edge cases.",
+    }
+
+    instruction = mode_instructions.get(mode, mode_instructions["quiz"])
+
+    prompt = f"""You are quizzing a law student with ADHD. Keep your question under 50 words. Be direct and engaging.
+
+Topic path: {' > '.join(breadcrumb)}
+Current concept: {node_text}
+{f'Subtopics: {", ".join(children_texts)}' if children_texts else ''}
+{case_context}
+{rule_context}
+
+Mode: {instruction}
+
+Generate ONE question only. No preamble."""
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 200,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=30.0,
+        )
+
+    if response.status_code != 200:
+        return f"Explain the key aspects of: {node_text}"
+
+    result = response.json()
+    for block in result.get("content", []):
+        if block.get("type") == "text":
+            return block["text"]
+    return f"Explain the key aspects of: {node_text}"
+
+
+async def get_case_and_rule_context(conn, node):
+    """Fetch case brief and rule text context for a node."""
+    case_context = ""
+    rule_context = ""
+
+    case_refs = json.loads(node["case_refs"]) if isinstance(node["case_refs"], str) else (node["case_refs"] or [])
+    rule_refs = json.loads(node["rule_refs"]) if isinstance(node["rule_refs"], str) else (node["rule_refs"] or [])
+
+    for ref in case_refs:
+        if ref.get("case_id"):
+            brief = await conn.fetchrow(
+                "SELECT summary FROM ai_summaries WHERE case_id = $1 LIMIT 1",
+                ref["case_id"]
+            )
+            if brief and brief["summary"]:
+                case_context += f"\nCase brief for {ref['name']}:\n{brief['summary'][:500]}\n"
+
+    for ref in rule_refs:
+        if ref.get("item_id"):
+            rule = await conn.fetchrow(
+                "SELECT title, body FROM legal_text_items WHERE id = $1",
+                ref["item_id"]
+            )
+            if rule:
+                body = rule["body"] or ""
+                rule_context += f"\nRule text - {rule['title']}:\n{body[:500]}\n"
+
+    return case_context, rule_context
+
+
+@app.post("/api/v1/study/session/start")
+async def start_study_session(body: SessionStart, user: dict = Depends(require_auth)):
+    """Start or resume a study session on a mindmap"""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    user_id = user["id"]
+    mindmap_id = body.mindmap_id
+
+    async with db_pool.acquire() as conn:
+        # Verify mindmap ownership
+        mm = await conn.fetchrow(
+            "SELECT id, name FROM mindmaps WHERE id = $1 AND user_id = $2",
+            mindmap_id, user_id
+        )
+        if not mm:
+            raise HTTPException(status_code=404, detail="Mindmap not found")
+
+        # Check for active session
+        existing = await conn.fetchrow(
+            "SELECT id, current_node_id, current_question, mode, streak, max_streak, nodes_visited, nodes_mastered, total_correct, total_incorrect FROM study_sessions WHERE user_id = $1 AND mindmap_id = $2 AND session_state = 'active'",
+            user_id, mindmap_id
+        )
+
+        if existing and existing["current_question"]:
+            # Resume existing session
+            node, breadcrumb, children_texts, _ = await get_node_context(conn, mindmap_id, existing["current_node_id"])
+
+            # Count total quizzable nodes
+            total = await conn.fetchval("""
+                SELECT COUNT(*) FROM mindmap_nodes
+                WHERE mindmap_id = $1 AND (is_leaf = true OR length(text) > 30)
+            """, mindmap_id)
+
+            return {
+                "session_id": existing["id"],
+                "resumed": True,
+                "current_node_id": existing["current_node_id"],
+                "question": existing["current_question"],
+                "breadcrumb": breadcrumb,
+                "mode": existing["mode"],
+                "streak": existing["streak"],
+                "max_streak": existing["max_streak"],
+                "nodes_visited": existing["nodes_visited"],
+                "nodes_mastered": existing["nodes_mastered"],
+                "total_correct": existing["total_correct"],
+                "total_incorrect": existing["total_incorrect"],
+                "total_nodes": total,
+                "node_text": node["text"] if node else "",
+                "case_refs": json.loads(node["case_refs"]) if node and isinstance(node["case_refs"], str) else (node["case_refs"] if node else []),
+                "rule_refs": json.loads(node["rule_refs"]) if node and isinstance(node["rule_refs"], str) else (node["rule_refs"] if node else []),
+            }
+
+        # Find first unmastered quizzable node
+        quizzable = await get_quizzable_nodes(conn, mindmap_id, user_id, body.branch_node_id)
+        unmastered = [n for n in quizzable if n["mastery"] != "mastered"]
+
+        if not unmastered:
+            return {"session_id": None, "completed": True, "message": "All nodes mastered!"}
+
+        first_node = unmastered[0]
+        total = len(quizzable)
+
+        # Get context and generate question
+        node, breadcrumb, children_texts, _ = await get_node_context(conn, mindmap_id, first_node["node_id"])
+        case_context, rule_context = await get_case_and_rule_context(conn, node)
+
+        question = await generate_question_via_claude(
+            first_node["text"], breadcrumb, children_texts, "quiz", case_context, rule_context
+        )
+
+        # Create session
+        if existing:
+            # Update existing paused session
+            await conn.execute("""
+                UPDATE study_sessions SET session_state = 'active', current_node_id = $2, current_question = $3, last_activity_at = NOW()
+                WHERE id = $1
+            """, existing["id"], first_node["node_id"], question)
+            session_id = existing["id"]
+        else:
+            row = await conn.fetchrow("""
+                INSERT INTO study_sessions (user_id, mindmap_id, current_node_id, current_question, branch_node_id)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+            """, user_id, mindmap_id, first_node["node_id"], question, body.branch_node_id)
+            session_id = row["id"]
+
+        mastered_count = await conn.fetchval(
+            "SELECT COUNT(*) FROM node_progress WHERE user_id = $1 AND mindmap_id = $2 AND mastery = 'mastered'",
+            user_id, mindmap_id
+        )
+
+    return {
+        "session_id": session_id,
+        "resumed": False,
+        "current_node_id": first_node["node_id"],
+        "question": question,
+        "breadcrumb": breadcrumb,
+        "mode": "quiz",
+        "streak": 0,
+        "max_streak": 0,
+        "nodes_visited": 0,
+        "nodes_mastered": mastered_count,
+        "total_correct": 0,
+        "total_incorrect": 0,
+        "total_nodes": total,
+        "node_text": first_node["text"],
+        "case_refs": json.loads(first_node["case_refs"]) if isinstance(first_node["case_refs"], str) else (first_node["case_refs"] or []),
+        "rule_refs": json.loads(first_node["rule_refs"]) if isinstance(first_node["rule_refs"], str) else (first_node["rule_refs"] or []),
+    }
+
+
+@app.post("/api/v1/study/session/{session_id}/respond")
+async def session_respond(session_id: int, body: SessionRespond, user: dict = Depends(require_auth)):
+    """Evaluate answer, update progress, generate next question. Returns SSE stream."""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        session = await conn.fetchrow(
+            "SELECT * FROM study_sessions WHERE id = $1 AND user_id = $2 AND session_state = 'active'",
+            session_id, user_id
+        )
+        if not session:
+            raise HTTPException(status_code=404, detail="Active session not found")
+
+        mindmap_id = session["mindmap_id"]
+        current_node_id = session["current_node_id"]
+
+        # Get current node context
+        node, breadcrumb, children_texts, _ = await get_node_context(conn, mindmap_id, current_node_id)
+        if not node:
+            raise HTTPException(status_code=404, detail="Current node not found")
+
+        case_context, rule_context = await get_case_and_rule_context(conn, node)
+
+        # Get node refs for response
+        node_case_refs = json.loads(node["case_refs"]) if isinstance(node["case_refs"], str) else (node["case_refs"] or [])
+        node_rule_refs = json.loads(node["rule_refs"]) if isinstance(node["rule_refs"], str) else (node["rule_refs"] or [])
+
+    # Build evaluation prompt
+    parent_text = breadcrumb[-1] if breadcrumb else "General"
+    eval_prompt = f"""You are quizzing a law student with ADHD. Keep ALL responses under 100 words. Never write walls of text.
+
+The topic is: "{parent_text}"
+Correct answer involves: "{node['text']}"
+{f'Subtopics they should know: {", ".join(children_texts)}' if children_texts else ''}
+{case_context}
+{rule_context}
+
+The student answered: "{body.answer}"
+
+Evaluate:
+1. What they got right (1 sentence)
+2. What they missed (max 3 bullet points)
+3. Verdict: CORRECT, PARTIAL, or INCORRECT
+
+Be encouraging. No lectures. End with exactly one of these words on its own line: CORRECT, PARTIAL, or INCORRECT"""
+
+    async def stream_response():
+        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+
+        full_response = ""
+        input_tokens = 0
+        output_tokens = 0
+
+        try:
+            # Step 1: Stream evaluation
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": ANTHROPIC_API_KEY,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "claude-haiku-4-5-20251001",
+                        "max_tokens": 300,
+                        "messages": [{"role": "user", "content": eval_prompt}],
+                        "stream": True,
+                    },
+                    timeout=60.0,
+                ) as response:
+                    if response.status_code != 200:
+                        yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
+                        return
+
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            event = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+
+                        event_type = event.get("type", "")
+                        if event_type == "content_block_delta":
+                            text = event.get("delta", {}).get("text", "")
+                            if text:
+                                full_response += text
+                                yield f"data: {json.dumps({'type': 'feedback', 'text': text})}\n\n"
+                        elif event_type == "message_start":
+                            input_tokens = event.get("message", {}).get("usage", {}).get("input_tokens", 0)
+                        elif event_type == "message_delta":
+                            output_tokens = event.get("usage", {}).get("output_tokens", 0)
+
+        except Exception as e:
+            print(f"Session respond stream error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            return
+
+        # Step 2: Determine verdict
+        response_upper = full_response.upper()
+        if "CORRECT" in response_upper and "INCORRECT" not in response_upper:
+            verdict = "CORRECT"
+        elif "PARTIAL" in response_upper:
+            verdict = "PARTIAL"
+        else:
+            verdict = "INCORRECT"
+
+        # Step 3: Update node_progress and session
+        try:
+            async with db_pool.acquire() as conn:
+                # Upsert node progress
+                if verdict == "CORRECT":
+                    await conn.execute("""
+                        INSERT INTO node_progress (user_id, mindmap_id, node_id, correct_streak, total_attempts, total_correct, mastery, last_response_time_ms, last_response_length, last_reviewed_at)
+                        VALUES ($1, $2, $3, 1, 1, 1, 'learning', $4, $5, NOW())
+                        ON CONFLICT (user_id, mindmap_id, node_id) DO UPDATE SET
+                            correct_streak = node_progress.correct_streak + 1,
+                            total_attempts = node_progress.total_attempts + 1,
+                            total_correct = node_progress.total_correct + 1,
+                            mastery = CASE WHEN node_progress.correct_streak + 1 >= 3 THEN 'mastered' ELSE 'learning' END,
+                            last_response_time_ms = $4,
+                            last_response_length = $5,
+                            last_reviewed_at = NOW()
+                    """, user_id, mindmap_id, current_node_id, body.response_time_ms, len(body.answer))
+                else:
+                    await conn.execute("""
+                        INSERT INTO node_progress (user_id, mindmap_id, node_id, correct_streak, total_attempts, total_correct, mastery, last_response_time_ms, last_response_length, last_reviewed_at)
+                        VALUES ($1, $2, $3, 0, 1, 0, 'learning', $4, $5, NOW())
+                        ON CONFLICT (user_id, mindmap_id, node_id) DO UPDATE SET
+                            correct_streak = 0,
+                            total_attempts = node_progress.total_attempts + 1,
+                            mastery = 'learning',
+                            last_response_time_ms = $4,
+                            last_response_length = $5,
+                            last_reviewed_at = NOW()
+                    """, user_id, mindmap_id, current_node_id, body.response_time_ms, len(body.answer))
+
+                # Update session stats
+                new_streak = session["streak"] + 1 if verdict == "CORRECT" else 0
+                new_max_streak = max(session["max_streak"], new_streak)
+
+                # Check if node just got mastered
+                prog = await conn.fetchrow(
+                    "SELECT mastery FROM node_progress WHERE user_id = $1 AND mindmap_id = $2 AND node_id = $3",
+                    user_id, mindmap_id, current_node_id
+                )
+                just_mastered = prog and prog["mastery"] == "mastered"
+
+                mastered_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM node_progress WHERE user_id = $1 AND mindmap_id = $2 AND mastery = 'mastered'",
+                    user_id, mindmap_id
+                )
+
+                total_correct = session["total_correct"] + (1 if verdict == "CORRECT" else 0)
+                total_incorrect = session["total_incorrect"] + (1 if verdict == "INCORRECT" else 0)
+
+                # Step 4: Drift detection
+                recent = await conn.fetch("""
+                    SELECT last_response_time_ms, last_response_length FROM node_progress
+                    WHERE user_id = $1 AND mindmap_id = $2 AND last_reviewed_at IS NOT NULL
+                    ORDER BY last_reviewed_at DESC LIMIT 5
+                """, user_id, mindmap_id)
+
+                mode = "quiz"
+                if len(recent) >= 3:
+                    avg_time = sum(r["last_response_time_ms"] or 0 for r in recent) / len(recent)
+                    avg_length = sum(r["last_response_length"] or 0 for r in recent) / len(recent)
+
+                    short_answers = sum(1 for r in recent[:2] if (r["last_response_length"] or 0) < 20)
+
+                    if (body.response_time_ms > avg_time * 2 and avg_time > 0) or short_answers >= 2:
+                        mode = random.choice(["story", "analogy", "hypo"])
+                    elif new_streak >= 3:
+                        mode = "go_deeper"
+
+                # Step 5: Pick next node
+                branch_node_id = session["branch_node_id"]
+                quizzable = await get_quizzable_nodes(conn, mindmap_id, user_id, branch_node_id)
+                unmastered = [n for n in quizzable if n["mastery"] != "mastered"]
+
+                # Count total quizzable
+                total_quizzable = len(quizzable)
+
+                next_node = None
+                next_question = None
+                next_breadcrumb = []
+                next_case_refs = []
+                next_rule_refs = []
+                session_complete = False
+
+                if not unmastered:
+                    session_complete = True
+                    await conn.execute("""
+                        UPDATE study_sessions SET session_state = 'completed', ended_at = NOW(),
+                            streak = $2, max_streak = $3, nodes_mastered = $4,
+                            total_correct = $5, total_incorrect = $6, last_activity_at = NOW()
+                        WHERE id = $1
+                    """, session_id, new_streak, new_max_streak, mastered_count, total_correct, total_incorrect)
+                else:
+                    # Advance to next unmastered (skip current if mastered)
+                    next_candidates = [n for n in unmastered if n["node_id"] != current_node_id]
+                    if not next_candidates:
+                        next_candidates = unmastered
+                    next_node = next_candidates[0]
+
+                    # Get context for next question
+                    next_node_full, next_breadcrumb, next_children, _ = await get_node_context(conn, mindmap_id, next_node["node_id"])
+                    next_case_context, next_rule_context = await get_case_and_rule_context(conn, next_node_full)
+
+                    next_question = await generate_question_via_claude(
+                        next_node["text"], next_breadcrumb, next_children, mode, next_case_context, next_rule_context
+                    )
+
+                    next_case_refs = json.loads(next_node_full["case_refs"]) if isinstance(next_node_full["case_refs"], str) else (next_node_full["case_refs"] or [])
+                    next_rule_refs = json.loads(next_node_full["rule_refs"]) if isinstance(next_node_full["rule_refs"], str) else (next_node_full["rule_refs"] or [])
+
+                    await conn.execute("""
+                        UPDATE study_sessions SET current_node_id = $2, current_question = $3, mode = $4,
+                            streak = $5, max_streak = $6, nodes_visited = nodes_visited + 1,
+                            nodes_mastered = $7, total_correct = $8, total_incorrect = $9,
+                            last_activity_at = NOW()
+                        WHERE id = $1
+                    """, session_id, next_node["node_id"], next_question, mode,
+                        new_streak, new_max_streak, mastered_count, total_correct, total_incorrect)
+
+                # Log usage
+                cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
+                try:
+                    await log_api_usage("study_session_haiku", input_tokens, output_tokens, cost)
+                except Exception:
+                    pass
+
+        except Exception as e:
+            print(f"Session respond DB error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to update progress'})}\n\n"
+            return
+
+        # Emit progress event
+        yield f"data: {json.dumps({'type': 'progress', 'verdict': verdict, 'mastery': prog['mastery'] if prog else 'learning', 'streak': new_streak, 'max_streak': new_max_streak, 'mastered_count': mastered_count, 'total_nodes': total_quizzable, 'total_correct': total_correct, 'total_incorrect': total_incorrect})}\n\n"
+
+        # Emit dopamine events
+        if just_mastered:
+            yield f"data: {json.dumps({'type': 'dopamine', 'event': 'mastered'})}\n\n"
+        if new_streak in (5, 10, 25, 50):
+            yield f"data: {json.dumps({'type': 'dopamine', 'event': f'streak_{new_streak}'})}\n\n"
+
+        # Emit next question or completion
+        if session_complete:
+            yield f"data: {json.dumps({'type': 'complete', 'message': 'All nodes mastered! Great work!'})}\n\n"
+        elif next_node and next_question:
+            yield f"data: {json.dumps({'type': 'next_question', 'text': next_question, 'node_id': next_node['node_id'], 'node_text': next_node['text'], 'breadcrumb': next_breadcrumb, 'mode': mode, 'case_refs': next_case_refs, 'rule_refs': next_rule_refs})}\n\n"
+
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/v1/study/session/{session_id}/skip")
+async def session_skip(session_id: int, user: dict = Depends(require_auth)):
+    """Skip current node and advance to next unmastered node"""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        session = await conn.fetchrow(
+            "SELECT * FROM study_sessions WHERE id = $1 AND user_id = $2 AND session_state = 'active'",
+            session_id, user_id
+        )
+        if not session:
+            raise HTTPException(status_code=404, detail="Active session not found")
+
+        mindmap_id = session["mindmap_id"]
+        current_node_id = session["current_node_id"]
+
+        quizzable = await get_quizzable_nodes(conn, mindmap_id, user_id, session["branch_node_id"])
+        unmastered = [n for n in quizzable if n["mastery"] != "mastered" and n["node_id"] != current_node_id]
+
+        if not unmastered:
+            return {"completed": True, "message": "No more nodes to study!"}
+
+        next_node = unmastered[0]
+        node, breadcrumb, children_texts, _ = await get_node_context(conn, mindmap_id, next_node["node_id"])
+        case_context, rule_context = await get_case_and_rule_context(conn, node)
+
+        question = await generate_question_via_claude(
+            next_node["text"], breadcrumb, children_texts, session["mode"] or "quiz", case_context, rule_context
+        )
+
+        await conn.execute("""
+            UPDATE study_sessions SET current_node_id = $2, current_question = $3,
+                streak = 0, nodes_visited = nodes_visited + 1, last_activity_at = NOW()
+            WHERE id = $1
+        """, session_id, next_node["node_id"], question)
+
+        mastered_count = await conn.fetchval(
+            "SELECT COUNT(*) FROM node_progress WHERE user_id = $1 AND mindmap_id = $2 AND mastery = 'mastered'",
+            user_id, mindmap_id
+        )
+
+    return {
+        "current_node_id": next_node["node_id"],
+        "question": question,
+        "breadcrumb": breadcrumb,
+        "mode": session["mode"] or "quiz",
+        "streak": 0,
+        "nodes_mastered": mastered_count,
+        "total_nodes": len(quizzable),
+        "node_text": next_node["text"],
+        "case_refs": json.loads(node["case_refs"]) if isinstance(node["case_refs"], str) else (node["case_refs"] or []),
+        "rule_refs": json.loads(node["rule_refs"]) if isinstance(node["rule_refs"], str) else (node["rule_refs"] or []),
+    }
+
+
+@app.post("/api/v1/study/session/{session_id}/pause")
+async def session_pause(session_id: int, user: dict = Depends(require_auth)):
+    """Pause the current study session"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE study_sessions SET session_state = 'paused', last_activity_at = NOW() WHERE id = $1 AND user_id = $2 AND session_state = 'active'",
+            session_id, user_id
+        )
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Active session not found")
+    return {"ok": True, "session_state": "paused"}
+
+
+@app.get("/api/v1/study/session/progress/{mindmap_id}")
+async def session_progress(mindmap_id: int, user: dict = Depends(require_auth)):
+    """Get per-node mastery for the entire mindmap"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        mm = await conn.fetchrow(
+            "SELECT id FROM mindmaps WHERE id = $1 AND user_id = $2", mindmap_id, user_id
+        )
+        if not mm:
+            raise HTTPException(status_code=404, detail="Mindmap not found")
+
+        rows = await conn.fetch("""
+            SELECT n.node_id, n.text, n.depth, n.is_leaf,
+                   COALESCE(p.mastery, 'unseen') as mastery,
+                   COALESCE(p.correct_streak, 0) as correct_streak,
+                   COALESCE(p.total_attempts, 0) as total_attempts
+            FROM mindmap_nodes n
+            LEFT JOIN node_progress p ON p.mindmap_id = n.mindmap_id AND p.node_id = n.node_id AND p.user_id = $2
+            WHERE n.mindmap_id = $1
+            ORDER BY n.sort_order
+        """, mindmap_id, user_id)
+
+    return [
+        {
+            "node_id": r["node_id"],
+            "text": r["text"],
+            "depth": r["depth"],
+            "is_leaf": r["is_leaf"],
+            "mastery": r["mastery"],
+            "correct_streak": r["correct_streak"],
+            "total_attempts": r["total_attempts"],
+        }
+        for r in rows
+    ]
 
 
 if __name__ == "__main__":

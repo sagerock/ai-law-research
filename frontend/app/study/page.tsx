@@ -400,7 +400,7 @@ export default function StudyPage() {
         {/* Sidebar */}
         <div className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform fixed md:static inset-y-0 left-0 z-30 w-72 bg-white border-r flex flex-col mt-[73px] md:mt-0`}>
           {/* New Chat button */}
-          <div className="p-3 border-b">
+          <div className="p-3 border-b space-y-2">
             <button
               onClick={startNewChat}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-sage-700 hover:bg-sage-600 text-white rounded-lg text-sm font-medium transition"
@@ -408,6 +408,13 @@ export default function StudyPage() {
               <Plus className="h-4 w-4" />
               New Chat
             </button>
+            <Link
+              href="/study/session"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-sage-300 text-sage-700 hover:bg-sage-50 rounded-lg text-sm font-medium transition"
+            >
+              <GraduationCap className="h-4 w-4" />
+              Study Sessions
+            </Link>
           </div>
 
           <div className="flex-1 overflow-y-auto">
