@@ -78,7 +78,7 @@ export default function QuizCard({
           )}
           Question
         </div>
-        <p className="text-stone-700">{question}</p>
+        <div className="text-stone-700"><FormattedMessage content={question} /></div>
       </div>
 
       {/* Answer input */}
