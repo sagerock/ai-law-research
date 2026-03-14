@@ -4718,6 +4718,7 @@ async def upload_mindmap(
 
 async def walk_and_save_nodes(conn, mindmap_id, tree_data):
     """Shared helper: flatten tree, resolve refs, insert mindmap_nodes rows. Returns (node_count, max_depth)."""
+    # v2: editor + community sharing support
     root = tree_data.get("root", tree_data)
     counter = [0]
     flat_nodes = walk_mindmap_tree(root, counter=counter)
