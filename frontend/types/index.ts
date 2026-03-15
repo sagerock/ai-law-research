@@ -213,4 +213,5 @@ export interface TransparencyStats {
   charity_url: string
   community_pool_balance: number
   community_pool_healthy: boolean
+  community_pool_low: boolean
 }

@@ -246,41 +246,59 @@ export default function TransparencyPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-stone-700">Pool Balance</span>
-                  <span className={`text-2xl font-bold ${stats.community_pool_healthy ? 'text-green-600' : 'text-stone-400'}`}>
+                  <span className={`text-2xl font-bold ${
+                    !stats.community_pool_healthy ? 'text-red-500' :
+                    stats.community_pool_low ? 'text-amber-500' :
+                    'text-green-600'
+                  }`}>
                     ${stats.community_pool_balance.toFixed(2)}
                   </span>
                 </div>
 
                 <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${stats.community_pool_healthy ? 'bg-amber-400' : 'bg-stone-300'}`}
-                    style={{ width: `${Math.min(100, stats.monthly_donations > 0 ? (stats.community_pool_balance / stats.monthly_donations) * 100 : 0)}%` }}
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      !stats.community_pool_healthy ? 'bg-red-400' :
+                      stats.community_pool_low ? 'bg-amber-400' :
+                      'bg-green-400'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(3, (stats.community_pool_balance / Math.max(stats.monthly_goal, 1)) * 100))}%` }}
                   />
                 </div>
 
-                {stats.community_pool_healthy ? (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800 font-medium">
-                      Thanks to our donors! The community pool is funded this month.
+                {!stats.community_pool_healthy ? (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium">
+                      AI features are paused — the community pool is empty.
                     </p>
-                    <p className="text-xs text-green-700 mt-1">
-                      Donations cover server costs and keep AI features available for everyone.
+                    <p className="text-xs text-red-700 mt-1">
+                      Donate to refill the pool and restore free AI access for all students, or{' '}
+                      <a href="/byok" className="underline">add your own API key</a> for unlimited personal access.
+                    </p>
+                  </div>
+                ) : stats.community_pool_low ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800 font-medium">
+                      The pool is running low — help keep AI features available!
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Every dollar funds more AI-powered case briefs for students who can't afford Quimbee.
                     </p>
                   </div>
                 ) : (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-800 font-medium">
-                      The community pool needs support this month.
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800 font-medium">
+                      Thanks to our donors! The community pool is funded.
                     </p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Donate to keep AI features available for all students. Every dollar helps!
+                    <p className="text-xs text-green-700 mt-1">
+                      AI features are available for everyone. Donations keep it going!
                     </p>
                   </div>
                 )}
 
                 <p className="text-xs text-stone-500">
-                  Ko-fi donations fund the community AI pool. When the pool is healthy, all users benefit from boosted AI access.
-                  You can also bring your own API key in your profile settings for unlimited personal access.
+                  Ko-fi donations and admin top-ups fund the community AI pool. When the pool is empty, free AI features pause.
+                  You can also <a href="/byok" className="underline">bring your own API key</a> for unlimited personal access.
                 </p>
               </div>
             </section>

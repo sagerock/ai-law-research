@@ -307,9 +307,62 @@ async def log_api_usage(usage_type: str, input_tokens: int, output_tokens: int, 
                     estimated_cost = api_usage_log.estimated_cost + EXCLUDED.estimated_cost,
                     updated_at = CURRENT_TIMESTAMP
             """, usage_type, input_tokens, output_tokens, cost, source)
+        # Also debit the community pool for site-funded AI calls
+        if source == "site" and cost > 0:
+            try:
+                await debit_pool(cost, usage_type, None)
+            except Exception as pool_err:
+                print(f"Warning: Failed to debit pool: {pool_err}")
     except Exception as e:
         # Don't fail the main request if logging fails
         print(f"Warning: Failed to log API usage: {e}")
+
+
+# --- Community AI Pool helpers ---
+
+async def get_pool_balance() -> float:
+    """Get current community pool balance from ledger."""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT COALESCE(SUM(amount), 0) as balance FROM pool_ledger")
+        return float(row["balance"])
+
+
+async def debit_pool(amount: float, description: str, reference_id: str | None) -> float:
+    """Debit the pool using advisory lock to prevent overdraw. Returns new balance."""
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            # Serialize debits to prevent overdraw
+            await conn.execute("SELECT pg_advisory_xact_lock(1)")
+            await conn.execute(
+                "INSERT INTO pool_ledger (amount, entry_type, description, reference_id, created_by) VALUES ($1, 'ai_debit', $2, $3, 'system')",
+                -abs(amount), description, reference_id
+            )
+            row = await conn.fetchrow("SELECT COALESCE(SUM(amount), 0) as balance FROM pool_ledger")
+            return float(row["balance"])
+
+
+async def credit_pool(amount: float, entry_type: str, description: str, reference_id: str | None, created_by: str) -> float:
+    """Credit the pool. Returns new balance."""
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO pool_ledger (amount, entry_type, description, reference_id, created_by) VALUES ($1, $2, $3, $4, $5)",
+            abs(amount), entry_type, description, reference_id, created_by
+        )
+        row = await conn.fetchrow("SELECT COALESCE(SUM(amount), 0) as balance FROM pool_ledger")
+        return float(row["balance"])
+
+
+async def check_pool_available(user_id: str | None) -> bool:
+    """Check if pool has funds. BYOK users always pass."""
+    if user_id:
+        user_key = await get_user_api_key(user_id)
+        if user_key:
+            return True
+    balance = await get_pool_balance()
+    return balance > 0
+
+
+POOL_EMPTY_DETAIL = "Community AI pool is empty. Donate to refill it!"
 
 
 @app.on_event("startup")
@@ -1102,6 +1155,11 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
     user_id = current_user["id"] if current_user else None
     api_key, key_source = await get_anthropic_api_key(user_id)
 
+    # Check community pool for non-BYOK users
+    if key_source == "site":
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
     # Get the case from database and related cases
     async with db_pool.acquire() as conn:
         # Check if we already have a cached summary
@@ -1610,9 +1668,15 @@ async def get_transparency_stats():
     month_ai_cost = float(month_stats["cost"]) if month_stats["cost"] else 0
     month_total = month_ai_cost + hosting
 
-    # Community pool: donations minus site-funded AI costs this month
-    community_pool_balance = round(donations - month_total, 2)
-    community_pool_healthy = community_pool_balance > 0
+    # Community pool: real balance from pool_ledger
+    try:
+        pool_balance = await get_pool_balance()
+    except Exception:
+        pool_balance = 0.0
+    low_threshold = float(config.get("pool_low_threshold", "5.00"))
+    community_pool_balance = round(pool_balance, 2)
+    community_pool_healthy = pool_balance > 0
+    community_pool_low = pool_balance > 0 and pool_balance < low_threshold
 
     return {
         "month_name": calendar.month_name[datetime.now().month],
@@ -1633,6 +1697,7 @@ async def get_transparency_stats():
         "charity_url": config.get("charity_url", ""),
         "community_pool_balance": max(0, community_pool_balance),
         "community_pool_healthy": community_pool_healthy,
+        "community_pool_low": community_pool_low,
     }
 
 
@@ -1693,6 +1758,9 @@ async def kofi_webhook(data: str = Form(...)):
                 donation_type, is_public, is_subscription, tier_name,
                 json.dumps(payload)
             )
+
+        # Credit the community pool
+        await credit_pool(amount, "donation", f"Ko-fi from {from_name}", transaction_id, "kofi")
 
         print(f"☕ Ko-fi donation received: ${amount} from {from_name}")
 
@@ -3545,6 +3613,11 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
     if not chat_api_key:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
+    # Check community pool for non-BYOK users
+    if not is_byok:
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
     async with db_pool.acquire() as conn:
         # Get or create user tier
         tier_row = await conn.fetchrow(
@@ -3832,6 +3905,11 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
     chat_api_key = user_api_key or ANTHROPIC_API_KEY
     if not chat_api_key:
         raise HTTPException(status_code=503, detail="AI service not configured")
+
+    # Check community pool for non-BYOK users
+    if not is_byok:
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     async with db_pool.acquire() as conn:
         # Verify case exists and fetch data
@@ -4160,8 +4238,92 @@ Guidelines:
 
 
 # ============================================================================
+# Community Pool
+# ============================================================================
+
+@app.get("/api/v1/pool/status")
+async def pool_status():
+    """Public pool status with recent donors."""
+    balance = await get_pool_balance()
+    async with db_pool.acquire() as conn:
+        config_rows = await conn.fetch("SELECT key, value FROM site_config WHERE key = 'pool_low_threshold'")
+        low_threshold = float(config_rows[0]["value"]) if config_rows else 5.0
+
+        donors = await conn.fetch("""
+            SELECT from_name, amount, received_at
+            FROM donations
+            WHERE is_public = true
+            ORDER BY received_at DESC
+            LIMIT 10
+        """)
+
+    return {
+        "balance": round(balance, 2),
+        "is_healthy": balance > 0,
+        "is_low": 0 < balance < low_threshold,
+        "recent_donors": [
+            {
+                "name": d["from_name"],
+                "amount": float(d["amount"]),
+                "date": d["received_at"].isoformat() if d["received_at"] else None,
+            }
+            for d in donors
+        ],
+    }
+
+
+# ============================================================================
 # Admin Panel
 # ============================================================================
+
+class PoolAddRequest(BaseModel):
+    amount: float
+    description: Optional[str] = None
+
+
+@app.get("/api/v1/admin/pool")
+async def admin_pool_info(user: dict = Depends(require_admin)):
+    """Get pool balance and recent ledger entries."""
+    balance = await get_pool_balance()
+    async with db_pool.acquire() as conn:
+        config_rows = await conn.fetch("SELECT key, value FROM site_config WHERE key = 'pool_low_threshold'")
+        low_threshold = float(config_rows[0]["value"]) if config_rows else 5.0
+
+        entries = await conn.fetch("""
+            SELECT id, amount, entry_type, description, reference_id, created_by, created_at
+            FROM pool_ledger
+            ORDER BY created_at DESC
+            LIMIT 50
+        """)
+
+    return {
+        "balance": round(balance, 2),
+        "low_threshold": low_threshold,
+        "is_low": 0 < balance < low_threshold,
+        "recent_entries": [
+            {
+                "id": e["id"],
+                "amount": float(e["amount"]),
+                "entry_type": e["entry_type"],
+                "description": e["description"],
+                "reference_id": e["reference_id"],
+                "created_by": e["created_by"],
+                "created_at": e["created_at"].isoformat() if e["created_at"] else None,
+            }
+            for e in entries
+        ],
+    }
+
+
+@app.post("/api/v1/admin/pool/add")
+async def admin_pool_add(body: PoolAddRequest, user: dict = Depends(require_admin)):
+    """Add funds to the community pool."""
+    if body.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    desc = body.description or "Admin top-up"
+    new_balance = await credit_pool(body.amount, "admin_credit", desc, None, user["id"])
+    return {"balance": round(new_balance, 2), "message": f"Added ${body.amount:.2f} to pool"}
+
 
 @app.get("/api/v1/admin/users")
 async def admin_list_users(
@@ -5673,6 +5835,10 @@ async def session_respond(session_id: int, body: SessionRespond, user: dict = De
         raise HTTPException(status_code=503, detail="AI service not configured")
 
     user_id = user["id"]
+
+    # Check community pool (session respond always uses site key)
+    if not await check_pool_available(user_id):
+        raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     async with db_pool.acquire() as conn:
         session = await conn.fetchrow(

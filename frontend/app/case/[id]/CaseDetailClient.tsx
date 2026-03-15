@@ -364,6 +364,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
         setSummaryError('sign_in_required')
         return
       }
+      if (response.status === 402) {
+        setSummaryError('pool_empty')
+        return
+      }
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.detail || 'Failed to generate summary')
@@ -646,7 +650,14 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     {summaryError === 'sign_in_required' && (
                       <p className="text-red-600 text-sm mt-2">Please sign in to generate briefs for this case.</p>
                     )}
-                    {summaryError && summaryError !== 'sign_in_required' && (
+                    {summaryError === 'pool_empty' && (
+                      <p className="text-red-600 text-sm mt-2">
+                        The community AI pool is empty.{' '}
+                        <a href="/transparency" className="underline">Donate to refill it</a> or{' '}
+                        <a href="/byok" className="underline">add your own API key</a> for unlimited access.
+                      </p>
+                    )}
+                    {summaryError && summaryError !== 'sign_in_required' && summaryError !== 'pool_empty' && (
                       <p className="text-red-600 text-sm mt-2">{summaryError}</p>
                     )}
                   </div>

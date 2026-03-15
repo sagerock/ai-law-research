@@ -117,6 +117,12 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
         return
       }
 
+      if (res.status === 402) {
+        setError('The community AI pool is empty. Donate at /transparency to refill it, or add your own API key at /byok for unlimited access.')
+        setStreaming(false)
+        return
+      }
+
       if (res.status === 401) {
         setError('Your session has expired. Please sign in again.')
         setStreaming(false)

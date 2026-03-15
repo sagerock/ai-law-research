@@ -34,6 +34,7 @@ export default function StudyPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [uploading, setUploading] = useState(false)
   const [rateLimited, setRateLimited] = useState(false)
+  const [poolEmpty, setPoolEmpty] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [availableTags, setAvailableTags] = useState<TagCount[]>([])
 
@@ -205,7 +206,7 @@ export default function StudyPage() {
     const content = input.trim()
     if (!content || streaming) return
 
-    if (rateLimited) return
+    if (rateLimited || poolEmpty) return
 
     setInput('')
     setStreaming(true)
@@ -239,6 +240,12 @@ export default function StudyPage() {
 
       if (res.status === 429) {
         setRateLimited(true)
+        setStreaming(false)
+        return
+      }
+
+      if (res.status === 402) {
+        setPoolEmpty(true)
         setStreaming(false)
         return
       }
@@ -653,6 +660,26 @@ export default function StudyPage() {
             </div>
           )}
 
+          {/* Pool empty banner */}
+          {poolEmpty && (
+            <div className="mx-4 mb-2 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-800">Community AI pool is empty</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  <a href="/transparency" className="underline underline-offset-2 text-red-700 hover:text-red-800">
+                    Donate to refill it
+                  </a>{' '}
+                  or{' '}
+                  <a href="/byok" className="underline underline-offset-2 text-red-700 hover:text-red-800">
+                    add your own API key
+                  </a>{' '}
+                  for unlimited access.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Rate limit banner */}
           {rateLimited && (
             <div className="mx-4 mb-2 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
@@ -683,8 +710,8 @@ export default function StudyPage() {
                     sendMessage()
                   }
                 }}
-                placeholder={rateLimited ? 'Daily limit reached...' : 'Ask about your notes or any legal topic...'}
-                disabled={streaming || rateLimited}
+                placeholder={poolEmpty ? 'Community AI pool is empty...' : rateLimited ? 'Daily limit reached...' : 'Ask about your notes or any legal topic...'}
+                disabled={streaming || rateLimited || poolEmpty}
                 rows={1}
                 className="flex-1 resize-none rounded-lg border border-stone-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sage-200 focus:border-sage-400 disabled:bg-stone-50 disabled:text-stone-400"
                 style={{ minHeight: '42px', maxHeight: '120px' }}
@@ -696,7 +723,7 @@ export default function StudyPage() {
               />
               <button
                 onClick={sendMessage}
-                disabled={!input.trim() || streaming || rateLimited}
+                disabled={!input.trim() || streaming || rateLimited || poolEmpty}
                 className="flex-shrink-0 p-2.5 bg-sage-700 hover:bg-sage-600 text-white rounded-lg disabled:bg-stone-300 disabled:cursor-not-allowed transition"
               >
                 <Send className="h-5 w-5" />
