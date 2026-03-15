@@ -19,6 +19,10 @@ import {
   ChevronRight,
   AlertCircle,
   Check,
+  Key,
+  Trash2,
+  ExternalLink,
+  Sparkles,
 } from 'lucide-react'
 import Header from '@/components/Header'
 
@@ -56,6 +60,15 @@ export default function ProfilePage() {
   // Comments state
   const [comments, setComments] = useState<UserComment[]>([])
   const [isLoadingComments, setIsLoadingComments] = useState(false)
+
+  // BYOK API key state
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [hasApiKey, setHasApiKey] = useState(false)
+  const [apiKeyPreview, setApiKeyPreview] = useState<string | null>(null)
+  const [isSavingKey, setIsSavingKey] = useState(false)
+  const [isRemovingKey, setIsRemovingKey] = useState(false)
+  const [keyError, setKeyError] = useState<string | null>(null)
+  const [keySuccess, setKeySuccess] = useState<string | null>(null)
 
   // UI state
   const [isSaving, setIsSaving] = useState(false)
@@ -110,6 +123,83 @@ export default function ProfilePage() {
       fetchComments()
     }
   }, [session])
+
+  // Fetch BYOK API key status
+  useEffect(() => {
+    const fetchKeyStatus = async () => {
+      if (!session?.access_token) return
+      try {
+        const res = await fetch(`${API_URL}/api/v1/profile/api-key`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setHasApiKey(data.has_key)
+          setApiKeyPreview(data.key_preview)
+        }
+      } catch (e) {
+        console.error('Failed to fetch API key status:', e)
+      }
+    }
+    if (session?.access_token) fetchKeyStatus()
+  }, [session])
+
+  // Handle API key save
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) return
+    setKeyError(null)
+    setKeySuccess(null)
+    setIsSavingKey(true)
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/profile/api-key`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ anthropic_api_key: apiKeyInput }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setKeyError(data.detail || 'Failed to save API key')
+      } else {
+        setHasApiKey(true)
+        setApiKeyPreview(data.key_preview)
+        setApiKeyInput('')
+        setKeySuccess('API key saved and validated!')
+        setTimeout(() => setKeySuccess(null), 3000)
+      }
+    } catch (e) {
+      setKeyError('Network error. Please try again.')
+    } finally {
+      setIsSavingKey(false)
+    }
+  }
+
+  // Handle API key removal
+  const handleRemoveApiKey = async () => {
+    setKeyError(null)
+    setKeySuccess(null)
+    setIsRemovingKey(true)
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/profile/api-key`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
+      })
+      if (res.ok) {
+        setHasApiKey(false)
+        setApiKeyPreview(null)
+        setKeySuccess('API key removed')
+        setTimeout(() => setKeySuccess(null), 3000)
+      }
+    } catch (e) {
+      setKeyError('Failed to remove API key')
+    } finally {
+      setIsRemovingKey(false)
+    }
+  }
 
   // Handle profile save
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -499,6 +589,106 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </form>
+            )}
+          </div>
+
+          {/* AI Settings (BYOK) */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h2 className="text-lg font-semibold text-stone-900 mb-4 flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              AI Settings
+            </h2>
+
+            <p className="text-sm text-stone-600 mb-4">
+              Bring your own Anthropic API key for unlimited AI access with Claude Sonnet.
+              Your key is encrypted and never shared.{' '}
+              <Link href="/byok" className="text-sage-600 hover:text-sage-700 underline underline-offset-2">
+                Learn more
+              </Link>
+            </p>
+
+            {keyError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {keyError}
+              </div>
+            )}
+
+            {keySuccess && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
+                <Check className="h-4 w-4 flex-shrink-0" />
+                {keySuccess}
+              </div>
+            )}
+
+            {hasApiKey ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-800">BYOK Active</p>
+                      <p className="text-sm text-green-700 font-mono">{apiKeyPreview}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleRemoveApiKey}
+                    disabled={isRemovingKey}
+                    className="flex items-center gap-1 px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {isRemovingKey ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Remove
+                  </button>
+                </div>
+                <p className="text-xs text-stone-500">
+                  Unlimited AI messages with Claude Sonnet. No daily limit.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Anthropic API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    placeholder="sk-ant-api03-..."
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 font-mono text-sm"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <a
+                    href="https://console.anthropic.com/settings/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-sage-600 hover:text-sage-700 flex items-center gap-1"
+                  >
+                    Get a key at console.anthropic.com
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <button
+                    onClick={handleSaveApiKey}
+                    disabled={isSavingKey || !apiKeyInput.trim()}
+                    className="flex items-center gap-2 px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 disabled:opacity-50 text-sm"
+                  >
+                    {isSavingKey ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Key className="h-4 w-4" />
+                    )}
+                    Save Key
+                  </button>
+                </div>
+                <p className="text-xs text-stone-500">
+                  Typical usage: ~$5/month. Your key is validated before saving and encrypted at rest.
+                </p>
+              </div>
             )}
           </div>
 

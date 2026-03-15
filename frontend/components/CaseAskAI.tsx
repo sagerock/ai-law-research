@@ -260,7 +260,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
               {rateLimited && (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-3 text-sm text-amber-800">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>Daily message limit reached. Upgrade to Pro for unlimited messages.</span>
+                  <span>Daily limit reached. <a href="/byok" className="underline underline-offset-2 font-medium">Add your own API key</a> for unlimited access.</span>
                 </div>
               )}
 
@@ -364,9 +364,14 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
               </div>
 
               {/* Usage counter */}
-              {usage && usage.messages_remaining !== null && (
+              {usage && (
                 <p className="text-xs text-stone-400 mt-2 text-right">
-                  {usage.messages_remaining}/{usage.daily_limit || 15} messages remaining today
+                  {usage.is_byok
+                    ? 'Using your API key'
+                    : usage.messages_remaining !== null
+                      ? `${usage.messages_remaining}/${usage.daily_limit || 15} messages remaining today`
+                      : null
+                  }
                 </p>
               )}
             </>

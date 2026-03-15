@@ -17,6 +17,7 @@ import re
 import random
 from jose import jwt, JWTError
 from uuid import UUID
+from cryptography.fernet import Fernet, InvalidToken
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
@@ -43,6 +44,61 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")  # Fernet key for encrypting user API keys
+
+# BYOK encryption helpers
+_fernet = None
+
+def get_fernet():
+    global _fernet
+    if _fernet is None:
+        if not ENCRYPTION_KEY:
+            raise HTTPException(status_code=500, detail="ENCRYPTION_KEY not configured")
+        _fernet = Fernet(ENCRYPTION_KEY.encode())
+    return _fernet
+
+
+def encrypt_api_key(key: str) -> str:
+    return get_fernet().encrypt(key.encode()).decode()
+
+
+def decrypt_api_key(encrypted: str) -> str:
+    return get_fernet().decrypt(encrypted.encode()).decode()
+
+
+def make_key_preview(key: str) -> str:
+    if len(key) <= 12:
+        return key[:4] + "..." + key[-4:]
+    return key[:10] + "..." + key[-4:]
+
+
+async def get_user_api_key(user_id: str) -> Optional[str]:
+    """Get decrypted API key for a user, or None."""
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT encrypted_api_key FROM profiles WHERE id = $1",
+                user_id,
+            )
+            if row and row["encrypted_api_key"]:
+                return decrypt_api_key(row["encrypted_api_key"])
+    except Exception as e:
+        print(f"Warning: Failed to decrypt user API key: {e}")
+    return None
+
+
+async def get_anthropic_api_key(user_id: Optional[str] = None) -> tuple[str, str]:
+    """
+    Returns (api_key, source) where source is 'byok' or 'site'.
+    Tries user key first, falls back to site key.
+    """
+    if user_id:
+        user_key = await get_user_api_key(user_id)
+        if user_key:
+            return user_key, "byok"
+    if ANTHROPIC_API_KEY:
+        return ANTHROPIC_API_KEY, "site"
+    raise HTTPException(status_code=503, detail="AI service not configured")
 
 # Pydantic models
 class SearchQuery(BaseModel):
@@ -145,6 +201,10 @@ class ProfileUpdate(BaseModel):
     is_public: Optional[bool] = None
 
 
+class ApiKeyRequest(BaseModel):
+    anthropic_api_key: str
+
+
 class OutlineCreate(BaseModel):
     title: str
     subject: str
@@ -233,20 +293,20 @@ class AdminUserUpdate(BaseModel):
 
 
 # Transparency dashboard helper
-async def log_api_usage(usage_type: str, input_tokens: int, output_tokens: int, cost: float):
+async def log_api_usage(usage_type: str, input_tokens: int, output_tokens: int, cost: float, source: str = "site"):
     """Log API usage for transparency dashboard tracking"""
     try:
         async with db_pool.acquire() as conn:
             await conn.execute("""
-                INSERT INTO api_usage_log (usage_date, usage_type, call_count, input_tokens, output_tokens, estimated_cost, updated_at)
-                VALUES (CURRENT_DATE, $1, 1, $2, $3, $4, CURRENT_TIMESTAMP)
+                INSERT INTO api_usage_log (usage_date, usage_type, call_count, input_tokens, output_tokens, estimated_cost, source, updated_at)
+                VALUES (CURRENT_DATE, $1, 1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
                 ON CONFLICT (usage_date, usage_type) DO UPDATE SET
                     call_count = api_usage_log.call_count + 1,
                     input_tokens = api_usage_log.input_tokens + EXCLUDED.input_tokens,
                     output_tokens = api_usage_log.output_tokens + EXCLUDED.output_tokens,
                     estimated_cost = api_usage_log.estimated_cost + EXCLUDED.estimated_cost,
                     updated_at = CURRENT_TIMESTAMP
-            """, usage_type, input_tokens, output_tokens, cost)
+            """, usage_type, input_tokens, output_tokens, cost, source)
     except Exception as e:
         # Don't fail the main request if logging fails
         print(f"Warning: Failed to log API usage: {e}")
@@ -1037,12 +1097,10 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
 async def summarize_case(case_id: str, authorization: Optional[str] = Header(None)):
     """Generate an AI-powered case brief summary"""
 
-    # Check if Anthropic API key is configured
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail="AI summaries require ANTHROPIC_API_KEY to be configured"
-        )
+    # Try to get user for BYOK
+    current_user = await get_current_user(authorization)
+    user_id = current_user["id"] if current_user else None
+    api_key, key_source = await get_anthropic_api_key(user_id)
 
     # Get the case from database and related cases
     async with db_pool.acquire() as conn:
@@ -1345,7 +1403,7 @@ Format your response with clear section headers using the emoji markers shown ab
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
-                    "x-api-key": ANTHROPIC_API_KEY,
+                    "x-api-key": api_key,
                     "anthropic-version": "2023-06-01",
                     "Content-Type": "application/json"
                 },
@@ -1394,7 +1452,7 @@ Format your response with clear section headers using the emoji markers shown ab
         output_tokens = usage.get("output_tokens", 0)
         cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
 
-        # Save the summary to database for caching
+        # Save the summary to database for caching (benefits everyone)
         async with db_pool.acquire() as conn:
             await conn.execute(
                 """
@@ -1414,7 +1472,7 @@ Format your response with clear section headers using the emoji markers shown ab
         print(f"💾 Saved summary for case {case_id} to database")
 
         # Log usage for transparency dashboard
-        await log_api_usage("ai_summary", input_tokens, output_tokens, cost)
+        await log_api_usage("ai_summary", input_tokens, output_tokens, cost, source=key_source)
 
         return {
             "summary": summary,
@@ -1552,6 +1610,10 @@ async def get_transparency_stats():
     month_ai_cost = float(month_stats["cost"]) if month_stats["cost"] else 0
     month_total = month_ai_cost + hosting
 
+    # Community pool: donations minus site-funded AI costs this month
+    community_pool_balance = round(donations - month_total, 2)
+    community_pool_healthy = community_pool_balance > 0
+
     return {
         "month_name": calendar.month_name[datetime.now().month],
         "month_summaries": month_stats["summaries"] if month_stats else 0,
@@ -1568,7 +1630,9 @@ async def get_transparency_stats():
         "kofi_url": f"https://ko-fi.com/{config.get('kofi_username', '')}" if config.get('kofi_username') else "",
         "charity_name": config.get("charity_name", "Houseless Movement"),
         "charity_description": config.get("charity_description", ""),
-        "charity_url": config.get("charity_url", "")
+        "charity_url": config.get("charity_url", ""),
+        "community_pool_balance": max(0, community_pool_balance),
+        "community_pool_healthy": community_pool_healthy,
     }
 
 
@@ -2468,6 +2532,87 @@ async def get_own_comments(user: dict = Depends(require_auth)):
     }
 
 
+# ============================================================================
+# BYOK (Bring Your Own Key) Endpoints
+# ============================================================================
+
+@app.get("/api/v1/profile/api-key")
+async def get_api_key_status(user: dict = Depends(require_auth)):
+    """Check if user has a stored API key"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT api_key_preview FROM profiles WHERE id = $1",
+            user["id"],
+        )
+    has_key = bool(row and row["api_key_preview"])
+    return {
+        "has_key": has_key,
+        "key_preview": row["api_key_preview"] if has_key else None,
+    }
+
+
+@app.post("/api/v1/profile/api-key")
+async def save_api_key(body: ApiKeyRequest, user: dict = Depends(require_auth)):
+    """Validate and store an Anthropic API key"""
+    key = body.anthropic_api_key.strip()
+
+    if not key.startswith("sk-ant-"):
+        raise HTTPException(status_code=400, detail="Invalid key format. Anthropic keys start with sk-ant-")
+
+    # Validate key with a small test call
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 10,
+                    "messages": [{"role": "user", "content": "Hi"}],
+                },
+                timeout=15.0,
+            )
+        if resp.status_code == 401:
+            raise HTTPException(status_code=400, detail="Invalid API key. Please check and try again.")
+        if resp.status_code == 403:
+            raise HTTPException(status_code=400, detail="API key does not have permission. Check your Anthropic account.")
+        if resp.status_code not in (200, 429):
+            raise HTTPException(status_code=400, detail=f"Key validation failed (status {resp.status_code})")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=400, detail="Could not validate key - Anthropic API timeout")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Key validation error: {str(e)}")
+
+    # Encrypt and store
+    preview = make_key_preview(key)
+    encrypted = encrypt_api_key(key)
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE profiles SET encrypted_api_key = $1, api_key_preview = $2 WHERE id = $3",
+            encrypted, preview, user["id"],
+        )
+
+    return {"valid": True, "key_preview": preview}
+
+
+@app.delete("/api/v1/profile/api-key")
+async def remove_api_key(user: dict = Depends(require_auth)):
+    """Remove stored API key"""
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE profiles SET encrypted_api_key = NULL, api_key_preview = NULL WHERE id = $1",
+            user["id"],
+        )
+    return {"status": "removed"}
+
+
 @app.get("/api/v1/users/{username}")
 async def get_public_profile(username: str):
     """Get a public user profile by username"""
@@ -3321,6 +3466,9 @@ async def delete_conversation(conversation_id: int, user: dict = Depends(require
 @app.get("/api/v1/study/usage")
 async def get_study_usage(user: dict = Depends(require_auth)):
     """Get user's tier and daily usage info"""
+    # Check BYOK status
+    has_byok = await get_user_api_key(user["id"]) is not None
+
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT tier, messages_today, last_message_date, daily_limit, model_override FROM user_tiers WHERE user_id = $1",
@@ -3328,12 +3476,22 @@ async def get_study_usage(user: dict = Depends(require_auth)):
         )
 
     if not row:
+        if has_byok:
+            return {
+                "tier": "free",
+                "messages_today": 0,
+                "daily_limit": None,
+                "messages_remaining": None,
+                "model": "claude-sonnet-4-6",
+                "is_byok": True,
+            }
         return {
             "tier": "free",
             "messages_today": 0,
             "daily_limit": 15,
             "messages_remaining": 15,
             "model": "claude-haiku-4-5-20251001",
+            "is_byok": False,
         }
 
     tier = row["tier"]
@@ -3341,16 +3499,26 @@ async def get_study_usage(user: dict = Depends(require_auth)):
     if row["last_message_date"] != date.today():
         messages_today = 0
 
-    custom_limit = row["daily_limit"]
-    if custom_limit is not None:
-        daily_limit = custom_limit
-    elif tier == "pro":
+    # BYOK users get unlimited
+    if has_byok:
         daily_limit = None
     else:
-        daily_limit = 15
+        custom_limit = row["daily_limit"]
+        if custom_limit is not None:
+            daily_limit = custom_limit
+        elif tier == "pro":
+            daily_limit = None
+        else:
+            daily_limit = 15
 
     messages_remaining = None if daily_limit is None else max(0, daily_limit - messages_today)
-    default_model = "claude-sonnet-4-6" if tier == "pro" else "claude-haiku-4-5-20251001"
+
+    if has_byok:
+        default_model = "claude-sonnet-4-6"
+    elif tier == "pro":
+        default_model = "claude-sonnet-4-6"
+    else:
+        default_model = "claude-haiku-4-5-20251001"
     model = row["model_override"] or default_model
 
     return {
@@ -3359,6 +3527,7 @@ async def get_study_usage(user: dict = Depends(require_auth)):
         "daily_limit": daily_limit,
         "messages_remaining": messages_remaining,
         "model": model,
+        "is_byok": has_byok,
     }
 
 
@@ -3367,10 +3536,14 @@ async def get_study_usage(user: dict = Depends(require_auth)):
 @app.post("/api/v1/study/chat")
 async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
     """Stream AI study assistant response via SSE"""
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="AI service not configured")
-
     user_id = user["id"]
+
+    # Check for BYOK
+    user_api_key = await get_user_api_key(user_id)
+    is_byok = user_api_key is not None
+    chat_api_key = user_api_key or ANTHROPIC_API_KEY
+    if not chat_api_key:
+        raise HTTPException(status_code=503, detail="AI service not configured")
 
     async with db_pool.acquire() as conn:
         # Get or create user tier
@@ -3396,23 +3569,30 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
             custom_limit = tier_row["daily_limit"]
             model_override = tier_row["model_override"]
 
-        # Compute effective limit
-        if custom_limit is not None:
+        # BYOK users get unlimited access and Sonnet
+        if is_byok:
+            effective_limit = None
+        elif custom_limit is not None:
             effective_limit = custom_limit
         elif tier == "pro":
             effective_limit = None  # unlimited
         else:
             effective_limit = 15
 
-        # Check daily limit
+        # Check daily limit (skipped for BYOK)
         if effective_limit is not None and messages_today >= effective_limit:
             raise HTTPException(
                 status_code=429,
                 detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
             )
 
-        # Select model
-        default_model = "claude-sonnet-4-6" if tier == "pro" else "claude-haiku-4-5-20251001"
+        # Select model — BYOK users get Sonnet
+        if is_byok:
+            default_model = "claude-sonnet-4-6"
+        elif tier == "pro":
+            default_model = "claude-sonnet-4-6"
+        else:
+            default_model = "claude-haiku-4-5-20251001"
         model = model_override or default_model
 
         # Create or get conversation
@@ -3529,7 +3709,7 @@ Guidelines:
                     "POST",
                     "https://api.anthropic.com/v1/messages",
                     headers={
-                        "x-api-key": ANTHROPIC_API_KEY,
+                        "x-api-key": chat_api_key,
                         "anthropic-version": "2023-06-01",
                         "Content-Type": "application/json",
                     },
@@ -3617,7 +3797,7 @@ Guidelines:
                     conversation_id,
                 )
 
-            await log_api_usage(usage_type, input_tokens, output_tokens, cost)
+            await log_api_usage(usage_type, input_tokens, output_tokens, cost, source="byok" if is_byok else "site")
         except Exception as e:
             print(f"Failed to save chat result: {e}")
 
@@ -3625,7 +3805,7 @@ Guidelines:
         remaining = None
         if effective_limit is not None:
             remaining = max(0, effective_limit - (messages_today + 1))
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining, 'is_byok': is_byok})}\n\n"
 
     return StreamingResponse(
         stream_response(),
@@ -3644,10 +3824,14 @@ Guidelines:
 @app.post("/api/v1/cases/{case_id}/ask")
 async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(require_auth)):
     """Stream AI response about a specific case via SSE"""
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="AI service not configured")
-
     user_id = user["id"]
+
+    # Check for BYOK
+    user_api_key = await get_user_api_key(user_id)
+    is_byok = user_api_key is not None
+    chat_api_key = user_api_key or ANTHROPIC_API_KEY
+    if not chat_api_key:
+        raise HTTPException(status_code=503, detail="AI service not configured")
 
     async with db_pool.acquire() as conn:
         # Verify case exists and fetch data
@@ -3713,8 +3897,10 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
             custom_limit = tier_row["daily_limit"]
             model_override = tier_row["model_override"]
 
-        # Compute effective limit (shared counter with study chat)
-        if custom_limit is not None:
+        # Compute effective limit — BYOK users get unlimited
+        if is_byok:
+            effective_limit = None
+        elif custom_limit is not None:
             effective_limit = custom_limit
         elif tier == "pro":
             effective_limit = None  # unlimited
@@ -3728,8 +3914,13 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
                 detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
             )
 
-        # Select model
-        default_model = "claude-sonnet-4-6" if tier == "pro" else "claude-haiku-4-5-20251001"
+        # Select model — BYOK users get Sonnet
+        if is_byok:
+            default_model = "claude-sonnet-4-6"
+        elif tier == "pro":
+            default_model = "claude-sonnet-4-6"
+        else:
+            default_model = "claude-haiku-4-5-20251001"
         model = model_override or default_model
 
         # Create or get conversation
@@ -3860,7 +4051,7 @@ Guidelines:
                     "POST",
                     "https://api.anthropic.com/v1/messages",
                     headers={
-                        "x-api-key": ANTHROPIC_API_KEY,
+                        "x-api-key": chat_api_key,
                         "anthropic-version": "2023-06-01",
                         "Content-Type": "application/json",
                     },
@@ -3948,7 +4139,7 @@ Guidelines:
                     conversation_id,
                 )
 
-            await log_api_usage(usage_type, input_tokens, output_tokens, cost)
+            await log_api_usage(usage_type, input_tokens, output_tokens, cost, source="byok" if is_byok else "site")
         except Exception as e:
             print(f"Failed to save case ask result: {e}")
 
@@ -3956,7 +4147,7 @@ Guidelines:
         remaining = None
         if effective_limit is not None:
             remaining = max(0, effective_limit - (messages_today + 1))
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining, 'is_byok': is_byok})}\n\n"
 
     return StreamingResponse(
         stream_response(),

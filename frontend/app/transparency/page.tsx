@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Server,
   Bot,
+  Zap,
 } from 'lucide-react'
 import Header from '@/components/Header'
 import { API_URL } from '@/lib/api'
@@ -232,6 +233,55 @@ export default function TransparencyPage() {
                     )}
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* Community AI Pool */}
+            <section className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="text-xl font-bold text-stone-900 mb-4 flex items-center">
+                <Zap className="h-6 w-6 mr-2 text-amber-500" />
+                Community AI Pool
+              </h2>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-stone-700">Pool Balance</span>
+                  <span className={`text-2xl font-bold ${stats.community_pool_healthy ? 'text-green-600' : 'text-stone-400'}`}>
+                    ${stats.community_pool_balance.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${stats.community_pool_healthy ? 'bg-amber-400' : 'bg-stone-300'}`}
+                    style={{ width: `${Math.min(100, stats.monthly_donations > 0 ? (stats.community_pool_balance / stats.monthly_donations) * 100 : 0)}%` }}
+                  />
+                </div>
+
+                {stats.community_pool_healthy ? (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800 font-medium">
+                      Thanks to our donors! The community pool is funded this month.
+                    </p>
+                    <p className="text-xs text-green-700 mt-1">
+                      Donations cover server costs and keep AI features available for everyone.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800 font-medium">
+                      The community pool needs support this month.
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Donate to keep AI features available for all students. Every dollar helps!
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-xs text-stone-500">
+                  Ko-fi donations fund the community AI pool. When the pool is healthy, all users benefit from boosted AI access.
+                  You can also bring your own API key in your profile settings for unlimited personal access.
+                </p>
               </div>
             </section>
 

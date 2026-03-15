@@ -561,8 +561,12 @@ export default function StudyPage() {
           {usage && (
             <div className="p-3 border-t text-xs text-stone-500">
               <div className="flex items-center justify-between">
-                <span className="capitalize">{usage.tier} tier</span>
-                {usage.tier === 'free' && (
+                <span className="capitalize">
+                  {usage.is_byok ? 'Your API key' : `${usage.tier} tier`}
+                </span>
+                {usage.is_byok ? (
+                  <span className="text-green-600 font-medium">Unlimited</span>
+                ) : usage.tier === 'free' && (
                   <span>{usage.messages_remaining}/{usage.daily_limit} left today</span>
                 )}
               </div>
@@ -656,7 +660,11 @@ export default function StudyPage() {
               <div>
                 <p className="text-sm font-medium text-amber-800">Daily limit reached</p>
                 <p className="text-xs text-amber-600 mt-0.5">
-                  Free tier includes 15 messages per day. Contact us to upgrade to Pro for unlimited messages.
+                  Free tier includes 15 messages per day.{' '}
+                  <a href="/byok" className="underline underline-offset-2 text-amber-700 hover:text-amber-800">
+                    Add your own API key
+                  </a>{' '}
+                  for unlimited access.
                 </p>
               </div>
             </div>
@@ -694,9 +702,14 @@ export default function StudyPage() {
                 <Send className="h-5 w-5" />
               </button>
             </div>
-            {usage && usage.tier === 'free' && !rateLimited && (
+            {usage && !rateLimited && (
               <p className="text-xs text-stone-400 text-center mt-2">
-                {usage.messages_remaining}/{usage.daily_limit} messages remaining today
+                {usage.is_byok
+                  ? 'Using your API key \u00b7 Unlimited messages'
+                  : usage.tier === 'free'
+                    ? `${usage.messages_remaining}/${usage.daily_limit} messages remaining today`
+                    : null
+                }
               </p>
             )}
           </div>

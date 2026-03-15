@@ -100,6 +100,7 @@ export interface UsageInfo {
   daily_limit: number | null
   messages_remaining: number | null
   model: string
+  is_byok?: boolean
 }
 
 export interface AdminUser {
@@ -210,4 +211,6 @@ export interface TransparencyStats {
   charity_name: string
   charity_description: string
   charity_url: string
+  community_pool_balance: number
+  community_pool_healthy: boolean
 }
