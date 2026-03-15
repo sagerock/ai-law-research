@@ -4244,31 +4244,43 @@ Guidelines:
 @app.get("/api/v1/pool/status")
 async def pool_status():
     """Public pool status with recent donors."""
-    balance = await get_pool_balance()
-    async with db_pool.acquire() as conn:
-        config_rows = await conn.fetch("SELECT key, value FROM site_config WHERE key = 'pool_low_threshold'")
-        low_threshold = float(config_rows[0]["value"]) if config_rows else 5.0
+    try:
+        balance = await get_pool_balance()
+    except Exception:
+        balance = 0.0
 
-        donors = await conn.fetch("""
-            SELECT from_name, amount, received_at
-            FROM donations
-            WHERE is_public = true
-            ORDER BY received_at DESC
-            LIMIT 10
-        """)
+    low_threshold = 5.0
+    recent_donors = []
+
+    try:
+        async with db_pool.acquire() as conn:
+            config_rows = await conn.fetch("SELECT key, value FROM site_config WHERE key = 'pool_low_threshold'")
+            if config_rows:
+                low_threshold = float(config_rows[0]["value"])
+
+            donors = await conn.fetch("""
+                SELECT from_name, amount, received_at
+                FROM donations
+                WHERE is_public = true
+                ORDER BY received_at DESC
+                LIMIT 10
+            """)
+            recent_donors = [
+                {
+                    "name": d["from_name"],
+                    "amount": float(d["amount"]),
+                    "date": d["received_at"].isoformat() if d["received_at"] else None,
+                }
+                for d in donors
+            ]
+    except Exception as e:
+        print(f"Warning: pool_status query error: {e}")
 
     return {
         "balance": round(balance, 2),
         "is_healthy": balance > 0,
         "is_low": 0 < balance < low_threshold,
-        "recent_donors": [
-            {
-                "name": d["from_name"],
-                "amount": float(d["amount"]),
-                "date": d["received_at"].isoformat() if d["received_at"] else None,
-            }
-            for d in donors
-        ],
+        "recent_donors": recent_donors,
     }
 
 
@@ -4299,7 +4311,7 @@ async def admin_pool_info(user: dict = Depends(require_admin)):
     return {
         "balance": round(balance, 2),
         "low_threshold": low_threshold,
-        "is_low": 0 < balance < low_threshold,
+        "is_low": balance > 0 and balance < low_threshold,
         "recent_entries": [
             {
                 "id": e["id"],
