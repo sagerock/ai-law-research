@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown, GraduationCap, Upload, Heart, Shield } from 'lucide-react'
+import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown, GraduationCap, Upload, Heart, Shield, Key } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
 
@@ -173,6 +173,15 @@ export function UserMenu() {
             >
               <Upload className="h-4 w-4" />
               <span>Brief Check</span>
+            </Link>
+
+            <Link
+              href="/byok"
+              onClick={() => setShowDropdown(false)}
+              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
+            >
+              <Key className="h-4 w-4" />
+              <span>Unlimited AI</span>
             </Link>
 
             <Link
