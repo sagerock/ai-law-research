@@ -293,7 +293,7 @@ export default function BYOKPage() {
               {[
                 {
                   label: 'Study chat message',
-                  cost: '~$0.01\u2013$0.03',
+                  cost: '~$0.01–$0.03',
                   detail: 'Depends on conversation length',
                 },
                 {
@@ -303,7 +303,7 @@ export default function BYOKPage() {
                 },
                 {
                   label: 'Case Q&A question',
-                  cost: '~$0.01\u2013$0.02',
+                  cost: '~$0.01–$0.02',
                   detail: 'Per question about a case',
                 },
               ].map((item) => (
@@ -331,24 +331,70 @@ export default function BYOKPage() {
           </div>
         </section>
 
-        {/* Community Pool Callout */}
+        {/* What Free Users Get */}
+        <section className="mb-14">
+          <h2 className="font-display text-2xl text-stone-900 mb-6">What you get for free</h2>
+          <div className="bg-white rounded-xl border p-6 space-y-4">
+            <p className="text-stone-600 text-[15px] leading-relaxed">
+              The free tier is not a trial &mdash; it&apos;s the real product. Every student gets:
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {[
+                { icon: BookOpen, text: 'Unlimited case search and reading' },
+                { icon: Sparkles, text: 'AI case briefs (funded by the community pool)' },
+                { icon: MessageSquare, text: '15 study chat messages per day' },
+                { icon: MessageSquare, text: '15 case Q&A questions per day' },
+              ].map((item) => (
+                <div key={item.text} className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  <span className="text-sm text-stone-700">{item.text}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-stone-500">
+              Bookmarks, collections, outlines, and cached briefs are always unlimited and free.
+              BYOK is for power users who want the Sonnet model upgrade and no daily message limits.
+            </p>
+          </div>
+        </section>
+
+        {/* Community Pool & Donate */}
         <section className="mb-14">
           <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-6 sm:p-8">
             <div className="flex items-start gap-4">
               <Heart className="h-8 w-8 text-red-400 flex-shrink-0 mt-1" />
               <div>
                 <h2 className="text-xl font-bold text-stone-900 mb-2">Don&apos;t want to manage an API key?</h2>
+                <p className="text-stone-600 text-[15px] leading-relaxed mb-3">
+                  Free AI features are powered by a community pool &mdash; a shared fund that covers the cost of
+                  AI calls for everyone. When the pool has funds, all students can generate briefs, chat, and
+                  ask questions. When it runs out, AI features pause until someone tops it up.
+                </p>
                 <p className="text-stone-600 text-[15px] leading-relaxed mb-4">
-                  The free tier works great for most students. And when our community donates on Ko-fi,
-                  those donations fund a shared AI pool that benefits everyone. You can check the{' '}
+                  You can help keep the pool funded by buying a coffee on Ko-fi. Every donation goes directly
+                  to AI costs, and you can see exactly where the money goes on the{' '}
                   <Link href="/transparency" className="text-amber-700 underline underline-offset-2 hover:text-amber-600">
                     transparency dashboard
-                  </Link>{' '}
-                  to see how the pool is doing.
+                  </Link>.
                 </p>
-                <p className="text-sm text-stone-500">
-                  BYOK is just an option for power users who want unlimited Sonnet-quality AI. The free tier isn&apos;t going anywhere.
-                </p>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href="https://ko-fi.com/sagelewis"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF5E5B] hover:bg-[#e54d4a] text-white rounded-lg font-medium text-sm transition-colors shadow-sm"
+                  >
+                    <Heart className="h-4 w-4" />
+                    Buy Me a Coffee
+                    <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                  </a>
+                  <Link
+                    href="/transparency"
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-amber-300 text-amber-800 rounded-lg font-medium text-sm hover:bg-amber-100 transition-colors"
+                  >
+                    See the Pool Balance
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

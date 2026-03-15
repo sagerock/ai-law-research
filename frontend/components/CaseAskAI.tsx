@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Sparkles, ChevronDown, ChevronUp, Send, Loader2, AlertCircle, LogIn, Copy, Check } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronUp, Send, Loader2, AlertCircle, LogIn, Copy, Check, HelpCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import { FormattedMessage } from '@/components/FormattedMessage'
 import type { ChatMessageType, UsageInfo } from '@/types'
@@ -238,6 +239,14 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-sage-600" />
           <h2 className="text-lg font-semibold text-stone-900">Ask AI About This Case</h2>
+          <Link
+            href="/byok"
+            onClick={(e) => e.stopPropagation()}
+            className="text-stone-400 hover:text-sage-600 transition-colors"
+            title="How does AI work on this site?"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Link>
         </div>
         {expanded ? (
           <ChevronUp className="h-5 w-5 text-stone-400" />
