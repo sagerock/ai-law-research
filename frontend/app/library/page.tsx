@@ -610,12 +610,12 @@ function LibraryPageContent() {
           </div>
 
           {/* Content */}
-          <div className="flex gap-6">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Collections Tab */}
             {activeTab === 'collections' && (
               <>
                 {/* Collections List */}
-                <div className={`${selectedCollection ? 'w-1/3' : 'w-full'} space-y-4 transition-all`}>
+                <div className={`${selectedCollection ? 'lg:w-1/3' : 'w-full'} space-y-4 transition-all`}>
                   {/* Create Collection Button */}
                   <button
                     onClick={() => setShowCreateModal(true)}
