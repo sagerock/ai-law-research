@@ -285,6 +285,12 @@ async def startup():
                 )
             """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_comment_votes_comment_id ON comment_votes(comment_id)")
+            # Backfill Dressler textbook metadata
+            await conn.execute("""
+                UPDATE casebooks SET edition = '10th', year = 2022
+                WHERE title = 'Criminal Law: Cases and Materials'
+                  AND authors LIKE '%Dressler%' AND edition IS NULL
+            """)
             print("Rating/voting tables ready")
     except Exception as e:
         print(f"Warning: could not create rating tables: {e}")
@@ -4225,6 +4231,7 @@ async def get_textbooks():
             FROM casebooks cb
             LEFT JOIN casebook_cases cc ON cc.casebook_id = cb.id
             LEFT JOIN ai_summaries s ON s.case_id = cc.case_id
+            WHERE cb.authors IS NOT NULL
             GROUP BY cb.id
             ORDER BY cb.subject, cb.title
         """)
