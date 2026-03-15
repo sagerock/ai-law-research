@@ -4203,6 +4203,120 @@ async def get_casebook_cases():
 
 
 # ============================================================================
+# Textbooks (Browse by Casebook)
+# ============================================================================
+
+_textbooks_cache: Dict[str, Any] = {"data": None, "time": 0}
+TEXTBOOKS_CACHE_TTL = 300  # 5 minutes
+
+@app.get("/api/v1/textbooks")
+async def get_textbooks():
+    """Return all textbooks with case counts and brief availability."""
+    now = time.time()
+    if _textbooks_cache["data"] and (now - _textbooks_cache["time"]) < TEXTBOOKS_CACHE_TTL:
+        return _textbooks_cache["data"]
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT cb.id, cb.title, cb.edition, cb.authors, cb.subject,
+                   cb.isbn, cb.year,
+                   COUNT(DISTINCT cc.case_id) as case_count,
+                   COUNT(DISTINCT s.case_id) as brief_count
+            FROM casebooks cb
+            LEFT JOIN casebook_cases cc ON cc.casebook_id = cb.id
+            LEFT JOIN ai_summaries s ON s.case_id = cc.case_id
+            GROUP BY cb.id
+            ORDER BY cb.subject, cb.title
+        """)
+
+    result = [
+        {
+            "id": r["id"],
+            "title": r["title"],
+            "edition": r["edition"],
+            "authors": r["authors"],
+            "subject": r["subject"],
+            "isbn": r["isbn"],
+            "year": r["year"],
+            "case_count": r["case_count"],
+            "brief_count": r["brief_count"],
+        }
+        for r in rows
+    ]
+    _textbooks_cache["data"] = result
+    _textbooks_cache["time"] = now
+    return result
+
+
+_textbook_detail_cache: Dict[int, Dict[str, Any]] = {}
+TEXTBOOK_DETAIL_CACHE_TTL = 300
+
+@app.get("/api/v1/textbooks/{textbook_id}")
+async def get_textbook_detail(textbook_id: int):
+    """Return textbook metadata with all linked cases."""
+    now = time.time()
+    cached = _textbook_detail_cache.get(textbook_id)
+    if cached and (now - cached["time"]) < TEXTBOOK_DETAIL_CACHE_TTL:
+        return cached["data"]
+
+    async with db_pool.acquire() as conn:
+        # Get textbook metadata
+        book = await conn.fetchrow("""
+            SELECT id, title, edition, authors, subject, isbn, year
+            FROM casebooks WHERE id = $1
+        """, textbook_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Textbook not found")
+
+        # Get cases via casebook_cases with brief availability
+        cases = await conn.fetch("""
+            SELECT cc.case_id as id, c.title, c.reporter_cite, c.decision_date,
+                   ct.name as court_name,
+                   CASE WHEN s.case_id IS NOT NULL THEN true ELSE false END as has_brief,
+                   cc.chapter, cc.sort_order, cc.case_name_in_book
+            FROM casebook_cases cc
+            JOIN cases c ON cc.case_id = c.id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            LEFT JOIN ai_summaries s ON s.case_id = c.id
+            WHERE cc.casebook_id = $1
+            ORDER BY cc.sort_order NULLS LAST, c.title
+        """, textbook_id)
+
+        # Get pending count
+        pending = await conn.fetchval("""
+            SELECT COUNT(*) FROM casebook_pending_imports
+            WHERE casebook_id = $1 AND import_status = 'pending'
+        """, textbook_id)
+
+    result = {
+        "id": book["id"],
+        "title": book["title"],
+        "edition": book["edition"],
+        "authors": book["authors"],
+        "subject": book["subject"],
+        "isbn": book["isbn"],
+        "year": book["year"],
+        "cases": [
+            {
+                "id": r["id"],
+                "title": r["title"],
+                "reporter_cite": r["reporter_cite"],
+                "decision_date": r["decision_date"].isoformat() if r["decision_date"] else None,
+                "court_name": r["court_name"],
+                "has_brief": r["has_brief"],
+                "chapter": r["chapter"],
+                "sort_order": r["sort_order"],
+                "case_name_in_book": r["case_name_in_book"],
+            }
+            for r in cases
+        ],
+        "pending_count": pending or 0,
+    }
+    _textbook_detail_cache[textbook_id] = {"data": result, "time": now}
+    return result
+
+
+# ============================================================================
 # Trending Cases (community engagement)
 # ============================================================================
 
