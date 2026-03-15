@@ -194,17 +194,25 @@ export interface NodeProgress {
   total_attempts: number
 }
 
+export interface AICategoryBreakdown {
+  label: string
+  calls: number
+  cost: number
+}
+
 export interface TransparencyStats {
   month_name: string
   month_summaries: number
   month_ai_cost: number
   month_hosting_cost: number
   month_total_cost: number
+  month_breakdown: AICategoryBreakdown[]
   monthly_donations: number
   monthly_donations_count: number
   total_donations: number
   total_summaries: number
   total_ai_cost: number
+  alltime_breakdown: AICategoryBreakdown[]
   monthly_goal: number
   goal_percent: number
   kofi_url: string

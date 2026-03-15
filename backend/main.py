@@ -1612,35 +1612,67 @@ async def get_transparency_stats():
     """Get transparency dashboard statistics for public display"""
     import calendar
 
+    # Map usage_type values to display categories
+    category_map = {
+        "ai_summary": "briefs",
+        "study_chat_haiku": "study_chat",
+        "study_chat_sonnet": "study_chat",
+        "case_ask_haiku": "case_qa",
+        "case_ask_sonnet": "case_qa",
+        "study_session_haiku": "study_sessions",
+    }
+
     async with db_pool.acquire() as conn:
-        # Current month stats from api_usage_log
-        month_stats = await conn.fetchrow("""
-            SELECT COALESCE(SUM(call_count), 0) as summaries,
+        # Per-type stats for current month
+        month_by_type = await conn.fetch("""
+            SELECT usage_type,
+                   COALESCE(SUM(call_count), 0) as calls,
                    COALESCE(SUM(estimated_cost), 0) as cost
             FROM api_usage_log
-            WHERE usage_type = 'ai_summary'
-            AND DATE_TRUNC('month', usage_date) = DATE_TRUNC('month', CURRENT_DATE)
+            WHERE DATE_TRUNC('month', usage_date) = DATE_TRUNC('month', CURRENT_DATE)
+            GROUP BY usage_type
         """)
 
-        # All-time stats from api_usage_log
-        alltime = await conn.fetchrow("""
-            SELECT COALESCE(SUM(call_count), 0) as summaries,
+        # Per-type stats all-time
+        alltime_by_type = await conn.fetch("""
+            SELECT usage_type,
+                   COALESCE(SUM(call_count), 0) as calls,
                    COALESCE(SUM(estimated_cost), 0) as cost
             FROM api_usage_log
-            WHERE usage_type = 'ai_summary'
+            GROUP BY usage_type
         """)
 
-        # Fallback to ai_summaries table if no usage logged yet
-        if alltime["summaries"] == 0:
+        # Aggregate into categories
+        def aggregate(rows):
+            cats = {}
+            for row in rows:
+                cat = category_map.get(row["usage_type"], "other")
+                if cat not in cats:
+                    cats[cat] = {"calls": 0, "cost": 0.0}
+                cats[cat]["calls"] += row["calls"]
+                cats[cat]["cost"] += float(row["cost"])
+            return cats
+
+        month_cats = aggregate(month_by_type)
+        alltime_cats = aggregate(alltime_by_type)
+
+        # Totals
+        month_total_calls = sum(c["calls"] for c in month_cats.values())
+        month_ai_cost_total = sum(c["cost"] for c in month_cats.values())
+        alltime_total_calls = sum(c["calls"] for c in alltime_cats.values())
+        alltime_ai_cost_total = sum(c["cost"] for c in alltime_cats.values())
+
+        # Fallback for briefs if no usage logged yet
+        alltime_summaries = alltime_cats.get("briefs", {}).get("calls", 0)
+        alltime_cost = alltime_ai_cost_total
+        if alltime_summaries == 0:
             fallback = await conn.fetchrow("""
                 SELECT COUNT(*) as summaries, COALESCE(SUM(cost), 0) as cost
                 FROM ai_summaries
             """)
             alltime_summaries = fallback["summaries"]
-            alltime_cost = float(fallback["cost"]) if fallback["cost"] else 0
-        else:
-            alltime_summaries = alltime["summaries"]
-            alltime_cost = float(alltime["cost"])
+            if alltime_cost == 0:
+                alltime_cost = float(fallback["cost"]) if fallback["cost"] else 0
 
         # Get config values from site_config table
         config_rows = await conn.fetch("SELECT key, value FROM site_config")
@@ -1665,7 +1697,7 @@ async def get_transparency_stats():
     donations_count = month_donations["count"] if month_donations else 0
     total_donations = float(alltime_donations["total"]) if alltime_donations else 0
 
-    month_ai_cost = float(month_stats["cost"]) if month_stats["cost"] else 0
+    month_ai_cost = round(month_ai_cost_total, 2)
     month_total = month_ai_cost + hosting
 
     # Community pool: real balance from pool_ledger
@@ -1678,17 +1710,38 @@ async def get_transparency_stats():
     community_pool_healthy = pool_balance > 0
     community_pool_low = pool_balance > 0 and pool_balance < low_threshold
 
+    # Build per-category breakdown for frontend
+    def cat_entry(cats, key, label):
+        c = cats.get(key, {"calls": 0, "cost": 0.0})
+        return {"label": label, "calls": c["calls"], "cost": round(c["cost"], 4)}
+
+    month_breakdown = [
+        cat_entry(month_cats, "briefs", "Case Briefs"),
+        cat_entry(month_cats, "study_chat", "Study Chat"),
+        cat_entry(month_cats, "case_qa", "Case Q&A"),
+        cat_entry(month_cats, "study_sessions", "Study Sessions"),
+    ]
+
+    alltime_breakdown = [
+        cat_entry(alltime_cats, "briefs", "Case Briefs"),
+        cat_entry(alltime_cats, "study_chat", "Study Chat"),
+        cat_entry(alltime_cats, "case_qa", "Case Q&A"),
+        cat_entry(alltime_cats, "study_sessions", "Study Sessions"),
+    ]
+
     return {
         "month_name": calendar.month_name[datetime.now().month],
-        "month_summaries": month_stats["summaries"] if month_stats else 0,
-        "month_ai_cost": round(month_ai_cost, 2),
+        "month_summaries": month_total_calls,
+        "month_ai_cost": month_ai_cost,
         "month_hosting_cost": hosting,
         "month_total_cost": round(month_total, 2),
+        "month_breakdown": month_breakdown,
         "monthly_donations": round(donations, 2),
         "monthly_donations_count": donations_count,
         "total_donations": round(total_donations, 2),
-        "total_summaries": alltime_summaries,
+        "total_summaries": alltime_total_calls,
         "total_ai_cost": round(alltime_cost, 2),
+        "alltime_breakdown": alltime_breakdown,
         "monthly_goal": goal,
         "goal_percent": min(100, round((month_total / goal) * 100, 1)) if goal > 0 else 0,
         "kofi_url": f"https://ko-fi.com/{config.get('kofi_username', '')}" if config.get('kofi_username') else "",

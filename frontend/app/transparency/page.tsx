@@ -174,16 +174,44 @@ export default function TransparencyPage() {
               </h2>
 
               <div className="space-y-6">
-                {/* AI Costs */}
-                <ProgressBar
-                  value={stats.month_ai_cost}
-                  max={stats.monthly_goal}
-                  label="AI Summaries"
-                  sublabel={`(${stats.month_summaries} generated)`}
-                  colorClass="bg-sage-500"
-                />
-                <p className="text-xs text-stone-500 -mt-4">
-                  Claude AI generates case briefs at ~$0.03 each
+                {/* AI Costs by Category */}
+                {stats.month_breakdown.filter(c => c.calls > 0).length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end mb-1">
+                      <span className="text-sm font-medium text-stone-700">
+                        AI Usage
+                        <span className="text-xs text-stone-500 ml-2">({stats.month_summaries} calls)</span>
+                      </span>
+                      <span className="text-lg font-bold text-stone-900">${stats.month_ai_cost.toFixed(2)}</span>
+                    </div>
+                    {stats.month_breakdown.map((cat) => (
+                      cat.calls > 0 && (
+                        <div key={cat.label} className="flex items-center gap-3">
+                          <span className="text-xs text-stone-500 w-28 flex-shrink-0">{cat.label}</span>
+                          <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-sage-500 rounded-full transition-all duration-500"
+                              style={{ width: `${stats.month_ai_cost > 0 ? Math.max(3, (cat.cost / stats.month_ai_cost) * 100) : 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-stone-600 w-20 text-right">
+                            ${cat.cost.toFixed(2)} <span className="text-stone-400">({cat.calls})</span>
+                          </span>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                ) : (
+                  <ProgressBar
+                    value={stats.month_ai_cost}
+                    max={stats.monthly_goal}
+                    label="AI Usage"
+                    sublabel={`(${stats.month_summaries} calls)`}
+                    colorClass="bg-sage-500"
+                  />
+                )}
+                <p className="text-xs text-stone-500 -mt-2">
+                  Briefs ~$0.03 each, chat/Q&amp;A ~$0.01, study sessions ~$0.002
                 </p>
 
                 {/* Hosting Costs */}
@@ -328,16 +356,16 @@ export default function TransparencyPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                   icon={Sparkles}
-                  label="Case Briefs"
-                  value={stats.total_summaries}
-                  subtext="AI-powered"
+                  label="AI Calls"
+                  value={stats.total_summaries.toLocaleString()}
+                  subtext="Across all features"
                   colorClass="text-sage-600"
                 />
                 <StatCard
                   icon={DollarSign}
-                  label="Total Costs"
+                  label="Total AI Costs"
                   value={`$${stats.total_ai_cost.toFixed(2)}`}
-                  subtext="AI summaries"
+                  subtext="All categories"
                   colorClass="text-red-500"
                 />
                 <StatCard
@@ -355,6 +383,22 @@ export default function TransparencyPage() {
                   colorClass="text-sage-600"
                 />
               </div>
+
+              {/* All-time category breakdown */}
+              {stats.alltime_breakdown.filter(c => c.calls > 0).length > 1 && (
+                <div className="mt-4 bg-white rounded-lg border p-4">
+                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">All-time by category</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {stats.alltime_breakdown.map((cat) => (
+                      <div key={cat.label} className="text-center">
+                        <p className="text-lg font-bold text-stone-900">{cat.calls.toLocaleString()}</p>
+                        <p className="text-xs text-stone-500">{cat.label}</p>
+                        <p className="text-xs text-stone-400">${cat.cost.toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* Support Section */}
