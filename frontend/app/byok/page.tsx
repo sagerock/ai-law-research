@@ -134,7 +134,7 @@ export default function BYOKPage() {
               },
               {
                 icon: DollarSign,
-                title: '~$3\u2013$8/month',
+                title: '~$3–$8/month',
                 desc: 'Typical student usage. You only pay for what you use.',
                 color: 'text-green-600',
               },
@@ -170,7 +170,7 @@ export default function BYOKPage() {
                 <ComparisonRow feature="Brief Generation" free="Site-funded" byok="Your key" />
                 <ComparisonRow feature="Case Search" free="Unlimited" byok="Unlimited" />
                 <ComparisonRow feature="Bookmarks & Collections" free="Unlimited" byok="Unlimited" />
-                <ComparisonRow feature="Monthly Cost" free="$0" byok="~$3\u2013$8 to Anthropic" />
+                <ComparisonRow feature="Monthly Cost" free="$0" byok="~$3–$8 to Anthropic" />
               </tbody>
             </table>
           </div>
