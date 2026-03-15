@@ -129,13 +129,29 @@ export default function TransparencyPage() {
         {/* Personal Introduction */}
         <div className="bg-white rounded-lg border p-8 mb-8 text-center">
           <h1 className="text-3xl font-bold text-stone-900 mb-4">
-            Transparency Dashboard
+            Contribute
           </h1>
-          <p className="text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed mb-6">
             This tool was built to help law students access legal research
-            without expensive subscriptions. Here's exactly what it costs to run, because you
-            deserve to know where your support goes.
+            without expensive subscriptions. Your donations keep AI features running for everyone.
           </p>
+          {stats?.kofi_url ? (
+            <a
+              href={stats.kofi_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-6 py-3 bg-[#FF5E5B] hover:bg-[#e54d4a] text-white font-bold rounded-lg text-base transition shadow-md hover:shadow-lg"
+            >
+              <Coffee className="h-5 w-5 mr-2" />
+              Buy Me a Coffee on Ko-fi
+              <ExternalLink className="h-4 w-4 ml-2 opacity-70" />
+            </a>
+          ) : (
+            <div className="inline-flex items-center px-6 py-3 bg-stone-100 text-stone-500 rounded-lg">
+              <Coffee className="h-5 w-5 mr-2" />
+              Donation link coming soon!
+            </div>
+          )}
         </div>
 
         {error ? (

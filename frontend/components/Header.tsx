@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle } from 'lucide-react'
+import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart } from 'lucide-react'
 import { UserMenu } from '@/components/auth/UserMenu'
 
 export default function Header() {
@@ -79,6 +79,15 @@ export default function Header() {
                 </div>
               )}
             </div>
+
+            <Link
+              href="/transparency"
+              className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+                         rounded-lg transition-all flex items-center gap-1.5"
+            >
+              <Heart className="h-4 w-4" />
+              <span className="hidden sm:inline">Contribute</span>
+            </Link>
 
             <a
               href="https://discord.gg/AcGcKMmMZX"
