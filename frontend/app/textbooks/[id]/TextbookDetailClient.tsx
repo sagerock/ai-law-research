@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Search, ArrowLeft, Library, CheckCircle, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, ArrowLeft, Library, CheckCircle, Clock, Star } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth-context'
+import { API_URL } from '@/lib/api'
 import Header from '@/components/Header'
 
 interface CaseItem {
@@ -46,7 +48,55 @@ function subjectLabel(subject: string | null): string {
 }
 
 export default function TextbookDetailClient({ textbook }: { textbook: TextbookData }) {
+  const { session } = useAuth()
   const [filter, setFilter] = useState('')
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
+
+  useEffect(() => {
+    if (!session?.access_token) return
+    fetch(`${API_URL}/api/v1/library/textbook-bookmarks/check`, {
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.bookmarked_ids?.includes(textbook.id)) {
+          setIsBookmarked(true)
+        }
+      })
+      .catch(() => {})
+  }, [session?.access_token, textbook.id])
+
+  const toggleBookmark = async () => {
+    if (!session?.access_token || bookmarkLoading) return
+    setBookmarkLoading(true)
+    const was = isBookmarked
+    setIsBookmarked(!was)
+
+    try {
+      if (was) {
+        const res = await fetch(`${API_URL}/api/v1/library/textbook-bookmarks/${textbook.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        })
+        if (!res.ok) setIsBookmarked(true)
+      } else {
+        const res = await fetch(`${API_URL}/api/v1/library/textbook-bookmarks`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ textbook_id: textbook.id })
+        })
+        if (!res.ok) setIsBookmarked(false)
+      }
+    } catch {
+      setIsBookmarked(was)
+    } finally {
+      setBookmarkLoading(false)
+    }
+  }
 
   const filtered = textbook.cases.filter(c => {
     if (!filter.trim()) return true
@@ -90,9 +140,25 @@ export default function TextbookDetailClient({ textbook }: { textbook: TextbookD
           <div className="mb-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-stone-900">
-                  {textbook.title}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-stone-900">
+                    {textbook.title}
+                  </h1>
+                  {session && (
+                    <button
+                      onClick={toggleBookmark}
+                      disabled={bookmarkLoading}
+                      className={`p-1.5 rounded-lg transition-colors shrink-0 ${
+                        isBookmarked
+                          ? 'text-amber-500 hover:text-amber-600'
+                          : 'text-stone-300 hover:text-amber-400'
+                      } ${bookmarkLoading ? 'opacity-50' : ''}`}
+                      title={isBookmarked ? 'Remove from My Textbooks' : 'Save to My Textbooks'}
+                    >
+                      <Star className={`h-5 w-5 ${isBookmarked ? 'fill-current' : ''}`} />
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-stone-600">
                   {textbook.edition && <span>{textbook.edition} Edition</span>}
                   {textbook.authors && <span className="text-sm">{textbook.authors}</span>}
