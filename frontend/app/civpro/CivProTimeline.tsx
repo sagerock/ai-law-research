@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronRight, Expand, Minimize2, AlertTriangle } from 'lucide-react'
-import { stages, Stage, Branch } from './timelineData'
+import { ChevronDown, ChevronRight, Expand, Minimize2, AlertTriangle, Lightbulb } from 'lucide-react'
+import { stages, Stage, Branch, Concept } from './timelineData'
 
 function getAccentColor(id: number) {
   if (id <= 4) return { border: 'border-l-sage-500', circle: 'bg-sage-500', text: 'text-sage-700' }
@@ -35,6 +35,28 @@ function BranchPoint({ branch }: { branch: Branch }) {
   )
 }
 
+function ConceptCard({ concept }: { concept: Concept }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="border border-stone-200 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-stone-50 transition-colors"
+      >
+        <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+        <span className="text-sm font-medium text-stone-700 flex-1">{concept.name}</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-stone-400 mt-0.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-3 pb-2.5 pt-0 ml-5.5">
+          <p className="text-sm text-stone-600 leading-relaxed">{concept.description}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DiscoveryGrid({ tools }: { tools: { name: string; description: string }[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-3">
@@ -50,6 +72,7 @@ function DiscoveryGrid({ tools }: { tools: { name: string; description: string }
 
 function StageCard({ stage, expanded, onToggle }: { stage: Stage; expanded: boolean; onToggle: () => void }) {
   const accent = getAccentColor(stage.id)
+  const conceptCount = stage.concepts?.length ?? 0
 
   return (
     <div className="relative pl-12 sm:pl-16 pb-8">
@@ -80,7 +103,8 @@ function StageCard({ stage, expanded, onToggle }: { stage: Stage; expanded: bool
             {!expanded && (
               <p className="text-stone-400 text-xs mt-1">
                 {stage.rules.length} rule{stage.rules.length !== 1 ? 's' : ''}
-                {stage.keyCases ? ` · ${stage.keyCases.length} key case${stage.keyCases.length !== 1 ? 's' : ''}` : ''}
+                {stage.keyCases && stage.keyCases.length > 0 ? ` · ${stage.keyCases.length} case${stage.keyCases.length !== 1 ? 's' : ''}` : ''}
+                {conceptCount > 0 ? ` · ${conceptCount} concept${conceptCount !== 1 ? 's' : ''}` : ''}
               </p>
             )}
           </div>
@@ -129,6 +153,18 @@ function StageCard({ stage, expanded, onToggle }: { stage: Stage; expanded: bool
               </div>
             </div>
 
+            {/* Key Concepts */}
+            {stage.concepts && stage.concepts.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Key Concepts</h4>
+                <div className="space-y-1.5">
+                  {stage.concepts.map((c) => (
+                    <ConceptCard key={c.name} concept={c} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Discovery grid */}
             {stage.discoveryTools && (
               <div className="mt-4">
@@ -141,13 +177,16 @@ function StageCard({ stage, expanded, onToggle }: { stage: Stage; expanded: bool
             {stage.keyCases && stage.keyCases.length > 0 && (
               <div className="mt-4">
                 <h4 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Key Cases</h4>
-                <ul className="space-y-1">
+                <div className="space-y-2">
                   {stage.keyCases.map((c) => (
-                    <li key={c} className="text-sm text-stone-600 italic">
-                      {c}
-                    </li>
+                    <div key={c.name}>
+                      <span className="text-sm text-stone-700 italic">{c.name}</span>
+                      {c.holding && (
+                        <p className="text-xs text-stone-500 mt-0.5 ml-3">{c.holding}</p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 
@@ -187,7 +226,7 @@ export default function CivProTimeline() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <p className="text-stone-500 text-sm max-w-xl">
-          Follow a civil case from pre-filing investigation through enforcement. Click any stage to explore the relevant FRCP rules and landmark cases.
+          Follow a civil case from pre-filing investigation through enforcement. Click any stage to explore the relevant FRCP rules, key concepts, and landmark cases.
         </p>
         <button
           onClick={toggleAll}
