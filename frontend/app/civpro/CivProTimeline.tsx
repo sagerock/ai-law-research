@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronRight, Expand, Minimize2, AlertTriangle, Lightbulb } from 'lucide-react'
+import { ChevronDown, ChevronRight, Expand, Minimize2, AlertTriangle, Lightbulb, Clock } from 'lucide-react'
 import { stages, Stage, Branch, Concept } from './timelineData'
 
 function getAccentColor(id: number) {
@@ -143,11 +143,21 @@ function StageCard({ stage, expanded, onToggle }: { stage: Stage; expanded: bool
               </div>
 
               {/* Rule descriptions */}
-              <div className="mt-3 space-y-1">
+              <div className="mt-3 space-y-2.5">
                 {stage.rules.map((r) => (
-                  <div key={r.rule} className="flex gap-2 text-sm">
-                    <span className="text-stone-400 font-mono text-xs mt-0.5 shrink-0 w-24 sm:w-28 text-right">{r.rule}</span>
-                    <span className="text-stone-600">{r.description}</span>
+                  <div key={r.rule}>
+                    <div className="flex gap-2 text-sm">
+                      <span className="text-stone-400 font-mono text-xs mt-0.5 shrink-0 w-24 sm:w-28 text-right">{r.rule}</span>
+                      <span className="text-stone-600">{r.description}</span>
+                    </div>
+                    {r.timing && (
+                      <div className="flex gap-2 mt-1 ml-[6.5rem] sm:ml-[7.5rem]">
+                        <div className="flex items-start gap-1.5 bg-blue-50 border border-blue-100 rounded px-2.5 py-1.5 text-xs text-blue-700">
+                          <Clock className="h-3 w-3 mt-0.5 shrink-0 text-blue-400" />
+                          <span>{r.timing}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

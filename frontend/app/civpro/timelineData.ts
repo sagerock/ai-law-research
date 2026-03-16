@@ -2,6 +2,7 @@ export interface Rule {
   rule: string
   slug: string | null
   description: string
+  timing?: string
 }
 
 export interface Branch {
@@ -38,7 +39,7 @@ export const stages: Stage[] = [
     title: 'Pre-Filing',
     subtitle: 'Investigating the claim and choosing the right court',
     rules: [
-      { rule: 'Rule 11', slug: 'rule-11', description: 'Signing pleadings — certification of good faith basis' },
+      { rule: 'Rule 11', slug: 'rule-11', description: 'Signing pleadings — certification of good faith basis', timing: 'Applies to: every pleading, motion, and paper filed with the court. Does NOT apply to: discovery (Rule 37 governs instead) or oral arguments. Continuing duty — violation can occur by later advocating a position.' },
       { rule: '28 USC §1331', slug: null, description: 'Federal question jurisdiction' },
       { rule: '28 USC §1332', slug: null, description: 'Diversity jurisdiction ($75K+ amount in controversy)' },
       { rule: '28 USC §1367', slug: null, description: 'Supplemental jurisdiction' },
@@ -63,7 +64,7 @@ export const stages: Stage[] = [
     subtitle: 'Commencing the action and notifying the defendant',
     rules: [
       { rule: 'Rule 3', slug: 'rule-3', description: 'Commencement of action — filing the complaint' },
-      { rule: 'Rule 4', slug: 'rule-4', description: 'Summons — issuance and service of process' },
+      { rule: 'Rule 4', slug: 'rule-4', description: 'Summons — issuance and service of process', timing: 'Must serve within 90 days of filing complaint (Rule 4(m)). If not served in time, court must dismiss without prejudice OR order service within a specified time if plaintiff shows good cause.' },
       { rule: 'Rule 4(k)', slug: 'rule-4', description: 'Territorial limits of effective service' },
       { rule: 'Rule 5', slug: 'rule-5', description: 'Service and filing of pleadings and papers' },
     ],
@@ -79,14 +80,14 @@ export const stages: Stage[] = [
     rules: [
       { rule: 'Rule 7', slug: 'rule-7', description: 'Pleadings allowed — types of pleadings (complaint, answer, reply to counterclaim, etc.)' },
       { rule: 'Rule 8(a)', slug: 'rule-8', description: 'Complaint: (1) jurisdiction statement, (2) short/plain statement of claim, (3) demand for relief' },
-      { rule: 'Rule 8(b)', slug: 'rule-8', description: 'Answer: admit, deny, or lack of knowledge (functions as denial). Failure to deny = admission' },
+      { rule: 'Rule 8(b)', slug: 'rule-8', description: 'Answer: admit, deny, or lack of knowledge (functions as denial). Failure to deny = admission', timing: 'Must file within 21 days after service of summons/complaint. Exception: 60 days if defendant timely returns waiver of service (Rule 12(a)(1)).' },
       { rule: 'Rule 8(c)', slug: 'rule-8', description: 'Affirmative defenses — must be pleaded or waived (statute of limitations, comparative negligence, etc.)' },
       { rule: 'Rule 8(d)', slug: 'rule-8', description: 'Pleading flexibility — alternative, hypothetical, and inconsistent claims permitted' },
-      { rule: 'Rule 9(b)', slug: 'rule-9', description: 'Heightened pleading for fraud — must allege when, where, and how with specificity' },
+      { rule: 'Rule 9(b)', slug: 'rule-9', description: 'Heightened pleading for fraud — must allege when, where, and how with specificity', timing: 'Applies ONLY to fraud and mistake claims. Courts cannot extend heightened pleading to other categories (Leatherman v. Tarrant County). Malice, intent, and knowledge may still be alleged generally.' },
       { rule: 'Rule 10', slug: 'rule-10', description: 'Form of pleadings — caption, numbered paragraphs, separate counts' },
-      { rule: 'Rule 12', slug: 'rule-12', description: 'Defenses and objections — pre-answer motions to dismiss' },
-      { rule: 'Rule 15', slug: 'rule-15', description: 'Amended and supplemental pleadings' },
-      { rule: 'Rule 55', slug: 'rule-55', description: 'Default and default judgment — failure to respond within 21 days' },
+      { rule: 'Rule 12', slug: 'rule-12', description: 'Defenses and objections — pre-answer motions to dismiss', timing: 'Must file BEFORE the answer (or include in the answer). 12(b)(2)-(5) waived if not in first Rule 12 motion or answer. 12(b)(6) and 12(b)(7) can be raised through trial. 12(b)(1) subject matter jurisdiction can be raised at ANY time, even on appeal.' },
+      { rule: 'Rule 15', slug: 'rule-15', description: 'Amended and supplemental pleadings', timing: 'As of right (15(a)(1)): ONE TIME within 21 days after serving, or 21 days after a responsive pleading or Rule 12 motion — whichever is earlier. After that: need opposing party\'s written consent or court leave. During/after trial: Rule 15(b) allows amendment for issues tried by consent.' },
+      { rule: 'Rule 55', slug: 'rule-55', description: 'Default and default judgment — failure to respond within 21 days', timing: 'Entry of default (55(a)): when defendant fails to plead or otherwise defend within 21 days. Default judgment (55(b)): only AFTER entry of default. Setting aside: entry of default requires "good cause" (lower bar); default judgment requires meeting Rule 60(b) (higher bar).' },
     ],
     concepts: [
       { name: 'Pleading Standards Evolution', description: 'Common Law (hypertechnical) → Code Pleading (facts) → Notice Pleading (1938, give notice) → Plausibility Pleading (2007-2009, plausible facts). Conley\'s "no set of facts" standard retired by Twombly.' },
@@ -122,7 +123,7 @@ export const stages: Stage[] = [
     title: 'Joinder & Parties',
     subtitle: 'Adding claims, parties, and third-party defendants',
     rules: [
-      { rule: 'Rule 13(a)', slug: 'rule-13', description: 'Compulsory counterclaims — must assert or waived (same transaction/occurrence)' },
+      { rule: 'Rule 13(a)', slug: 'rule-13', description: 'Compulsory counterclaims — must assert or waived (same transaction/occurrence)', timing: 'Must be raised in the answer or it is WAIVED permanently. Even if first case settled (not adjudicated), may still bar later lawsuit (King v. Blanton — equitable waiver).' },
       { rule: 'Rule 13(b)', slug: 'rule-13', description: 'Permissive counterclaims — may assert any unrelated claim' },
       { rule: 'Rule 14', slug: 'rule-14', description: 'Third-party practice (impleader)' },
       { rule: 'Rule 18', slug: 'rule-18', description: 'Joinder of claims — permissive joinder of claims' },
@@ -147,18 +148,18 @@ export const stages: Stage[] = [
     subtitle: 'Exchanging information and evidence between the parties',
     isWide: true,
     rules: [
-      { rule: 'Rule 26', slug: 'rule-26', description: 'Duty to disclose; general discovery provisions; scope and proportionality' },
-      { rule: 'Rule 26(b)(3)', slug: 'rule-26', description: 'Work product doctrine — materials prepared in anticipation of litigation' },
-      { rule: 'Rule 26(b)(4)', slug: 'rule-26', description: 'Expert discovery — testifying vs. consulting experts' },
+      { rule: 'Rule 26', slug: 'rule-26', description: 'Duty to disclose; general discovery provisions; scope and proportionality', timing: 'Initial disclosures: within 14 days after Rule 26(f) conference. Discovery generally cannot begin until AFTER the 26(f) conference (Rule 26(d)). Expert disclosures: at least 90 days before trial; rebuttal within 30 days. Pretrial disclosures: at least 30 days before trial.' },
+      { rule: 'Rule 26(b)(3)', slug: 'rule-26', description: 'Work product doctrine — materials prepared in anticipation of litigation', timing: 'Applies only to documents/tangible things prepared "in anticipation of litigation." Does NOT protect underlying facts — only the attorney\'s compilation and analysis. Any person can obtain their OWN prior statement without any special showing (26(b)(3)(C)).' },
+      { rule: 'Rule 26(b)(4)', slug: 'rule-26', description: 'Expert discovery — testifying vs. consulting experts', timing: 'Testifying experts: can be deposed only AFTER report is provided. Consulting/non-testifying experts: discovery ordinarily PROHIBITED except in exceptional circumstances. Draft expert reports protected as work product (26(b)(4)(B)).' },
       { rule: 'Rule 26(c)', slug: 'rule-26', description: 'Protective orders — good cause required, must meet and confer first' },
-      { rule: 'Rule 26(g)', slug: 'rule-26', description: 'Discovery\'s Rule 11 — must sign and certify all discovery papers' },
-      { rule: 'Rule 30', slug: 'rule-30', description: 'Depositions by oral examination (10 max, 1 day/7 hours each)' },
-      { rule: 'Rule 33', slug: 'rule-33', description: 'Interrogatories to parties (25 max, 30-day response, under oath)' },
-      { rule: 'Rule 34', slug: 'rule-34', description: 'Production of documents, ESI, and tangible things' },
-      { rule: 'Rule 35', slug: 'rule-35', description: 'Physical and mental examinations (court order + good cause required)' },
-      { rule: 'Rule 36', slug: 'rule-36', description: 'Requests for admission (deemed admitted if no response in 30 days)' },
-      { rule: 'Rule 37', slug: 'rule-37', description: 'Failure to make disclosures or cooperate; sanctions' },
-      { rule: 'Rule 45', slug: 'rule-45', description: 'Subpoenas — compelling nonparty testimony and document production' },
+      { rule: 'Rule 26(g)', slug: 'rule-26', description: 'Discovery\'s Rule 11 — must sign and certify all discovery papers', timing: 'Applies ONLY to discovery papers (requests, responses, objections, disclosures). Regular Rule 11 does NOT apply to discovery — Rule 26(g) is the parallel enforcement mechanism.' },
+      { rule: 'Rule 30', slug: 'rule-30', description: 'Depositions by oral examination (10 max, 1 day/7 hours each)', timing: 'Can depose parties AND nonparties (nonparties via Rule 45 subpoena). Leave required if: more than 10 depositions per side, deponent already deposed, or before Rule 26(d) discovery period. Deponent has 30 days to review transcript and note changes (30(e)).' },
+      { rule: 'Rule 33', slug: 'rule-33', description: 'Interrogatories to parties (25 max, 30-day response, under oath)', timing: 'Parties ONLY — cannot send to nonparties. 30-day response period. Contention interrogatories allowed but court may defer answer until after other discovery. Cannot impose supplementation beyond Rule 26(e) through interrogatory instructions.' },
+      { rule: 'Rule 34', slug: 'rule-34', description: 'Production of documents, ESI, and tangible things', timing: 'Parties only via Rule 34. Nonparties only via Rule 45 subpoena. No numerical limit. 30-day response period. Must specify form for ESI production.' },
+      { rule: 'Rule 35', slug: 'rule-35', description: 'Physical and mental examinations (court order + good cause required)', timing: 'Parties ONLY — cannot compel nonparty exams. Requires court order showing good cause AND that the physical/mental condition is genuinely in controversy. Examiner\'s report must be provided on request; requesting party waives privilege on same condition.' },
+      { rule: 'Rule 36', slug: 'rule-36', description: 'Requests for admission (deemed admitted if no response in 30 days)', timing: 'Parties ONLY. If no response within 30 days — matter is CONCLUSIVELY established for the pending action (automatic, no motion needed). Best used AFTER other discovery to authenticate documents and narrow issues for trial.' },
+      { rule: 'Rule 37', slug: 'rule-37', description: 'Failure to make disclosures or cooperate; sanctions', timing: 'Motion to compel (37(a)): anytime during discovery, must meet and confer first. Self-executing exclusion (37(c)(1)): applies automatically when party fails to disclose — no motion needed. ESI spoliation (37(e)): applies when ESI lost because party failed to take reasonable preservation steps.' },
+      { rule: 'Rule 45', slug: 'rule-45', description: 'Subpoenas — compelling nonparty testimony and document production', timing: 'Only mechanism for compelling nonparty cooperation. 100-mile rule: testimony/documents within 100 miles of nonparty\'s residence or workplace. Must tender 1 day\'s attendance fees and mileage when serving. Contempt for failure to comply without adequate excuse.' },
     ],
     concepts: [
       { name: 'Scope — Three-Part Test', description: 'All three must be met: (1) Not privileged, (2) Relevant to claim/defense, (3) Proportional to needs of case. Discoverable ≠ admissible. Six proportionality factors (2015 amendment): importance of issues, amount in controversy, parties\' access to info, resources, importance of discovery in resolving issues, burden vs. benefit.' },
@@ -190,9 +191,9 @@ export const stages: Stage[] = [
     title: 'Resolution Without Trial',
     subtitle: 'Voluntary dismissal, involuntary dismissal, and summary judgment',
     rules: [
-      { rule: 'Rule 41(a)', slug: 'rule-41', description: 'Voluntary dismissal — by notice (before answer/MSJ), by stipulation, or by court order' },
-      { rule: 'Rule 41(b)', slug: 'rule-41', description: 'Involuntary dismissal — failure to prosecute, failure to comply with Rules' },
-      { rule: 'Rule 56', slug: 'rule-56', description: 'Summary judgment — no genuine dispute of material fact' },
+      { rule: 'Rule 41(a)', slug: 'rule-41', description: 'Voluntary dismissal — by notice (before answer/MSJ), by stipulation, or by court order', timing: 'By notice (self-executing): ONLY before defendant serves answer or MSJ — a 12(b)(6) motion does NOT cut off this right (Bath & Kitchen). By stipulation: anytime, signed by all parties. By court order: required AFTER answer/MSJ. Second dismissal of same claim by notice/stipulation = on the merits.' },
+      { rule: 'Rule 41(b)', slug: 'rule-41', description: 'Involuntary dismissal — failure to prosecute, failure to comply with Rules', timing: 'Can be raised anytime by defendant or court. Generally operates as adjudication ON THE MERITS. Exceptions (NOT on the merits): court order says otherwise, lack of jurisdiction, improper venue, failure to join necessary party.' },
+      { rule: 'Rule 56', slug: 'rule-56', description: 'Summary judgment — no genuine dispute of material fact', timing: 'Can be filed anytime until 30 days after close of discovery (56(b)). If facts unavailable, court may defer and allow time for discovery (56(d)). Court can grant SJ sua sponte or for non-movant (56(f)). Bad faith affidavits → sanctions including contempt (56(h)).' },
     ],
     concepts: [
       { name: 'Voluntary Dismissal — Rule 41(a)', description: 'Without court order: by notice before defendant serves answer or MSJ — self-executing, automatically without prejudice. 12(b)(6) motion does not cut off this right. By stipulation: signed by all parties. By court order: required after answer/MSJ. Two-dismissal rule: second dismissal of same claim by notice or stipulation = on the merits, cannot refile.' },
@@ -220,13 +221,13 @@ export const stages: Stage[] = [
     title: 'Pre-Trial Conference & Trial',
     subtitle: 'Final preparation, jury selection, and presentation of evidence',
     rules: [
-      { rule: 'Rule 16', slug: 'rule-16', description: 'Pretrial conferences; scheduling; management' },
-      { rule: 'Rule 16(e)', slug: 'rule-16', description: 'Final pretrial order — supersedes the pleadings, modified only for "manifest injustice"' },
-      { rule: 'Rule 38', slug: 'rule-38', description: 'Right to a jury trial — demand (waivable, must request)' },
+      { rule: 'Rule 16', slug: 'rule-16', description: 'Pretrial conferences; scheduling; management', timing: 'Scheduling order issued early in the case. Scheduling conference: after Rule 26(f) conference. Final pretrial conference: before trial. Modification of scheduling order requires "good cause" showing diligence, not just consent.' },
+      { rule: 'Rule 16(e)', slug: 'rule-16', description: 'Final pretrial order — supersedes the pleadings, modified only for "manifest injustice"', timing: 'Issued after the final pretrial conference. From this point, the pretrial order — not the pleadings — controls the case. Issues NOT in the final pretrial order may be excluded at trial. Extremely high bar to modify.' },
+      { rule: 'Rule 38', slug: 'rule-38', description: 'Right to a jury trial — demand (waivable, must request)', timing: 'Must demand no later than 14 days after service of the last pleading directed to the issue. If not demanded, the right is WAIVED. Only applies to "suits at common law" (money damages) in federal court — equity claims (injunctions) are tried to the judge.' },
       { rule: 'Rule 39', slug: 'rule-39', description: 'Trial by jury or by the court' },
       { rule: 'Rule 47', slug: 'rule-47', description: 'Selecting jurors (voir dire)' },
       { rule: 'Rule 49', slug: 'rule-49', description: 'Special verdicts; general verdict with interrogatories' },
-      { rule: 'Rule 50(a)', slug: 'rule-50', description: 'Judgment as a matter of law (JMOL / directed verdict) — must specify issue, law, and facts' },
+      { rule: 'Rule 50(a)', slug: 'rule-50', description: 'Judgment as a matter of law (JMOL / directed verdict) — must specify issue, law, and facts', timing: 'Can move ONLY after opposing party has been fully heard on the issue (usually after plaintiff rests). Multiple motions permitted — after plaintiff rests, after defendant rests, etc. CRITICAL: must make 50(a) to preserve right to file 50(b) after verdict on those same issues.' },
       { rule: 'Rule 51', slug: 'rule-51', description: 'Instructions to the jury — parties submit proposed instructions, objections on record' },
     ],
     concepts: [
@@ -247,9 +248,9 @@ export const stages: Stage[] = [
     title: 'Post-Trial Motions',
     subtitle: 'Challenging the verdict or seeking a new trial',
     rules: [
-      { rule: 'Rule 50(b)', slug: 'rule-50', description: 'Renewed JMOL (formerly JNOV) — within 28 days after judgment' },
-      { rule: 'Rule 59', slug: 'rule-59', description: 'New trial; altering or amending a judgment — within 28 days' },
-      { rule: 'Rule 60(b)', slug: 'rule-60', description: 'Relief from a judgment or order — extraordinary circumstances' },
+      { rule: 'Rule 50(b)', slug: 'rule-50', description: 'Renewed JMOL (formerly JNOV) — within 28 days after judgment', timing: 'Must file within 28 days after entry of judgment. PREREQUISITE: must have made Rule 50(a) motion on the SAME grounds during trial — cannot file 50(b) without prior 50(a). Cannot appeal denial of 50(a) without first filing 50(b). Standard of review on appeal: de novo.' },
+      { rule: 'Rule 59', slug: 'rule-59', description: 'New trial; altering or amending a judgment — within 28 days', timing: 'Must file within 28 days after entry of judgment. Unlike SJ/JMOL, judge MAY weigh evidence and assess credibility. Does NOT require a prior motion during trial (unlike Rule 50(b)). Can be combined with a Rule 50(b) motion.' },
+      { rule: 'Rule 60(b)', slug: 'rule-60', description: 'Relief from a judgment or order — extraordinary circumstances', timing: 'Must file within "reasonable time." For grounds (1)-(3) — mistake, new evidence, fraud — no more than 1 year after judgment. Ground (6) catch-all — no fixed deadline but requires extraordinary circumstances. Rule 60(b) is a "last resort" — do not use as substitute for appeal.' },
     ],
     concepts: [
       { name: 'Rule 50(b) Prerequisite', description: 'Must have made Rule 50(a) motion on the same grounds during trial — cannot make 50(b) without prior 50(a). Purpose: gives opposing party chance to cure, respects 7th Amendment Reexamination Clause, prevents sandbagging. Cannot appeal denial of 50(a) without filing 50(b).' },
@@ -266,10 +267,10 @@ export const stages: Stage[] = [
     title: 'Appeal',
     subtitle: 'Seeking review of the trial court\'s decision by a higher court',
     rules: [
-      { rule: '28 USC §1291', slug: null, description: 'Final judgment rule — only final decisions (resolving all claims of all parties) are appealable' },
-      { rule: '28 USC §1292', slug: null, description: 'Interlocutory appeals — immediate appeal of certain non-final orders (injunctions, etc.)' },
+      { rule: '28 USC §1291', slug: null, description: 'Final judgment rule — only final decisions (resolving all claims of all parties) are appealable', timing: 'Applies ONLY to "final decisions" — must resolve ALL claims of ALL parties. Partial summary judgment on liability alone is NOT final and NOT appealable (Liberty Mutual v. Wetzel). If any claim or party remains unresolved, no appeal under §1291.' },
+      { rule: '28 USC §1292', slug: null, description: 'Interlocutory appeals — immediate appeal of certain non-final orders (injunctions, etc.)', timing: 'Available for: orders granting/refusing/modifying injunctions. Permissive interlocutory appeal: district court certifies controlling question of law + appellate court agrees to hear it. Collateral order doctrine: conclusive order, separate from merits, effectively unreviewable later.' },
       { rule: 'Rule 54', slug: 'rule-54', description: 'Judgment; costs — defines "final judgment"' },
-      { rule: 'Fed. R. App. P. 4', slug: null, description: 'Notice of appeal — strict 30-day deadline after entry of judgment' },
+      { rule: 'Fed. R. App. P. 4', slug: null, description: 'Notice of appeal — strict 30-day deadline after entry of judgment', timing: 'STRICT 30-day deadline — jurisdictional, cannot be waived or extended (with very narrow exceptions). Clock starts from entry of judgment. Missing this deadline = no appeal, period.' },
     ],
     concepts: [
       { name: 'Exceptions to Finality', description: 'Interlocutory appeals (§1292): orders involving injunctions. Collateral Order Doctrine (Cohen v. Beneficial Industrial Loan): must be (1) conclusive, (2) separate from merits, (3) effectively unreviewable on appeal from final judgment. Writ of Mandamus: extraordinary remedy. Permissive Interlocutory Appeal: district court certifies controlling question of law.' },
