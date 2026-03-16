@@ -4513,18 +4513,34 @@ async def admin_list_users(
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-        # Collect all known user IDs from profiles, user_tiers, bookmarks, collections
+        # Check which tables exist for the UNION query
+        existing = await conn.fetch("""
+            SELECT tablename FROM pg_tables
+            WHERE schemaname = 'public' AND tablename IN ('profiles', 'user_tiers', 'bookmarks', 'collections', 'textbook_bookmarks')
+        """)
+        table_names = {r["tablename"] for r in existing}
+
+        union_parts = []
+        if "profiles" in table_names:
+            union_parts.append("SELECT id::text as user_id FROM profiles")
+        if "user_tiers" in table_names:
+            union_parts.append("SELECT user_id FROM user_tiers")
+        if "bookmarks" in table_names:
+            union_parts.append("SELECT user_id FROM bookmarks")
+        if "collections" in table_names:
+            union_parts.append("SELECT user_id::text FROM collections")
+        if "textbook_bookmarks" in table_names:
+            union_parts.append("SELECT user_id FROM textbook_bookmarks")
+
+        if not union_parts:
+            return []
+
+        union_sql = " UNION ".join(union_parts)
+
+        # Collect all known user IDs from available tables
         rows = await conn.fetch(f"""
             WITH all_users AS (
-                SELECT id::text as user_id FROM profiles
-                UNION
-                SELECT user_id FROM user_tiers
-                UNION
-                SELECT user_id FROM bookmarks
-                UNION
-                SELECT user_id::text FROM collections
-                UNION
-                SELECT user_id FROM textbook_bookmarks
+                {union_sql}
             )
             SELECT
                 au.user_id as id,
