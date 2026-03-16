@@ -16,6 +16,8 @@ import {
   Check,
   X,
   Pencil,
+  Library,
+  BookOpen,
 } from 'lucide-react'
 import Header from '@/components/Header'
 import {
@@ -90,6 +92,17 @@ interface BookmarkItem {
   created_at: string | null
 }
 
+interface TextbookBookmark {
+  id: string
+  textbook_id: number
+  title: string
+  edition: string | null
+  authors: string | null
+  subject: string | null
+  case_count: number
+  created_at: string | null
+}
+
 export default function LibraryPage() {
   return (
     <Suspense>
@@ -104,9 +117,10 @@ function LibraryPageContent() {
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
 
-  const [activeTab, setActiveTab] = useState<'collections' | 'bookmarks'>('collections')
+  const [activeTab, setActiveTab] = useState<'collections' | 'bookmarks' | 'textbooks'>('collections')
   const [collections, setCollections] = useState<Collection[]>([])
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([])
+  const [textbookBookmarks, setTextbookBookmarks] = useState<TextbookBookmark[]>([])
   const [selectedCollection, setSelectedCollection] = useState<CollectionDetail | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -261,6 +275,43 @@ function LibraryPageContent() {
       }
     } catch (err) {
       console.error('Failed to fetch bookmarks:', err)
+    }
+  }
+
+  // Fetch textbook bookmarks
+  const fetchTextbookBookmarks = async (token?: string) => {
+    const accessToken = token || session?.access_token
+    if (!accessToken) return
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/library/textbook-bookmarks`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setTextbookBookmarks(data.textbook_bookmarks)
+      }
+    } catch (err) {
+      console.error('Failed to fetch textbook bookmarks:', err)
+    }
+  }
+
+  const deleteTextbookBookmark = async (textbookId: number) => {
+    if (!session?.access_token) return
+    try {
+      const response = await fetch(`${API_URL}/api/v1/library/textbook-bookmarks/${textbookId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+      if (response.ok) {
+        setTextbookBookmarks(prev => prev.filter(tb => tb.textbook_id !== textbookId))
+      }
+    } catch (err) {
+      console.error('Failed to delete textbook bookmark:', err)
     }
   }
 
@@ -503,7 +554,8 @@ function LibraryPageContent() {
       try {
         await Promise.all([
           fetchCollections(session.access_token),
-          fetchBookmarks(session.access_token)
+          fetchBookmarks(session.access_token),
+          fetchTextbookBookmarks(session.access_token)
         ])
       } finally {
         setIsLoading(false)
@@ -604,6 +656,25 @@ function LibraryPageContent() {
               {bookmarks.length > 0 && (
                 <span className="bg-stone-100 text-stone-600 text-xs px-2 py-0.5 rounded-full">
                   {bookmarks.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('textbooks')
+                setSelectedCollection(null)
+              }}
+              className={`flex items-center gap-2 px-4 py-3 font-medium border-b-2 transition ${
+                activeTab === 'textbooks'
+                  ? 'text-sage-600 border-sage-600'
+                  : 'text-stone-500 border-transparent hover:text-stone-700'
+              }`}
+            >
+              <Library className="h-4 w-4" />
+              Textbooks
+              {textbookBookmarks.length > 0 && (
+                <span className="bg-stone-100 text-stone-600 text-xs px-2 py-0.5 rounded-full">
+                  {textbookBookmarks.length}
                 </span>
               )}
             </button>
@@ -975,6 +1046,67 @@ function LibraryPageContent() {
                             {bookmark.notes}
                           </p>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Textbooks Tab */}
+            {activeTab === 'textbooks' && (
+              <div className="w-full">
+                {textbookBookmarks.length === 0 ? (
+                  <div className="text-center py-12 text-stone-500">
+                    <Library className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No textbooks saved yet</p>
+                    <p className="text-sm mt-1">
+                      Star a textbook on the{' '}
+                      <Link href="/textbooks" className="text-sage-600 hover:text-sage-700 underline">
+                        Textbooks page
+                      </Link>{' '}
+                      to save it here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {textbookBookmarks.map(tb => (
+                      <div
+                        key={tb.id}
+                        className="bg-white rounded-lg border border-stone-200 p-4 hover:border-stone-300 transition"
+                      >
+                        <div className="flex items-start justify-between">
+                          <Link
+                            href={`/textbooks/${tb.textbook_id}`}
+                            className="flex-1 min-w-0"
+                          >
+                            <h4 className="font-medium text-stone-900 hover:text-sage-600 line-clamp-2">
+                              {tb.title}
+                              {tb.edition && <span className="text-stone-500 font-normal">, {tb.edition} Ed.</span>}
+                            </h4>
+                            {tb.authors && (
+                              <p className="text-sm text-stone-500 mt-0.5 line-clamp-1">{tb.authors}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2 text-xs text-stone-500">
+                              <span className="flex items-center gap-1">
+                                <BookOpen className="h-3 w-3" />
+                                {tb.case_count} cases
+                              </span>
+                              {tb.subject && (
+                                <span className="px-1.5 py-0.5 bg-sage-50 text-sage-700 rounded text-xs">
+                                  {tb.subject.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                </span>
+                              )}
+                            </div>
+                          </Link>
+                          <button
+                            onClick={() => deleteTextbookBookmark(tb.textbook_id)}
+                            className="p-1 text-stone-400 hover:text-red-500 transition flex-shrink-0 ml-2"
+                            title="Remove textbook"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

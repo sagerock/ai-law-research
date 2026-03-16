@@ -398,6 +398,17 @@ async def startup():
                 )
             """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_comment_votes_comment_id ON comment_votes(comment_id)")
+            # Textbook bookmarks table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS textbook_bookmarks (
+                    id SERIAL PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    textbook_id INTEGER NOT NULL REFERENCES casebooks(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(user_id, textbook_id)
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_textbook_bookmarks_user_id ON textbook_bookmarks(user_id)")
             # Backfill Dressler textbook metadata
             await conn.execute("""
                 UPDATE casebooks SET edition = '10th', year = 2022
@@ -2393,6 +2404,94 @@ async def check_bookmark(case_id: str, user: dict = Depends(require_auth)):
         """, user["id"], case_id)
 
     return {"bookmarked": row is not None}
+
+
+# ============================================================================
+# Textbook Bookmarks
+# ============================================================================
+
+@app.get("/api/v1/library/textbook-bookmarks")
+async def list_textbook_bookmarks(user: dict = Depends(require_auth)):
+    """List all textbook bookmarks for the authenticated user"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT tb.id, tb.created_at,
+                   cb.id as textbook_id, cb.title, cb.edition, cb.authors, cb.subject,
+                   COUNT(cc.id) as case_count
+            FROM textbook_bookmarks tb
+            JOIN casebooks cb ON tb.textbook_id = cb.id
+            LEFT JOIN casebook_cases cc ON cc.casebook_id = cb.id
+            WHERE tb.user_id = $1
+            GROUP BY tb.id, cb.id
+            ORDER BY tb.created_at DESC
+        """, user["id"])
+
+    return {
+        "textbook_bookmarks": [
+            {
+                "id": str(row["id"]),
+                "textbook_id": row["textbook_id"],
+                "title": row["title"],
+                "edition": row["edition"],
+                "authors": row["authors"],
+                "subject": row["subject"],
+                "case_count": row["case_count"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.post("/api/v1/library/textbook-bookmarks")
+async def create_textbook_bookmark(data: dict, user: dict = Depends(require_auth)):
+    """Add a textbook to bookmarks"""
+    textbook_id = data.get("textbook_id")
+    if not textbook_id:
+        raise HTTPException(status_code=400, detail="textbook_id required")
+
+    async with db_pool.acquire() as conn:
+        tb = await conn.fetchrow("SELECT id FROM casebooks WHERE id = $1", int(textbook_id))
+        if not tb:
+            raise HTTPException(status_code=404, detail="Textbook not found")
+
+        try:
+            row = await conn.fetchrow("""
+                INSERT INTO textbook_bookmarks (user_id, textbook_id)
+                VALUES ($1, $2)
+                ON CONFLICT (user_id, textbook_id) DO NOTHING
+                RETURNING id, created_at
+            """, user["id"], int(textbook_id))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    if row:
+        return {"id": str(row["id"]), "textbook_id": textbook_id, "created_at": row["created_at"].isoformat() if row["created_at"] else None}
+    return {"id": None, "textbook_id": textbook_id, "already_bookmarked": True}
+
+
+@app.delete("/api/v1/library/textbook-bookmarks/{textbook_id}")
+async def delete_textbook_bookmark(textbook_id: int, user: dict = Depends(require_auth)):
+    """Remove a textbook from bookmarks"""
+    async with db_pool.acquire() as conn:
+        result = await conn.execute("""
+            DELETE FROM textbook_bookmarks
+            WHERE user_id = $1 AND textbook_id = $2
+        """, user["id"], textbook_id)
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Textbook bookmark not found")
+    return {"status": "deleted"}
+
+
+@app.get("/api/v1/library/textbook-bookmarks/check")
+async def check_textbook_bookmarks(user: dict = Depends(require_auth)):
+    """Get all bookmarked textbook IDs for the user"""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT textbook_id FROM textbook_bookmarks WHERE user_id = $1
+        """, user["id"])
+    return {"bookmarked_ids": [row["textbook_id"] for row in rows]}
 
 
 # ============================================================================
