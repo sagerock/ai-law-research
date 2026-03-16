@@ -4502,7 +4502,7 @@ async def admin_list_users(
         idx = 1
 
         if search:
-            conditions.append(f"(p.email ILIKE ${idx} OR p.username ILIKE ${idx} OR p.full_name ILIKE ${idx})")
+            conditions.append(f"(p.email ILIKE ${idx} OR p.username ILIKE ${idx} OR p.full_name ILIKE ${idx} OR au.user_id ILIKE ${idx})")
             params.append(f"%{search}%")
             idx += 1
 
@@ -4513,9 +4513,21 @@ async def admin_list_users(
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
+        # Collect all known user IDs from profiles, user_tiers, bookmarks, collections
         rows = await conn.fetch(f"""
+            WITH all_users AS (
+                SELECT id::text as user_id FROM profiles
+                UNION
+                SELECT user_id FROM user_tiers
+                UNION
+                SELECT user_id FROM bookmarks
+                UNION
+                SELECT user_id::text FROM collections
+                UNION
+                SELECT user_id FROM textbook_bookmarks
+            )
             SELECT
-                p.id,
+                au.user_id as id,
                 p.email,
                 p.username,
                 p.full_name,
@@ -4526,10 +4538,11 @@ async def admin_list_users(
                 t.model_override,
                 p.created_at as profile_created_at,
                 t.updated_at as last_active
-            FROM profiles p
-            LEFT JOIN user_tiers t ON p.id::text = t.user_id
+            FROM all_users au
+            LEFT JOIN profiles p ON p.id::text = au.user_id
+            LEFT JOIN user_tiers t ON t.user_id = au.user_id
             {where}
-            ORDER BY t.updated_at DESC NULLS LAST
+            ORDER BY t.updated_at DESC NULLS LAST, p.created_at DESC NULLS LAST
             LIMIT 200
         """, *params)
 
