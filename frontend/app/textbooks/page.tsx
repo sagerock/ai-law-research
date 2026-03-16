@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Library, ArrowLeft, BookOpen, CheckCircle } from 'lucide-react'
+import { Library, ArrowLeft, BookOpen, CheckCircle, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import Header from '@/components/Header'
@@ -32,6 +32,68 @@ const SUBJECT_LABELS: Record<string, string> = {
 function subjectLabel(subject: string | null): string {
   if (!subject) return 'General'
   return SUBJECT_LABELS[subject] || subject.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function SubjectGroup({ subject, books }: { subject: string; books: Textbook[] }) {
+  const [open, setOpen] = useState(false)
+  const totalCases = books.reduce((sum, b) => sum + b.case_count, 0)
+
+  return (
+    <div className="border border-stone-200 rounded-xl bg-white overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full text-left px-5 py-4 flex items-center justify-between gap-3 hover:bg-stone-50 transition-colors group"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <h3 className="text-lg font-semibold text-stone-900 group-hover:text-sage-700 transition-colors">{subject}</h3>
+          <span className="text-xs text-stone-400 font-medium">
+            {books.length} book{books.length !== 1 ? 's' : ''} · {totalCases} cases
+          </span>
+        </div>
+        <ChevronDown className={`h-5 w-5 text-stone-400 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <div
+        className="grid transition-[grid-template-rows] duration-200 ease-out"
+        style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          <div className="px-5 pb-4 space-y-3 border-t border-stone-100 pt-3">
+            {books.map(tb => (
+              <Link
+                key={tb.id}
+                href={`/textbooks/${tb.id}`}
+                className="block bg-stone-50 border border-stone-200 rounded-lg p-4
+                           hover:border-sage-300 hover:bg-white hover:shadow-sm transition-all group/card"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-stone-900 group-hover/card:text-sage-700 transition-colors">
+                      {tb.title}
+                      {tb.edition && <span className="text-stone-500 font-normal">, {tb.edition} Ed.</span>}
+                    </h4>
+                    {tb.authors && (
+                      <p className="text-sm text-stone-500 mt-0.5">{tb.authors}</p>
+                    )}
+                    <div className="flex items-center gap-4 mt-2 text-sm text-stone-600">
+                      <span className="flex items-center gap-1">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        {tb.case_count} cases
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="h-3.5 w-3.5 text-sage-600" />
+                        {tb.brief_count} briefs available
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function TextbooksPage() {
@@ -71,7 +133,7 @@ export default function TextbooksPage() {
             <h2 className="text-3xl font-bold text-stone-900">Textbooks</h2>
           </div>
           <p className="text-stone-600 mb-8">
-            Browse case briefs organized by your law school casebook.
+            Browse case briefs organized by your law school casebook. Click a subject to expand.
           </p>
 
           {loading ? (
@@ -89,47 +151,9 @@ export default function TextbooksPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-3">
               {Object.entries(grouped).map(([subject, books]) => (
-                <div key={subject}>
-                  <h3 className="text-lg font-semibold text-stone-900 mb-3">{subject}</h3>
-                  <div className="space-y-3">
-                    {books.map(tb => (
-                      <Link
-                        key={tb.id}
-                        href={`/textbooks/${tb.id}`}
-                        className="block bg-white border border-stone-200 rounded-xl p-5
-                                   hover:border-sage-300 hover:shadow-sm transition-all group"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <h4 className="font-semibold text-stone-900 group-hover:text-sage-700 transition-colors">
-                              {tb.title}
-                              {tb.edition && <span className="text-stone-500 font-normal">, {tb.edition} Ed.</span>}
-                            </h4>
-                            {tb.authors && (
-                              <p className="text-sm text-stone-500 mt-0.5">{tb.authors}</p>
-                            )}
-                            <div className="flex items-center gap-4 mt-2 text-sm text-stone-600">
-                              <span className="flex items-center gap-1">
-                                <BookOpen className="h-3.5 w-3.5" />
-                                {tb.case_count} cases
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <CheckCircle className="h-3.5 w-3.5 text-sage-600" />
-                                {tb.brief_count} briefs available
-                              </span>
-                            </div>
-                          </div>
-                          <span className="inline-block px-2.5 py-1 text-xs font-medium bg-sage-50 text-sage-700
-                                         rounded-full whitespace-nowrap flex-shrink-0">
-                            {subjectLabel(tb.subject)}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+                <SubjectGroup key={subject} subject={subject} books={books} />
               ))}
 
               <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 text-center mt-8">
