@@ -190,7 +190,13 @@ function StageCard({ stage, expanded, onToggle }: { stage: Stage; expanded: bool
                 <div className="space-y-2">
                   {stage.keyCases.map((c) => (
                     <div key={c.name}>
-                      <span className="text-sm text-stone-700 italic">{c.name}</span>
+                      {c.caseId ? (
+                        <Link href={`/case/${c.caseId}`} className="text-sm text-sage-700 italic hover:text-sage-900 hover:underline transition-colors">
+                          {c.name}
+                        </Link>
+                      ) : (
+                        <span className="text-sm text-stone-700 italic">{c.name}</span>
+                      )}
                       {c.holding && (
                         <p className="text-xs text-stone-500 mt-0.5 ml-3">{c.holding}</p>
                       )}
