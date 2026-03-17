@@ -140,13 +140,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
       const decoder = new TextDecoder()
       let accumulatedText = ''
       let buffer = ''
-      let receivedText = false
       let hadError = false
-
-      // If no actual AI text within 45s, abort
-      const textTimeout = setTimeout(() => {
-        if (!receivedText) controller.abort()
-      }, 45000)
 
       while (true) {
         const { done, value } = await reader.read()
@@ -164,14 +158,9 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
           try {
             const event = JSON.parse(dataStr)
             if (event.type === 'text') {
-              if (!receivedText) {
-                receivedText = true
-                clearTimeout(textTimeout)
-              }
               accumulatedText += event.text
               setStreamingText(accumulatedText)
             } else if (event.type === 'done') {
-              clearTimeout(textTimeout)
               if (!conversationId && event.conversation_id) {
                 setConversationId(event.conversation_id)
               }
@@ -184,7 +173,6 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 if (event.messages_remaining === 0) setRateLimited(true)
               }
             } else if (event.type === 'error') {
-              clearTimeout(textTimeout)
               hadError = true
               setError(event.error || 'Something went wrong. Please try again.')
             }
@@ -193,8 +181,6 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
           }
         }
       }
-
-      clearTimeout(textTimeout)
 
       if (accumulatedText) {
         const assistantMsg: ChatMessageType = {
@@ -345,8 +331,9 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 )}
                 {streaming && !streamingText && (
                   <div className="flex justify-start">
-                    <div className="rounded-lg px-3 py-2 bg-stone-100">
+                    <div className="rounded-lg px-3 py-2 bg-stone-100 flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin text-stone-400" />
+                      <span className="text-sm text-stone-500">Thinking...</span>
                     </div>
                   </div>
                 )}

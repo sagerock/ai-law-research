@@ -7,6 +7,7 @@ import os
 import io
 import asyncpg
 import httpx
+import anthropic
 from opensearchpy._async.client import AsyncOpenSearch
 import redis.asyncio as redis
 import numpy as np
@@ -4276,60 +4277,26 @@ Guidelines:
         output_tokens = 0
 
         try:
-            async with httpx.AsyncClient() as client:
-                async with client.stream(
-                    "POST",
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": chat_api_key,
-                        "anthropic-version": "2023-06-01",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": model,
-                        "max_tokens": 4096,
-                        "system": system_prompt,
-                        "messages": api_messages,
-                        "stream": True,
-                    },
-                    timeout=120.0,
-                ) as response:
-                    if response.status_code != 200:
-                        error_body = ""
-                        async for chunk in response.aiter_text():
-                            error_body += chunk
-                        print(f"Case ask API error {response.status_code}: {error_body[:500]}")
-                        yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
-                        return
+            client = anthropic.AsyncAnthropic(api_key=chat_api_key)
+            async with client.messages.stream(
+                model=model,
+                max_tokens=4096,
+                system=system_prompt,
+                messages=api_messages,
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_response += text
+                    yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
 
-                    async for line in response.aiter_lines():
-                        if not line.startswith("data: "):
-                            continue
-                        data_str = line[6:]
-                        if data_str == "[DONE]":
-                            break
-                        try:
-                            event = json.loads(data_str)
-                        except json.JSONDecodeError:
-                            continue
+            # Get final usage from the accumulated message
+            final_message = stream.get_final_message()
+            input_tokens = final_message.usage.input_tokens
+            output_tokens = final_message.usage.output_tokens
 
-                        event_type = event.get("type", "")
-
-                        if event_type == "content_block_delta":
-                            delta = event.get("delta", {})
-                            text = delta.get("text", "")
-                            if text:
-                                full_response += text
-                                yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
-
-                        elif event_type == "message_start":
-                            usage = event.get("message", {}).get("usage", {})
-                            input_tokens = usage.get("input_tokens", 0)
-
-                        elif event_type == "message_delta":
-                            usage = event.get("usage", {})
-                            output_tokens = usage.get("output_tokens", 0)
-
+        except anthropic.APIStatusError as e:
+            print(f"Case ask API error {e.status_code}: {e.message}")
+            yield f"data: {json.dumps({'type': 'error', 'error': f'API error {e.status_code}'})}\n\n"
+            return
         except Exception as e:
             print(f"Case ask stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
@@ -4343,7 +4310,13 @@ Guidelines:
             cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
             usage_type = "case_ask_sonnet"
 
-        # Save assistant message, update usage
+        # Final done event — always send before DB operations so frontend never hangs
+        remaining = None
+        if effective_limit is not None:
+            remaining = max(0, effective_limit - (messages_today + 1))
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining, 'is_byok': is_byok})}\n\n"
+
+        # Save assistant message, update usage (after done event)
         try:
             async with db_pool.acquire() as conn:
                 await conn.execute("""
@@ -4372,12 +4345,6 @@ Guidelines:
             await log_api_usage(usage_type, input_tokens, output_tokens, cost, source="byok" if is_byok else "site")
         except Exception as e:
             print(f"Failed to save case ask result: {e}")
-
-        # Final done event
-        remaining = None
-        if effective_limit is not None:
-            remaining = max(0, effective_limit - (messages_today + 1))
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining, 'is_byok': is_byok})}\n\n"
 
     return StreamingResponse(
         stream_response(),
