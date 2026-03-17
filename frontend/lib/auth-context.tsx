@@ -125,6 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null)
 
       if (newSession?.user) {
+        // Set loading false immediately — don't block on profile fetch
+        setIsLoading(false)
         const profileData = await fetchProfile(newSession.user.id, newSession.user.email)
         // Check version again after async fetch — a newer event may have arrived
         if (mounted && version >= authVersionRef.current) {
@@ -132,9 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setProfile(null)
+        setIsLoading(false)
       }
-
-      setIsLoading(false)
     }
 
     const initAuth = async () => {
