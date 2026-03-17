@@ -452,7 +452,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 {(caseData.decision_date || caseData.date_filed) && (
                   <span className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
-                    {new Date(caseData.decision_date || caseData.date_filed || '').toLocaleDateString()}
+                    {new Date(caseData.decision_date || caseData.date_filed || '').toLocaleDateString('en-US')}
                   </span>
                 )}
                 {caseData.citation_count !== undefined && (

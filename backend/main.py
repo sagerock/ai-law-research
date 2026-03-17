@@ -4289,7 +4289,7 @@ Guidelines:
                     yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
 
             # Get final usage from the accumulated message
-            final_message = stream.get_final_message()
+            final_message = await stream.get_final_message()
             input_tokens = final_message.usage.input_tokens
             output_tokens = final_message.usage.output_tokens
 

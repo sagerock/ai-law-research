@@ -18,6 +18,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
   const { user, session, getAccessToken } = useAuth()
   const router = useRouter()
 
+  const [mounted, setMounted] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [messages, setMessages] = useState<ChatMessageType[]>([])
   const [conversationId, setConversationId] = useState<number | null>(null)
@@ -29,6 +30,8 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [usageLoaded, setUsageLoaded] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
