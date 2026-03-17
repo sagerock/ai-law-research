@@ -740,18 +740,28 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       }
 
                       return caseSummary.summary.split('\n').map((line, idx) => {
-                      // Main title (# Header)
-                      if (line.trim().match(/^#\s+[^#]/)) {
-                        const headerText = line.replace(/^#\s+/, '').trim()
+                      const trimmed = line.trim()
+                      // #### Sub-sub-header
+                      if (trimmed.match(/^####\s+/)) {
+                        const headerText = trimmed.replace(/^####\s+/, '').replace(/\*\*/g, '').trim()
                         return (
-                          <h3 key={idx} className="text-xl font-bold text-stone-900 mb-4">
-                            {headerText}
-                          </h3>
+                          <h6 key={idx} className="font-semibold text-stone-800 mt-2 mb-1">
+                            {renderInline(headerText)}
+                          </h6>
                         )
                       }
-                      // Section headers (## 📋 Facts or **📋 Facts**)
-                      else if (line.trim().match(/^##\s+[📋⚖️📚💡🎯]/) || line.trim().match(/^\*\*[📋⚖️📚💡🎯]/)) {
-                        const headerText = line.replace(/^##\s+/, '').replace(/\*\*/g, '').trim()
+                      // ### Sub-header
+                      if (trimmed.match(/^###\s+/)) {
+                        const headerText = trimmed.replace(/^###\s+/, '').replace(/\*\*/g, '').trim()
+                        return (
+                          <h5 key={idx} className="font-semibold text-stone-900 mt-3 mb-1">
+                            {renderInline(headerText)}
+                          </h5>
+                        )
+                      }
+                      // ## Section header (with or without emoji)
+                      if (trimmed.match(/^##\s+/) || trimmed.match(/^\*\*[📋⚖️📚💡🎯]/)) {
+                        const headerText = trimmed.replace(/^##\s+/, '').replace(/\*\*/g, '').trim()
                         return (
                           <div key={idx} className="mt-6 first:mt-0">
                             <h4 className="text-lg font-bold text-stone-900 mb-2 flex items-center">
@@ -760,19 +770,37 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           </div>
                         )
                       }
+                      // # Main title
+                      if (trimmed.match(/^#\s+/)) {
+                        const headerText = trimmed.replace(/^#\s+/, '').trim()
+                        return (
+                          <h3 key={idx} className="text-xl font-bold text-stone-900 mb-4">
+                            {headerText}
+                          </h3>
+                        )
+                      }
+                      // Bullet points
+                      if (trimmed.match(/^[-*]\s/)) {
+                        return (
+                          <div key={idx} className="flex gap-2 ml-4 text-stone-700 leading-relaxed">
+                            <span className="text-stone-400 select-none">&bull;</span>
+                            <span>{renderInline(trimmed.slice(2))}</span>
+                          </div>
+                        )
+                      }
                       // Numbered list items
-                      else if (line.trim().match(/^\d+\.\s+/)) {
+                      if (trimmed.match(/^\d+\.\s+/)) {
                         return (
                           <p key={idx} className="text-stone-700 leading-relaxed ml-4">
-                            {renderInline(line.trim())}
+                            {renderInline(trimmed)}
                           </p>
                         )
                       }
                       // Regular paragraphs (handles inline bold/italic)
-                      else if (line.trim()) {
+                      if (trimmed) {
                         return (
                           <p key={idx} className="text-stone-700 leading-relaxed">
-                            {renderInline(line.trim())}
+                            {renderInline(trimmed)}
                           </p>
                         )
                       }
