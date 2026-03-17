@@ -29,6 +29,7 @@ interface AuthContextType {
   updateProfile: (data: ProfileUpdateData) => Promise<{ error: Error | null }>
   changePassword: (newPassword: string) => Promise<{ error: Error | null }>
   getAccessToken: () => Promise<string | null>
+  getAuthHeaders: () => Promise<Record<string, string>>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updateProfile: async () => ({ error: new Error('Supabase not configured') }),
           changePassword: async () => ({ error: new Error('Supabase not configured') }),
           getAccessToken: async () => null,
+          getAuthHeaders: async () => ({}),
         }}
       >
         {children}
@@ -180,9 +182,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    // Listen for cross-tab logout (localStorage cleared by another tab)
+    // Listen for cross-tab logout (localStorage cleared by another tab).
+    // Only react to the main auth-token key being removed — ignore other
+    // sb-* keys that may be transiently set/cleared during token refresh.
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key?.startsWith('sb-') && e.newValue === null) {
+      if (e.key?.includes('-auth-token') && e.key?.startsWith('sb-') && e.newValue === null) {
         const version = ++authVersionRef.current
         applySession(null, version)
       }
@@ -292,7 +296,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Update profile via backend API
   const updateProfile = async (data: ProfileUpdateData) => {
-    if (!session?.access_token) {
+    const token = await getAccessToken()
+    if (!token) {
       return { error: new Error('Not authenticated') }
     }
 
@@ -301,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${API_URL}/api/v1/profile`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
@@ -343,6 +348,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null }
   }
 
+  // Proactive token refresh — refresh 2 minutes before expiry so components
+  // reading session?.access_token from React state always have a valid token.
+  // The onAuthStateChange handler will pick up the TOKEN_REFRESHED event and
+  // update session/user/profile state automatically.
+  useEffect(() => {
+    if (!session?.expires_at) return
+
+    const expiresAt = session.expires_at * 1000
+    const refreshAt = expiresAt - 120_000 // 2 min before expiry
+    const delay = refreshAt - Date.now()
+
+    if (delay <= 0) {
+      // Already past refresh window — refresh immediately
+      supabase.auth.refreshSession()
+      return
+    }
+
+    const timer = setTimeout(() => {
+      supabase.auth.refreshSession()
+    }, delay)
+
+    return () => clearTimeout(timer)
+  }, [session?.expires_at])
+
   // Get a fresh access token (refreshes if expired or about to expire)
   const getAccessToken = async (): Promise<string | null> => {
     const { data: { session: currentSession } } = await supabase.auth.getSession()
@@ -352,10 +381,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const expiresAt = currentSession.expires_at
     if (expiresAt && expiresAt * 1000 < Date.now() + 60000) {
       const { data } = await supabase.auth.refreshSession()
+      if (data.session) {
+        // Sync React state so components reading session?.access_token stay fresh
+        setSession(data.session)
+        setUser(data.session.user)
+      }
       return data.session?.access_token ?? null
     }
 
     return currentSession.access_token
+  }
+
+  // Get auth headers with a fresh token — use this for API calls
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const token = await getAccessToken()
+    if (!token) return {}
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    }
   }
 
   return (
@@ -375,6 +419,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateProfile,
         changePassword,
         getAccessToken,
+        getAuthHeaders,
       }}
     >
       {children}
