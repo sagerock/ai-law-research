@@ -163,13 +163,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Failsafe: if auth takes longer than 5 seconds, stop loading anyway
+    // Failsafe: if auth takes longer than 10 seconds, stop loading anyway
     timeoutId = setTimeout(() => {
       if (mounted) {
         console.warn('Auth initialization timed out')
         setIsLoading(false)
       }
-    }, 5000)
+    }, 10000)
 
     initAuth()
 
