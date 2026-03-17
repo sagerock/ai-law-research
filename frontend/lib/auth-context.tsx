@@ -142,8 +142,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const version = ++authVersionRef.current
 
       try {
-        // Get initial session
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+        // Get initial session — timeout after 5s in case token refresh hangs
+        const getSessionWithTimeout = Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('getSession timed out')), 5000)
+          ),
+        ])
+
+        const { data: { session: initialSession }, error } = await getSessionWithTimeout
 
         if (error) {
           console.error('Error getting session:', error)
@@ -153,8 +160,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error ? null : (initialSession ?? null),
           version
         )
-      } catch (error) {
-        console.error('Error initializing auth:', error)
+      } catch (error: any) {
+        if (error?.message === 'getSession timed out') {
+          // Token refresh is hanging — clear stale tokens and start fresh
+          console.warn('Auth session refresh timed out, clearing stale tokens')
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-')) localStorage.removeItem(key)
+          })
+        } else {
+          console.error('Error initializing auth:', error)
+        }
         await applySession(null, version)
       } finally {
         if (mounted) {
@@ -164,13 +179,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Failsafe: if auth takes longer than 10 seconds, stop loading anyway
+    // Failsafe: if auth takes longer than 8 seconds, stop loading anyway
     timeoutId = setTimeout(() => {
       if (mounted) {
-        console.warn('Auth initialization timed out')
         setIsLoading(false)
       }
-    }, 10000)
+    }, 8000)
 
     initAuth()
 
