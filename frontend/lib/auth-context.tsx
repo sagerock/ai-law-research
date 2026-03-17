@@ -73,24 +73,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // Fetch profile for a user
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, email?: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Error fetching profile:', error)
       return null
     }
+
+    // Auto-create profile if it doesn't exist (e.g. OAuth sign-in)
+    if (!data) {
+      const username = email?.split('@')[0] || 'user'
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({ id: userId, username, display_name: username })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('Error creating profile:', insertError)
+        return null
+      }
+      return newProfile as Profile
+    }
+
     return data as Profile
   }
 
   // Refresh profile data
   const refreshProfile = async () => {
     if (user) {
-      const profileData = await fetchProfile(user.id)
+      const profileData = await fetchProfile(user.id, user.email)
       setProfile(profileData)
     }
   }
@@ -108,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null)
 
       if (newSession?.user) {
-        const profileData = await fetchProfile(newSession.user.id)
+        const profileData = await fetchProfile(newSession.user.id, newSession.user.email)
         // Check version again after async fetch — a newer event may have arrived
         if (mounted && version >= authVersionRef.current) {
           setProfile(profileData)
