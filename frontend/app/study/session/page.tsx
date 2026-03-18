@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, ArrowLeft, Pause, Flame, Loader2, Plus, Sparkles, Pencil, Globe, Copy, Share2 } from 'lucide-react'
+import { Upload, ArrowLeft, Pause, Flame, Loader2, Plus, Sparkles, Pencil, Globe, Copy, Share2, Download } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Header from '@/components/Header'
 import MindmapUpload from '@/components/study/MindmapUpload'
@@ -422,6 +422,25 @@ export default function StudySessionPage() {
     }
   }
 
+  // Export mindmap as .mindmap.json
+  const handleExport = async (mm: Mindmap) => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/study/mindmaps/${mm.id}`, { headers: getAuthHeaders() })
+      if (!res.ok) return
+      const data = await res.json()
+      const exportData = { version: 1, name: data.name, root: data.tree }
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${mm.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.mindmap.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // ignore
+    }
+  }
+
   // Tree node click
   const handleNodeClick = useCallback((nodeId: string) => {
     // Highlight only
@@ -718,6 +737,13 @@ export default function StudySessionPage() {
                       title="Edit mindmap"
                     >
                       <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleExport(mm)}
+                      className="p-2 text-stone-400 hover:text-sage-600 transition-colors"
+                      title="Export as .mindmap.json"
+                    >
+                      <Download className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleToggleShare(mm)}
