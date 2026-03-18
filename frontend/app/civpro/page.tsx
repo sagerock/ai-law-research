@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import Header from '@/components/Header'
-import CivProTimeline from './CivProTimeline'
+import CivProTabs from './CivProTabs'
 import { Scale } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -18,14 +18,14 @@ export default function CivProPage() {
           <div className="flex items-center gap-3 mb-2">
             <Scale className="h-6 w-6 text-sage-600" />
             <h1 className="font-display text-3xl sm:text-4xl text-stone-900">
-              Civil Procedure Timeline
+              Civil Procedure
             </h1>
           </div>
           <p className="text-stone-600 text-lg">
             The life of a federal civil lawsuit — from pre-filing to enforcement
           </p>
         </div>
-        <CivProTimeline />
+        <CivProTabs />
       </main>
     </div>
   )
