@@ -428,7 +428,10 @@ export default function StudySessionPage() {
       const res = await fetch(`${API_URL}/api/v1/study/mindmaps/${mm.id}`, { headers: getAuthHeaders() })
       if (!res.ok) return
       const data = await res.json()
-      const exportData = { version: 1, name: data.name, root: data.tree }
+      // tree may already be a full export object ({ version, name, root }) or just the root node
+      const tree = data.tree
+      const root = tree?.root && !tree?.children ? tree.root : tree
+      const exportData = { version: 1, name: data.name, root }
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

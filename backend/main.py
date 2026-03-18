@@ -5291,6 +5291,9 @@ async def upload_mindmap(
 
     name = data.get("name", filename.replace(".mindmap.json", "").replace(".json", ""))
     root = data.get("root", data)
+    # Handle double-nested root (e.g. root: { name, root: { id, text, children } })
+    if isinstance(root, dict) and "root" in root and "children" not in root:
+        root = root["root"]
 
     # Flatten tree
     counter = [0]
