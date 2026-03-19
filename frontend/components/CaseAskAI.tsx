@@ -144,6 +144,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
       let accumulatedText = ''
       let buffer = ''
       let hadError = false
+      let streamDone = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -175,13 +176,22 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 } : prev)
                 if (event.messages_remaining === 0) setRateLimited(true)
               }
+              streamDone = true
             } else if (event.type === 'error') {
               hadError = true
               setError(event.error || 'Something went wrong. Please try again.')
+              streamDone = true
             }
           } catch {
             // Skip malformed JSON
           }
+        }
+
+        // Stop reading once we have the done/error event — don't wait for
+        // the backend to finish post-stream DB operations
+        if (streamDone) {
+          reader.cancel().catch(() => {})
+          break
         }
       }
 

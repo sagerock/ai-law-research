@@ -4288,10 +4288,10 @@ Guidelines:
                     full_response += text
                     yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
 
-            # Get final usage from the accumulated message
-            final_message = await stream.get_final_message()
-            input_tokens = final_message.usage.input_tokens
-            output_tokens = final_message.usage.output_tokens
+                # Get final usage inside the context manager
+                final_message = await stream.get_final_message()
+                input_tokens = final_message.usage.input_tokens
+                output_tokens = final_message.usage.output_tokens
 
         except anthropic.APIStatusError as e:
             print(f"Case ask API error {e.status_code}: {e.message}")
