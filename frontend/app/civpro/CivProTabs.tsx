@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Map, ListOrdered, FileText } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { Map, ListOrdered, FileText, Download } from 'lucide-react'
 import CivProTimeline from './CivProTimeline'
 import OutlineView from './OutlineView'
 import { flowOutline, fullOutline } from './outlineData'
@@ -16,6 +16,10 @@ const tabs: { id: Tab; label: string; icon: typeof Map; description: string }[] 
 
 export default function CivProTabs() {
   const [active, setActive] = useState<Tab>('timeline')
+
+  const handlePrint = useCallback(() => {
+    window.print()
+  }, [])
 
   return (
     <div>
@@ -46,18 +50,40 @@ export default function CivProTabs() {
       {active === 'timeline' && <CivProTimeline />}
       {active === 'flow' && (
         <div>
-          <p className="text-stone-500 text-sm mb-6 max-w-xl">
-            A condensed view of the entire civil procedure process — every stage, every key rule, and when it fires.
-          </p>
-          <OutlineView markdown={flowOutline} />
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-stone-500 text-sm max-w-xl">
+              A condensed view of the entire civil procedure process — every stage, every key rule, and when it fires.
+            </p>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-stone-100 shrink-0 ml-4 print:hidden"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Save as PDF</span>
+            </button>
+          </div>
+          <div id="outline-content">
+            <OutlineView markdown={flowOutline} />
+          </div>
         </div>
       )}
       {active === 'full' && (
         <div>
-          <p className="text-stone-500 text-sm mb-6 max-w-xl">
-            Complete outline organized by topic with all rules, standards, and distinctions from the mindmap.
-          </p>
-          <OutlineView markdown={fullOutline} />
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-stone-500 text-sm max-w-xl">
+              Complete outline organized by topic with all rules, standards, and distinctions from the mindmap.
+            </p>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-stone-100 shrink-0 ml-4 print:hidden"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Save as PDF</span>
+            </button>
+          </div>
+          <div id="outline-content">
+            <OutlineView markdown={fullOutline} />
+          </div>
         </div>
       )}
     </div>
