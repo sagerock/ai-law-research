@@ -24,7 +24,7 @@ export default function CivProTabs() {
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-6 border-b border-stone-200">
+      <div className="flex gap-1 mb-6 border-b border-stone-200">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = active === tab.id
@@ -44,17 +44,6 @@ export default function CivProTabs() {
             </button>
           )
         })}
-        <div className="ml-auto -mb-px border-b-2 border-transparent">
-          <a
-            href="/civil-litigation-flowchart.pdf"
-            download
-            className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-stone-500 hover:text-sage-700 transition-colors"
-            title="Download printable flowchart (PDF)"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Flowchart PDF</span>
-          </a>
-        </div>
       </div>
 
       {/* Tab content */}
