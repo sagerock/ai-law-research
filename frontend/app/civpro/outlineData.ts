@@ -84,7 +84,37 @@ export const flowOutline = `## 1. COMPLAINT FILED (Rule 3)
 
 ## 13. ENFORCEMENT
 - Rule 69: Execution of money judgments
-- Rule 70: Enforcing judgments for specific acts`
+- Rule 70: Enforcing judgments for specific acts
+
+## THE COMPLETE PICTURE — ONE LINE
+Pre-Filing → Complaint → Service → Defendant Responds → Pleadings Settled → Joinder → Rule 26(f) Meet & Confer → Rule 16(b) Scheduling Order → Initial Disclosures → Party-Driven Discovery → Expert Disclosures → Pretrial Disclosures → Rule 16 Pretrial Conferences → Final Pretrial Order → Summary Judgment (maybe) → Trial → Post-Trial Motions → Appeal → Preclusion → Enforcement
+
+## KEY RULES AT A GLANCE
+- **Rule 8(a)** — Complaint requirements
+- **Rule 9(b)** — Heightened pleading for fraud
+- **Rule 10(b)** — Form of pleadings
+- **Rule 11** — Signature + certification (ethics)
+- **Rule 12(b)** — Pre-answer motions / defenses
+- **Rule 12(g)** — Omnibus motion rule (waiver trap)
+- **Rule 12(h)** — What survives the waiver trap
+- **Rule 13** — Counterclaims and crossclaims
+- **Rule 15** — Amendments to pleadings
+- **Rule 16** — Pretrial case management
+- **Rule 26** — Scope and limits of discovery
+- **Rule 30** — Depositions
+- **Rule 33** — Interrogatories
+- **Rule 34** — Document requests
+- **Rule 35** — Physical/mental examinations
+- **Rule 36** — Requests for admissions
+- **Rule 37** — Discovery sanctions
+- **Rule 41** — Dismissal (voluntary / involuntary)
+- **Rule 50(a)** — JMOL during trial
+- **Rule 50(b)** — Renewed JMOL after verdict (requires prior 50(a)!)
+- **Rule 55** — Default judgment
+- **Rule 56** — Summary judgment
+- **Rule 59** — New trial
+- **Rule 60** — Relief from judgment
+- **28 USC §1291** — Final judgment / appealability`
 
 export const fullOutline = `## Pleadings
 - What Are Pleadings? - Parties' initial statements filed before full discovery; parties don't have complete facts when pleading
