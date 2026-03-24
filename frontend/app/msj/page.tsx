@@ -39,8 +39,13 @@ export default function MSJPage() {
 
   const createProject = async () => {
     setCreating(true)
+    setError(null)
     try {
       const token = await getAccessToken()
+      if (!token) {
+        setError('Session expired. Please sign in again.')
+        return
+      }
       const res = await fetch(`${API_URL}/api/v1/msj/projects`, {
         method: 'POST',
         headers: {
@@ -52,6 +57,8 @@ export default function MSJPage() {
       if (res.ok) {
         const project = await res.json()
         router.push(`/msj/${project.id}`)
+      } else {
+        setError('Failed to create project. Please try again.')
       }
     } catch (e) {
       setError('Failed to create project')

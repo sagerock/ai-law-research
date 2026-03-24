@@ -401,37 +401,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // built-in refresh and with other tabs, causing refresh token rotation
   // conflicts that log users out.
 
-  // Get a fresh access token — delegates refresh to SDK (autoRefreshToken).
-  // Avoids calling refreshSession() directly to prevent multi-tab race conditions.
+  // Get a fresh access token. All SDK calls are timeboxed to prevent hangs.
   const getAccessToken = async (): Promise<string | null> => {
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      const { data: { session: currentSession } } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('getSession timed out')), 5000)
+        ),
+      ])
       if (!currentSession) return null
-
-      // If token is expired or about to expire, let getUser() trigger the
-      // SDK's internal refresh (which uses navigator.locks for tab safety)
-      const expiresAt = currentSession.expires_at
-      if (expiresAt && expiresAt * 1000 < Date.now() + 60000) {
-        const { data: { user: refreshedUser }, error } = await Promise.race([
-          supabase.auth.getUser(),
-          new Promise<{ data: { user: null }, error: Error }>((resolve) =>
-            setTimeout(() => resolve({ data: { user: null }, error: new Error('timed out') }), 5000)
-          ),
-        ])
-        if (error || !refreshedUser) {
-          console.warn('Auth token near expiry, refresh pending')
-          // Return the current token anyway — it may still be valid for a few more seconds
-          return currentSession.access_token
-        }
-        // After getUser, re-read the session which the SDK may have refreshed
-        const { data: { session: freshSession } } = await supabase.auth.getSession()
-        if (freshSession) {
-          setSession(freshSession)
-          setUser(freshSession.user)
-          return freshSession.access_token
-        }
-      }
-
       return currentSession.access_token
     } catch (e) {
       console.error('getAccessToken error:', e)
