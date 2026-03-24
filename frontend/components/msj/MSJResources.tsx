@@ -36,6 +36,12 @@ const CORE_CASES = {
   ],
   ohio_substantive: [
     {
+      id: '10686709',
+      title: 'Dresher v. Burt',
+      cite: '75 Ohio St.3d 280 (1996)',
+      description: "Ohio's leading SJ burden case: movant must point to specific evidence showing opponent lacks proof",
+    },
+    {
       id: '4025863',
       title: 'Mudrich v. Standard Oil Co.',
       cite: '153 Ohio St. 31 (1950)',

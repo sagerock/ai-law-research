@@ -6856,7 +6856,7 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         )
 
         # Load core SJ cases (always available as approved sources)
-        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan v. Cotton
+        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535', '10686709', '4025863', '6867332', '6876097']  # Celotex, Anderson, Tolan, Dresher, Mudrich, Cascone, Leibreich
         core_cases = await conn.fetch(
             "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
             CORE_SJ_CASE_IDS
@@ -6972,7 +6972,7 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         )
 
         # Load core SJ cases (always available as approved sources)
-        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan v. Cotton
+        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535', '10686709', '4025863', '6867332', '6876097']  # Celotex, Anderson, Tolan, Dresher, Mudrich, Cascone, Leibreich
         core_cases = await conn.fetch(
             "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
             CORE_SJ_CASE_IDS
