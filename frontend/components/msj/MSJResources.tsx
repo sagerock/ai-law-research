@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, ChevronDown, ChevronUp, ExternalLink, Scale, FileText, Gavel } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronUp, ChevronRight, Scale, FileText, Gavel } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 
@@ -112,7 +112,6 @@ export default function MSJResources() {
                 <Link
                   key={c.id}
                   href={`/case/${c.id}`}
-                  target="_blank"
                   className="block p-3 bg-stone-50 rounded-lg hover:bg-sage-50 transition-colors group"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -123,7 +122,7 @@ export default function MSJResources() {
                       <span className="text-xs text-stone-500 ml-1">{c.cite}</span>
                       <p className="text-xs text-stone-500 mt-0.5">{c.description}</p>
                     </div>
-                    <ExternalLink className="h-3.5 w-3.5 text-stone-300 group-hover:text-sage-500 flex-shrink-0 mt-0.5" />
+                    <ChevronRight className="h-3.5 w-3.5 text-stone-300 group-hover:text-sage-500 flex-shrink-0 mt-0.5" />
                   </div>
                 </Link>
               ))}
@@ -143,7 +142,6 @@ export default function MSJResources() {
                 <Link
                   key={c.id}
                   href={`/case/${c.id}`}
-                  target="_blank"
                   className="block p-3 bg-stone-50 rounded-lg hover:bg-sage-50 transition-colors group"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -154,7 +152,7 @@ export default function MSJResources() {
                       <span className="text-xs text-stone-500 ml-1">{c.cite}</span>
                       <p className="text-xs text-stone-500 mt-0.5">{c.description}</p>
                     </div>
-                    <ExternalLink className="h-3.5 w-3.5 text-stone-300 group-hover:text-sage-500 flex-shrink-0 mt-0.5" />
+                    <ChevronRight className="h-3.5 w-3.5 text-stone-300 group-hover:text-sage-500 flex-shrink-0 mt-0.5" />
                   </div>
                 </Link>
               ))}
@@ -169,7 +167,6 @@ export default function MSJResources() {
             </div>
             <Link
               href="/rules/rule-56"
-              target="_blank"
               className="block p-3 bg-stone-50 rounded-lg hover:bg-sage-50 transition-colors group"
             >
               <div className="flex items-start justify-between gap-2">
@@ -182,7 +179,7 @@ export default function MSJResources() {
                     The procedural rule governing motions for summary judgment in federal court
                   </p>
                 </div>
-                <ExternalLink className="h-3.5 w-3.5 text-stone-300 group-hover:text-sage-500 flex-shrink-0 mt-0.5" />
+                <ChevronRight className="h-3.5 w-3.5 text-stone-300 group-hover:text-sage-500 flex-shrink-0 mt-0.5" />
               </div>
             </Link>
           </div>
