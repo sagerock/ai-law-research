@@ -270,6 +270,7 @@ IMPORTANT FORMATTING RULES:
 - For exhibit citations use: (Exhibit Title) — for example: (ZAMR Corp. Work Rules) or (Position Evaluation, Jan. 15, 2024)
 - Do NOT use "Doc #" references anywhere. Always use the document title or deponent's last name.
 - Write in formal legal prose appropriate for a federal court filing
+- NEVER use em dashes (—) or en dashes (–). Use commas, semicolons, colons, or parentheses instead. This is critical.
 - Every fact must cite to a specific document from the record using the formats above
 - Every legal proposition must cite to an approved source with a pin cite
 - Do NOT invent or fabricate any citation
@@ -288,6 +289,9 @@ def generate_motion_docx(case_info: dict, motion_text: str) -> bytes:
     Returns the DOCX as bytes.
     """
     _ensure_docx_imports()
+
+    # Strip em dashes and en dashes from AI output
+    motion_text = motion_text.replace("—", ", ").replace("–", "-")
 
     doc = DocxDocument()
 
