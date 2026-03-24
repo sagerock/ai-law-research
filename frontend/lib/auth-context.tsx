@@ -162,11 +162,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         )
       } catch (error: any) {
         if (error?.message === 'getSession timed out') {
-          // Token refresh is hanging — clear stale tokens and start fresh
-          console.warn('Auth session refresh timed out, clearing stale tokens')
-          Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('sb-')) localStorage.removeItem(key)
-          })
+          // Token refresh is hanging — just proceed as unauthenticated
+          // Don't clear tokens, they may still be valid for other tabs
+          console.warn('Auth init timed out, proceeding as unauthenticated')
         } else {
           console.error('Error initializing auth:', error)
         }
@@ -424,12 +422,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(data.session.user)
           return data.session.access_token
         }
-        // Refresh failed or timed out — clear stale state
-        console.warn('Auth session refresh failed or timed out, signing out')
-        await supabase.auth.signOut()
-        setSession(null)
-        setUser(null)
-        setProfile(null)
+        // Refresh failed or timed out — return null but don't sign out
+        // (signing out clears tokens and causes a re-render loop)
+        console.warn('Auth session refresh failed or timed out')
         return null
       }
 
