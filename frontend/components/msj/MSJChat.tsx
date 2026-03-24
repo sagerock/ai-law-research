@@ -49,7 +49,11 @@ export default function MSJChat({ project, onProjectUpdate }: MSJChatProps) {
     setStreamingText('')
 
     try {
-      const token = await getAccessToken()
+      const token = await Promise.race([
+        getAccessToken(),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Session expired — please sign out and sign back in')), 5000)),
+      ])
+      if (!token) { setError('Please sign in'); setStreaming(false); return }
       const res = await fetch(`${API_URL}/api/v1/msj/projects/${project.id}/chat`, {
         method: 'POST',
         headers: {
@@ -119,7 +123,11 @@ export default function MSJChat({ project, onProjectUpdate }: MSJChatProps) {
     setShowMotion(true)
 
     try {
-      const token = await getAccessToken()
+      const token = await Promise.race([
+        getAccessToken(),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Session expired — please sign out and sign back in')), 5000)),
+      ])
+      if (!token) { setError('Please sign in'); setGenerating(false); return }
       const res = await fetch(`${API_URL}/api/v1/msj/projects/${project.id}/generate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -183,7 +191,10 @@ export default function MSJChat({ project, onProjectUpdate }: MSJChatProps) {
 
   const exportDocx = async () => {
     try {
-      const token = await getAccessToken()
+      const token = await Promise.race([
+        getAccessToken(),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Session expired')), 5000)),
+      ])
       const res = await fetch(`${API_URL}/api/v1/msj/projects/${project.id}/export`, {
         headers: { Authorization: `Bearer ${token}` },
       })

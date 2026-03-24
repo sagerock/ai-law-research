@@ -55,7 +55,12 @@ export default function MSJDocumentUpload({
     setError(null)
 
     try {
-      const token = await getAccessToken()
+      // Timeout the token fetch so we don't spin forever on expired sessions
+      const tokenPromise = getAccessToken()
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('Session expired — please sign out and sign back in')), 5000)
+      )
+      const token = await Promise.race([tokenPromise, timeoutPromise])
       if (!token) {
         throw new Error('Please sign in to upload documents')
       }
