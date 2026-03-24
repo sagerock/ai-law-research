@@ -143,6 +143,7 @@ CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:
     if documents:
         budgeted_docs = _budget_documents(documents, MAX_DOCUMENT_TOKENS * CHARS_PER_TOKEN)
         parts.append("\n\n--- UPLOADED DOCUMENTS ---")
+        parts.append("CITATION FORMAT: When citing these documents, use the format: (Last Name, Deposition, at [paragraph]) for depositions, or (Title, at [page]) for exhibits. Do NOT use 'Doc #' references. Use the document TITLE or deponent's LAST NAME.")
         for doc_id, doc_type, title, text in budgeted_docs:
             parts.append(f"\nDocument #{doc_id} ({doc_type}): {title}")
             parts.append(text or "[No text extracted]")
@@ -265,9 +266,11 @@ IMPORTANT FORMATTING RULES:
 - Use ## for main section headings and ### for argument sub-headings
 - Number each fact in the Statement of Facts (1., 2., 3., etc.)
 - Use standard legal citation format with PIN CITES (specific page numbers). Example: Celotex Corp. v. Catrett, 477 U.S. 317, 323 (1986)
-- For deposition citations use the format: (Last Name, Deposition, at [page/paragraph])
+- For deposition citations use EXACTLY this format: (Last Name, Deposition, at [paragraph number]) — for example: (Hayes, Deposition, at 3) or (Downing, Deposition, at 5). Use the deponent's LAST NAME, not "Doc #".
+- For exhibit citations use: (Exhibit Title) — for example: (ZAMR Corp. Work Rules) or (Position Evaluation, Jan. 15, 2024)
+- Do NOT use "Doc #" references anywhere. Always use the document title or deponent's last name.
 - Write in formal legal prose appropriate for a federal court filing
-- Every fact must cite to a specific document from the record
+- Every fact must cite to a specific document from the record using the formats above
 - Every legal proposition must cite to an approved source with a pin cite
 - Do NOT invent or fabricate any citation
 - This is for educational purposes only
