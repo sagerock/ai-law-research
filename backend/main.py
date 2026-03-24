@@ -6855,6 +6855,13 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
             "SELECT title, body FROM legal_text_items WHERE document_id = 'frcp' AND slug = 'rule-56'"
         )
 
+        # Load core SJ cases (always available as approved sources)
+        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan v. Cotton
+        core_cases = await conn.fetch(
+            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
+            CORE_SJ_CASE_IDS
+        )
+
     # Build system prompt
     from msj_builder import build_msj_system_prompt
     system_prompt = build_msj_system_prompt(
@@ -6865,6 +6872,7 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
         rule_56_text=rule_56["body"] if rule_56 else None,
         generated_motion=project["generated_motion"],
+        core_cases=[(r["title"], r["reporter_cite"], r["summary"]) for r in core_cases],
     )
 
     # Build messages
@@ -6963,6 +6971,13 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
             "SELECT title, body FROM legal_text_items WHERE document_id = 'frcp' AND slug = 'rule-56'"
         )
 
+        # Load core SJ cases (always available as approved sources)
+        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan v. Cotton
+        core_cases = await conn.fetch(
+            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
+            CORE_SJ_CASE_IDS
+        )
+
         # Update status to generating
         await conn.execute("UPDATE msj_projects SET status = 'generating', updated_at = NOW() WHERE id = $1", project_id)
 
@@ -6974,6 +6989,7 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
         library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
         rule_56_text=rule_56["body"] if rule_56 else None,
+        core_cases=[(r["title"], r["reporter_cite"], r["summary"]) for r in core_cases],
     )
 
     async def stream_response():

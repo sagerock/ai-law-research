@@ -91,6 +91,7 @@ def build_msj_system_prompt(
     library_docs: list[tuple],
     rule_56_text: Optional[str] = None,
     generated_motion: Optional[str] = None,
+    core_cases: Optional[list[tuple]] = None,
 ) -> str:
     """
     Build the system prompt for MSJ chat interactions.
@@ -153,8 +154,12 @@ CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:
             num = fact.get("fact_number", "?")
             text = fact.get("text", "")
             source_ref = ""
-            if fact.get("source_doc_id"):
-                source_ref = f" [Source: Doc #{fact['source_doc_id']}]"
+            source_ids = fact.get("source_doc_ids") or ([fact["source_doc_id"]] if fact.get("source_doc_id") else [])
+            if source_ids:
+                refs = ", ".join(f"Doc #{sid}" for sid in source_ids)
+                source_ref = f" ({refs})"
+            if fact.get("source_excerpt"):
+                source_ref += f" [{fact['source_excerpt']}]"
             parts.append(f"{num}. {text}{source_ref}")
 
     # Legal arguments
@@ -173,6 +178,15 @@ CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:
 
     # Approved sources - Rule 56
     parts.append("\n\n--- APPROVED SOURCES ---")
+
+    # Core summary judgment cases (always included, from database)
+    if core_cases:
+        parts.append("\nCore Summary Judgment Cases (USE THESE EXACT CITATIONS):")
+        for title, reporter_cite, summary in core_cases:
+            parts.append(f"\n{title}, {reporter_cite}")
+            if summary:
+                parts.append(f"Summary: {_truncate_text(summary, 3000)}")
+
     if rule_56_text:
         parts.append(f"\nFRCP Rule 56 (Summary Judgment):\n{_truncate_text(rule_56_text, MAX_RULE_TOKENS * CHARS_PER_TOKEN)}")
 
@@ -197,6 +211,7 @@ def build_msj_generation_prompt(
     documents: list[tuple],
     library_docs: list[tuple],
     rule_56_text: Optional[str] = None,
+    core_cases: Optional[list[tuple]] = None,
 ) -> tuple[str, str]:
     """
     Build system + user prompts specifically for generating the full motion document.
@@ -209,6 +224,7 @@ def build_msj_generation_prompt(
         documents=documents,
         library_docs=library_docs,
         rule_56_text=rule_56_text,
+        core_cases=core_cases,
     )
 
     plaintiff = case_info.get("plaintiff", "[Plaintiff]")
