@@ -56,6 +56,10 @@ export default function MSJDocumentUpload({
 
     try {
       const token = await getAccessToken()
+      if (!token) {
+        throw new Error('Please sign in to upload documents')
+      }
+
       const formData = new FormData()
       formData.append('file', file)
       formData.append('doc_type', selectedDocType)
@@ -70,13 +74,14 @@ export default function MSJDocumentUpload({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.detail || 'Upload failed')
+        throw new Error(data.detail || `Upload failed (${res.status})`)
       }
 
       const newDoc = await res.json()
       // Merge into allDocuments
       onDocumentsChange([...allDocuments, newDoc])
     } catch (e: any) {
+      console.error('Upload error:', e)
       setError(e.message || 'Upload failed')
     } finally {
       setUploading(false)
@@ -173,7 +178,7 @@ export default function MSJDocumentUpload({
         <input
           id={`file-input-step-${step}`}
           type="file"
-          accept=".pdf,.docx,.txt"
+          accept=".pdf,.docx,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           multiple
           onChange={handleFileInput}
           className="hidden"
