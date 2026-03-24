@@ -406,22 +406,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Get a fresh access token (refreshes if expired or about to expire)
   const getAccessToken = async (): Promise<string | null> => {
-    const { data: { session: currentSession } } = await supabase.auth.getSession()
-    if (!currentSession) return null
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (!currentSession) return null
 
-    // If token expires within 60 seconds, force a refresh
-    const expiresAt = currentSession.expires_at
-    if (expiresAt && expiresAt * 1000 < Date.now() + 60000) {
-      const { data } = await supabase.auth.refreshSession()
-      if (data.session) {
-        // Sync React state so components reading session?.access_token stay fresh
-        setSession(data.session)
-        setUser(data.session.user)
+      // If token expires within 60 seconds, force a refresh
+      const expiresAt = currentSession.expires_at
+      if (expiresAt && expiresAt * 1000 < Date.now() + 60000) {
+        // Timeout the refresh so we don't hang forever on stale sessions
+        const refreshPromise = supabase.auth.refreshSession()
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 5000)
+        )
+        const { data } = await Promise.race([refreshPromise, timeoutPromise])
+        if (data.session) {
+          setSession(data.session)
+          setUser(data.session.user)
+          return data.session.access_token
+        }
+        // Refresh failed or timed out — clear stale state
+        console.warn('Auth session refresh failed or timed out, signing out')
+        await supabase.auth.signOut()
+        setSession(null)
+        setUser(null)
+        setProfile(null)
+        return null
       }
-      return data.session?.access_token ?? null
-    }
 
-    return currentSession.access_token
+      return currentSession.access_token
+    } catch (e) {
+      console.error('getAccessToken error:', e)
+      return null
+    }
   }
 
   // Get auth headers with a fresh token — use this for API calls
