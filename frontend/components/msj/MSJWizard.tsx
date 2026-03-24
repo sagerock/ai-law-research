@@ -19,11 +19,10 @@ interface MSJWizardProps {
 
 const STEPS = [
   { id: 1, label: 'Case Info', icon: Scale, description: 'Parties, court, jurisdiction' },
-  { id: 2, label: 'Pleadings', icon: Upload, description: 'Upload complaint, answer' },
+  { id: 2, label: 'Documents', icon: Upload, description: 'Upload all case documents' },
   { id: 3, label: 'Facts', icon: List, description: 'Undisputed material facts' },
-  { id: 4, label: 'Evidence', icon: FileText, description: 'Depositions, affidavits, exhibits' },
-  { id: 5, label: 'Arguments', icon: MessageSquare, description: 'Legal issues & authority' },
-  { id: 6, label: 'Generate', icon: Sparkles, description: 'AI drafting & export' },
+  { id: 4, label: 'Arguments', icon: MessageSquare, description: 'Legal issues & authority' },
+  { id: 5, label: 'Generate', icon: Sparkles, description: 'AI drafting & export' },
 ]
 
 export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
@@ -74,14 +73,12 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
       case 1:
         return !!(project.case_info?.plaintiff && project.case_info?.defendant)
       case 2:
-        return project.documents?.some((d) => d.step === 2) ?? false
+        return (project.documents?.length ?? 0) > 0
       case 3:
         return (project.material_facts?.length ?? 0) > 0
       case 4:
-        return project.documents?.some((d) => d.step === 4) ?? false
-      case 5:
         return (project.legal_arguments?.length ?? 0) > 0
-      case 6:
+      case 5:
         return project.status === 'complete'
       default:
         return false
@@ -194,10 +191,10 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
             <MSJDocumentUpload
               projectId={project.id}
               step={2}
-              title="Upload Pleadings"
-              description="Upload the complaint, answer, and any other pleadings. These define the claims and defenses at issue."
-              docTypes={['pleading']}
-              documents={project.documents?.filter((d) => d.step === 2) || []}
+              title="Upload All Case Documents"
+              description="Upload everything: depositions, pleadings, affidavits, contracts, exhibits, and any other documents related to the case. These will be available as sources when you enter facts and arguments."
+              docTypes={['deposition', 'pleading', 'affidavit', 'exhibit', 'evidence']}
+              documents={project.documents || []}
               onDocumentsChange={handleDocumentsChange}
               allDocuments={project.documents || []}
             />
@@ -210,29 +207,17 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
             />
           )}
           {activeStep === 4 && (
-            <MSJDocumentUpload
-              projectId={project.id}
-              step={4}
-              title="Upload Supporting Evidence"
-              description="Upload depositions, affidavits, contracts, exhibits, and other evidence supporting your motion."
-              docTypes={['evidence', 'exhibit', 'affidavit', 'deposition']}
-              documents={project.documents?.filter((d) => d.step === 4) || []}
-              onDocumentsChange={handleDocumentsChange}
-              allDocuments={project.documents || []}
-            />
-          )}
-          {activeStep === 5 && (
             <MSJArgumentsEditor
               arguments={project.legal_arguments || []}
               onChange={(args) => saveProject({ legal_arguments: args })}
             />
           )}
-          {activeStep === 6 && (
+          {activeStep === 5 && (
             <MSJChat project={project} onProjectUpdate={onUpdate} />
           )}
 
           {/* Navigation buttons */}
-          {activeStep < 6 && (
+          {activeStep < 5 && (
             <div className="flex justify-between mt-6">
               <button
                 onClick={() => setActiveStep(Math.max(1, activeStep - 1))}
@@ -243,7 +228,7 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
                 <ArrowLeft className="h-4 w-4" /> Previous
               </button>
               <button
-                onClick={() => setActiveStep(Math.min(6, activeStep + 1))}
+                onClick={() => setActiveStep(Math.min(5, activeStep + 1))}
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-sage-700 text-white
                            rounded-lg hover:bg-sage-600 transition-colors"
               >
