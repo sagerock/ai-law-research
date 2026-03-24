@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Monotonic counter to prevent stale async operations from clobbering fresh state
   const authVersionRef = useRef(0)
+  // Track current access token in a ref so visibilitychange handler avoids stale closures
+  const currentTokenRef = useRef<string | null>(null)
 
   const supabase = createClient()
 
@@ -121,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const applySession = async (newSession: Session | null, version: number) => {
       if (!mounted || version < authVersionRef.current) return
 
+      currentTokenRef.current = newSession?.access_token ?? null
       setSession(newSession)
       setUser(newSession?.user ?? null)
 
@@ -220,15 +223,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
         if (!mounted) return
+
+        const freshToken = freshSession?.access_token ?? null
+
+        // Only apply if the session actually changed — avoids re-renders
+        // that would reset component state (e.g. in-progress forms)
+        if (currentTokenRef.current === freshToken) return
+
         const version = ++authVersionRef.current
-
-        // Compare with current state to avoid unnecessary re-renders
-        const currentToken = session?.access_token
-        const freshToken = freshSession?.access_token
-
-        if (currentToken !== freshToken) {
-          applySession(freshSession, version)
-        }
+        applySession(freshSession, version)
       })
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -305,6 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // with a timeout fallback in case the Supabase client hangs
   const signOut = async () => {
     // Clear local state immediately so UI updates
+    currentTokenRef.current = null
     setUser(null)
     setProfile(null)
     setSession(null)
@@ -313,9 +317,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Give Supabase 3 seconds to sign out properly (invalidates refresh token server-side)
       await withTimeout(supabase.auth.signOut(), 3000)
     } catch {
-      // Fallback: manually clear localStorage if signOut hangs or fails
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sb-')) localStorage.removeItem(key)
+      // Fallback: manually clear cookies if signOut hangs or fails
+      // @supabase/ssr stores sessions in document.cookie, not localStorage
+      document.cookie.split(';').forEach(cookie => {
+        const name = cookie.split('=')[0].trim()
+        if (name.startsWith('sb-')) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+        }
       })
     }
 
