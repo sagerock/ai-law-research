@@ -112,11 +112,13 @@ CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:
 1. You may ONLY cite cases, rules, and statutes that appear in the APPROVED SOURCES section below.
 2. You may ONLY reference facts that appear in the UPLOADED DOCUMENTS section or the STATEMENT OF UNDISPUTED MATERIAL FACTS.
 3. NEVER fabricate, invent, or hallucinate any citation, case name, rule number, or factual claim.
-4. If you are unsure whether a source exists in the provided materials, say so explicitly rather than guessing.
-5. Every factual assertion must include a source reference like [Source: Doc #X] or [Source: Fact #X].
-6. Every legal citation must reference an approved source like [Rule 56] or a case from the approved list.
-7. This is an EDUCATIONAL tool for law students. Your output is for learning purposes only and must not be filed with any court.
-8. If the student asks you to cite something not in the approved sources, explain that you can only work with provided materials and suggest they upload additional documents.""")
+4. If you are unsure whether a source exists in the provided materials, say so explicitly rather than guessing. If you need a legal principle but cannot find supporting authority in the approved sources, write "[CITATION NEEDED — verify before filing]" so the student knows to research it.
+5. Every factual assertion must include a source reference like (Doc #X) or (Doc #X at [page]).
+6. Every legal citation must use the EXACT case name and reporter citation from the approved sources. Do not paraphrase or alter citations. For Ohio cases, use the Ohio State Reports citation. For federal cases, use the U.S. Reports or Federal Reporter citation.
+7. When citing a legal rule or standard, always include: (a) the specific rule or statute number, (b) the case that established or applied the rule, and (c) the exact citation from the approved sources.
+8. This is an EDUCATIONAL tool for law students. Your output is for learning purposes only and must not be filed with any court.
+9. If the student asks you to cite something not in the approved sources, explain that you can only work with provided materials and suggest they upload additional documents or add the source to the approved library.
+10. For statutes and rules of procedure, always cite the specific section number (e.g., "Fed. R. Civ. P. 56(a)" not just "Rule 56").""")
 
     # Case information
     if case_info and any(case_info.values()):
