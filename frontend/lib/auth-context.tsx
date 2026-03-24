@@ -212,30 +212,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    // Listen for cross-tab auth changes (sign-out or token refresh in another tab).
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key !== 'sb-legal-researcher-auth-token') return
+    // @supabase/ssr stores sessions in document.cookie, not localStorage,
+    // so StorageEvent never fires. Instead, re-sync from cookies when the
+    // tab becomes visible — another tab may have refreshed or signed out.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !mounted) return
 
-      if (e.newValue === null) {
-        // Another tab signed out
+      supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
+        if (!mounted) return
         const version = ++authVersionRef.current
-        applySession(null, version)
-      } else if (e.newValue && e.oldValue !== e.newValue) {
-        // Another tab refreshed the token — re-read session from SDK
-        supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
-          if (!mounted) return
-          const version = ++authVersionRef.current
+
+        // Compare with current state to avoid unnecessary re-renders
+        const currentToken = session?.access_token
+        const freshToken = freshSession?.access_token
+
+        if (currentToken !== freshToken) {
           applySession(freshSession, version)
-        })
-      }
+        }
+      })
     }
-    window.addEventListener('storage', handleStorageChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       mounted = false
       clearTimeout(timeoutId)
       subscription.unsubscribe()
-      window.removeEventListener('storage', handleStorageChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
