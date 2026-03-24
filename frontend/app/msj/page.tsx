@@ -21,17 +21,35 @@ export default function MSJPage() {
     else setLoading(false)
   }, [user])
 
-  const loadProjects = async () => {
+  const loadProjects = async (retries = 2) => {
     try {
       const token = await getAccessToken()
+      if (!token) {
+        // Token not ready yet — retry after a short delay
+        if (retries > 0) {
+          setTimeout(() => loadProjects(retries - 1), 2000)
+          return
+        }
+        setError('Unable to load motions — please refresh the page.')
+        setLoading(false)
+        return
+      }
       const res = await fetch(`${API_URL}/api/v1/msj/projects`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         setProjects(await res.json())
+        setError(null)
+      } else if (res.status === 401 && retries > 0) {
+        // Token may have just expired — retry once
+        setTimeout(() => loadProjects(retries - 1), 2000)
+        return
+      } else {
+        setError('Failed to load motions. Please try refreshing.')
       }
     } catch (e) {
       console.error('Failed to load projects:', e)
+      setError('Failed to load motions.')
     } finally {
       setLoading(false)
     }
