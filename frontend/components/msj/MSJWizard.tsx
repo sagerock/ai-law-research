@@ -10,6 +10,7 @@ import MSJDocumentUpload from './MSJDocumentUpload'
 import MSJFactsEditor from './MSJFactsEditor'
 import MSJArgumentsEditor from './MSJArgumentsEditor'
 import MSJChat from './MSJChat'
+import MSJResources from './MSJResources'
 import type { MSJProject, MSJCaseInfo as CaseInfoType, MSJFact, MSJArgument, MSJDocument } from '@/types'
 
 interface MSJWizardProps {
@@ -213,7 +214,10 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
             />
           )}
           {activeStep === 5 && (
-            <MSJChat project={project} onProjectUpdate={onUpdate} />
+            <>
+              <MSJResources />
+              <MSJChat project={project} onProjectUpdate={onUpdate} />
+            </>
           )}
 
           {/* Navigation buttons */}
