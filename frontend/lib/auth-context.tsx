@@ -165,9 +165,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         )
       } catch (error: any) {
         if (error?.message === 'getSession timed out') {
-          // Token refresh is hanging — just proceed as unauthenticated
-          // Don't clear tokens, they may still be valid for other tabs
-          console.warn('Auth init timed out, proceeding as unauthenticated')
+          // Token refresh is hanging — clear stale cookies so subsequent
+          // getSession() calls don't also hang. The user will need to sign in again.
+          console.warn('Auth init timed out, clearing stale session cookies')
+          document.cookie.split(';').forEach(cookie => {
+            const name = cookie.split('=')[0].trim()
+            if (name.startsWith('sb-')) {
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+            }
+          })
         } else {
           console.error('Error initializing auth:', error)
         }
