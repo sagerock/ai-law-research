@@ -6881,7 +6881,7 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
             full_text = ""
 
             async with client.messages.stream(
-                model="claude-sonnet-4-6-20250514",
+                model="claude-sonnet-4-6",
                 max_tokens=4096,
                 system=system_prompt,
                 messages=messages,
@@ -6912,7 +6912,7 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
                 )
                 await conn.execute(
                     "INSERT INTO msj_messages (conversation_id, role, content, model, input_tokens, output_tokens, cost) VALUES ($1, 'assistant', $2, $3, $4, $5, $6)",
-                    conversation_id, full_text, "claude-sonnet-4-6-20250514", input_tokens, output_tokens, cost
+                    conversation_id, full_text, "claude-sonnet-4-6", input_tokens, output_tokens, cost
                 )
                 await conn.execute("UPDATE msj_conversations SET updated_at = NOW() WHERE id = $1", conversation_id)
                 await conn.execute("UPDATE msj_projects SET updated_at = NOW() WHERE id = $1", project_id)
@@ -6982,7 +6982,7 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
             full_text = ""
 
             async with client.messages.stream(
-                model="claude-sonnet-4-6-20250514",
+                model="claude-sonnet-4-6",
                 max_tokens=8192,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
@@ -7012,7 +7012,7 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         # Save generated motion
         try:
             motion_metadata = {
-                "model": "claude-sonnet-4-6-20250514",
+                "model": "claude-sonnet-4-6",
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost": round(cost, 6),
