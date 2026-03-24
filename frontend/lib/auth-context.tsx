@@ -145,11 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const version = ++authVersionRef.current
 
       try {
-        // Get initial session — timeout after 5s in case token refresh hangs
+        // Get initial session — timeout after 10s to allow for navigator.locks
+        // contention when multiple tabs refresh simultaneously
         const getSessionWithTimeout = Promise.race([
           supabase.auth.getSession(),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('getSession timed out')), 5000)
+            setTimeout(() => reject(new Error('getSession timed out')), 10000)
           ),
         ])
 
@@ -165,15 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         )
       } catch (error: any) {
         if (error?.message === 'getSession timed out') {
-          // Token refresh is hanging — clear stale cookies so subsequent
-          // getSession() calls don't also hang. The user will need to sign in again.
-          console.warn('Auth init timed out, clearing stale session cookies')
-          document.cookie.split(';').forEach(cookie => {
-            const name = cookie.split('=')[0].trim()
-            if (name.startsWith('sb-')) {
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-            }
-          })
+          // getSession() is likely waiting on navigator.locks held by another tab.
+          // Don't clear cookies — that would destroy the session the other tab is
+          // refreshing. Just proceed as unauthenticated; onAuthStateChange will
+          // fire when the lock holder finishes and update our state.
+          console.warn('Auth init timed out (likely waiting on another tab), proceeding without session')
         } else {
           console.error('Error initializing auth:', error)
         }
@@ -186,12 +183,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Failsafe: if auth takes longer than 8 seconds, stop loading anyway
+    // Failsafe: if auth takes longer than 15 seconds, stop loading anyway
     timeoutId = setTimeout(() => {
       if (mounted) {
         setIsLoading(false)
       }
-    }, 8000)
+    }, 15000)
 
     initAuth()
 
@@ -413,7 +410,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session: currentSession } } = await Promise.race([
         supabase.auth.getSession(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('getSession timed out')), 5000)
+          setTimeout(() => reject(new Error('getSession timed out')), 10000)
         ),
       ])
       if (!currentSession) return null
