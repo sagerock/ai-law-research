@@ -253,8 +253,10 @@ export interface MSJCaseInfo {
 export interface MSJFact {
   fact_number: number
   text: string
-  source_doc_id: number | null
+  source_doc_ids: number[]
   source_excerpt: string | null
+  // backward compat
+  source_doc_id?: number | null
 }
 
 export interface MSJArgument {
