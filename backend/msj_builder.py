@@ -582,6 +582,18 @@ def _render_motion_content(doc, lines: list[str]):
             _add_centered_para(doc, stripped[3:].strip(), bold=True, size=12)
             continue
 
+        # Sub-sub-headings (####) — left-aligned, bold, italic, indented
+        if stripped.startswith("#### "):
+            p = doc.add_paragraph()
+            p.paragraph_format.first_line_indent = Inches(0.5)
+            p.paragraph_format.space_before = Pt(6)
+            run = p.add_run(stripped[5:].strip())
+            run.bold = True
+            run.italic = True
+            run.font.name = "Times New Roman"
+            run.font.size = Pt(12)
+            continue
+
         # Argument sub-headings (left-aligned, bold, indented)
         if stripped.startswith("### "):
             p = doc.add_paragraph()
