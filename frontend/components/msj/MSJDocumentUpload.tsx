@@ -50,6 +50,11 @@ export default function MSJDocumentUpload({
       setError('File must be under 10MB')
       return
     }
+    // Check for duplicate by filename
+    if (allDocuments.some((d) => d.filename === file.name)) {
+      setError(`"${file.name}" has already been uploaded`)
+      return
+    }
 
     setUploading(true)
     setError(null)
