@@ -212,13 +212,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    // Listen for cross-tab logout (localStorage cleared by another tab).
-    // Only react to the main auth-token key being removed — ignore other
-    // sb-* keys that may be transiently set/cleared during token refresh.
+    // Listen for cross-tab auth changes (sign-out or token refresh in another tab).
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key?.includes('-auth-token') && e.key?.startsWith('sb-') && e.newValue === null) {
+      if (e.key !== 'sb-legal-researcher-auth-token') return
+
+      if (e.newValue === null) {
+        // Another tab signed out
         const version = ++authVersionRef.current
         applySession(null, version)
+      } else if (e.newValue && e.oldValue !== e.newValue) {
+        // Another tab refreshed the token — re-read session from SDK
+        supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
+          if (!mounted) return
+          const version = ++authVersionRef.current
+          applySession(freshSession, version)
+        })
       }
     }
     window.addEventListener('storage', handleStorageChange)
@@ -378,54 +386,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null }
   }
 
-  // Proactive token refresh — refresh 2 minutes before expiry so components
-  // reading session?.access_token from React state always have a valid token.
-  // The onAuthStateChange handler will pick up the TOKEN_REFRESHED event and
-  // update session/user/profile state automatically.
-  useEffect(() => {
-    if (!session?.expires_at) return
+  // Token refresh is handled by Supabase SDK's autoRefreshToken: true.
+  // Do NOT add a manual refresh timer here — it races with the SDK's
+  // built-in refresh and with other tabs, causing refresh token rotation
+  // conflicts that log users out.
 
-    const expiresAt = session.expires_at * 1000
-    const refreshAt = expiresAt - 120_000 // 2 min before expiry
-    const delay = refreshAt - Date.now()
-
-    if (delay <= 0) {
-      // Already past refresh window — refresh immediately
-      supabase.auth.refreshSession()
-      return
-    }
-
-    const timer = setTimeout(() => {
-      supabase.auth.refreshSession()
-    }, delay)
-
-    return () => clearTimeout(timer)
-  }, [session?.expires_at])
-
-  // Get a fresh access token (refreshes if expired or about to expire)
+  // Get a fresh access token — delegates refresh to SDK (autoRefreshToken).
+  // Avoids calling refreshSession() directly to prevent multi-tab race conditions.
   const getAccessToken = async (): Promise<string | null> => {
     try {
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       if (!currentSession) return null
 
-      // If token expires within 60 seconds, force a refresh
+      // If token is expired or about to expire, let getUser() trigger the
+      // SDK's internal refresh (which uses navigator.locks for tab safety)
       const expiresAt = currentSession.expires_at
       if (expiresAt && expiresAt * 1000 < Date.now() + 60000) {
-        // Timeout the refresh so we don't hang forever on stale sessions
-        const refreshPromise = supabase.auth.refreshSession()
-        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-          setTimeout(() => resolve({ data: { session: null } }), 5000)
-        )
-        const { data } = await Promise.race([refreshPromise, timeoutPromise])
-        if (data.session) {
-          setSession(data.session)
-          setUser(data.session.user)
-          return data.session.access_token
+        const { data: { user: refreshedUser }, error } = await Promise.race([
+          supabase.auth.getUser(),
+          new Promise<{ data: { user: null }, error: Error }>((resolve) =>
+            setTimeout(() => resolve({ data: { user: null }, error: new Error('timed out') }), 5000)
+          ),
+        ])
+        if (error || !refreshedUser) {
+          console.warn('Auth token near expiry, refresh pending')
+          // Return the current token anyway — it may still be valid for a few more seconds
+          return currentSession.access_token
         }
-        // Refresh failed or timed out — return null but don't sign out
-        // (signing out clears tokens and causes a re-render loop)
-        console.warn('Auth session refresh failed or timed out')
-        return null
+        // After getUser, re-read the session which the SDK may have refreshed
+        const { data: { session: freshSession } } = await supabase.auth.getSession()
+        if (freshSession) {
+          setSession(freshSession)
+          setUser(freshSession.user)
+          return freshSession.access_token
+        }
       }
 
       return currentSession.access_token

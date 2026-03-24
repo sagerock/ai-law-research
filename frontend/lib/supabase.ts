@@ -23,6 +23,8 @@ export function createClient(): SupabaseClient | null {
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true,
+          // Explicit storage key for cross-tab session sync
+          storageKey: 'sb-legal-researcher-auth-token',
         },
       }
     )
