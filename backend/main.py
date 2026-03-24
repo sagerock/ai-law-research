@@ -197,6 +197,30 @@ class ProfileUpdate(BaseModel):
     username: Optional[str] = None
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
+
+
+# MSJ Builder models
+class MSJProjectCreate(BaseModel):
+    title: Optional[str] = None
+
+class MSJProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    case_info: Optional[dict] = None
+    material_facts: Optional[list] = None
+    legal_arguments: Optional[list] = None
+
+class MSJChatMessage(BaseModel):
+    content: str
+    conversation_id: Optional[int] = None
+    action: Optional[str] = None  # refine_facts, refine_arguments, generate_motion, general
+
+class MSJLibraryCreate(BaseModel):
+    title: str
+    doc_type: str  # template, standard, sample_motion, local_rule
+    jurisdiction: Optional[str] = None
+    court: Optional[str] = None
+    content: str
+    metadata: Optional[dict] = None
     law_school: Optional[str] = None
     graduation_year: Optional[int] = None
     is_public: Optional[bool] = None
@@ -6406,6 +6430,641 @@ async def session_progress(mindmap_id: int, user: dict = Depends(require_auth)):
         }
         for r in rows
     ]
+
+
+# ============================================================================
+# MSJ Builder - Motion for Summary Judgment Tool
+# ============================================================================
+
+@app.post("/api/v1/msj/projects")
+async def create_msj_project(data: MSJProjectCreate, user: dict = Depends(require_auth)):
+    """Create a new MSJ project"""
+    user_id = user["id"]
+    title = data.title or "Untitled Motion"
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO msj_projects (user_id, title)
+               VALUES ($1, $2) RETURNING id, title, status, case_info, material_facts,
+               legal_arguments, generated_motion, motion_metadata, created_at, updated_at""",
+            user_id, title
+        )
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "status": row["status"],
+        "case_info": json.loads(row["case_info"]) if isinstance(row["case_info"], str) else row["case_info"],
+        "material_facts": json.loads(row["material_facts"]) if isinstance(row["material_facts"], str) else row["material_facts"],
+        "legal_arguments": json.loads(row["legal_arguments"]) if isinstance(row["legal_arguments"], str) else row["legal_arguments"],
+        "documents": [],
+        "generated_motion": row["generated_motion"],
+        "motion_metadata": json.loads(row["motion_metadata"]) if isinstance(row["motion_metadata"], str) else row["motion_metadata"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+    }
+
+
+@app.get("/api/v1/msj/projects")
+async def list_msj_projects(user: dict = Depends(require_auth)):
+    """List all MSJ projects for the authenticated user"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT p.id, p.title, p.status, p.case_info, p.created_at, p.updated_at,
+                      COUNT(d.id) as doc_count
+               FROM msj_projects p
+               LEFT JOIN msj_documents d ON p.id = d.project_id
+               WHERE p.user_id = $1
+               GROUP BY p.id
+               ORDER BY p.updated_at DESC""",
+            user_id
+        )
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "status": row["status"],
+            "case_info": json.loads(row["case_info"]) if isinstance(row["case_info"], str) else row["case_info"],
+            "doc_count": row["doc_count"],
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/v1/msj/projects/{project_id}")
+async def get_msj_project(project_id: int, user: dict = Depends(require_auth)):
+    """Get a single MSJ project with all documents"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            """SELECT id, title, status, case_info, material_facts, legal_arguments,
+                      generated_motion, motion_metadata, created_at, updated_at
+               FROM msj_projects WHERE id = $1 AND user_id = $2""",
+            project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        docs = await conn.fetch(
+            """SELECT id, doc_type, title, filename, file_size, file_type, char_count, step, sort_order, created_at
+               FROM msj_documents WHERE project_id = $1
+               ORDER BY step, sort_order, created_at""",
+            project_id
+        )
+
+    return {
+        "id": project["id"],
+        "title": project["title"],
+        "status": project["status"],
+        "case_info": json.loads(project["case_info"]) if isinstance(project["case_info"], str) else project["case_info"],
+        "material_facts": json.loads(project["material_facts"]) if isinstance(project["material_facts"], str) else project["material_facts"],
+        "legal_arguments": json.loads(project["legal_arguments"]) if isinstance(project["legal_arguments"], str) else project["legal_arguments"],
+        "generated_motion": project["generated_motion"],
+        "motion_metadata": json.loads(project["motion_metadata"]) if isinstance(project["motion_metadata"], str) else project["motion_metadata"],
+        "documents": [
+            {
+                "id": d["id"],
+                "doc_type": d["doc_type"],
+                "title": d["title"],
+                "filename": d["filename"],
+                "file_size": d["file_size"],
+                "file_type": d["file_type"],
+                "char_count": d["char_count"],
+                "step": d["step"],
+                "sort_order": d["sort_order"],
+                "created_at": d["created_at"].isoformat() if d["created_at"] else None,
+            }
+            for d in docs
+        ],
+        "created_at": project["created_at"].isoformat() if project["created_at"] else None,
+        "updated_at": project["updated_at"].isoformat() if project["updated_at"] else None,
+    }
+
+
+@app.put("/api/v1/msj/projects/{project_id}")
+async def update_msj_project(project_id: int, data: MSJProjectUpdate, user: dict = Depends(require_auth)):
+    """Update MSJ project wizard data"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT id FROM msj_projects WHERE id = $1 AND user_id = $2",
+            project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        updates = []
+        params = []
+        idx = 1
+
+        if data.title is not None:
+            updates.append(f"title = ${idx}")
+            params.append(data.title)
+            idx += 1
+        if data.case_info is not None:
+            updates.append(f"case_info = ${idx}")
+            params.append(json.dumps(data.case_info))
+            idx += 1
+        if data.material_facts is not None:
+            updates.append(f"material_facts = ${idx}")
+            params.append(json.dumps(data.material_facts))
+            idx += 1
+        if data.legal_arguments is not None:
+            updates.append(f"legal_arguments = ${idx}")
+            params.append(json.dumps(data.legal_arguments))
+            idx += 1
+
+        if not updates:
+            return {"ok": True}
+
+        updates.append(f"updated_at = NOW()")
+        params.append(project_id)
+        params.append(user_id)
+
+        await conn.execute(
+            f"UPDATE msj_projects SET {', '.join(updates)} WHERE id = ${idx} AND user_id = ${idx + 1}",
+            *params
+        )
+
+    return {"ok": True}
+
+
+@app.delete("/api/v1/msj/projects/{project_id}")
+async def delete_msj_project(project_id: int, user: dict = Depends(require_auth)):
+    """Delete an MSJ project and all associated documents"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM msj_projects WHERE id = $1 AND user_id = $2",
+            project_id, user_id
+        )
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Project not found")
+    return {"ok": True}
+
+
+@app.post("/api/v1/msj/projects/{project_id}/documents")
+async def upload_msj_document(
+    project_id: int,
+    file: UploadFile = File(...),
+    doc_type: str = Form("evidence"),
+    title: str = Form(""),
+    step: int = Form(4),
+    user: dict = Depends(require_auth),
+):
+    """Upload a document to an MSJ project"""
+    user_id = user["id"]
+
+    # Verify project ownership
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT id FROM msj_projects WHERE id = $1 AND user_id = $2",
+            project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    # Validate file type
+    filename = file.filename or "unknown"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("pdf", "docx", "txt"):
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
+
+    # Read and extract text
+    content = await file.read()
+    file_size = len(content)
+
+    if file_size > 10 * 1024 * 1024:  # 10MB limit
+        raise HTTPException(status_code=400, detail="File size must be under 10MB")
+
+    extracted_text = ""
+    try:
+        if ext == "pdf":
+            extracted_text = extract_text_from_pdf(content)
+        elif ext == "docx":
+            extracted_text = extract_text_from_docx(content)
+        else:
+            extracted_text = content.decode("utf-8", errors="replace")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to extract text: {str(e)}")
+
+    if not extracted_text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract any text from this file")
+
+    doc_title = title or filename.rsplit(".", 1)[0]
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO msj_documents (project_id, user_id, doc_type, title, filename, file_size, file_type, extracted_text, char_count, step)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               RETURNING id, doc_type, title, filename, file_size, file_type, char_count, step, sort_order, created_at""",
+            project_id, user_id, doc_type, doc_title, filename, file_size, ext, extracted_text, len(extracted_text), step
+        )
+        # Update project timestamp
+        await conn.execute("UPDATE msj_projects SET updated_at = NOW() WHERE id = $1", project_id)
+
+    return {
+        "id": row["id"],
+        "doc_type": row["doc_type"],
+        "title": row["title"],
+        "filename": row["filename"],
+        "file_size": row["file_size"],
+        "file_type": row["file_type"],
+        "char_count": row["char_count"],
+        "step": row["step"],
+        "sort_order": row["sort_order"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.delete("/api/v1/msj/projects/{project_id}/documents/{doc_id}")
+async def delete_msj_document(project_id: int, doc_id: int, user: dict = Depends(require_auth)):
+    """Remove a document from an MSJ project"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM msj_documents WHERE id = $1 AND project_id = $2 AND user_id = $3",
+            doc_id, project_id, user_id
+        )
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Document not found")
+    return {"ok": True}
+
+
+# ============================================================================
+# MSJ Builder - Library (Admin-curated approved resources)
+# ============================================================================
+
+@app.get("/api/v1/msj/library")
+async def list_msj_library(
+    doc_type: Optional[str] = None,
+    jurisdiction: Optional[str] = None,
+):
+    """List approved MSJ library documents (public, no auth required)"""
+    async with db_pool.acquire() as conn:
+        query = "SELECT id, title, doc_type, jurisdiction, court, metadata, created_at FROM msj_library WHERE is_active = TRUE"
+        params = []
+        idx = 1
+
+        if doc_type:
+            query += f" AND doc_type = ${idx}"
+            params.append(doc_type)
+            idx += 1
+        if jurisdiction:
+            query += f" AND (jurisdiction = ${idx} OR jurisdiction IS NULL)"
+            params.append(jurisdiction)
+            idx += 1
+
+        query += " ORDER BY doc_type, title"
+        rows = await conn.fetch(query, *params)
+
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "doc_type": row["doc_type"],
+            "jurisdiction": row["jurisdiction"],
+            "court": row["court"],
+            "metadata": json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"],
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/v1/msj/library/{doc_id}")
+async def get_msj_library_doc(doc_id: int):
+    """Get a single library document with full content"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, title, doc_type, jurisdiction, court, content, metadata, created_at FROM msj_library WHERE id = $1 AND is_active = TRUE",
+            doc_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Library document not found")
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "doc_type": row["doc_type"],
+        "jurisdiction": row["jurisdiction"],
+        "court": row["court"],
+        "content": row["content"],
+        "metadata": json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.post("/api/v1/msj/library")
+async def create_msj_library_doc(data: MSJLibraryCreate, user: dict = Depends(require_admin)):
+    """Add a document to the MSJ library (admin only)"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO msj_library (title, doc_type, jurisdiction, court, content, metadata, created_by)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING id, title, doc_type, jurisdiction, court, created_at""",
+            data.title, data.doc_type, data.jurisdiction, data.court, data.content,
+            json.dumps(data.metadata or {}), user["id"]
+        )
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "doc_type": row["doc_type"],
+        "jurisdiction": row["jurisdiction"],
+        "court": row["court"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.delete("/api/v1/msj/library/{doc_id}")
+async def delete_msj_library_doc(doc_id: int, user: dict = Depends(require_admin)):
+    """Soft-delete a library document (admin only)"""
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE msj_library SET is_active = FALSE WHERE id = $1", doc_id
+        )
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Library document not found")
+    return {"ok": True}
+
+
+# ============================================================================
+# MSJ Builder - AI Chat & Motion Generation
+# ============================================================================
+
+@app.post("/api/v1/msj/projects/{project_id}/chat")
+async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optional[str] = Header(None)):
+    """AI chat for MSJ project refinement (streaming SSE)"""
+    user = await require_auth(authorization)
+    user_id = user["id"]
+
+    # Get API key (BYOK or site)
+    api_key, key_source = await get_anthropic_api_key(user_id)
+    if key_source == "site":
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
+    # Load project with documents
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            """SELECT id, title, status, case_info, material_facts, legal_arguments, generated_motion
+               FROM msj_projects WHERE id = $1 AND user_id = $2""",
+            project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        docs = await conn.fetch(
+            "SELECT id, doc_type, title, extracted_text, step FROM msj_documents WHERE project_id = $1 ORDER BY step, sort_order",
+            project_id
+        )
+
+        # Get or create conversation
+        conversation_id = data.conversation_id
+        if conversation_id:
+            convo = await conn.fetchrow(
+                "SELECT id FROM msj_conversations WHERE id = $1 AND project_id = $2 AND user_id = $3",
+                conversation_id, project_id, user_id
+            )
+            if not convo:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+        else:
+            convo = await conn.fetchrow(
+                "INSERT INTO msj_conversations (project_id, user_id) VALUES ($1, $2) RETURNING id",
+                project_id, user_id
+            )
+            conversation_id = convo["id"]
+
+        # Load conversation history (last 20 messages)
+        history = await conn.fetch(
+            "SELECT role, content FROM msj_messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 20",
+            conversation_id
+        )
+        history = list(reversed(history))
+
+        # Load library docs relevant to jurisdiction
+        case_info = json.loads(project["case_info"]) if isinstance(project["case_info"], str) else (project["case_info"] or {})
+        jurisdiction = case_info.get("jurisdiction", "federal")
+        library_docs = await conn.fetch(
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND (jurisdiction = $1 OR jurisdiction IS NULL) LIMIT 5",
+            jurisdiction
+        )
+
+        # Load FRCP Rule 56
+        rule_56 = await conn.fetchrow(
+            "SELECT title, body FROM legal_text_items WHERE document_id = 'frcp' AND slug = 'rule-56'"
+        )
+
+    # Build system prompt
+    from msj_builder import build_msj_system_prompt
+    system_prompt = build_msj_system_prompt(
+        case_info=case_info,
+        material_facts=json.loads(project["material_facts"]) if isinstance(project["material_facts"], str) else (project["material_facts"] or []),
+        legal_arguments=json.loads(project["legal_arguments"]) if isinstance(project["legal_arguments"], str) else (project["legal_arguments"] or []),
+        documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
+        library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
+        rule_56_text=rule_56["body"] if rule_56 else None,
+        generated_motion=project["generated_motion"],
+    )
+
+    # Build messages
+    messages = []
+    for msg in history:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": data.content})
+
+    async def stream_response():
+        yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation_id})}\n\n"
+
+        try:
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+            full_text = ""
+
+            async with client.messages.stream(
+                model="claude-sonnet-4-6-20250514",
+                max_tokens=4096,
+                system=system_prompt,
+                messages=messages,
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_text += text
+                    yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+
+                final_message = await stream.get_final_message()
+                input_tokens = final_message.usage.input_tokens
+                output_tokens = final_message.usage.output_tokens
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            return
+
+        # Calculate cost (Sonnet: $3/1M input, $15/1M output)
+        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
+
+        # Save messages and log usage after done event
+        try:
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "INSERT INTO msj_messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
+                    conversation_id, data.content
+                )
+                await conn.execute(
+                    "INSERT INTO msj_messages (conversation_id, role, content, model, input_tokens, output_tokens, cost) VALUES ($1, 'assistant', $2, $3, $4, $5, $6)",
+                    conversation_id, full_text, "claude-sonnet-4-6-20250514", input_tokens, output_tokens, cost
+                )
+                await conn.execute("UPDATE msj_conversations SET updated_at = NOW() WHERE id = $1", conversation_id)
+                await conn.execute("UPDATE msj_projects SET updated_at = NOW() WHERE id = $1", project_id)
+            await log_api_usage("msj_chat", input_tokens, output_tokens, cost, source=key_source)
+        except Exception as e:
+            print(f"Failed to save MSJ chat: {e}")
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/v1/msj/projects/{project_id}/generate")
+async def msj_generate_motion(project_id: int, authorization: Optional[str] = Header(None)):
+    """Generate the full motion for summary judgment (streaming SSE)"""
+    user = await require_auth(authorization)
+    user_id = user["id"]
+
+    api_key, key_source = await get_anthropic_api_key(user_id)
+    if key_source == "site":
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            """SELECT id, title, status, case_info, material_facts, legal_arguments
+               FROM msj_projects WHERE id = $1 AND user_id = $2""",
+            project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        docs = await conn.fetch(
+            "SELECT id, doc_type, title, extracted_text, step FROM msj_documents WHERE project_id = $1 ORDER BY step, sort_order",
+            project_id
+        )
+
+        case_info = json.loads(project["case_info"]) if isinstance(project["case_info"], str) else (project["case_info"] or {})
+        jurisdiction = case_info.get("jurisdiction", "federal")
+        library_docs = await conn.fetch(
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND (jurisdiction = $1 OR jurisdiction IS NULL) LIMIT 5",
+            jurisdiction
+        )
+
+        rule_56 = await conn.fetchrow(
+            "SELECT title, body FROM legal_text_items WHERE document_id = 'frcp' AND slug = 'rule-56'"
+        )
+
+        # Update status to generating
+        await conn.execute("UPDATE msj_projects SET status = 'generating', updated_at = NOW() WHERE id = $1", project_id)
+
+    from msj_builder import build_msj_generation_prompt
+    system_prompt, user_prompt = build_msj_generation_prompt(
+        case_info=case_info,
+        material_facts=json.loads(project["material_facts"]) if isinstance(project["material_facts"], str) else (project["material_facts"] or []),
+        legal_arguments=json.loads(project["legal_arguments"]) if isinstance(project["legal_arguments"], str) else (project["legal_arguments"] or []),
+        documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
+        library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
+        rule_56_text=rule_56["body"] if rule_56 else None,
+    )
+
+    async def stream_response():
+        try:
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+            full_text = ""
+
+            async with client.messages.stream(
+                model="claude-sonnet-4-6-20250514",
+                max_tokens=8192,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_text += text
+                    yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+
+                final_message = await stream.get_final_message()
+                input_tokens = final_message.usage.input_tokens
+                output_tokens = final_message.usage.output_tokens
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            # Reset status on error
+            try:
+                async with db_pool.acquire() as conn:
+                    await conn.execute("UPDATE msj_projects SET status = 'draft', updated_at = NOW() WHERE id = $1", project_id)
+            except Exception:
+                pass
+            return
+
+        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+
+        yield f"data: {json.dumps({'type': 'done', 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
+
+        # Save generated motion
+        try:
+            motion_metadata = {
+                "model": "claude-sonnet-4-6-20250514",
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": round(cost, 6),
+                "generated_at": datetime.utcnow().isoformat(),
+            }
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE msj_projects SET generated_motion = $1, motion_metadata = $2, status = 'complete', updated_at = NOW() WHERE id = $3",
+                    full_text, json.dumps(motion_metadata), project_id
+                )
+            await log_api_usage("msj_generate", input_tokens, output_tokens, cost, source=key_source)
+        except Exception as e:
+            print(f"Failed to save MSJ generation: {e}")
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/v1/msj/projects/{project_id}/export")
+async def export_msj_motion(project_id: int, user: dict = Depends(require_auth)):
+    """Export generated motion as DOCX"""
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT title, case_info, generated_motion FROM msj_projects WHERE id = $1 AND user_id = $2",
+            project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if not project["generated_motion"]:
+            raise HTTPException(status_code=400, detail="No motion has been generated yet")
+
+    case_info = json.loads(project["case_info"]) if isinstance(project["case_info"], str) else (project["case_info"] or {})
+
+    from msj_builder import generate_motion_docx
+    docx_bytes = generate_motion_docx(case_info, project["generated_motion"])
+
+    # Build filename
+    plaintiff = case_info.get("plaintiff", "Plaintiff")
+    defendant = case_info.get("defendant", "Defendant")
+    safe_name = re.sub(r'[^\w\s-]', '', f"{plaintiff} v {defendant}")[:50].strip()
+    filename = f"MSJ - {safe_name}.docx" if safe_name else "Motion for Summary Judgment.docx"
+
+    return StreamingResponse(
+        io.BytesIO(docx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 if __name__ == "__main__":

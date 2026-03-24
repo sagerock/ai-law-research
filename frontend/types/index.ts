@@ -223,3 +223,57 @@ export interface TransparencyStats {
   community_pool_healthy: boolean
   community_pool_low: boolean
 }
+
+// MSJ Builder types
+export interface MSJProject {
+  id: number
+  title: string
+  status: 'draft' | 'generating' | 'complete'
+  case_info: MSJCaseInfo
+  material_facts: MSJFact[]
+  legal_arguments: MSJArgument[]
+  documents: MSJDocument[]
+  generated_motion: string | null
+  motion_metadata: Record<string, any>
+  created_at: string
+  updated_at: string
+  doc_count?: number
+}
+
+export interface MSJCaseInfo {
+  plaintiff?: string
+  defendant?: string
+  court?: string
+  jurisdiction?: string
+  case_number?: string
+  representing_side?: string
+  judge?: string
+}
+
+export interface MSJFact {
+  fact_number: number
+  text: string
+  source_doc_id: number | null
+  source_excerpt: string | null
+}
+
+export interface MSJArgument {
+  issue: string
+  standard: string
+  argument_text: string
+  supporting_case_ids: string[]
+  supporting_rule_ids: string[]
+}
+
+export interface MSJDocument {
+  id: number
+  doc_type: string
+  title: string
+  filename: string
+  file_size: number
+  file_type: string
+  char_count: number
+  step: number
+  sort_order: number
+  created_at: string
+}
