@@ -249,22 +249,26 @@ Numbered facts, each with a citation to the record. Reference uploaded documents
 State the Rule 56(a) standard and applicable case law on burdens of production.
 
 ## Argument
-Organize with ### subheadings for each legal issue. For each issue:
-- State the conclusion
-- State and explain the governing legal rule with citations
-- Apply the rule to the undisputed facts (cite back to the Statement of Facts)
-- Address anticipated counterarguments
+Organize with ### subheadings for each legal issue or element challenged. For EACH issue, follow this exact structure:
+
+1. STATE WHAT YOU WANT: Begin with what the court should conclude. Example: "Summary judgment should be granted because [opposing party] cannot produce sufficient evidence that [element]."
+2. STATE THE LAW: Cite the governing substantive law for that element with binding authority and pin cites.
+3. APPLY TO UNDISPUTED FACTS: Show how the specific undisputed facts (citing record evidence) satisfy or fail to satisfy the element. Weave the burden language throughout — remind the court who bears the burden and that they have not met it.
+4. CONCLUDE WITH BURDEN: End each section by restating that the opposing party bears the burden and has failed to produce sufficient evidence for a rational fact-finder. Example: "Because [party] bears the burden of proof on [element] and has not produced sufficient evidence that a rational fact-finder could find in their favor, summary judgment is warranted on this issue."
+
+Repeat this structure for EACH element or issue addressed.
 
 ## Conclusion
-State the specific relief requested.
+State the SPECIFIC relief requested. Be precise about what you want the court to do — do not ask for general relief. Example: "For the foregoing reasons, {representing.capitalize()} respectfully requests that this Court grant summary judgment in {representing.capitalize()}'s favor on Defendant's affirmative defense of [specific defense] and enter judgment accordingly."
 
 IMPORTANT FORMATTING RULES:
 - Use ## for main section headings and ### for argument sub-headings
 - Number each fact in the Statement of Facts (1., 2., 3., etc.)
-- Use standard legal citation format
-- Write in formal legal prose with first-person plural for the movant (\"Plaintiff respectfully submits...\")
-- Every fact must cite to a specific document from the record (Doc #X)
-- Every legal proposition must cite to an approved source
+- Use standard legal citation format with PIN CITES (specific page numbers). Example: Celotex Corp. v. Catrett, 477 U.S. 317, 323 (1986)
+- For deposition citations use the format: (Last Name, Deposition, at [page/paragraph])
+- Write in formal legal prose appropriate for a federal court filing
+- Every fact must cite to a specific document from the record
+- Every legal proposition must cite to an approved source with a pin cite
 - Do NOT invent or fabricate any citation
 - This is for educational purposes only
 
