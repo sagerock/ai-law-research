@@ -12,7 +12,7 @@ import type { MSJProject } from '@/types'
 export default function MSJProjectPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, getAccessToken } = useAuth()
+  const { user, session } = useAuth()
   const [project, setProject] = useState<MSJProject | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +25,7 @@ export default function MSJProjectPage() {
 
   const loadProject = async () => {
     try {
-      const token = await getAccessToken()
+      const token = session?.access_token
       const res = await fetch(`${API_URL}/api/v1/msj/projects/${projectId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })

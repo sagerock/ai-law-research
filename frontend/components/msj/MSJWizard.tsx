@@ -28,7 +28,7 @@ const STEPS = [
 
 export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
   const router = useRouter()
-  const { getAccessToken } = useAuth()
+  const { session } = useAuth()
   const [activeStep, setActiveStep] = useState(1)
   const [saving, setSaving] = useState(false)
 
@@ -36,7 +36,7 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
     async (updates: Partial<MSJProject>) => {
       setSaving(true)
       try {
-        const token = await getAccessToken()
+        const token = session?.access_token
         const body: Record<string, any> = {}
         if (updates.title !== undefined) body.title = updates.title
         if (updates.case_info !== undefined) body.case_info = updates.case_info
@@ -59,7 +59,7 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
         setSaving(false)
       }
     },
-    [project, getAccessToken, onUpdate]
+    [project, session, onUpdate]
   )
 
   const handleDocumentsChange = useCallback(

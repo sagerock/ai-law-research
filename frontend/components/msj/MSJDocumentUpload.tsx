@@ -27,7 +27,7 @@ export default function MSJDocumentUpload({
   allDocuments,
   onDocumentsChange,
 }: MSJDocumentUploadProps) {
-  const { getAccessToken } = useAuth()
+  const { session } = useAuth()
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,12 +60,7 @@ export default function MSJDocumentUpload({
     setError(null)
 
     try {
-      // Timeout the token fetch so we don't spin forever on expired sessions
-      const tokenPromise = getAccessToken()
-      const timeoutPromise = new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error('Session expired — please sign out and sign back in')), 5000)
-      )
-      const token = await Promise.race([tokenPromise, timeoutPromise])
+      const token = session?.access_token
       if (!token) {
         throw new Error('Please sign in to upload documents')
       }
@@ -118,7 +113,7 @@ export default function MSJDocumentUpload({
 
   const deleteDoc = async (docId: number) => {
     try {
-      const token = await getAccessToken()
+      const token = session?.access_token
       await fetch(`${API_URL}/api/v1/msj/projects/${projectId}/documents/${docId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },

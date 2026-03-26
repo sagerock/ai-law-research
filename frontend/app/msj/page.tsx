@@ -9,7 +9,7 @@ import { FileText, Plus, Loader2, Trash2, AlertCircle } from 'lucide-react'
 import type { MSJProject } from '@/types'
 
 export default function MSJPage() {
-  const { user, getAccessToken } = useAuth()
+  const { user, session } = useAuth()
   const router = useRouter()
   const [projects, setProjects] = useState<MSJProject[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +23,7 @@ export default function MSJPage() {
 
   const loadProjects = async (retries = 2) => {
     try {
-      const token = await getAccessToken()
+      const token = session?.access_token
       if (!token) {
         // Token not ready yet — retry after a short delay
         if (retries > 0) {
@@ -59,7 +59,7 @@ export default function MSJPage() {
     setCreating(true)
     setError(null)
     try {
-      const token = await getAccessToken()
+      const token = session?.access_token
       if (!token) {
         setError('Session expired. Please sign in again.')
         return
@@ -88,7 +88,7 @@ export default function MSJPage() {
   const deleteProject = async (id: number) => {
     if (!confirm('Delete this project and all its documents?')) return
     try {
-      const token = await getAccessToken()
+      const token = session?.access_token
       await fetch(`${API_URL}/api/v1/msj/projects/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },

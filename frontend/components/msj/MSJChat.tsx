@@ -18,7 +18,7 @@ interface ChatMessage {
 }
 
 export default function MSJChat({ project, onProjectUpdate }: MSJChatProps) {
-  const { getAccessToken } = useAuth()
+  const { session } = useAuth()
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversationId, setConversationId] = useState<number | null>(null)
@@ -49,10 +49,7 @@ export default function MSJChat({ project, onProjectUpdate }: MSJChatProps) {
     setStreamingText('')
 
     try {
-      const token = await Promise.race([
-        getAccessToken(),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Session expired — please sign out and sign back in')), 5000)),
-      ])
+      const token = session?.access_token
       if (!token) { setError('Please sign in'); setStreaming(false); return }
       const res = await fetch(`${API_URL}/api/v1/msj/projects/${project.id}/chat`, {
         method: 'POST',
@@ -123,10 +120,7 @@ export default function MSJChat({ project, onProjectUpdate }: MSJChatProps) {
     setShowMotion(true)
 
     try {
-      const token = await Promise.race([
-        getAccessToken(),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Session expired — please sign out and sign back in')), 5000)),
-      ])
+      const token = session?.access_token
       if (!token) { setError('Please sign in'); setGenerating(false); return }
       const res = await fetch(`${API_URL}/api/v1/msj/projects/${project.id}/generate`, {
         method: 'POST',
@@ -191,10 +185,7 @@ export default function MSJChat({ project, onProjectUpdate }: MSJChatProps) {
 
   const exportDocx = async () => {
     try {
-      const token = await Promise.race([
-        getAccessToken(),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Session expired')), 5000)),
-      ])
+      const token = session?.access_token
       const res = await fetch(`${API_URL}/api/v1/msj/projects/${project.id}/export`, {
         headers: { Authorization: `Bearer ${token}` },
       })
