@@ -15,7 +15,7 @@ interface CaseAskAIProps {
 }
 
 export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
-  const { user, session, getAccessToken } = useAuth()
+  const { user, session } = useAuth()
   const router = useRouter()
 
   const [mounted, setMounted] = useState(false)
@@ -35,14 +35,14 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const getFreshAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    const token = await getAccessToken()
+  const getAuthHeaders = (): Record<string, string> => {
+    const token = session?.access_token
     if (!token) return {}
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     }
-  }, [getAccessToken])
+  }
 
   // Fetch usage when section expands and user is signed in
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
 
   const fetchUsage = async () => {
     try {
-      const headers = await getFreshAuthHeaders()
+      const headers = getAuthHeaders()
       const res = await fetch(`${API_URL}/api/v1/study/usage`, {
         headers,
       })
@@ -98,7 +98,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
     const timeout = setTimeout(() => controller.abort(), 90000)
 
     try {
-      const headers = await getFreshAuthHeaders()
+      const headers = getAuthHeaders()
       if (!headers['Authorization']) {
         setError('Your session has expired. Please sign in again.')
         setStreaming(false)
