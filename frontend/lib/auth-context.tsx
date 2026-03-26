@@ -145,16 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const version = ++authVersionRef.current
 
       try {
-        // Get initial session — timeout after 10s to allow for navigator.locks
-        // contention when multiple tabs refresh simultaneously
-        const getSessionWithTimeout = Promise.race([
-          supabase.auth.getSession(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('getSession timed out')), 10000)
-          ),
-        ])
-
-        const { data: { session: initialSession }, error } = await getSessionWithTimeout
+        // getSession() acquires a navigator lock (with 5s timeout via our custom
+        // lock function in supabase.ts). No need for an additional outer timeout.
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
 
         if (error) {
           console.error('Error getting session:', error)
@@ -165,12 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           version
         )
       } catch (error: any) {
-        if (error?.message === 'getSession timed out') {
-          // getSession() is likely waiting on navigator.locks held by another tab.
-          // Don't clear cookies — that would destroy the session the other tab is
-          // refreshing. Just proceed as unauthenticated; onAuthStateChange will
-          // fire when the lock holder finishes and update our state.
-          console.warn('Auth init timed out (likely waiting on another tab), proceeding without session')
+        if (error?.isAcquireTimeout) {
+          // Lock held by another tab (likely refreshing token). Proceed without
+          // session — onAuthStateChange will fire when the lock holder finishes.
+          console.warn('Auth init: lock busy (another tab refreshing), proceeding without session')
         } else {
           console.error('Error initializing auth:', error)
         }
@@ -404,18 +395,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // built-in refresh and with other tabs, causing refresh token rotation
   // conflicts that log users out.
 
-  // Get a fresh access token. All SDK calls are timeboxed to prevent hangs.
+  // Get a fresh access token. Lock timeout is handled by the custom lock
+  // function (5s) so no additional outer timeout is needed.
   const getAccessToken = async (): Promise<string | null> => {
     try {
-      const { data: { session: currentSession } } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('getSession timed out')), 10000)
-        ),
-      ])
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
       if (!currentSession) return null
       return currentSession.access_token
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.isAcquireTimeout) {
+        // Lock busy — return the last known token from our ref rather than null
+        console.warn('getAccessToken: lock busy, using cached token')
+        return currentTokenRef.current
+      }
       console.error('getAccessToken error:', e)
       return null
     }

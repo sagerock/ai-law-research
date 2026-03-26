@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { navigatorLock } from '@supabase/auth-js'
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(
@@ -8,6 +9,16 @@ export const isSupabaseConfigured = Boolean(
 )
 
 let supabaseInstance: SupabaseClient | null = null
+
+// Custom lock with a 5-second acquire timeout instead of infinite.
+// Prevents getSession() from hanging when another tab holds the lock
+// during token refresh (the default uses acquireTimeout=-1 = infinite).
+function timedLock<R>(name: string, acquireTimeout: number, fn: () => Promise<R>): Promise<R> {
+  // Respect explicit timeouts (0 = immediate, positive = custom), but
+  // replace infinite (-1) with 5 seconds so tabs don't hang forever
+  const timeout = acquireTimeout < 0 ? 5000 : acquireTimeout
+  return navigatorLock(name, timeout, fn)
+}
 
 export function createClient(): SupabaseClient | null {
   if (!isSupabaseConfigured) {
@@ -23,6 +34,7 @@ export function createClient(): SupabaseClient | null {
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true,
+          lock: timedLock,
         },
       }
     )
