@@ -145,9 +145,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const version = ++authVersionRef.current
 
       try {
-        // getSession() acquires a navigator lock (with 5s timeout via our custom
-        // lock function in supabase.ts). No need for an additional outer timeout.
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+        // getSession() acquires a navigator lock with infinite timeout internally.
+        // Race against 10s to avoid hanging when another tab holds the lock.
+        const { data: { session: initialSession }, error } = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('getSession timed out')), 10000)
+          ),
+        ])
 
         if (error) {
           console.error('Error getting session:', error)
@@ -158,10 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           version
         )
       } catch (error: any) {
-        if (error?.isAcquireTimeout) {
-          // Lock held by another tab (likely refreshing token). Proceed without
-          // session — onAuthStateChange will fire when the lock holder finishes.
-          console.warn('Auth init: lock busy (another tab refreshing), proceeding without session')
+        if (error?.message === 'getSession timed out') {
+          // getSession() is waiting on navigator.locks held by another tab.
+          // Don't clear cookies — the other tab may be refreshing. Proceed
+          // without session; onAuthStateChange will update us when it's done.
+          console.warn('Auth init timed out (likely waiting on another tab), proceeding without session')
         } else {
           console.error('Error initializing auth:', error)
         }
@@ -212,10 +218,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // @supabase/ssr stores sessions in document.cookie, not localStorage,
     // so StorageEvent never fires. Instead, re-sync from cookies when the
     // tab becomes visible — another tab may have refreshed or signed out.
+    let visibilitySyncInFlight = false
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || !mounted) return
+      // Prevent stacking getSession() calls if the user rapidly switches tabs
+      if (visibilitySyncInFlight) return
+      visibilitySyncInFlight = true
 
-      supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
+      Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('visibility sync timed out')), 5000)
+        ),
+      ]).then(({ data: { session: freshSession } }) => {
         if (!mounted) return
 
         const freshToken = freshSession?.access_token ?? null
@@ -226,6 +241,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const version = ++authVersionRef.current
         applySession(freshSession, version)
+      }).catch(() => {
+        // Timeout or error — just skip this sync, don't log noise
+      }).finally(() => {
+        visibilitySyncInFlight = false
       })
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -395,16 +414,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // built-in refresh and with other tabs, causing refresh token rotation
   // conflicts that log users out.
 
-  // Get a fresh access token. Lock timeout is handled by the custom lock
-  // function (5s) so no additional outer timeout is needed.
+  // Get a fresh access token, with a timeout to avoid hanging on lock contention.
+  // Falls back to the cached token if getSession() hangs.
   const getAccessToken = async (): Promise<string | null> => {
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      const { data: { session: currentSession } } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('getSession timed out')), 5000)
+        ),
+      ])
       if (!currentSession) return null
       return currentSession.access_token
     } catch (e: any) {
-      if (e?.isAcquireTimeout) {
-        // Lock busy — return the last known token from our ref rather than null
+      if (e?.message === 'getSession timed out' && currentTokenRef.current) {
+        // Lock busy — return the last known token rather than failing
         console.warn('getAccessToken: lock busy, using cached token')
         return currentTokenRef.current
       }
