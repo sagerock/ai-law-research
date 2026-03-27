@@ -2,17 +2,22 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart, FileText } from 'lucide-react'
+import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart, FileText, Wrench } from 'lucide-react'
 import { UserMenu } from '@/components/auth/UserMenu'
 
 export default function Header() {
   const [refDropdownOpen, setRefDropdownOpen] = useState(false)
+  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false)
   const refDropdownRef = useRef<HTMLDivElement>(null)
+  const toolsDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (refDropdownRef.current && !refDropdownRef.current.contains(e.target as Node)) {
         setRefDropdownOpen(false)
+      }
+      if (toolsDropdownRef.current && !toolsDropdownRef.current.contains(e.target as Node)) {
+        setToolsDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -51,14 +56,32 @@ export default function Header() {
               <span className="hidden sm:inline">Textbooks</span>
             </Link>
 
-            <Link
-              href="/msj"
-              className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
-                         rounded-lg transition-all flex items-center gap-1.5"
-            >
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">MSJ Builder</span>
-            </Link>
+            <div className="relative" ref={toolsDropdownRef}>
+              <button
+                onClick={() => setToolsDropdownOpen(!toolsDropdownOpen)}
+                className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+                           rounded-lg transition-all flex items-center gap-1.5"
+              >
+                <Wrench className="h-4 w-4" />
+                <span className="hidden sm:inline">Tools</span>
+                <ChevronDown className={`h-3 w-3 hidden sm:block transition-transform ${toolsDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {toolsDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-stone-200
+                                rounded-xl shadow-lg shadow-stone-200/50 z-50 py-1.5">
+                  <Link href="/msj" onClick={() => setToolsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
+                                                 hover:bg-sage-50 hover:text-sage-700 transition-colors">
+                    <FileText className="h-4 w-4" />
+                    MSJ Builder
+                  </Link>
+                  <Link href="/tools/affidavit" onClick={() => setToolsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
+                                                 hover:bg-sage-50 hover:text-sage-700 transition-colors">
+                    <Scale className="h-4 w-4" />
+                    Affidavit Builder
+                  </Link>
+                </div>
+              )}
+            </div>
 
             <div className="relative" ref={refDropdownRef}>
               <button

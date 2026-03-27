@@ -200,6 +200,19 @@ class ProfileUpdate(BaseModel):
 
 
 # MSJ Builder models
+class ToolProjectCreate(BaseModel):
+    title: Optional[str] = None
+    tool_type: str  # affidavit, memo, complaint, answer, etc.
+
+class ToolProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    case_info: Optional[dict] = None
+    form_data: Optional[dict] = None
+
+class ToolChatMessage(BaseModel):
+    content: str
+    conversation_id: Optional[int] = None
+
 class MSJProjectCreate(BaseModel):
     title: Optional[str] = None
 
@@ -4999,13 +5012,13 @@ async def get_case_count():
 # ============================================================================
 
 @app.get("/api/v1/legal-texts")
-async def list_legal_documents():
+async def list_tool_documents():
     """List all legal text documents with item counts."""
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT d.id, d.title, d.doc_type, d.metadata,
                    COUNT(i.id) as item_count
-            FROM legal_documents d
+            FROM tool_documents d
             LEFT JOIN legal_text_items i ON i.document_id = d.id
             GROUP BY d.id
             ORDER BY d.id
@@ -5079,7 +5092,7 @@ async def get_legal_document(doc_id: str):
     """Get a legal document with all its items."""
     async with db_pool.acquire() as conn:
         doc = await conn.fetchrow(
-            "SELECT * FROM legal_documents WHERE id = $1", doc_id
+            "SELECT * FROM tool_documents WHERE id = $1", doc_id
         )
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -5117,7 +5130,7 @@ async def get_legal_text_item(doc_id: str, slug: str):
         row = await conn.fetchrow("""
             SELECT i.*, d.title as doc_title
             FROM legal_text_items i
-            JOIN legal_documents d ON d.id = i.document_id
+            JOIN tool_documents d ON d.id = i.document_id
             WHERE i.document_id = $1 AND i.slug = $2
         """, doc_id, slug)
 
@@ -7075,6 +7088,615 @@ async def export_msj_motion(project_id: int, user: dict = Depends(require_auth))
     defendant = case_info.get("defendant", "Defendant")
     safe_name = re.sub(r'[^\w\s-]', '', f"{plaintiff} v {defendant}")[:50].strip()
     filename = f"MSJ - {safe_name}.docx" if safe_name else "Motion for Summary Judgment.docx"
+
+    return StreamingResponse(
+        io.BytesIO(docx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ============================================================================
+# Generic Legal Document Builder Tools (affidavit, memo, complaint, etc.)
+# ============================================================================
+
+VALID_TOOL_TYPES = {"affidavit"}  # Add new tool types here as they're built
+
+def _get_tool_builder(tool_type: str):
+    """Import and return the builder module for a given tool type."""
+    if tool_type == "affidavit":
+        import affidavit_builder
+        return affidavit_builder
+    raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+
+
+def _parse_jsonb(val):
+    """Parse a JSONB value that may be a string or already a dict/list."""
+    if isinstance(val, str):
+        return json.loads(val)
+    return val or {}
+
+
+@app.post("/api/v1/tools/{tool_type}/projects")
+async def create_tool_project(tool_type: str, data: ToolProjectCreate, user: dict = Depends(require_auth)):
+    """Create a new legal tool project"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+    title = data.title or f"Untitled {tool_type.title()}"
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO legal_projects (user_id, tool_type, title)
+               VALUES ($1, $2, $3) RETURNING id, tool_type, title, status, case_info, form_data,
+               generated_document, document_metadata, created_at, updated_at""",
+            user_id, tool_type, title
+        )
+    return {
+        "id": row["id"],
+        "tool_type": row["tool_type"],
+        "title": row["title"],
+        "status": row["status"],
+        "case_info": _parse_jsonb(row["case_info"]),
+        "form_data": _parse_jsonb(row["form_data"]),
+        "documents": [],
+        "generated_document": row["generated_document"],
+        "document_metadata": _parse_jsonb(row["document_metadata"]),
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+    }
+
+
+@app.get("/api/v1/tools/{tool_type}/projects")
+async def list_tool_projects(tool_type: str, user: dict = Depends(require_auth)):
+    """List all projects of a given tool type for the authenticated user"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT p.id, p.title, p.status, p.case_info, p.created_at, p.updated_at,
+                      COUNT(d.id) as doc_count
+               FROM legal_projects p
+               LEFT JOIN tool_documents d ON p.id = d.project_id
+               WHERE p.user_id = $1 AND p.tool_type = $2
+               GROUP BY p.id
+               ORDER BY p.updated_at DESC""",
+            user_id, tool_type
+        )
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "status": row["status"],
+            "case_info": _parse_jsonb(row["case_info"]),
+            "doc_count": row["doc_count"],
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/v1/tools/{tool_type}/projects/{project_id}")
+async def get_tool_project(tool_type: str, project_id: int, user: dict = Depends(require_auth)):
+    """Get a single tool project with all documents"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            """SELECT id, tool_type, title, status, case_info, form_data,
+                      generated_document, document_metadata, created_at, updated_at
+               FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3""",
+            project_id, user_id, tool_type
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        docs = await conn.fetch(
+            """SELECT id, doc_type, title, filename, file_size, file_type, char_count, category, sort_order, created_at
+               FROM tool_documents WHERE project_id = $1
+               ORDER BY sort_order, created_at""",
+            project_id
+        )
+
+    return {
+        "id": project["id"],
+        "tool_type": project["tool_type"],
+        "title": project["title"],
+        "status": project["status"],
+        "case_info": _parse_jsonb(project["case_info"]),
+        "form_data": _parse_jsonb(project["form_data"]),
+        "generated_document": project["generated_document"],
+        "document_metadata": _parse_jsonb(project["document_metadata"]),
+        "documents": [
+            {
+                "id": d["id"],
+                "doc_type": d["doc_type"],
+                "title": d["title"],
+                "filename": d["filename"],
+                "file_size": d["file_size"],
+                "file_type": d["file_type"],
+                "char_count": d["char_count"],
+                "category": d["category"],
+                "sort_order": d["sort_order"],
+                "created_at": d["created_at"].isoformat() if d["created_at"] else None,
+            }
+            for d in docs
+        ],
+        "created_at": project["created_at"].isoformat() if project["created_at"] else None,
+        "updated_at": project["updated_at"].isoformat() if project["updated_at"] else None,
+    }
+
+
+@app.put("/api/v1/tools/{tool_type}/projects/{project_id}")
+async def update_tool_project(tool_type: str, project_id: int, data: ToolProjectUpdate, user: dict = Depends(require_auth)):
+    """Update a tool project's wizard data"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT id FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3",
+            project_id, user_id, tool_type
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        updates = []
+        params = []
+        idx = 1
+
+        if data.title is not None:
+            updates.append(f"title = ${idx}")
+            params.append(data.title)
+            idx += 1
+        if data.case_info is not None:
+            updates.append(f"case_info = ${idx}")
+            params.append(json.dumps(data.case_info))
+            idx += 1
+        if data.form_data is not None:
+            updates.append(f"form_data = ${idx}")
+            params.append(json.dumps(data.form_data))
+            idx += 1
+
+        if not updates:
+            return {"ok": True}
+
+        updates.append("updated_at = NOW()")
+        params.append(project_id)
+        params.append(user_id)
+
+        await conn.execute(
+            f"UPDATE legal_projects SET {', '.join(updates)} WHERE id = ${idx} AND user_id = ${idx + 1}",
+            *params
+        )
+
+    return {"ok": True}
+
+
+@app.delete("/api/v1/tools/{tool_type}/projects/{project_id}")
+async def delete_tool_project(tool_type: str, project_id: int, user: dict = Depends(require_auth)):
+    """Delete a tool project and all associated documents"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3",
+            project_id, user_id, tool_type
+        )
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Project not found")
+    return {"ok": True}
+
+
+@app.post("/api/v1/tools/{tool_type}/projects/{project_id}/documents")
+async def upload_tool_document(
+    tool_type: str,
+    project_id: int,
+    file: UploadFile = File(...),
+    doc_type: str = Form("evidence"),
+    title: str = Form(""),
+    category: str = Form("supporting"),
+    user: dict = Depends(require_auth),
+):
+    """Upload a document to a tool project"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT id FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3",
+            project_id, user_id, tool_type
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    filename = file.filename or "unknown"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("pdf", "docx", "txt"):
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
+
+    content = await file.read()
+    file_size = len(content)
+
+    if file_size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size must be under 10MB")
+
+    extracted_text = ""
+    try:
+        if ext == "pdf":
+            extracted_text = extract_text_from_pdf(content)
+        elif ext == "docx":
+            extracted_text = extract_text_from_docx(content)
+        else:
+            extracted_text = content.decode("utf-8", errors="replace")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to extract text: {str(e)}")
+
+    if not extracted_text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract any text from this file")
+
+    doc_title = title or filename.rsplit(".", 1)[0]
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO tool_documents (project_id, user_id, doc_type, title, filename, file_size, file_type, extracted_text, char_count, category)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               RETURNING id, doc_type, title, filename, file_size, file_type, char_count, category, sort_order, created_at""",
+            project_id, user_id, doc_type, doc_title, filename, file_size, ext, extracted_text, len(extracted_text), category
+        )
+        await conn.execute("UPDATE legal_projects SET updated_at = NOW() WHERE id = $1", project_id)
+
+    return {
+        "id": row["id"],
+        "doc_type": row["doc_type"],
+        "title": row["title"],
+        "filename": row["filename"],
+        "file_size": row["file_size"],
+        "file_type": row["file_type"],
+        "char_count": row["char_count"],
+        "category": row["category"],
+        "sort_order": row["sort_order"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.delete("/api/v1/tools/{tool_type}/projects/{project_id}/documents/{doc_id}")
+async def delete_tool_document(tool_type: str, project_id: int, doc_id: int, user: dict = Depends(require_auth)):
+    """Remove a document from a tool project"""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM tool_documents WHERE id = $1 AND project_id = $2 AND user_id = $3",
+            doc_id, project_id, user_id
+        )
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Document not found")
+    return {"ok": True}
+
+
+# ── Generic Tool Library ──
+
+@app.get("/api/v1/tools/{tool_type}/library")
+async def list_tool_library(
+    tool_type: str,
+    doc_type: Optional[str] = None,
+    jurisdiction: Optional[str] = None,
+):
+    """List approved library documents for a tool type (public, no auth required)"""
+    async with db_pool.acquire() as conn:
+        query = "SELECT id, title, doc_type, jurisdiction, court, metadata, created_at FROM msj_library WHERE is_active = TRUE AND tool_type = $1"
+        params = [tool_type]
+        idx = 2
+
+        if doc_type:
+            query += f" AND doc_type = ${idx}"
+            params.append(doc_type)
+            idx += 1
+        if jurisdiction:
+            query += f" AND (jurisdiction = ${idx} OR jurisdiction IS NULL)"
+            params.append(jurisdiction)
+            idx += 1
+
+        query += " ORDER BY doc_type, title"
+        rows = await conn.fetch(query, *params)
+
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "doc_type": row["doc_type"],
+            "jurisdiction": row["jurisdiction"],
+            "court": row["court"],
+            "metadata": _parse_jsonb(row["metadata"]),
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/v1/tools/{tool_type}/library/{doc_id}")
+async def get_tool_library_doc(tool_type: str, doc_id: int):
+    """Get a single library document with full content"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, title, doc_type, jurisdiction, court, content, metadata, created_at FROM msj_library WHERE id = $1 AND is_active = TRUE AND tool_type = $2",
+            doc_id, tool_type
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Library document not found")
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "doc_type": row["doc_type"],
+        "jurisdiction": row["jurisdiction"],
+        "court": row["court"],
+        "content": row["content"],
+        "metadata": _parse_jsonb(row["metadata"]),
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+# ── Generic Tool Chat & Generation ──
+
+@app.post("/api/v1/tools/{tool_type}/projects/{project_id}/chat")
+async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, authorization: Optional[str] = Header(None)):
+    """AI chat for tool project refinement (streaming SSE)"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user = await require_auth(authorization)
+    user_id = user["id"]
+
+    api_key, key_source = await get_anthropic_api_key(user_id)
+    if key_source == "site":
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
+    builder = _get_tool_builder(tool_type)
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            """SELECT id, title, status, case_info, form_data, generated_document
+               FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3""",
+            project_id, user_id, tool_type
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        docs = await conn.fetch(
+            "SELECT id, doc_type, title, extracted_text FROM tool_documents WHERE project_id = $1 ORDER BY sort_order, created_at",
+            project_id
+        )
+
+        # Get or create conversation
+        conversation_id = data.conversation_id
+        if conversation_id:
+            convo = await conn.fetchrow(
+                "SELECT id FROM tool_conversations WHERE id = $1 AND project_id = $2 AND user_id = $3",
+                conversation_id, project_id, user_id
+            )
+            if not convo:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+        else:
+            convo = await conn.fetchrow(
+                "INSERT INTO tool_conversations (project_id, user_id) VALUES ($1, $2) RETURNING id",
+                project_id, user_id
+            )
+            conversation_id = convo["id"]
+
+        history = await conn.fetch(
+            "SELECT role, content FROM tool_messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 20",
+            conversation_id
+        )
+        history = list(reversed(history))
+
+        case_info = _parse_jsonb(project["case_info"])
+        form_data = _parse_jsonb(project["form_data"])
+        jurisdiction = case_info.get("jurisdiction", "federal")
+        library_docs = await conn.fetch(
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND tool_type = $1 AND (jurisdiction = $2 OR jurisdiction IS NULL) LIMIT 5",
+            tool_type, jurisdiction
+        )
+
+    system_prompt = builder.build_affidavit_system_prompt(
+        case_info=case_info,
+        form_data=form_data,
+        documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
+        library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
+        generated_document=project["generated_document"],
+    )
+
+    messages = []
+    for msg in history:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": data.content})
+
+    async def stream_response():
+        yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation_id})}\n\n"
+
+        try:
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+            full_text = ""
+
+            async with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=4096,
+                system=system_prompt,
+                messages=messages,
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_text += text
+                    yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+
+                final_message = await stream.get_final_message()
+                input_tokens = final_message.usage.input_tokens
+                output_tokens = final_message.usage.output_tokens
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            return
+
+        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+
+        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
+
+        try:
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "INSERT INTO tool_messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
+                    conversation_id, data.content
+                )
+                await conn.execute(
+                    "INSERT INTO tool_messages (conversation_id, role, content, model, input_tokens, output_tokens, cost) VALUES ($1, 'assistant', $2, $3, $4, $5, $6)",
+                    conversation_id, full_text, "claude-sonnet-4-6", input_tokens, output_tokens, cost
+                )
+                await conn.execute("UPDATE tool_conversations SET updated_at = NOW() WHERE id = $1", conversation_id)
+                await conn.execute("UPDATE legal_projects SET updated_at = NOW() WHERE id = $1", project_id)
+            await log_api_usage(f"{tool_type}_chat", input_tokens, output_tokens, cost, source=key_source)
+        except Exception as e:
+            print(f"Failed to save {tool_type} chat: {e}")
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/v1/tools/{tool_type}/projects/{project_id}/generate")
+async def tool_generate(tool_type: str, project_id: int, authorization: Optional[str] = Header(None)):
+    """Generate the full document (streaming SSE)"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user = await require_auth(authorization)
+    user_id = user["id"]
+
+    api_key, key_source = await get_anthropic_api_key(user_id)
+    if key_source == "site":
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
+    builder = _get_tool_builder(tool_type)
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            """SELECT id, title, status, case_info, form_data
+               FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3""",
+            project_id, user_id, tool_type
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        docs = await conn.fetch(
+            "SELECT id, doc_type, title, extracted_text FROM tool_documents WHERE project_id = $1 ORDER BY sort_order, created_at",
+            project_id
+        )
+
+        case_info = _parse_jsonb(project["case_info"])
+        form_data = _parse_jsonb(project["form_data"])
+        jurisdiction = case_info.get("jurisdiction", "federal")
+        library_docs = await conn.fetch(
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND tool_type = $1 AND (jurisdiction = $2 OR jurisdiction IS NULL) LIMIT 5",
+            tool_type, jurisdiction
+        )
+
+        await conn.execute("UPDATE legal_projects SET status = 'generating', updated_at = NOW() WHERE id = $1", project_id)
+
+    system_prompt, user_prompt = builder.build_affidavit_generation_prompt(
+        case_info=case_info,
+        form_data=form_data,
+        documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
+        library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
+    )
+
+    async def stream_response():
+        try:
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+            full_text = ""
+
+            async with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=8192,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_text += text
+                    yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+
+                final_message = await stream.get_final_message()
+                input_tokens = final_message.usage.input_tokens
+                output_tokens = final_message.usage.output_tokens
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            try:
+                async with db_pool.acquire() as conn:
+                    await conn.execute("UPDATE legal_projects SET status = 'draft', updated_at = NOW() WHERE id = $1", project_id)
+            except Exception:
+                pass
+            return
+
+        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+
+        yield f"data: {json.dumps({'type': 'done', 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
+
+        try:
+            doc_metadata = {
+                "model": "claude-sonnet-4-6",
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": round(cost, 6),
+                "generated_at": datetime.utcnow().isoformat(),
+            }
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE legal_projects SET generated_document = $1, document_metadata = $2, status = 'complete', updated_at = NOW() WHERE id = $3",
+                    full_text, json.dumps(doc_metadata), project_id
+                )
+            await log_api_usage(f"{tool_type}_generate", input_tokens, output_tokens, cost, source=key_source)
+        except Exception as e:
+            print(f"Failed to save {tool_type} generation: {e}")
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/v1/tools/{tool_type}/projects/{project_id}/export")
+async def export_tool_document(tool_type: str, project_id: int, user: dict = Depends(require_auth)):
+    """Export generated document as DOCX"""
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT title, case_info, form_data, generated_document FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3",
+            project_id, user_id, tool_type
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if not project["generated_document"]:
+            raise HTTPException(status_code=400, detail="No document has been generated yet")
+
+    case_info = _parse_jsonb(project["case_info"])
+    form_data = _parse_jsonb(project["form_data"])
+
+    builder = _get_tool_builder(tool_type)
+
+    if tool_type == "affidavit":
+        docx_bytes = builder.generate_affidavit_docx(case_info, form_data, project["generated_document"])
+        affiant_name = form_data.get("affiant_info", {}).get("name", "Affiant")
+        safe_name = re.sub(r'[^\w\s-]', '', affiant_name)[:50].strip()
+        filename = f"Affidavit of {safe_name}.docx" if safe_name else "Affidavit.docx"
+    else:
+        raise HTTPException(status_code=400, detail=f"Export not supported for {tool_type}")
 
     return StreamingResponse(
         io.BytesIO(docx_bytes),

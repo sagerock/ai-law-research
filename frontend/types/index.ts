@@ -279,3 +279,55 @@ export interface MSJDocument {
   sort_order: number
   created_at: string
 }
+
+// Generic Legal Tool types
+export interface ToolProject {
+  id: number
+  tool_type: string
+  title: string
+  status: 'draft' | 'generating' | 'complete'
+  case_info: MSJCaseInfo  // reuse same shape
+  form_data: Record<string, any>
+  documents: ToolDocument[]
+  generated_document: string | null
+  document_metadata: Record<string, any>
+  created_at: string
+  updated_at: string
+  doc_count?: number
+}
+
+export interface ToolDocument {
+  id: number
+  doc_type: string
+  title: string
+  filename: string
+  file_size: number
+  file_type: string
+  char_count: number
+  category: string
+  sort_order: number
+  created_at: string
+}
+
+// Affidavit-specific form_data shapes
+export interface AffiantInfo {
+  name?: string
+  title?: string
+  relationship_to_case?: string
+  employer?: string
+  has_personal_knowledge?: boolean
+  knowledge_basis?: string
+}
+
+export interface AffidavitFact {
+  fact_number: number
+  text: string
+  source_doc_ids: number[]
+  knowledge_basis: string
+  knowledge_basis_detail?: string
+}
+
+export interface AffidavitFormData {
+  affiant_info: AffiantInfo
+  attestable_facts: AffidavitFact[]
+}
