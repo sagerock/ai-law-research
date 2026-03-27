@@ -97,7 +97,8 @@ D. Competency / Personal Knowledge Paragraph
 - Example: "I am employed by ZAMR Corp. as a warehouse supervisor. In my capacity as supervisor, I have personal knowledge of the company's employee policies, work schedules, and the events described below."
 
 E. Numbered Factual Paragraphs
-- Each paragraph states ONE discrete fact
+- Group related facts into coherent narrative paragraphs
+- A single paragraph may cover multiple related facts on the same topic
 - Must be based on personal knowledge
 - Specific: dates, times, locations, names, amounts
 - Declarative first-person statements: "I observed..." "I was present when..."
@@ -136,8 +137,8 @@ A. Be Specific, Not General
 B. Establish Knowledge Foundation First
    Before stating facts about a topic, explain how you know. If you supervised someone, state that before describing their behavior.
 
-C. One Fact Per Paragraph
-   This allows the court to consider each fact independently and makes it easier for opposing counsel to identify which facts are disputed.
+C. Group Related Facts
+   Each paragraph should address a single topic or theme. Multiple related facts may appear in one paragraph. This follows the standard practice shown in Writing for Litigation (Appendix P).
 
 D. Avoid Legal Conclusions
    BAD: "Hayes was acting outside the scope of his employment."
@@ -193,7 +194,7 @@ FOUNDATION
 [ ] Affiant's relationship to the case/parties is clear
 
 CONTENT
-[ ] Every paragraph contains only ONE discrete fact
+[ ] Each paragraph groups related facts on a common topic
 [ ] Every fact is based on personal knowledge (not hearsay)
 [ ] Facts are specific: dates, times, locations, names
 [ ] No legal conclusions or argumentative statements

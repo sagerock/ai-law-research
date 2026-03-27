@@ -50,7 +50,7 @@ AFFIDAVIT-SPECIFIC RULES:
 1. Every statement in the affidavit MUST be based on the affiant's PERSONAL KNOWLEDGE. Under Fed. R. Civ. P. 56(c)(4), "[a]n affidavit or declaration used to support or oppose a motion must be made on personal knowledge, set out facts that would be admissible in evidence, and show that the affiant or declarant is competent to testify on the matters stated."
 2. Do NOT include legal conclusions, opinions, or argumentative statements. An affidavit contains FACTS, not legal arguments.
 3. Do NOT include hearsay — statements about what someone else said — unless a hearsay exception clearly applies and you identify it.
-4. Each numbered paragraph should contain ONE discrete factual statement.
+4. Group related facts into coherent narrative paragraphs. A single paragraph may contain multiple related facts as long as they share a common topic or theme and are all based on personal knowledge.
 5. Facts must be stated in a form that would be admissible in evidence at trial.
 6. The affidavit must establish the affiant's competency: who they are, how they have personal knowledge of the facts stated.
 7. Under Ohio Civ.R. 56(E), supporting affidavits "shall be made on personal knowledge, shall set forth such facts as would be admissible in evidence, and shall show affirmatively that the affiant is competent to testify to the matters stated in the affidavit."
@@ -138,33 +138,40 @@ def build_affidavit_generation_prompt(
     case_number = case_info.get("case_number", "[Case No.]")
     representing = case_info.get("representing_side", "plaintiff")
 
-    user_prompt = f"""Generate the body of an AFFIDAVIT OF {affiant_name.upper()} for use in {plaintiff} v. {defendant}, Case No. {case_number}, in {court}.
+    # Determine motion purpose for the title
+    if representing == "plaintiff":
+        motion_purpose = f"In Support of Plaintiff's Motion for Summary Judgment"
+    else:
+        motion_purpose = f"In Support of Defendant's Motion for Summary Judgment"
 
-DO NOT generate the caption, affidavit title, jurat/notary block, or signature line — those are built separately. Generate ONLY the numbered paragraphs of the affidavit body.
+    user_prompt = f"""Generate the body of an AFFIDAVIT OF {affiant_name.upper()} {motion_purpose} in {plaintiff} v. {defendant}, Case No. {case_number}, in {court}.
 
-Structure the affidavit as follows:
+DO NOT generate the caption, affidavit title, venue block, jurat/notary block, or signature line — those are built separately. Generate ONLY the numbered paragraphs of the affidavit body.
 
-## Identity and Competency (Paragraphs 1-2)
-- Paragraph 1: State affiant's full name, age (if relevant), and residence/place of business.
-- Paragraph 2: Establish HOW the affiant has personal knowledge of the facts. {f'The affiant is: {affiant_title}. ' if affiant_title else ''}{f'Relationship to case: {affiant_relationship}.' if affiant_relationship else ''}
+Follow this model closely (from Writing for Litigation, Appendix P):
 
-## Factual Statements (Numbered paragraphs)
-- Each paragraph should state ONE specific fact based on personal knowledge.
-- Begin each paragraph with the paragraph number (e.g., "1.", "2.", "3.").
-- Do NOT begin with "Affiant states that" — use plain declarative sentences in first person. Example: "I was present at the intersection of Main Street and Oak Avenue on January 15, 2024, at approximately 3:00 p.m."
-- Tie each fact to the affiant's personal knowledge basis.
+## Paragraph 1: Identity and Competency
+State affiant's full name, that they are over the age of twenty-one, have never been convicted of a felony, are otherwise qualified to make this affidavit, and have personal knowledge of the facts stated. Example: "My name is [Name]. I am over the age of twenty-one, have never been convicted of a felony, and am otherwise qualified to make this affidavit. I have personal knowledge of the facts stated in this affidavit."
+
+## Paragraph 2: Role and Basis of Knowledge
+Establish the affiant's role and explain HOW they have personal knowledge. {f'The affiant is: {affiant_title}. ' if affiant_title else ''}{f'Relationship to case: {affiant_relationship}.' if affiant_relationship else ''}Describe their position, duties, or connection to the events that gives them firsthand knowledge.
+
+## Remaining Paragraphs: Factual Statements
+- Group related facts into coherent narrative paragraphs. A single paragraph may cover multiple related facts on the same topic, as long as all are based on personal knowledge.
+- Begin each paragraph with its number (e.g., "3.", "4.", "5.").
+- Use plain declarative sentences in first person ("I", "my", "me"). Do NOT begin with "Affiant states that."
+- Be specific: use dates, times, locations, names, and amounts.
+- Where the affiant is describing company procedures, policies, or business operations they oversee, explain them in detail.
 - Use the facts from the FACTS AFFIANT CAN ATTEST TO section above.
-- Reference supporting documents where appropriate using (Last Name, Deposition, at [paragraph]) or (Exhibit Title) format.
 
-## Closing Paragraph
-- Final paragraph: "I have read this affidavit and the statements contained herein are true and correct to the best of my knowledge and belief."
+## Final Paragraph
+End with a simple denial or affirmation as appropriate, or omit if not needed.
 
 IMPORTANT FORMATTING RULES:
 - Number every paragraph sequentially (1., 2., 3., etc.)
-- Use first person ("I", "my", "me")
+- Use first person throughout
 - State only FACTS, never legal conclusions or arguments
-- Each paragraph = one discrete fact
-- Be specific: use dates, times, locations, names
+- Be specific with dates, times, locations, and names
 - NEVER use em dashes (—) or en dashes (–). Use commas, semicolons, or parentheses instead.
 - Do NOT fabricate any facts — use ONLY facts from the uploaded documents and the identified attestable facts
 - This is for educational purposes only
@@ -192,15 +199,25 @@ def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: st
     plaintiff = case_info.get("plaintiff", "[Plaintiff]")
     defendant = case_info.get("defendant", "[Defendant]")
     movant = plaintiff if representing == "plaintiff" else defendant
+    state = case_info.get("jurisdiction_state", "Ohio")
+    county = case_info.get("county", "___________")
 
     # Educational disclaimer
     add_educational_disclaimer(doc, "top")
 
-    # Caption
-    build_caption_table(doc, case_info)
+    # Caption — use § style (per Writing for Litigation textbook)
+    _build_section_symbol_caption(doc, case_info)
 
-    # Affidavit title
-    add_centered_para(doc, f"AFFIDAVIT OF {affiant_name.upper()}", bold=True, size=12)
+    # Affidavit title with purpose
+    if representing == "plaintiff":
+        purpose = f"In Support of Plaintiff's Motion for Summary Judgment"
+    else:
+        purpose = f"In Support of Defendant's Motion for Summary Judgment"
+    add_centered_para(doc, f"Affidavit of {affiant_name} {purpose}", bold=True, size=12)
+    doc.add_paragraph()
+
+    # Venue block (State / County with § symbols) before the body
+    _add_venue_block(doc, state, county)
     doc.add_paragraph()
 
     # Parse and render the AI-generated affidavit body
@@ -210,7 +227,7 @@ def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: st
     start_idx = 0
     for i, line in enumerate(content_lines):
         stripped = line.strip().lower()
-        if any(kw in stripped for kw in ["1.", "i,", "my name", "i am", "## identity", "## factual"]):
+        if any(kw in stripped for kw in ["1.", "i,", "my name", "i am", "## identity", "## factual", "## paragraph"]):
             start_idx = i
             break
         if line.strip().startswith("#") and not any(kw in stripped for kw in ["caption", "affidavit of", "court"]):
@@ -221,17 +238,19 @@ def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: st
 
     _render_affidavit_content(doc, content_lines[start_idx:])
 
-    # Signature line for affiant
+    # Signature line for affiant (right-aligned, per textbook)
     doc.add_paragraph()
     doc.add_paragraph()
 
     sig = doc.add_paragraph()
+    sig.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     sig.paragraph_format.space_after = Pt(0)
     r = sig.add_run("_________________________________")
     r.font.name = "Times New Roman"
     r.font.size = Pt(12)
 
     name_p = doc.add_paragraph()
+    name_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     name_p.paragraph_format.space_after = Pt(0)
     r = name_p.add_run(affiant_name)
     r.font.name = "Times New Roman"
@@ -239,19 +258,151 @@ def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: st
 
     if affiant_info.get("title"):
         title_p = doc.add_paragraph()
+        title_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         title_p.paragraph_format.space_after = Pt(0)
         r = title_p.add_run(affiant_info["title"])
         r.font.name = "Times New Roman"
         r.font.size = Pt(12)
 
-    # Jurat / Notary block
-    state = case_info.get("jurisdiction_state", "Ohio")
-    add_jurat_block(doc, state=state)
+    # Jurat / Notary block — simple style per Writing for Litigation textbook
+    doc.add_paragraph()
+    _add_simple_jurat(doc, state)
 
     # Bottom disclaimer
     add_educational_disclaimer(doc, "bottom")
 
     return save_docx_to_bytes(doc)
+
+
+def _build_section_symbol_caption(doc, case_info: dict):
+    """Build caption using § symbols (per Writing for Litigation textbook style)."""
+    ensure_docx_imports()
+    from docx_utils import set_cell_text, WD_TABLE_ALIGNMENT
+
+    court = case_info.get("court", "[United States District Court]")
+    plaintiff = case_info.get("plaintiff", "[Plaintiff]")
+    defendant = case_info.get("defendant", "[Defendant]")
+    case_number = case_info.get("case_number", "[Case No.]")
+
+    # Court name
+    add_centered_para(doc, court, bold=False, size=12)
+    doc.add_paragraph()
+
+    # Caption table with § symbols
+    caption_table = doc.add_table(rows=5, cols=3)
+    caption_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+    # Remove all borders
+    from docx_utils import qn
+    for row in caption_table.rows:
+        for cell in row.cells:
+            tc = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+            tcBorders = tcPr.makeelement(qn('w:tcBorders'), {})
+            for border_name in ['top', 'left', 'bottom', 'right']:
+                border = tcBorders.makeelement(qn(f'w:{border_name}'), {
+                    qn('w:val'): 'none', qn('w:sz'): '0', qn('w:space'): '0', qn('w:color'): 'auto'
+                })
+                tcBorders.append(border)
+            tcPr.append(tcBorders)
+
+    # Set column widths
+    from docx_utils import Inches
+    for row in caption_table.rows:
+        row.cells[0].width = Inches(3.0)
+        row.cells[1].width = Inches(0.5)
+        row.cells[2].width = Inches(3.0)
+
+    # Fill in caption with § style
+    set_cell_text(caption_table.cell(0, 0), f"{plaintiff},", bold=True)
+    set_cell_text(caption_table.cell(0, 1), "\u00A7", bold=False)
+    set_cell_text(caption_table.cell(0, 2), f"Civil Action No. {case_number}", bold=False)
+
+    set_cell_text(caption_table.cell(1, 0), "          Plaintiff", bold=False)
+    set_cell_text(caption_table.cell(1, 1), "\u00A7", bold=False)
+    set_cell_text(caption_table.cell(1, 2), "", bold=False)
+
+    set_cell_text(caption_table.cell(2, 0), "v.", bold=False)
+    set_cell_text(caption_table.cell(2, 1), "\u00A7", bold=False)
+    set_cell_text(caption_table.cell(2, 2), "", bold=False)
+
+    set_cell_text(caption_table.cell(3, 0), f"{defendant},", bold=True)
+    set_cell_text(caption_table.cell(3, 1), "\u00A7", bold=False)
+    set_cell_text(caption_table.cell(3, 2), "", bold=False)
+
+    set_cell_text(caption_table.cell(4, 0), "          Defendant", bold=False)
+    set_cell_text(caption_table.cell(4, 1), "\u00A7", bold=False)
+    set_cell_text(caption_table.cell(4, 2), "", bold=False)
+
+    doc.add_paragraph()
+
+
+def _add_venue_block(doc, state: str = "Ohio", county: str = "___________"):
+    """Add State/County venue block with § symbols before the affidavit body."""
+    ensure_docx_imports()
+
+    p1 = doc.add_paragraph()
+    p1.paragraph_format.space_after = Pt(0)
+    p1.paragraph_format.line_spacing = 1.15
+    r = p1.add_run(f"State of {state} \u00A7")
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(12)
+
+    p2 = doc.add_paragraph()
+    p2.paragraph_format.space_after = Pt(0)
+    p2.paragraph_format.space_before = Pt(0)
+    p2.paragraph_format.line_spacing = 1.15
+    r = p2.add_run(f"                        \u00A7")
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(12)
+
+    p3 = doc.add_paragraph()
+    p3.paragraph_format.space_after = Pt(0)
+    p3.paragraph_format.space_before = Pt(0)
+    p3.paragraph_format.line_spacing = 1.15
+    r = p3.add_run(f"County of {county} \u00A7")
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(12)
+
+
+def _add_simple_jurat(doc, state: str = "Ohio"):
+    """Add simple jurat/notary block matching Writing for Litigation textbook style."""
+    ensure_docx_imports()
+
+    # "Signed and sworn before me..." line
+    p = doc.add_paragraph()
+    p.paragraph_format.first_line_indent = Inches(0.5)
+    r = p.add_run(
+        f"Signed and sworn before me, a notary public for the "
+        f"state of {state}, on __________________, ________."
+    )
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(12)
+
+    doc.add_paragraph()
+
+    # Notary signature line (right-aligned)
+    sig = doc.add_paragraph()
+    sig.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    sig.paragraph_format.space_after = Pt(0)
+    r = sig.add_run("_________________________________")
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(12)
+
+    # Printed name
+    name_p = doc.add_paragraph()
+    name_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    name_p.paragraph_format.space_after = Pt(0)
+    r = name_p.add_run("Printed Name: ___________________")
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(12)
+
+    # Commission expiration
+    exp_p = doc.add_paragraph()
+    exp_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    r = exp_p.add_run("My commission expires: ___________")
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(12)
 
 
 def _render_affidavit_content(doc, lines: list[str]):
