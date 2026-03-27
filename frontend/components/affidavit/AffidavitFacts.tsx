@@ -83,13 +83,13 @@ export default function AffidavitFacts({ facts, documents, onChange }: Affidavit
         </div>
         <div>
           <h2 className="text-lg font-medium text-stone-900">Facts Affiant Can Attest To</h2>
-          <p className="text-sm text-stone-500">Each fact must be based on personal knowledge. One fact per paragraph.</p>
+          <p className="text-sm text-stone-500">List facts the affiant can attest to from personal knowledge. Related facts will be grouped by topic.</p>
         </div>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 mt-3">
         <p className="text-xs text-amber-700">
-          Remember: Only include facts the affiant personally knows. No hearsay, no legal conclusions.
+          All facts must be based on personal knowledge. No hearsay, no legal conclusions. Related facts on the same topic can be combined into one entry.
         </p>
       </div>
 
