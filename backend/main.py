@@ -944,9 +944,25 @@ async def resolve_case_slug(slug: str):
         if parsed:
             volume, reporter, page = parsed
             cite_str = f"{volume} {reporter} {page}"
+            cite_upper = cite_str.upper()
+            # Strip periods for fuzzy matching (handles Cal.Rptr. vs Cal. Rptr.)
+            cite_no_dots = re.sub(r'\.(\s?)', r' ', cite_str).strip()
+            cite_no_dots = re.sub(r'\s+', ' ', cite_no_dots)
+            cite_no_dots_upper = cite_no_dots.upper()
             row = await conn.fetchrow(
-                "SELECT id, reporter_cite, title FROM cases WHERE reporter_cite = $1 OR reporter_cite LIKE $2",
-                cite_str, f"{cite_str} (%",
+                """SELECT id, reporter_cite, title FROM cases
+                   WHERE reporter_cite = $1
+                      OR reporter_cite LIKE $2
+                      OR reporter_cite LIKE $3
+                      OR UPPER(reporter_cite) = $4
+                      OR UPPER(SPLIT_PART(reporter_cite, ',', 1)) = $4
+                      OR UPPER(REPLACE(SPLIT_PART(reporter_cite, ',', 1), '.', ' ')) LIKE $5
+                   LIMIT 1""",
+                cite_str,                    # exact match
+                f"{cite_str} (%",            # trailing year: "477 U.S. 317 (1986)"
+                f"{cite_str},%",             # multi-cite: "248 N.Y. 339, 162 N.E. 99"
+                cite_upper,                  # case-insensitive: "2016 VT 73"
+                f"%{cite_no_dots_upper}%",   # period-stripped: "Cal.Rptr." vs "Cal. Rptr."
             )
             if row:
                 canonical = build_canonical_slug(row["reporter_cite"], row["title"])
