@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
@@ -18,6 +18,7 @@ import re
 import random
 from jose import jwt, JWTError
 from uuid import UUID
+from citation_utils import parse_citation_slug, slug_to_reporter_cite, case_title_to_slug, build_canonical_slug
 from cryptography.fernet import Fernet, InvalidToken
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
@@ -1805,10 +1806,10 @@ async def get_transparency_stats():
 
 @app.get("/api/v1/sitemap/cases")
 async def get_sitemap_cases():
-    """Get all case IDs and titles for sitemap generation"""
+    """Get all case IDs, titles, and citation slugs for sitemap generation"""
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, title, decision_date
+            SELECT id, title, decision_date, reporter_cite
             FROM cases
             ORDER BY decision_date DESC NULLS LAST
         """)
@@ -1818,7 +1819,9 @@ async def get_sitemap_cases():
             {
                 "id": row["id"],
                 "title": row["title"],
-                "date": row["decision_date"].isoformat() if row["decision_date"] else None
+                "date": row["decision_date"].isoformat() if row["decision_date"] else None,
+                "reporter_cite": row["reporter_cite"],
+                "canonical_slug": build_canonical_slug(row["reporter_cite"], row["title"]),
             }
             for row in rows
         ],
