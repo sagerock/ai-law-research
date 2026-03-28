@@ -8,6 +8,8 @@
  * - Due Process Clause, Equal Protection Clause, Commerce Clause
  */
 
+import { reporterCiteToSlug } from './citationUrls'
+
 interface TextSegment {
   text: string
   href?: string  // if present, this segment is a link
@@ -16,7 +18,7 @@ interface TextSegment {
 export interface LegalTextRef {
   label: string
   href: string
-  type: 'rule' | 'statute' | 'constitution'
+  type: 'rule' | 'statute' | 'constitution' | 'case'
 }
 
 // FRCP citation patterns
@@ -93,7 +95,13 @@ function statuteSlug(title: string, section: string): string {
   return `${title}-usc-${section}`
 }
 
-type MatchInfo = { start: number; end: number; href: string; text: string; type: 'rule' | 'statute' | 'constitution' }
+// Case reporter citation pattern
+// Matches: "477 U.S. 317", "43 Ohio St. 3d 140", "103 F.3d 144"
+// Uses a broad pattern: volume (number) + reporter (letters/periods/spaces) + page (number)
+// Then validates the reporter against known reporters
+const CASE_CITE_PATTERN = /\b(\d{1,4})\s+([A-Z][A-Za-z0-9.\s']{1,25}?)\s+(\d{1,5})\b/g
+
+type MatchInfo = { start: number; end: number; href: string; text: string; type: 'rule' | 'statute' | 'constitution' | 'case' }
 
 function collectMatches(text: string): MatchInfo[] {
   const matches: MatchInfo[] = []
@@ -207,6 +215,27 @@ function collectMatches(text: string): MatchInfo[] {
         href,
         text: cMatch[0],
         type: 'constitution',
+      })
+    }
+  }
+
+  // Find case reporter citations ("477 U.S. 317", "103 F.3d 144")
+  CASE_CITE_PATTERN.lastIndex = 0
+  let caseMatch: RegExpExecArray | null
+  while ((caseMatch = CASE_CITE_PATTERN.exec(text)) !== null) {
+    const volume = caseMatch[1]
+    const reporter = caseMatch[2].trim()
+    const page = caseMatch[3]
+    const fullCite = `${volume} ${reporter} ${page}`
+    const slug = reporterCiteToSlug(fullCite)
+    // Only link if the slug looks like a valid citation (has 3 parts: vol-reporter-page)
+    if (slug.match(/^\d+-[a-z].*-\d+$/)) {
+      matches.push({
+        start: caseMatch.index,
+        end: caseMatch.index + caseMatch[0].length,
+        href: `/cases/${slug}`,
+        text: caseMatch[0],
+        type: 'case',
       })
     }
   }

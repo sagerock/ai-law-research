@@ -402,8 +402,111 @@ def add_jurat_block(doc, state: str = "___________", county: str = "___________"
     r.font.size = Pt(12)
 
 
-def add_formatted_run(paragraph, text: str):
-    """Add a run of text with TNR 12pt to a paragraph, handling inline bold/italic."""
+def _add_hyperlink(paragraph, url: str, text: str, font_name="Times New Roman", font_size=12):
+    """Add a hyperlink to a paragraph. python-docx doesn't support this natively."""
+    ensure_docx_imports()
+    from docx.oxml import OxmlElement
+
+    # Create the w:hyperlink element
+    part = paragraph.part
+    r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+
+    hyperlink = OxmlElement('w:hyperlink')
+    hyperlink.set(qn('r:id'), r_id)
+
+    new_run = OxmlElement('w:r')
+    rPr = OxmlElement('w:rPr')
+
+    # Blue color + underline for hyperlink style
+    color = OxmlElement('w:color')
+    color.set(qn('w:val'), '1155CC')
+    rPr.append(color)
+
+    u = OxmlElement('w:u')
+    u.set(qn('w:val'), 'single')
+    rPr.append(u)
+
+    # Font
+    rFonts = OxmlElement('w:rFonts')
+    rFonts.set(qn('w:ascii'), font_name)
+    rFonts.set(qn('w:hAnsi'), font_name)
+    rPr.append(rFonts)
+
+    sz = OxmlElement('w:sz')
+    sz.set(qn('w:val'), str(font_size * 2))  # half-points
+    rPr.append(sz)
+
+    new_run.append(rPr)
+    text_elem = OxmlElement('w:t')
+    text_elem.text = text
+    text_elem.set(qn('xml:space'), 'preserve')
+    new_run.append(text_elem)
+    hyperlink.append(new_run)
+
+    paragraph._p.append(hyperlink)
+
+
+# Regex for case reporter citations in generated text
+_CASE_CITE_RE = re.compile(r'\b(\d{1,4})\s+([A-Z][A-Za-z0-9.\s\']{1,25}?)\s+(\d{1,5})\b')
+
+SITE_URL = "https://lawstudygroup.com"
+
+
+def _find_case_citations(text: str) -> list[tuple[int, int, str]]:
+    """Find case citations in text, return list of (start, end, url)."""
+    from citation_utils import reporter_cite_to_slug
+    results = []
+    for m in _CASE_CITE_RE.finditer(text):
+        volume, reporter, page = m.group(1), m.group(2).strip(), m.group(3)
+        full_cite = f"{volume} {reporter} {page}"
+        slug = reporter_cite_to_slug(full_cite)
+        # Only link if slug looks like a valid citation
+        if re.match(r'^\d+-[a-z].*-\d+$', slug):
+            results.append((m.start(), m.end(), f"{SITE_URL}/cases/{slug}"))
+    return results
+
+
+def add_formatted_run(paragraph, text: str, link_citations: bool = True):
+    """Add a run of text with TNR 12pt to a paragraph, handling inline bold/italic and citation hyperlinks."""
+    ensure_docx_imports()
+
+    if link_citations:
+        citations = _find_case_citations(text)
+    else:
+        citations = []
+
+    if not citations:
+        # Original behavior — no citations to link
+        parts = re.split(r'(\*\*.*?\*\*|\*.*?\*)', text)
+        for part in parts:
+            if part.startswith("**") and part.endswith("**"):
+                run = paragraph.add_run(part[2:-2])
+                run.bold = True
+            elif part.startswith("*") and part.endswith("*") and not part.startswith("**"):
+                run = paragraph.add_run(part[1:-1])
+                run.italic = True
+            else:
+                run = paragraph.add_run(part)
+            run.font.name = "Times New Roman"
+            run.font.size = Pt(12)
+        return
+
+    # Split text into citation and non-citation segments
+    pos = 0
+    for start, end, url in citations:
+        # Add text before citation
+        if start > pos:
+            _add_plain_runs(paragraph, text[pos:start])
+        # Add citation as hyperlink
+        _add_hyperlink(paragraph, url, text[start:end])
+        pos = end
+    # Add remaining text
+    if pos < len(text):
+        _add_plain_runs(paragraph, text[pos:])
+
+
+def _add_plain_runs(paragraph, text: str):
+    """Add plain text with bold/italic formatting."""
     ensure_docx_imports()
     parts = re.split(r'(\*\*.*?\*\*|\*.*?\*)', text)
     for part in parts:

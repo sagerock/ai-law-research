@@ -1,31 +1,55 @@
 import React from 'react'
+import Link from 'next/link'
+import { parseLegalCitations } from '@/lib/legalCitations'
 
 function formatInline(text: string): React.ReactNode[] {
+  // First, detect legal citations and split into segments
+  const segments = parseLegalCitations(text)
+
   const parts: React.ReactNode[] = []
-  // Match **bold**, *italic*, or `code` — bold first to avoid conflict with italic
-  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g
-  let last = 0
-  let match: RegExpExecArray | null
-  while ((match = re.exec(text)) !== null) {
-    if (match.index > last) {
-      parts.push(<span key={`t${last}`}>{text.slice(last, match.index)}</span>)
-    }
-    if (match[2]) {
-      parts.push(<strong key={`b${match.index}`} className="font-semibold">{match[2]}</strong>)
-    } else if (match[3]) {
-      parts.push(<em key={`i${match.index}`}>{match[3]}</em>)
-    } else if (match[4]) {
+  let keyIdx = 0
+
+  for (const segment of segments) {
+    if (segment.href) {
+      // Citation link
       parts.push(
-        <code key={`c${match.index}`} className="bg-stone-200 text-stone-800 px-1 py-0.5 rounded text-xs font-mono">
-          {match[4]}
-        </code>
+        <Link
+          key={`cite${keyIdx++}`}
+          href={segment.href}
+          className="text-sage-700 hover:text-sage-900 underline decoration-sage-300 hover:decoration-sage-500"
+        >
+          {segment.text}
+        </Link>
       )
+    } else {
+      // Process bold/italic/code within non-link text
+      const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g
+      let last = 0
+      let match: RegExpExecArray | null
+      const src = segment.text
+      while ((match = re.exec(src)) !== null) {
+        if (match.index > last) {
+          parts.push(<span key={`t${keyIdx++}`}>{src.slice(last, match.index)}</span>)
+        }
+        if (match[2]) {
+          parts.push(<strong key={`b${keyIdx++}`} className="font-semibold">{match[2]}</strong>)
+        } else if (match[3]) {
+          parts.push(<em key={`i${keyIdx++}`}>{match[3]}</em>)
+        } else if (match[4]) {
+          parts.push(
+            <code key={`c${keyIdx++}`} className="bg-stone-200 text-stone-800 px-1 py-0.5 rounded text-xs font-mono">
+              {match[4]}
+            </code>
+          )
+        }
+        last = match.index + match[0].length
+      }
+      if (last < src.length) {
+        parts.push(<span key={`t${keyIdx++}`}>{src.slice(last)}</span>)
+      }
     }
-    last = match.index + match[0].length
   }
-  if (last < text.length) {
-    parts.push(<span key={`t${last}`}>{text.slice(last)}</span>)
-  }
+
   return parts.length > 0 ? parts : [<span key="full">{text}</span>]
 }
 
