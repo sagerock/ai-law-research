@@ -561,21 +561,64 @@ def add_formatted_run(paragraph, text: str, link_citations: bool = True, verifie
         _add_plain_runs(paragraph, text[pos:])
 
 
+# Pattern for case names: "Word v. Word" or "Word v Word" with optional parenthetical
+# Matches: "Anderson v. Liberty Lobby, Inc.", "Celotex Corp. v. Catrett", "Mudrich v. Standard Oil Co."
+_CASE_NAME_RE = re.compile(
+    r'\b([A-Z][A-Za-z\'.]+(?:\s+(?:of|for|the|and|in|ex|re|In|Ex|Re)\s+[A-Z][A-Za-z\'.]+)*'  # plaintiff
+    r'(?:\s+[A-Z][A-Za-z\'.]+)*'  # additional plaintiff words
+    r'(?:,?\s+(?:Inc|Corp|Co|Ltd|LLC|L\.?L\.?C|P\.?C|S\.?A|N\.?A|et al)\.?)*'  # entity suffixes
+    r')\s+v\.?\s+'  # "v." or "v"
+    r'([A-Z][A-Za-z\'.]+(?:\s+(?:of|for|the|and|in|ex|re|In|Ex|Re)\s+[A-Z][A-Za-z\'.]+)*'  # defendant
+    r'(?:\s+[A-Z][A-Za-z\'.]+)*'  # additional defendant words
+    r'(?:,?\s+(?:Inc|Corp|Co|Ltd|LLC|L\.?L\.?C|P\.?C|S\.?A|N\.?A|et al)\.?)*'  # entity suffixes
+    r')'
+)
+
+# Pattern for "Id." and "Id" (with or without period, standalone)
+_ID_RE = re.compile(r'\bId\.(?!\w)|\bId\b(?!\w)')
+
+
+def _split_on_legal_italics(text: str) -> list[tuple[str, bool]]:
+    """Split text into segments that should or shouldn't be italicized.
+    Returns list of (text, should_italicize) tuples.
+    """
+    segments = []
+    # Combine case name and Id. patterns
+    combined = re.compile(f'({_CASE_NAME_RE.pattern}|{_ID_RE.pattern})')
+    pos = 0
+    for m in combined.finditer(text):
+        if m.start() > pos:
+            segments.append((text[pos:m.start()], False))
+        segments.append((m.group(0), True))
+        pos = m.end()
+    if pos < len(text):
+        segments.append((text[pos:], False))
+    return segments if segments else [(text, False)]
+
+
 def _add_plain_runs(paragraph, text: str):
-    """Add plain text with bold/italic formatting."""
+    """Add plain text with bold/italic/case-name formatting."""
     ensure_docx_imports()
-    parts = re.split(r'(\*\*.*?\*\*|\*.*?\*)', text)
-    for part in parts:
-        if part.startswith("**") and part.endswith("**"):
-            run = paragraph.add_run(part[2:-2])
-            run.bold = True
-        elif part.startswith("*") and part.endswith("*") and not part.startswith("**"):
-            run = paragraph.add_run(part[1:-1])
-            run.italic = True
-        else:
-            run = paragraph.add_run(part)
-        run.font.name = "Times New Roman"
-        run.font.size = Pt(12)
+
+    # First split on legal italics (case names, Id.)
+    for segment, is_legal_italic in _split_on_legal_italics(text):
+        # Then handle markdown bold/italic within each segment
+        parts = re.split(r'(\*\*.*?\*\*|\*.*?\*)', segment)
+        for part in parts:
+            if part.startswith("**") and part.endswith("**"):
+                run = paragraph.add_run(part[2:-2])
+                run.bold = True
+                if is_legal_italic:
+                    run.italic = True
+            elif part.startswith("*") and part.endswith("*") and not part.startswith("**"):
+                run = paragraph.add_run(part[1:-1])
+                run.italic = True
+            else:
+                run = paragraph.add_run(part)
+                if is_legal_italic:
+                    run.italic = True
+            run.font.name = "Times New Roman"
+            run.font.size = Pt(12)
 
 
 def render_markdown_to_docx(doc, lines: list[str], verified_slugs: Optional[set] = None):
