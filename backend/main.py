@@ -6978,11 +6978,28 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         )
 
         # Load core SJ cases (always available as approved sources)
-        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535', '10686709', '4025863', '6867332', '6876097']  # Celotex, Anderson, Tolan, Dresher, Mudrich, Cascone, Leibreich
+        FEDERAL_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan
+        OHIO_SJ_CASE_IDS = ['10686709', '4025863', '6867332', '6876097']  # Dresher, Mudrich, Cascone, Leibreich
+
+        core_case_ids = list(FEDERAL_SJ_CASE_IDS)
+        if jurisdiction == "ohio":
+            core_case_ids.extend(OHIO_SJ_CASE_IDS)
+
         core_cases = await conn.fetch(
             "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
-            CORE_SJ_CASE_IDS
+            core_case_ids
         )
+
+        # Load user-added cases for this project
+        user_cases = await conn.fetch(
+            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary "
+            "FROM msj_project_cases pc "
+            "JOIN cases c ON c.id = pc.case_id "
+            "LEFT JOIN ai_summaries s ON c.id = s.case_id "
+            "WHERE pc.project_id = $1",
+            project_id
+        )
+        all_approved_cases = list(core_cases) + list(user_cases)
 
     # Build system prompt
     from msj_builder import build_msj_system_prompt
@@ -6994,7 +7011,7 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
         rule_56_text=rule_56["body"] if rule_56 else None,
         generated_motion=project["generated_motion"],
-        core_cases=[(r["title"], r["reporter_cite"], r["summary"]) for r in core_cases],
+        core_cases=[(r["title"], r["reporter_cite"], r["summary"]) for r in all_approved_cases],
     )
 
     # Build messages
@@ -7094,11 +7111,28 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         )
 
         # Load core SJ cases (always available as approved sources)
-        CORE_SJ_CASE_IDS = ['111722', '111719', '2672535', '10686709', '4025863', '6867332', '6876097']  # Celotex, Anderson, Tolan, Dresher, Mudrich, Cascone, Leibreich
+        FEDERAL_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan
+        OHIO_SJ_CASE_IDS = ['10686709', '4025863', '6867332', '6876097']  # Dresher, Mudrich, Cascone, Leibreich
+
+        core_case_ids = list(FEDERAL_SJ_CASE_IDS)
+        if jurisdiction == "ohio":
+            core_case_ids.extend(OHIO_SJ_CASE_IDS)
+
         core_cases = await conn.fetch(
             "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
-            CORE_SJ_CASE_IDS
+            core_case_ids
         )
+
+        # Load user-added cases for this project
+        user_cases = await conn.fetch(
+            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary "
+            "FROM msj_project_cases pc "
+            "JOIN cases c ON c.id = pc.case_id "
+            "LEFT JOIN ai_summaries s ON c.id = s.case_id "
+            "WHERE pc.project_id = $1",
+            project_id
+        )
+        all_approved_cases = list(core_cases) + list(user_cases)
 
         # Update status to generating
         await conn.execute("UPDATE msj_projects SET status = 'generating', updated_at = NOW() WHERE id = $1", project_id)
@@ -7111,7 +7145,7 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
         library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
         rule_56_text=rule_56["body"] if rule_56 else None,
-        core_cases=[(r["title"], r["reporter_cite"], r["summary"]) for r in core_cases],
+        core_cases=[(r["title"], r["reporter_cite"], r["summary"]) for r in all_approved_cases],
     )
 
     async def stream_response():
@@ -7170,6 +7204,93 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/v1/msj/projects/{project_id}/cases")
+async def list_msj_project_cases(project_id: int, user: dict = Depends(require_auth)):
+    """List user-added cases for an MSJ project."""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        # Verify project ownership
+        project = await conn.fetchrow(
+            "SELECT id FROM msj_projects WHERE id = $1 AND user_id = $2", project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        rows = await conn.fetch("""
+            SELECT pc.id, pc.case_id, pc.notes, pc.added_at,
+                   c.title, c.reporter_cite, c.decision_date,
+                   ct.name as court_name
+            FROM msj_project_cases pc
+            JOIN cases c ON c.id = pc.case_id
+            LEFT JOIN courts ct ON c.court_id = ct.id
+            WHERE pc.project_id = $1
+            ORDER BY pc.added_at DESC
+        """, project_id)
+
+    return {
+        "cases": [
+            {
+                "id": row["id"],
+                "case_id": row["case_id"],
+                "title": row["title"],
+                "reporter_cite": row["reporter_cite"],
+                "decision_date": row["decision_date"].isoformat() if row["decision_date"] else None,
+                "court_name": row["court_name"],
+                "notes": row["notes"],
+                "added_at": row["added_at"].isoformat() if row["added_at"] else None,
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.post("/api/v1/msj/projects/{project_id}/cases")
+async def add_msj_project_case(project_id: int, data: dict, user: dict = Depends(require_auth)):
+    """Add a case from the database to an MSJ project's approved sources."""
+    user_id = user["id"]
+    case_id = data.get("case_id")
+    if not case_id:
+        raise HTTPException(status_code=400, detail="case_id is required")
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT id FROM msj_projects WHERE id = $1 AND user_id = $2", project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Verify case exists
+        case = await conn.fetchrow("SELECT id, title FROM cases WHERE id = $1", case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        await conn.execute(
+            "INSERT INTO msj_project_cases (project_id, case_id, added_by, notes) VALUES ($1, $2, $3, $4) ON CONFLICT (project_id, case_id) DO NOTHING",
+            project_id, case_id, user_id, data.get("notes"),
+        )
+
+    return {"status": "added", "case_id": case_id, "title": case["title"]}
+
+
+@app.delete("/api/v1/msj/projects/{project_id}/cases/{case_id}")
+async def remove_msj_project_case(project_id: int, case_id: str, user: dict = Depends(require_auth)):
+    """Remove a case from an MSJ project's approved sources."""
+    user_id = user["id"]
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT id FROM msj_projects WHERE id = $1 AND user_id = $2", project_id, user_id
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        await conn.execute(
+            "DELETE FROM msj_project_cases WHERE project_id = $1 AND case_id = $2",
+            project_id, case_id,
+        )
+
+    return {"status": "removed"}
 
 
 @app.get("/api/v1/msj/projects/{project_id}/export")
