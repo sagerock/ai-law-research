@@ -281,7 +281,7 @@ Generate the memorandum content now."""
     return system_prompt, user_prompt
 
 
-def generate_motion_docx(case_info: dict, motion_text: str) -> bytes:
+def generate_motion_docx(case_info: dict, motion_text: str, verified_slugs: set = None) -> bytes:
     """
     Generate a DOCX file from the motion text with proper federal court formatting.
     Builds the caption, signature block, and certificate of service from structured
@@ -445,7 +445,7 @@ def generate_motion_docx(case_info: dict, motion_text: str) -> bytes:
     else:
         start_idx = 0  # If no marker found, use everything
 
-    _render_motion_content(doc, content_lines[start_idx:])
+    _render_motion_content(doc, content_lines[start_idx:], verified_slugs=verified_slugs)
 
     # --- Conclusion signature block ---
     doc.add_paragraph()
@@ -549,16 +549,17 @@ def _add_signature_block(doc, representing: str, movant: str):
         run.font.size = Pt(12)
 
 
-def _add_formatted_run(paragraph, text: str):
+def _add_formatted_run(paragraph, text: str, verified_slugs: set = None):
     """Add a run of text with TNR 12pt, handling bold/italic and citation hyperlinks."""
     from docx_utils import add_formatted_run
-    add_formatted_run(paragraph, text)
+    add_formatted_run(paragraph, text, verified_slugs=verified_slugs)
 
 
-def _render_motion_content(doc, lines: list[str]):
+def _render_motion_content(doc, lines: list[str], verified_slugs: set = None):
     """
     Render the AI-generated motion body into the DOCX with proper legal formatting.
     Handles markdown headings, numbered lists, and body paragraphs.
+    If verified_slugs is provided, only verified citations become hyperlinks.
     """
     for line in lines:
         stripped = line.strip()
@@ -609,13 +610,13 @@ def _render_motion_content(doc, lines: list[str]):
         if num_match:
             p = doc.add_paragraph()
             p.paragraph_format.first_line_indent = Inches(0.5)
-            _add_formatted_run(p, f"{num_match.group(1)}. {num_match.group(2)}")
+            _add_formatted_run(p, f"{num_match.group(1)}. {num_match.group(2)}", verified_slugs=verified_slugs)
             continue
 
         # Regular body paragraph with first-line indent
         p = doc.add_paragraph()
         p.paragraph_format.first_line_indent = Inches(0.5)
-        _add_formatted_run(p, stripped)
+        _add_formatted_run(p, stripped, verified_slugs=verified_slugs)
 
 
 async def verify_citations(text: str, db_pool) -> dict:

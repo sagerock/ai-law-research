@@ -452,8 +452,12 @@ _CASE_CITE_RE = re.compile(r'\b(\d{1,4})\s+([A-Z][A-Za-z0-9.\s\']{1,25}?)\s+(\d{
 SITE_URL = "https://lawstudygroup.com"
 
 
-def _find_case_citations(text: str) -> list[tuple[int, int, str]]:
-    """Find case citations in text, return list of (start, end, url)."""
+def _find_case_citations(text: str, verified_slugs: Optional[set] = None) -> list[tuple[int, int, str]]:
+    """Find case citations in text, return list of (start, end, url).
+
+    If verified_slugs is provided, only include citations whose slug is in the set.
+    If None, include all valid-looking citations (no DB verification).
+    """
     from citation_utils import reporter_cite_to_slug
     results = []
     for m in _CASE_CITE_RE.finditer(text):
@@ -465,16 +469,65 @@ def _find_case_citations(text: str) -> list[tuple[int, int, str]]:
         slug = reporter_cite_to_slug(full_cite)
         # Only link if slug looks like a valid citation
         if re.match(r'^\d+-[a-z].*-\d+$', slug):
+            if verified_slugs is not None and slug not in verified_slugs:
+                continue
             results.append((m.start(), m.end(), f"{SITE_URL}/cases/{slug}"))
     return results
 
 
-def add_formatted_run(paragraph, text: str, link_citations: bool = True):
-    """Add a run of text with TNR 12pt to a paragraph, handling inline bold/italic and citation hyperlinks."""
+async def verify_citation_slugs(text: str, db_pool) -> set:
+    """Check all detected citation slugs against the database, return set of verified slugs."""
+    from citation_utils import reporter_cite_to_slug, parse_citation_slug
+    # Collect all unique slugs from the text
+    slugs_to_check = {}  # slug -> cite_str
+    for m in _CASE_CITE_RE.finditer(text):
+        volume, reporter, page = m.group(1), m.group(2).strip(), m.group(3)
+        if re.search(r'\bat$', reporter, re.IGNORECASE):
+            continue
+        full_cite = f"{volume} {reporter} {page}"
+        slug = reporter_cite_to_slug(full_cite)
+        if re.match(r'^\d+-[a-z].*-\d+$', slug) and slug not in slugs_to_check:
+            parsed = parse_citation_slug(slug)
+            if parsed:
+                v, r, p = parsed
+                slugs_to_check[slug] = f"{v} {r} {p}"
+
+    if not slugs_to_check or not db_pool:
+        return set()
+
+    verified = set()
+    async with db_pool.acquire() as conn:
+        for slug, cite_str in slugs_to_check.items():
+            cite_upper = cite_str.upper()
+            cite_no_dots = re.sub(r'\.(\s?)', ' ', cite_str).strip()
+            cite_no_dots = re.sub(r'\s+', ' ', cite_no_dots).upper()
+            row = await conn.fetchrow(
+                """SELECT id FROM cases
+                   WHERE reporter_cite = $1
+                      OR reporter_cite LIKE $2
+                      OR reporter_cite LIKE $3
+                      OR UPPER(reporter_cite) = $4
+                      OR UPPER(SPLIT_PART(reporter_cite, ',', 1)) = $4
+                      OR UPPER(REPLACE(SPLIT_PART(reporter_cite, ',', 1), '.', ' ')) LIKE $5
+                   LIMIT 1""",
+                cite_str, f"{cite_str} (%", f"{cite_str},%", cite_upper, f"%{cite_no_dots}%",
+            )
+            if row:
+                verified.add(slug)
+
+    return verified
+
+
+def add_formatted_run(paragraph, text: str, link_citations: bool = True, verified_slugs: Optional[set] = None):
+    """Add a run of text with TNR 12pt to a paragraph, handling inline bold/italic and citation hyperlinks.
+
+    If verified_slugs is provided, only hyperlink citations in that set.
+    If None and link_citations is True, hyperlinks all valid-looking citations (no DB check).
+    """
     ensure_docx_imports()
 
     if link_citations:
-        citations = _find_case_citations(text)
+        citations = _find_case_citations(text, verified_slugs=verified_slugs)
     else:
         citations = []
 
@@ -525,10 +578,11 @@ def _add_plain_runs(paragraph, text: str):
         run.font.size = Pt(12)
 
 
-def render_markdown_to_docx(doc, lines: list[str]):
+def render_markdown_to_docx(doc, lines: list[str], verified_slugs: Optional[set] = None):
     """
     Render markdown-formatted legal content into DOCX with proper formatting.
     Handles headings (#, ##, ###, ####), numbered lists, and body paragraphs.
+    If verified_slugs is provided, only verified citations become hyperlinks.
     """
     ensure_docx_imports()
     for line in lines:
@@ -580,13 +634,13 @@ def render_markdown_to_docx(doc, lines: list[str]):
         if num_match:
             p = doc.add_paragraph()
             p.paragraph_format.first_line_indent = Inches(0.5)
-            add_formatted_run(p, f"{num_match.group(1)}. {num_match.group(2)}")
+            add_formatted_run(p, f"{num_match.group(1)}. {num_match.group(2)}", verified_slugs=verified_slugs)
             continue
 
         # Regular body paragraph with first-line indent
         p = doc.add_paragraph()
         p.paragraph_format.first_line_indent = Inches(0.5)
-        add_formatted_run(p, stripped)
+        add_formatted_run(p, stripped, verified_slugs=verified_slugs)
 
 
 def save_docx_to_bytes(doc) -> bytes:

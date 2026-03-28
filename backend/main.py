@@ -7190,7 +7190,9 @@ async def export_msj_motion(project_id: int, user: dict = Depends(require_auth))
     case_info = json.loads(project["case_info"]) if isinstance(project["case_info"], str) else (project["case_info"] or {})
 
     from msj_builder import generate_motion_docx
-    docx_bytes = generate_motion_docx(case_info, project["generated_motion"])
+    from docx_utils import verify_citation_slugs
+    verified_slugs = await verify_citation_slugs(project["generated_motion"] or "", db_pool)
+    docx_bytes = generate_motion_docx(case_info, project["generated_motion"], verified_slugs=verified_slugs)
 
     # Build filename
     plaintiff = case_info.get("plaintiff", "Plaintiff")
@@ -7799,8 +7801,12 @@ async def export_tool_document(tool_type: str, project_id: int, user: dict = Dep
 
     builder = _get_tool_builder(tool_type)
 
+    # Verify citation slugs against database before building DOCX
+    from docx_utils import verify_citation_slugs
+    verified_slugs = await verify_citation_slugs(project["generated_document"] or "", db_pool)
+
     if tool_type == "affidavit":
-        docx_bytes = builder.generate_affidavit_docx(case_info, form_data, project["generated_document"])
+        docx_bytes = builder.generate_affidavit_docx(case_info, form_data, project["generated_document"], verified_slugs=verified_slugs)
         affiant_name = form_data.get("affiant_info", {}).get("name", "Affiant")
         safe_name = re.sub(r'[^\w\s-]', '', affiant_name)[:50].strip()
         filename = f"Affidavit of {safe_name}.docx" if safe_name else "Affidavit.docx"

@@ -181,7 +181,7 @@ Generate the affidavit body now."""
     return system_prompt, user_prompt
 
 
-def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: str) -> bytes:
+def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: str, verified_slugs: set = None) -> bytes:
     """
     Generate a DOCX file from the affidavit text with proper formatting.
     Returns the DOCX as bytes.
@@ -236,7 +236,7 @@ def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: st
     else:
         start_idx = 0
 
-    _render_affidavit_content(doc, content_lines[start_idx:])
+    _render_affidavit_content(doc, content_lines[start_idx:], verified_slugs=verified_slugs)
 
     # Signature line for affiant (right-aligned, per textbook)
     doc.add_paragraph()
@@ -405,10 +405,11 @@ def _add_simple_jurat(doc, state: str = "Ohio"):
     r.font.size = Pt(12)
 
 
-def _render_affidavit_content(doc, lines: list[str]):
+def _render_affidavit_content(doc, lines: list[str], verified_slugs: set = None):
     """
     Render affidavit body into DOCX. Similar to render_markdown_to_docx but
     optimized for affidavit style (numbered paragraphs, no centered headings).
+    If verified_slugs is provided, only verified citations become hyperlinks.
     """
     ensure_docx_imports()
     import re
@@ -436,10 +437,10 @@ def _render_affidavit_content(doc, lines: list[str]):
         if num_match:
             p = doc.add_paragraph()
             p.paragraph_format.first_line_indent = Inches(0.5)
-            add_formatted_run(p, f"{num_match.group(1)}. {num_match.group(2)}")
+            add_formatted_run(p, f"{num_match.group(1)}. {num_match.group(2)}", verified_slugs=verified_slugs)
             continue
 
         # Regular text paragraph
         p = doc.add_paragraph()
         p.paragraph_format.first_line_indent = Inches(0.5)
-        add_formatted_run(p, stripped)
+        add_formatted_run(p, stripped, verified_slugs=verified_slugs)
