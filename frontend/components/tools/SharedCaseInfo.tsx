@@ -97,7 +97,11 @@ export default function SharedCaseInfo({ caseInfo, onChange }: SharedCaseInfoPro
             <option value="defendant">Defendant</option>
           </select>
         </div>
-        <div className="md:col-span-2">
+        <div>
+          <label className="block text-sm font-medium text-stone-700 mb-1">County</label>
+          <input type="text" value={form.county || ''} onChange={(e) => updateField('county', e.target.value)} placeholder="e.g., Summit" className={inputClass} />
+        </div>
+        <div>
           <label className="block text-sm font-medium text-stone-700 mb-1">Judge (optional)</label>
           <input type="text" value={form.judge || ''} onChange={(e) => updateField('judge', e.target.value)} placeholder="e.g., Hon. Jane Doe" className={inputClass} />
         </div>

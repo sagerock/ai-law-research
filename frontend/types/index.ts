@@ -248,6 +248,7 @@ export interface MSJCaseInfo {
   case_number?: string
   representing_side?: string
   judge?: string
+  county?: string
 }
 
 export interface MSJFact {

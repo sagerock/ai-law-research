@@ -200,7 +200,15 @@ def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: st
     defendant = case_info.get("defendant", "[Defendant]")
     movant = plaintiff if representing == "plaintiff" else defendant
     state = case_info.get("jurisdiction_state", "Ohio")
-    county = case_info.get("county", "___________")
+    county = case_info.get("county", "")
+    # Try to infer county from court name if not explicitly set
+    if not county:
+        court = case_info.get("court", "")
+        import re as _re
+        county_match = _re.search(r'(\w+(?:\s+\w+)?)\s+County', court)
+        if county_match:
+            county = county_match.group(1)
+    county = county or "___________"
 
     # Educational disclaimer
     add_educational_disclaimer(doc, "top")
@@ -338,31 +346,39 @@ def _build_section_symbol_caption(doc, case_info: dict):
 
 
 def _add_venue_block(doc, state: str = "Ohio", county: str = "___________"):
-    """Add State/County venue block with § symbols before the affidavit body."""
+    """Add State/County venue block with § symbols in a table for proper alignment."""
     ensure_docx_imports()
+    from docx_utils import qn, set_cell_text
 
-    p1 = doc.add_paragraph()
-    p1.paragraph_format.space_after = Pt(0)
-    p1.paragraph_format.line_spacing = 1.15
-    r = p1.add_run(f"State of {state} \u00A7")
-    r.font.name = "Times New Roman"
-    r.font.size = Pt(12)
+    venue_table = doc.add_table(rows=3, cols=2)
 
-    p2 = doc.add_paragraph()
-    p2.paragraph_format.space_after = Pt(0)
-    p2.paragraph_format.space_before = Pt(0)
-    p2.paragraph_format.line_spacing = 1.15
-    r = p2.add_run(f"                        \u00A7")
-    r.font.name = "Times New Roman"
-    r.font.size = Pt(12)
+    # Remove all borders
+    tbl = venue_table._tbl
+    tblPr = tbl.tblPr if tbl.tblPr is not None else tbl.makeelement(qn('w:tblPr'), {})
+    borders = tblPr.makeelement(qn('w:tblBorders'), {})
+    for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+        el = borders.makeelement(qn(f'w:{edge}'), {
+            qn('w:val'): 'none', qn('w:sz'): '0', qn('w:space'): '0', qn('w:color'): 'auto'
+        })
+        borders.append(el)
+    tblPr.append(borders)
+    if tbl.tblPr is None:
+        tbl.insert(0, tblPr)
 
-    p3 = doc.add_paragraph()
-    p3.paragraph_format.space_after = Pt(0)
-    p3.paragraph_format.space_before = Pt(0)
-    p3.paragraph_format.line_spacing = 1.15
-    r = p3.add_run(f"County of {county} \u00A7")
-    r.font.name = "Times New Roman"
-    r.font.size = Pt(12)
+    # Set column widths
+    for row in venue_table.rows:
+        row.cells[0].width = Inches(3.0)
+        row.cells[1].width = Inches(0.5)
+
+    # Fill in venue block
+    set_cell_text(venue_table.cell(0, 0), f"State of {state}", bold=False)
+    set_cell_text(venue_table.cell(0, 1), "\u00A7", bold=False)
+
+    set_cell_text(venue_table.cell(1, 0), "", bold=False)
+    set_cell_text(venue_table.cell(1, 1), "\u00A7", bold=False)
+
+    set_cell_text(venue_table.cell(2, 0), f"County of {county}", bold=False)
+    set_cell_text(venue_table.cell(2, 1), "\u00A7", bold=False)
 
 
 def _add_simple_jurat(doc, state: str = "Ohio"):
