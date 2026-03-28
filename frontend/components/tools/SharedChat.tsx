@@ -33,7 +33,7 @@ export default function SharedChat({
   chatPlaceholder = 'Ask about your document, request revisions, or get suggestions...',
   presetPrompts = [],
 }: SharedChatProps) {
-  const { session } = useAuth()
+  const { session, getAccessToken } = useAuth()
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversationId, setConversationId] = useState<number | null>(null)
@@ -95,7 +95,7 @@ export default function SharedChat({
     setStreamingText('')
 
     try {
-      const token = session?.access_token
+      const token = await getAccessToken()
       if (!token) { setError('Please sign in'); setStreaming(false); return }
 
       const res = await fetch(`${API_URL}/api/v1/tools/${toolType}/projects/${project.id}/chat`, {
@@ -129,7 +129,7 @@ export default function SharedChat({
     setShowDocument(true)
 
     try {
-      const token = session?.access_token
+      const token = await getAccessToken()
       if (!token) { setError('Please sign in'); setGenerating(false); return }
 
       const res = await fetch(`${API_URL}/api/v1/tools/${toolType}/projects/${project.id}/generate`, {
@@ -165,7 +165,8 @@ export default function SharedChat({
 
   const exportDocx = async () => {
     try {
-      const token = session?.access_token
+      const token = await getAccessToken()
+      if (!token) { setError('Please sign in'); return }
       const res = await fetch(`${API_URL}/api/v1/tools/${toolType}/projects/${project.id}/export`, {
         headers: { Authorization: `Bearer ${token}` },
       })
