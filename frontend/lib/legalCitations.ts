@@ -226,6 +226,8 @@ function collectMatches(text: string): MatchInfo[] {
     const volume = caseMatch[1]
     const reporter = caseMatch[2].trim()
     const page = caseMatch[3]
+    // Skip pin cites like "477 U.S. at 249" — "at" is not a reporter
+    if (/\bat$/i.test(reporter)) continue
     const fullCite = `${volume} ${reporter} ${page}`
     const slug = reporterCiteToSlug(fullCite)
     // Only link if the slug looks like a valid citation (has 3 parts: vol-reporter-page)

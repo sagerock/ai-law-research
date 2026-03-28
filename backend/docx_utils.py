@@ -458,6 +458,9 @@ def _find_case_citations(text: str) -> list[tuple[int, int, str]]:
     results = []
     for m in _CASE_CITE_RE.finditer(text):
         volume, reporter, page = m.group(1), m.group(2).strip(), m.group(3)
+        # Skip pin cites like "477 U.S. at 249"
+        if re.search(r'\bat$', reporter, re.IGNORECASE):
+            continue
         full_cite = f"{volume} {reporter} {page}"
         slug = reporter_cite_to_slug(full_cite)
         # Only link if slug looks like a valid citation
