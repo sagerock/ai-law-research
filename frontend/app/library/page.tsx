@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { buildCanonicalUrl } from '@/lib/citationUrls'
 import {
   FolderOpen,
   Bookmark,
@@ -822,7 +823,7 @@ function LibraryPageContent() {
                                     <div className="p-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition overflow-hidden">
                                       <div className="flex items-center justify-between">
                                         <Link
-                                          href={`/case/${c.id}?collection=${selectedCollection.id}`}
+                                          href={`${buildCanonicalUrl(c.reporter_cite, c.title)}?collection=${selectedCollection.id}`}
                                           className="flex-1 min-w-0 overflow-hidden"
                                         >
                                           <div className="flex items-center gap-2">
@@ -1020,7 +1021,7 @@ function LibraryPageContent() {
                       >
                         <div className="flex items-start justify-between">
                           <Link
-                            href={`/case/${bookmark.case_id}`}
+                            href={buildCanonicalUrl(bookmark.reporter_cite, bookmark.title)}
                             className="flex-1 min-w-0"
                           >
                             <h4 className="font-medium text-stone-900 hover:text-sage-600 line-clamp-2">

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { API_URL } from '@/lib/api'
 import Header from '@/components/Header'
+import { buildCanonicalUrl } from '@/lib/citationUrls'
 
 interface CaseItem {
   id: string
@@ -242,7 +243,7 @@ function CaseList({ cases, numbered = false }: { cases: CaseItem[], numbered?: b
       {cases.map((c, i) => (
         <Link
           key={c.id}
-          href={`/case/${c.id}`}
+          href={buildCanonicalUrl(c.reporter_cite, c.title)}
           className="flex items-center gap-3 py-2.5 px-3 rounded-lg
                      hover:bg-sage-50 transition-colors group"
         >

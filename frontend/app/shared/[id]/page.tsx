@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Calendar, User, FolderOpen, ExternalLink } from 'lucide-react'
 import Header from '@/components/Header'
+import { buildCanonicalUrl } from '@/lib/citationUrls'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-law-research-production.up.railway.app'
@@ -163,7 +164,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                   return (
                     <Link
                       key={item.key}
-                      href={`/case/${caseItem.id}?shared_collection=${id}`}
+                      href={`${buildCanonicalUrl(caseItem.reporter_cite, caseItem.title)}?shared_collection=${id}`}
                       className="block bg-white rounded-lg border border-stone-200 p-5 hover:border-sage-200 hover:shadow-md transition"
                     >
                       <div className="flex items-start justify-between">

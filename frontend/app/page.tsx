@@ -8,6 +8,7 @@ import {
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import Header from '@/components/Header'
+import { buildCanonicalUrl } from '@/lib/citationUrls'
 
 interface SearchCase {
   id: string
@@ -180,7 +181,7 @@ export default function HomePage() {
               {trendingCases.map((tc, i) => (
                 <Link
                   key={tc.id}
-                  href={`/case/${tc.id}`}
+                  href={buildCanonicalUrl(tc.reporter_cite, tc.title)}
                   className="group bg-white border border-stone-200 rounded-xl p-5
                              hover:border-sage-300 hover:shadow-md hover:-translate-y-0.5
                              transition-all duration-200 animate-fade-in-up"
@@ -258,7 +259,7 @@ export default function HomePage() {
                   {searchResults.map(c => (
                     <Link
                       key={c.id}
-                      href={`/case/${c.id}`}
+                      href={buildCanonicalUrl(c.reporter_cite, c.title)}
                       className="flex items-baseline justify-between gap-4 px-4 py-3 rounded-xl
                                  hover:bg-sage-50 transition-all group"
                     >
