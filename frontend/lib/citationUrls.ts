@@ -265,8 +265,16 @@ function genericReporterToSlug(reporter: string): string {
   return slug
 }
 
+function normalizeCite(cite: string): string {
+  // Take only the first citation if comma-separated
+  cite = cite.split(",")[0].trim()
+  // Strip trailing parenthetical (year, court info, etc.)
+  cite = cite.replace(/\s*\([^)]*\)\s*$/, "").trim()
+  return cite
+}
+
 export function reporterCiteToSlug(cite: string): string {
-  cite = cite.trim()
+  cite = normalizeCite(cite)
   const m = cite.match(/^(\d+)\s+(.+)\s+(\d+)$/)
   if (!m) {
     return cite.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")

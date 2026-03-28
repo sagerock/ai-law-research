@@ -284,12 +284,27 @@ def _generic_slug_to_reporter(slug: str) -> str:
     return slug.upper().replace("-", " ")
 
 
+def _normalize_cite(cite: str) -> str:
+    """Clean a raw reporter_cite value for parsing.
+
+    Handles: trailing year "(1986)", multiple cites "248 N.Y. 339, 162 N.E. 99 (1928)",
+    and court info in parens "479 P.2d 946 (Wash. Ct. App. 1971)".
+    """
+    # Take only the first citation if comma-separated
+    cite = cite.split(",")[0].strip()
+    # Strip trailing parenthetical (year, court info, etc.)
+    cite = re.sub(r"\s*\([^)]*\)\s*$", "", cite).strip()
+    return cite
+
+
 def reporter_cite_to_slug(cite: str) -> str:
     """Convert a full reporter citation to a URL slug.
 
     "550 U.S. 544" -> "550-us-544"
+    "477 U.S. 317 (1986)" -> "477-us-317"
+    "248 N.Y. 339, 162 N.E. 99 (1928)" -> "248-ny-339"
     """
-    cite = cite.strip()
+    cite = _normalize_cite(cite)
     # Extract leading volume number
     m = re.match(r"^(\d+)\s+(.+)\s+(\d+)$", cite)
     if not m:

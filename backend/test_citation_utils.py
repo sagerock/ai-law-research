@@ -81,6 +81,15 @@ class TestReporterCiteToSlug:
     def test_mass(self):
         assert reporter_cite_to_slug("100 Mass. 200") == "100-mass-200"
 
+    def test_trailing_year(self):
+        assert reporter_cite_to_slug("477 U.S. 317 (1986)") == "477-us-317"
+
+    def test_trailing_court_and_year(self):
+        assert reporter_cite_to_slug("479 P.2d 946 (Wash. Ct. App. 1971)") == "479-p2d-946"
+
+    def test_multiple_cites_comma_separated(self):
+        assert reporter_cite_to_slug("248 N.Y. 339, 162 N.E. 99 (1928)") == "248-ny-339"
+
 
 class TestSlugToReporterCite:
     def test_us(self):

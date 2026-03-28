@@ -945,8 +945,8 @@ async def resolve_case_slug(slug: str):
             volume, reporter, page = parsed
             cite_str = f"{volume} {reporter} {page}"
             row = await conn.fetchrow(
-                "SELECT id, reporter_cite, title FROM cases WHERE reporter_cite = $1",
-                cite_str,
+                "SELECT id, reporter_cite, title FROM cases WHERE reporter_cite = $1 OR reporter_cite LIKE $2",
+                cite_str, f"{cite_str} (%",
             )
             if row:
                 canonical = build_canonical_slug(row["reporter_cite"], row["title"])
