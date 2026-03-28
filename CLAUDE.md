@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Sage's Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.6, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
+**Law Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.6, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
 
 **Target audience**: Law students who want free case briefs without paying $276/year for Quimbee.
 
 **Branding**:
-- Site name: "Sage's Study Group"
+- Site name: "Law Study Group"
 - Tagline: "Free AI Case Briefs for Law Students"
-- HTML title: "Sage's Study Group | Free AI Case Briefs for Law Students"
+- HTML title: "Law Study Group | Free AI Case Briefs for Law Students"
 - Domain: `lawstudygroup.com`
 
 ## Production Deployment (Railway)
@@ -202,7 +202,7 @@ UPDATE site_config SET value = '10.00' WHERE key = 'monthly_hosting_cost';
 ## SEO
 
 - **Custom domain**: `lawstudygroup.com`
-- **Dynamic page titles**: Case pages show "Erie Railroad v. Tompkins | Sage's Study Group"
+- **Dynamic page titles**: Case pages show "Erie Railroad v. Tompkins | Law Study Group"
 - **Server-side rendering**: Case metadata generated on server for search engine indexing
 - **Sitemap**: `/sitemap.xml` dynamically lists all cases from database (revalidates hourly)
 - **Robots.txt**: `/robots.txt` allows crawling, points to sitemap
