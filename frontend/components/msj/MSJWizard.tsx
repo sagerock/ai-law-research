@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, Check, FileText, Scale, Upload, List, MessageSquare, Sparkles, AlertCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, FileText, Scale, Upload, List, BookOpen, MessageSquare, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { API_URL } from '@/lib/api'
 import MSJCaseInfo from './MSJCaseInfo'
@@ -22,8 +22,9 @@ const STEPS = [
   { id: 1, label: 'Case Info', icon: Scale, description: 'Parties, court, jurisdiction' },
   { id: 2, label: 'Documents', icon: Upload, description: 'Upload all case documents' },
   { id: 3, label: 'Facts', icon: List, description: 'Undisputed material facts' },
-  { id: 4, label: 'Arguments', icon: MessageSquare, description: 'Legal issues & authority' },
-  { id: 5, label: 'Generate', icon: Sparkles, description: 'AI drafting & export' },
+  { id: 4, label: 'Sources', icon: BookOpen, description: 'Approved cases & authorities' },
+  { id: 5, label: 'Arguments', icon: MessageSquare, description: 'Legal issues & authority' },
+  { id: 6, label: 'Generate', icon: Sparkles, description: 'AI drafting & export' },
 ]
 
 export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
@@ -78,8 +79,10 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
       case 3:
         return (project.material_facts?.length ?? 0) > 0
       case 4:
-        return (project.legal_arguments?.length ?? 0) > 0
+        return true  // Sources always has defaults (federal SJ cases)
       case 5:
+        return (project.legal_arguments?.length ?? 0) > 0
+      case 6:
         return project.status === 'complete'
       default:
         return false
@@ -208,20 +211,20 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
             />
           )}
           {activeStep === 4 && (
+            <MSJResources projectId={project.id} jurisdiction={project.case_info?.jurisdiction} />
+          )}
+          {activeStep === 5 && (
             <MSJArgumentsEditor
               arguments={project.legal_arguments || []}
               onChange={(args) => saveProject({ legal_arguments: args })}
             />
           )}
-          {activeStep === 5 && (
-            <>
-              <MSJResources projectId={project.id} jurisdiction={project.case_info?.jurisdiction} />
-              <MSJChat project={project} onProjectUpdate={onUpdate} />
-            </>
+          {activeStep === 6 && (
+            <MSJChat project={project} onProjectUpdate={onUpdate} />
           )}
 
           {/* Navigation buttons */}
-          {activeStep < 5 && (
+          {activeStep < 6 && (
             <div className="flex justify-between mt-6">
               <button
                 onClick={() => setActiveStep(Math.max(1, activeStep - 1))}
@@ -232,7 +235,7 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
                 <ArrowLeft className="h-4 w-4" /> Previous
               </button>
               <button
-                onClick={() => setActiveStep(Math.min(5, activeStep + 1))}
+                onClick={() => setActiveStep(Math.min(6, activeStep + 1))}
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-sage-700 text-white
                            rounded-lg hover:bg-sage-600 transition-colors"
               >
