@@ -915,6 +915,60 @@ async def generate_embedding(text: str):
 
     return embedding
 
+@app.get("/api/v1/cases/resolve/{slug:path}")
+async def resolve_case_slug(slug: str):
+    """Resolve a citation slug or name slug to a case ID and canonical slug.
+
+    Priority:
+    1. Pure numeric string -> legacy case ID lookup
+    2. Citation pattern (e.g., 550-us-544) -> reporter_cite lookup
+    3. Name slug (e.g., bell-atlantic-corp-v-twombly) -> title match
+    """
+    async with db_pool.acquire() as conn:
+        # 1. Pure numeric -> legacy case ID
+        if slug.isdigit():
+            row = await conn.fetchrow(
+                "SELECT id, reporter_cite, title FROM cases WHERE id = $1",
+                slug,
+            )
+            if row:
+                canonical = build_canonical_slug(row["reporter_cite"], row["title"])
+                return JSONResponse(
+                    content={"case_id": row["id"], "canonical_slug": canonical},
+                    headers={"Cache-Control": "public, max-age=86400"},
+                )
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        # 2. Try as citation slug
+        parsed = parse_citation_slug(slug)
+        if parsed:
+            volume, reporter, page = parsed
+            cite_str = f"{volume} {reporter} {page}"
+            row = await conn.fetchrow(
+                "SELECT id, reporter_cite, title FROM cases WHERE reporter_cite = $1",
+                cite_str,
+            )
+            if row:
+                canonical = build_canonical_slug(row["reporter_cite"], row["title"])
+                return JSONResponse(
+                    content={"case_id": row["id"], "canonical_slug": canonical},
+                    headers={"Cache-Control": "public, max-age=86400"},
+                )
+
+        # 3. Try as name slug
+        # TODO: At 500k+ cases, add a materialized title_slug column instead
+        rows = await conn.fetch(
+            "SELECT id, reporter_cite, title FROM cases WHERE title IS NOT NULL"
+        )
+        for row in rows:
+            if case_title_to_slug(row["title"]) == slug:
+                return JSONResponse(
+                    content={"case_id": row["id"], "canonical_slug": build_canonical_slug(row["reporter_cite"], row["title"])},
+                    headers={"Cache-Control": "public, max-age=86400"},
+                )
+
+    raise HTTPException(status_code=404, detail="Case not found")
+
 @app.get("/api/v1/cases/{case_id}")
 async def get_case(case_id: str):
     """Get a specific case by ID"""
