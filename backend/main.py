@@ -5127,7 +5127,7 @@ async def list_tool_documents():
         rows = await conn.fetch("""
             SELECT d.id, d.title, d.doc_type, d.metadata,
                    COUNT(i.id) as item_count
-            FROM tool_documents d
+            FROM legal_documents d
             LEFT JOIN legal_text_items i ON i.document_id = d.id
             GROUP BY d.id
             ORDER BY d.id
@@ -5201,7 +5201,7 @@ async def get_legal_document(doc_id: str):
     """Get a legal document with all its items."""
     async with db_pool.acquire() as conn:
         doc = await conn.fetchrow(
-            "SELECT * FROM tool_documents WHERE id = $1", doc_id
+            "SELECT * FROM legal_documents WHERE id = $1", doc_id
         )
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -5239,7 +5239,7 @@ async def get_legal_text_item(doc_id: str, slug: str):
         row = await conn.fetchrow("""
             SELECT i.*, d.title as doc_title
             FROM legal_text_items i
-            JOIN tool_documents d ON d.id = i.document_id
+            JOIN legal_documents d ON d.id = i.document_id
             WHERE i.document_id = $1 AND i.slug = $2
         """, doc_id, slug)
 
