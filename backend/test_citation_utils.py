@@ -101,6 +101,9 @@ class TestSlugToReporterCite:
     def test_l_ed_2d(self):
         assert slug_to_reporter_cite("100-l-ed-2d-200") == "100 L. Ed. 2d 200"
 
+    def test_ohio_st3d(self):
+        assert slug_to_reporter_cite("6-ohio-st3d-155") == "6 Ohio St.3d 155"
+
 
 class TestParseCitationSlug:
     def test_simple_citation(self):
