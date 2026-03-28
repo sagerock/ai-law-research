@@ -1,16 +1,17 @@
 import { MetadataRoute } from 'next'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-law-research-production.up.railway.app'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://lawstudygroup.com'
 
 interface CaseForSitemap {
   id: string
   title: string
   date: string | null
+  reporter_cite: string | null
+  canonical_slug: string
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
@@ -32,10 +33,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
-  // Fetch all cases from API
   try {
     const response = await fetch(`${API_URL}/api/v1/sitemap/cases`, {
-      next: { revalidate: 3600 } // Revalidate every hour
+      next: { revalidate: 3600 }
     })
 
     if (!response.ok) {
@@ -46,9 +46,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const data = await response.json()
     const cases: CaseForSitemap[] = data.cases || []
 
-    // Generate case page entries
     const casePages: MetadataRoute.Sitemap = cases.map((c) => ({
-      url: `${SITE_URL}/case/${c.id}`,
+      url: `${SITE_URL}/cases/${c.canonical_slug}`,
       lastModified: c.date ? new Date(c.date) : new Date(),
       changeFrequency: 'monthly' as const,
       priority: 0.6,
