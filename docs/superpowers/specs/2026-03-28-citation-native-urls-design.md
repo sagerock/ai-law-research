@@ -67,6 +67,10 @@ A standalone, testable module at `backend/citation_utils.py` with its own test f
 | `minn` | `Minn.` |
 | `ohio-op` | `Ohio Op.` |
 | `ohio-law-abs` | `Ohio Law. Abs.` |
+| `l-ed` | `L. Ed.` |
+| `l-ed-2d` | `L. Ed. 2d` |
+| `f4th` | `F.4th` |
+| `b-r` | `B.R.` |
 
 Plus a **generic algorithm** for reporters not in the table: strip periods/apostrophes, lowercase, collapse whitespace to hyphens.
 
@@ -125,7 +129,7 @@ Next.js catch-all route handling all citation URLs.
 
 ### `generateMetadata()`
 
-- Title: `Bell Atlantic Corp. v. Twombly | Sage's Study Group`
+- Title: `Bell Atlantic Corp. v. Twombly | Law Study Group`
 - Canonical: `<link rel="canonical" href="https://lawstudygroup.com/cases/550-us-544" />`
 - Open Graph description includes citation
 
