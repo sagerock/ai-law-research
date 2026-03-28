@@ -187,6 +187,10 @@ def generate_affidavit_docx(case_info: dict, form_data: dict, affidavit_text: st
     Returns the DOCX as bytes.
     """
     ensure_docx_imports()
+    # Re-import after ensure so we get the real values (not the None placeholders)
+    import docx_utils as _du
+    global Inches, Pt, WD_ALIGN_PARAGRAPH
+    Inches, Pt, WD_ALIGN_PARAGRAPH = _du.Inches, _du.Pt, _du.WD_ALIGN_PARAGRAPH
 
     # Strip em/en dashes
     affidavit_text = affidavit_text.replace("—", ", ").replace("–", "-")
