@@ -550,19 +550,9 @@ def _add_signature_block(doc, representing: str, movant: str):
 
 
 def _add_formatted_run(paragraph, text: str):
-    """Add a run of text with TNR 12pt to a paragraph, handling inline bold/italic."""
-    parts = re.split(r'(\*\*.*?\*\*|\*.*?\*)', text)
-    for part in parts:
-        if part.startswith("**") and part.endswith("**"):
-            run = paragraph.add_run(part[2:-2])
-            run.bold = True
-        elif part.startswith("*") and part.endswith("*") and not part.startswith("**"):
-            run = paragraph.add_run(part[1:-1])
-            run.italic = True
-        else:
-            run = paragraph.add_run(part)
-        run.font.name = "Times New Roman"
-        run.font.size = Pt(12)
+    """Add a run of text with TNR 12pt, handling bold/italic and citation hyperlinks."""
+    from docx_utils import add_formatted_run
+    add_formatted_run(paragraph, text)
 
 
 def _render_motion_content(doc, lines: list[str]):
