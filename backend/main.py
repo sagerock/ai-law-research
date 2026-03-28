@@ -983,6 +983,18 @@ async def resolve_case_slug(slug: str):
                     headers={"Cache-Control": "public, max-age=86400"},
                 )
 
+    # Log the 404 for monitoring
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO citation_404s (slug) VALUES ($1)
+                ON CONFLICT (slug) DO UPDATE
+                SET hit_count = citation_404s.hit_count + 1,
+                    last_seen = NOW()
+            """, slug)
+    except Exception:
+        pass  # Don't let logging failures break the response
+
     raise HTTPException(status_code=404, detail="Case not found")
 
 @app.get("/api/v1/cases/{case_id}")
@@ -4520,6 +4532,30 @@ async def pool_status():
 class PoolAddRequest(BaseModel):
     amount: float
     description: Optional[str] = None
+
+
+@app.get("/api/v1/admin/citation-404s")
+async def admin_citation_404s(user: dict = Depends(require_admin)):
+    """Get citation URL slugs that returned 404, ordered by hit count."""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT slug, hit_count, first_seen, last_seen
+            FROM citation_404s
+            ORDER BY hit_count DESC
+            LIMIT 100
+        """)
+    return {
+        "total": len(rows),
+        "slugs": [
+            {
+                "slug": row["slug"],
+                "hits": row["hit_count"],
+                "first_seen": row["first_seen"].isoformat(),
+                "last_seen": row["last_seen"].isoformat(),
+            }
+            for row in rows
+        ],
+    }
 
 
 @app.get("/api/v1/admin/pool")
