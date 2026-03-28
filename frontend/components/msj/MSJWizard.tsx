@@ -215,7 +215,7 @@ export default function MSJWizard({ project, onUpdate }: MSJWizardProps) {
           )}
           {activeStep === 5 && (
             <>
-              <MSJResources />
+              <MSJResources projectId={project.id} jurisdiction={project.case_info?.jurisdiction} />
               <MSJChat project={project} onProjectUpdate={onUpdate} />
             </>
           )}
