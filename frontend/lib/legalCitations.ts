@@ -220,6 +220,7 @@ function collectMatches(text: string): MatchInfo[] {
   }
 
   // Find case reporter citations ("477 U.S. 317", "103 F.3d 144")
+  // Then expand to include case name prefix and pin cite/year suffix
   CASE_CITE_PATTERN.lastIndex = 0
   let caseMatch: RegExpExecArray | null
   while ((caseMatch = CASE_CITE_PATTERN.exec(text)) !== null) {
@@ -232,11 +233,30 @@ function collectMatches(text: string): MatchInfo[] {
     const slug = reporterCiteToSlug(fullCite)
     // Only link if the slug looks like a valid citation (has 3 parts: vol-reporter-page)
     if (slug.match(/^\d+-[a-z].*-\d+$/)) {
+      let linkStart = caseMatch.index
+      let linkEnd = caseMatch.index + caseMatch[0].length
+
+      // Expand backwards to include case name: "Dresher v. Burt, "
+      const prefix = text.slice(0, caseMatch.index)
+      const caseNameMatch = prefix.match(
+        /([A-Z][A-Za-z'.]+(?:,?\s+(?:Inc|Corp|Co|Ltd|LLC)\.?)?\s+v\.?\s+[A-Z][A-Za-z'.]+(?:\s+[A-Z][A-Za-z'.]+)*(?:,?\s+(?:Inc|Corp|Co|Ltd|LLC)\.?)?),?\s*$/
+      )
+      if (caseNameMatch && caseNameMatch.index !== undefined) {
+        linkStart = caseNameMatch.index
+      }
+
+      // Expand forwards to include pin cite and year: ", 293 (1996)"
+      const suffix = text.slice(linkEnd)
+      const trailing = suffix.match(/^(?:,\s*\d+)?\s*\(\d{4}\)/)
+      if (trailing) {
+        linkEnd += trailing[0].length
+      }
+
       matches.push({
-        start: caseMatch.index,
-        end: caseMatch.index + caseMatch[0].length,
+        start: linkStart,
+        end: linkEnd,
         href: `/cases/${slug}`,
-        text: caseMatch[0],
+        text: text.slice(linkStart, linkEnd),
         type: 'case',
       })
     }

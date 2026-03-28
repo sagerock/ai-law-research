@@ -455,6 +455,9 @@ SITE_URL = "https://lawstudygroup.com"
 def _find_case_citations(text: str, verified_slugs: Optional[set] = None) -> list[tuple[int, int, str]]:
     """Find case citations in text, return list of (start, end, url).
 
+    Expands matches to include the full citation: case name + reporter cite + pin cite + year.
+    E.g., "Dresher v. Burt, 75 Ohio St.3d 280, 293 (1996)" is one link, not just "75 Ohio St.3d 280".
+
     If verified_slugs is provided, only include citations whose slug is in the set.
     If None, include all valid-looking citations (no DB verification).
     """
@@ -471,7 +474,31 @@ def _find_case_citations(text: str, verified_slugs: Optional[set] = None) -> lis
         if re.match(r'^\d+-[a-z].*-\d+$', slug):
             if verified_slugs is not None and slug not in verified_slugs:
                 continue
-            results.append((m.start(), m.end(), f"{SITE_URL}/cases/{slug}"))
+
+            link_start = m.start()
+            link_end = m.end()
+
+            # Expand backwards to include case name: "Dresher v. Burt, "
+            # Use a single regex that matches "CaseName v. CaseName, " ending right at the volume
+            prefix = text[:m.start()]
+            case_name_match = re.search(
+                r'([A-Z][A-Za-z\'.]+(?:,?\s+(?:Inc|Corp|Co|Ltd|LLC)\.?)?'
+                r'\s+v\.?\s+'
+                r'[A-Z][A-Za-z\'.]+(?:\s+[A-Z][A-Za-z\'.]+)*'
+                r'(?:,?\s+(?:Inc|Corp|Co|Ltd|LLC)\.?)?'
+                r'),?\s*$',
+                prefix
+            )
+            if case_name_match:
+                link_start = case_name_match.start(1)
+
+            # Expand forwards to include pin cite and year: ", 293 (1996)"
+            suffix = text[m.end():]
+            trailing = re.match(r'(?:,\s*\d+)?\s*\(\d{4}\)', suffix)
+            if trailing:
+                link_end = m.end() + trailing.end()
+
+            results.append((link_start, link_end, f"{SITE_URL}/cases/{slug}"))
     return results
 
 
