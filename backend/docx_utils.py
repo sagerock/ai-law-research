@@ -377,22 +377,13 @@ def add_jurat_block(doc, state: str = "___________", county: str = "___________"
     r.font.size = Pt(12)
 
 
-def _add_hyperlink(paragraph, url: str, text: str, font_name="Times New Roman", font_size=12):
-    """Add a hyperlink to a paragraph. python-docx doesn't support this natively."""
-    ensure_docx_imports()
+def _make_hyperlink_run(text: str, italic: bool = False, font_name="Times New Roman", font_size=12):
+    """Create a w:r element for use inside a hyperlink, with blue underline styling."""
     from docx.oxml import OxmlElement
 
-    # Create the w:hyperlink element
-    part = paragraph.part
-    r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
-
-    hyperlink = OxmlElement('w:hyperlink')
-    hyperlink.set(qn('r:id'), r_id)
-
-    new_run = OxmlElement('w:r')
+    run = OxmlElement('w:r')
     rPr = OxmlElement('w:rPr')
 
-    # Blue color + underline for hyperlink style
     color = OxmlElement('w:color')
     color.set(qn('w:val'), '1155CC')
     rPr.append(color)
@@ -401,22 +392,47 @@ def _add_hyperlink(paragraph, url: str, text: str, font_name="Times New Roman", 
     u.set(qn('w:val'), 'single')
     rPr.append(u)
 
-    # Font
     rFonts = OxmlElement('w:rFonts')
     rFonts.set(qn('w:ascii'), font_name)
     rFonts.set(qn('w:hAnsi'), font_name)
     rPr.append(rFonts)
 
     sz = OxmlElement('w:sz')
-    sz.set(qn('w:val'), str(font_size * 2))  # half-points
+    sz.set(qn('w:val'), str(font_size * 2))
     rPr.append(sz)
 
-    new_run.append(rPr)
+    if italic:
+        i_elem = OxmlElement('w:i')
+        rPr.append(i_elem)
+
+    run.append(rPr)
     text_elem = OxmlElement('w:t')
     text_elem.text = text
     text_elem.set(qn('xml:space'), 'preserve')
-    new_run.append(text_elem)
-    hyperlink.append(new_run)
+    run.append(text_elem)
+    return run
+
+
+def _add_hyperlink(paragraph, url: str, text: str, font_name="Times New Roman", font_size=12):
+    """Add a hyperlink to a paragraph with proper Bluebook italics.
+
+    Case names (text containing "v." or "v ") are italicized within the link.
+    "Id." is also italicized.
+    """
+    ensure_docx_imports()
+    from docx.oxml import OxmlElement
+
+    part = paragraph.part
+    r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+
+    hyperlink = OxmlElement('w:hyperlink')
+    hyperlink.set(qn('r:id'), r_id)
+
+    # Split the citation text into italic/non-italic segments
+    # Case name is everything up to and including the comma after "v. Defendant"
+    segments = _split_on_legal_italics(text)
+    for segment_text, is_italic in segments:
+        hyperlink.append(_make_hyperlink_run(segment_text, italic=is_italic, font_name=font_name, font_size=font_size))
 
     paragraph._p.append(hyperlink)
 
