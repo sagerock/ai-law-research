@@ -174,7 +174,6 @@ IMPORTANT FORMATTING RULES:
 - Be specific with dates, times, locations, and names
 - NEVER use em dashes (—) or en dashes (–). Use commas, semicolons, or parentheses instead.
 - Do NOT fabricate any facts — use ONLY facts from the uploaded documents and the identified attestable facts
-- This is for educational purposes only
 
 Generate the affidavit body now."""
 
