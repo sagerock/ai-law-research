@@ -6978,8 +6978,8 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         )
 
         # Load core SJ cases (always available as approved sources)
-        FEDERAL_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan
-        OHIO_SJ_CASE_IDS = ['10686709', '4025863', '6867332', '6876097']  # Dresher, Mudrich, Cascone, Leibreich
+        FEDERAL_SJ_CASE_IDS = ['111722', '111719', '2672535', '111620']  # Celotex, Anderson, Tolan, Matsushita
+        OHIO_SJ_CASE_IDS = ['10686709', '4025863', '6867332', '6876097', '2773474']  # Dresher, Mudrich, Cascone, Leibreich, Cromer
 
         core_case_ids = list(FEDERAL_SJ_CASE_IDS)
         if jurisdiction == "ohio":
@@ -7111,8 +7111,8 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         )
 
         # Load core SJ cases (always available as approved sources)
-        FEDERAL_SJ_CASE_IDS = ['111722', '111719', '2672535']  # Celotex, Anderson, Tolan
-        OHIO_SJ_CASE_IDS = ['10686709', '4025863', '6867332', '6876097']  # Dresher, Mudrich, Cascone, Leibreich
+        FEDERAL_SJ_CASE_IDS = ['111722', '111719', '2672535', '111620']  # Celotex, Anderson, Tolan, Matsushita
+        OHIO_SJ_CASE_IDS = ['10686709', '4025863', '6867332', '6876097', '2773474']  # Dresher, Mudrich, Cascone, Leibreich, Cromer
 
         core_case_ids = list(FEDERAL_SJ_CASE_IDS)
         if jurisdiction == "ohio":

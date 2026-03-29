@@ -59,6 +59,12 @@ const CORE_CASES = {
       cite: '572 U.S. 650 (2014)',
       description: 'Court must draw all reasonable inferences in favor of the non-movant',
     },
+    {
+      id: '111620',
+      title: 'Matsushita Elec. Indus. Co. v. Zenith Radio Corp.',
+      cite: '475 U.S. 574 (1986)',
+      description: 'Non-movant must show more than "some metaphysical doubt" as to material facts',
+    },
   ],
   ohio_substantive: [
     {
@@ -84,6 +90,12 @@ const CORE_CASES = {
       title: 'Leibreich v. A.J. Refrigeration, Inc.',
       cite: '67 Ohio St.3d 266 (1993)',
       description: 'Superseding cause is a defense to both negligence and strict liability',
+    },
+    {
+      id: '2773474',
+      title: 'Cromer v. Children\'s Hosp. Med. Ctr. of Akron',
+      cite: '142 Ohio St. 3d 257 (2015)',
+      description: 'Modern "type of harm" foreseeability standard for intervening causes',
     },
   ],
 }
