@@ -720,24 +720,32 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         return parts.length > 0 ? parts : [text]
                       }
 
-                      const renderInline = (text: string): React.ReactNode[] => {
-                        // First pass: detect legal citations and split into segments
+                      const linkCitations = (text: string, keyPrefix: string): React.ReactNode[] => {
                         const segments = parseLegalCitations(text)
-                        if (segments.length === 1 && !segments[0].href) {
-                          return renderMarkdown(text)
-                        }
-                        // Second pass: apply markdown to each segment, wrap linked ones in <Link>
-                        const result: React.ReactNode[] = []
-                        segments.forEach((seg, si) => {
+                        if (segments.length === 1 && !segments[0].href) return [text]
+                        return segments.map((seg, si) => {
                           if (seg.href) {
-                            result.push(
-                              <Link key={`cite-${si}`} href={seg.href}
+                            return (
+                              <Link key={`cite-${keyPrefix}${si}`} href={seg.href}
                                 className="text-sage-600 hover:text-sage-800 underline decoration-purple-300 hover:decoration-purple-500 transition-colors">
                                 {seg.text}
                               </Link>
                             )
+                          }
+                          return seg.text
+                        })
+                      }
+
+                      const renderInline = (text: string): React.ReactNode[] => {
+                        // First pass: render markdown (bold/italic) so markers aren't broken by citation parsing
+                        const mdNodes = renderMarkdown(text)
+                        // Second pass: apply citation linking to plain text nodes
+                        const result: React.ReactNode[] = []
+                        mdNodes.forEach((node, ni) => {
+                          if (typeof node === 'string') {
+                            result.push(...linkCitations(node, `${ni}-`))
                           } else {
-                            result.push(...renderMarkdown(seg.text, `s${si}-`))
+                            result.push(node)
                           }
                         })
                         return result
@@ -745,6 +753,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
                       return caseSummary.summary.split('\n').map((line, idx) => {
                       const trimmed = line.trim()
+                      // Horizontal rule
+                      if (trimmed.match(/^-{3,}$/) || trimmed.match(/^\*{3,}$/)) {
+                        return <hr key={idx} className="my-4 border-stone-200" />
+                      }
                       // #### Sub-sub-header
                       if (trimmed.match(/^####\s+/)) {
                         const headerText = trimmed.replace(/^####\s+/, '').replace(/\*\*/g, '').trim()
