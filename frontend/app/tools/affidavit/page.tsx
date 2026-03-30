@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Header from '@/components/Header'
 import { useAuth } from '@/lib/auth-context'
 import { API_URL } from '@/lib/api'
@@ -11,6 +11,7 @@ import type { ToolProject } from '@/types'
 export default function AffidavitListPage() {
   const { user, session } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const [projects, setProjects] = useState<ToolProject[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -114,7 +115,7 @@ export default function AffidavitListPage() {
             <FileText className="h-12 w-12 text-stone-300 mx-auto mb-4" />
             <h2 className="text-lg font-medium text-stone-700 mb-2">Sign in to get started</h2>
             <p className="text-sm text-stone-500 mb-4">Create an account to build and save your affidavits.</p>
-            <button onClick={() => router.push('/login')} className="px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 transition-colors text-sm">Sign In</button>
+            <button onClick={() => router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)} className="px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 transition-colors text-sm">Sign In</button>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sage-600" /></div>

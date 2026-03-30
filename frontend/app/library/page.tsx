@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { buildCanonicalUrl } from '@/lib/citationUrls'
@@ -115,6 +115,7 @@ export default function LibraryPage() {
 function LibraryPageContent() {
   const { user, session, isLoading: authLoading, isConfigured } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
 
@@ -585,7 +586,7 @@ function LibraryPageContent() {
             <h2 className="text-2xl font-bold text-stone-900 mb-2">My Library</h2>
             <p className="text-stone-600 mb-6">Sign in to save cases and create collections.</p>
             <Link
-              href="/login"
+              href={`/login?returnTo=${encodeURIComponent(pathname)}`}
               className="inline-flex items-center px-6 py-3 bg-sage-700 text-white rounded-lg font-medium hover:bg-sage-600 transition"
             >
               Sign in to continue

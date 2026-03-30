@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/supabase'
 import { API_URL } from '@/lib/api'
@@ -49,6 +50,7 @@ interface SubjectCount {
 
 export default function OutlinesPage() {
   const { user, session, isLoading: authLoading } = useAuth()
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
 
   // Browse state
@@ -332,7 +334,7 @@ export default function OutlinesPage() {
           )}
           {!user && !authLoading && (
             <Link
-              href="/login"
+              href={`/login?returnTo=${encodeURIComponent(pathname)}`}
               className="inline-flex items-center px-5 py-2.5 bg-sage-700 text-white rounded-lg font-medium hover:bg-sage-600 transition"
             >
               Sign in to upload

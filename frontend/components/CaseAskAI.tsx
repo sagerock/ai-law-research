@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Sparkles, ChevronDown, ChevronUp, Send, Loader2, AlertCircle, LogIn, Copy, Check, HelpCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import { FormattedMessage } from '@/components/FormattedMessage'
@@ -17,6 +17,7 @@ interface CaseAskAIProps {
 export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
   const { user, session } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   const [mounted, setMounted] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -261,7 +262,7 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
             <div className="bg-stone-50 rounded-lg p-6 text-center">
               <p className="text-stone-600 mb-3">Sign in to ask AI questions about this case</p>
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-sage-700 hover:bg-sage-600 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 <LogIn className="h-4 w-4" />

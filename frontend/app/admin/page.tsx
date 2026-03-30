@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Shield, Search, Check, Loader2, Plus, ChevronDown, ChevronUp, Zap } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
@@ -19,6 +19,7 @@ const MODEL_OPTIONS = [
 
 export default function AdminPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, session, isLoading: authLoading } = useAuth()
 
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -59,7 +60,7 @@ export default function AdminPage() {
   // Auth guard
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login')
+      router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)
     } else if (!authLoading && user && user.email !== ADMIN_EMAIL) {
       router.push('/')
     }

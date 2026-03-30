@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Upload, MessageCircle, GraduationCap,
   Send, Plus, Trash2, FileText, Check, X, Loader2, Menu, ChevronRight,
@@ -17,6 +17,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function StudyPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, session, isLoading: authLoading } = useAuth()
 
   // State
@@ -52,7 +53,7 @@ export default function StudyPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login')
+      router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)
     }
   }, [authLoading, user, router])
 

@@ -31,6 +31,7 @@ interface VerificationResult {
     matching_excerpt?: string
     note?: string
   } | null
+  error?: string
 }
 
 export default function CitationVerifier() {
@@ -64,6 +65,9 @@ export default function CitationVerifier() {
       }
 
       const data = await response.json()
+      if (data.error) {
+        setError(data.error)
+      }
       setResult(data)
     } catch (err: any) {
       setError(err.message || 'Failed to verify citation. Please try again.')

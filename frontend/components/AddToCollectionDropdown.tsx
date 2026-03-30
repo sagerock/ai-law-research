@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { FolderPlus, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { API_URL } from '@/lib/api'
@@ -20,6 +20,7 @@ interface AddToCollectionDropdownProps {
 
 export default function AddToCollectionDropdown({ itemType, itemId }: AddToCollectionDropdownProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, session } = useAuth()
   const [collections, setCollections] = useState<UserCollection[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -137,7 +138,7 @@ export default function AddToCollectionDropdown({ itemType, itemId }: AddToColle
       <button
         onClick={() => {
           if (!user) {
-            router.push('/login')
+            router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)
             return
           }
           setShowDropdown(!showDropdown)

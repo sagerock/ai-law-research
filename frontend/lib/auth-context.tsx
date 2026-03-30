@@ -22,7 +22,7 @@ interface AuthContextType {
   isConfigured: boolean
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>
   signUpWithEmail: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>
-  signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: Error | null }>
+  signInWithOAuth: (provider: 'google' | 'github', returnTo?: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: Error | null }>
   refreshProfile: () => Promise<void>
@@ -307,11 +307,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // Sign in with OAuth provider
-  const signInWithOAuth = async (provider: 'google' | 'github') => {
+  const signInWithOAuth = async (provider: 'google' | 'github', returnTo?: string) => {
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    if (returnTo) {
+      callbackUrl.searchParams.set('next', returnTo)
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     })
     return { error: error as Error | null }

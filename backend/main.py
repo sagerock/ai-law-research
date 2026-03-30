@@ -7965,6 +7965,25 @@ async def verify_citation(request: CitationVerifyRequest):
     if not citation_text:
         raise HTTPException(status_code=400, detail="citation_text is required")
 
+    try:
+        return await _verify_citation_impl(request, citation_text, get_citations, clean_text, FullCaseCitation, difflib)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Citation verification error: {e}")
+        # Return a graceful not-found instead of 500
+        return {
+            "found": False,
+            "source": "not_found",
+            "parsed": {"case_name": None, "volume": None, "reporter": None, "page": None, "year": None},
+            "case": None,
+            "courtlistener_url": None,
+            "passage_verification": None,
+            "error": "An error occurred during verification. Please try again.",
+        }
+
+
+async def _verify_citation_impl(request, citation_text, get_citations, clean_text, FullCaseCitation, difflib):
     # --- Step 1: Parse with eyecite ---
     cleaned = clean_text(citation_text, ['all_whitespace'])
     raw_cites = get_citations(cleaned)
@@ -8014,11 +8033,14 @@ async def verify_citation(request: CitationVerifyRequest):
 
         # Strategy 2: Fuzzy reporter match (handle period/spacing variations)
         if reporter_cite_str and not found_case:
-            # Try ILIKE with wildcards between components
-            pattern = f"%{parsed_volume}%{parsed_reporter}%{parsed_page}%"
+            # Use regex with word boundaries to avoid false positives
+            # e.g. "999 U.S. 999" should NOT match "1999 U.S. App. LEXIS 8336"
+            import re
+            reporter_escaped = re.escape(parsed_reporter)
+            regex_pattern = f"(^|\\D){parsed_volume}\\s+{reporter_escaped}[.]?\\s+{parsed_page}(\\D|$)"
             row = await conn.fetchrow(
-                "SELECT id, title, reporter_cite, neutral_cite, decision_date, court_id, content FROM cases WHERE reporter_cite ILIKE $1 LIMIT 1",
-                pattern
+                "SELECT id, title, reporter_cite, neutral_cite, decision_date, court_id, content FROM cases WHERE reporter_cite ~* $1 LIMIT 1",
+                regex_pattern
             )
             if row:
                 found_case = dict(row)
@@ -8124,7 +8146,7 @@ async def verify_citation(request: CitationVerifyRequest):
         result["case"] = {
             "id": None,
             "title": cl_case_data.get("caseName") or cl_case_data.get("case_name", ""),
-            "reporter_cite": cl_case_data.get("citation", [None])[0] if isinstance(cl_case_data.get("citation"), list) else cl_case_data.get("citation"),
+            "reporter_cite": (cl_case_data.get("citation") or [None])[0] if isinstance(cl_case_data.get("citation"), list) else cl_case_data.get("citation"),
             "decision_date": cl_case_data.get("dateFiled") or cl_case_data.get("date_filed"),
             "court": cl_case_data.get("court"),
             "url": None,

@@ -1,13 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Mail, Loader2, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
+  )
+}
+
+function LoginPageContent() {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'newpassword'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,11 +28,13 @@ export default function LoginPage() {
 
   const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, resetPassword, isConfigured } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('returnTo') || '/'
 
   // Redirect if already authenticated (unless doing password recovery)
   useEffect(() => {
     if (!authLoading && user && mode !== 'newpassword') {
-      router.replace('/')
+      router.replace(returnTo)
     }
   }, [authLoading, user, mode, router])
 
@@ -95,7 +105,7 @@ export default function LoginPage() {
         if (error) {
           setError(error.message)
         } else {
-          router.push('/')
+          router.push(returnTo)
         }
       } else {
         const { error } = await signUpWithEmail(email, password, username)

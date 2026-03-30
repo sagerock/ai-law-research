@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Header from '@/components/Header'
 import { useAuth } from '@/lib/auth-context'
 import { API_URL } from '@/lib/api'
@@ -11,6 +11,7 @@ import type { MSJProject } from '@/types'
 export default function MSJPage() {
   const { user, session } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const [projects, setProjects] = useState<MSJProject[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -165,7 +166,7 @@ export default function MSJPage() {
               Create an account to build and save your practice motions.
             </p>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)}
               className="px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 transition-colors text-sm"
             >
               Sign In

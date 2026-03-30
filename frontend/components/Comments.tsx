@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { MessageSquare, Send, Edit2, Trash2, X, Check, Loader2, ChevronUp, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { FormattedMessage } from '@/components/FormattedMessage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -73,6 +74,7 @@ function getRelativeTime(dateString: string): string {
 
 export default function Comments({ caseId }: CommentsProps) {
   const { user, session } = useAuth()
+  const pathname = usePathname()
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -445,7 +447,7 @@ export default function Comments({ caseId }: CommentsProps) {
         <div className="text-center py-4 bg-stone-50 rounded-lg">
           <p className="text-stone-600 mb-2">Sign in to join the discussion</p>
           <Link
-            href="/login"
+            href={`/login?returnTo=${encodeURIComponent(pathname)}`}
             className="inline-flex items-center px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 text-sm font-medium"
           >
             Sign In

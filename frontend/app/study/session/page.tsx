@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Upload, ArrowLeft, Pause, Flame, Loader2, Plus, Sparkles, Pencil, Globe, Copy, Share2, Download } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Header from '@/components/Header'
@@ -18,6 +18,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function StudySessionPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, session: authSession, isLoading: authLoading } = useAuth()
 
   // Mindmap list state
@@ -475,7 +476,7 @@ export default function StudySessionPage() {
           <div className="text-center">
             <p className="text-stone-600 mb-3">Sign in to use Study Sessions</p>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)}
               className="px-4 py-2 bg-sage-600 text-white rounded-lg hover:bg-sage-700"
             >
               Sign In

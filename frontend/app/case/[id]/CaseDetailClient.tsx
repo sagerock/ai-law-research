@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
@@ -84,6 +84,7 @@ interface UserCollection {
 export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const { user, session } = useAuth()
   const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
   const [citations, setCitations] = useState<CitationData | null>(null)
@@ -216,7 +217,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   // Toggle bookmark
   const toggleBookmark = async () => {
     if (!user || !session?.access_token) {
-      router.push('/login')
+      router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)
       return
     }
 
@@ -500,7 +501,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   <button
                     onClick={() => {
                       if (!user) {
-                        router.push('/login')
+                        router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)
                         return
                       }
                       setShowCollectionDropdown(!showCollectionDropdown)
@@ -626,7 +627,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </p>
                     {!user ? (
                       <Link
-                        href="/login"
+                        href={`/login?returnTo=${encodeURIComponent(pathname)}`}
                         className="inline-flex items-center px-4 py-2 bg-sage-700 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition"
                       >
                         <Sparkles className="h-4 w-4 mr-2" />

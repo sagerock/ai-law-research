@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import {
@@ -41,6 +41,7 @@ interface UserComment {
 export default function ProfilePage() {
   const { user, session, profile, isLoading: authLoading, isConfigured, updateProfile, changePassword, refreshProfile } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
 
   // Profile form state
@@ -313,7 +314,7 @@ export default function ProfilePage() {
           <h1 className="text-2xl font-bold text-stone-900 mb-2">Sign in to view your profile</h1>
           <p className="text-stone-600 mb-6">You need to be signed in to manage your profile settings.</p>
           <Link
-            href="/login"
+            href={`/login?returnTo=${encodeURIComponent(pathname)}`}
             className="inline-flex items-center px-6 py-3 bg-sage-700 text-white rounded-lg hover:bg-sage-600 font-medium"
           >
             Sign In

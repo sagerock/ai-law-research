@@ -4,9 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import { User, LogOut, Settings, Bookmark, FolderOpen, ChevronDown, GraduationCap, Upload, Heart, Shield, Key } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 export function UserMenu() {
   const { user, profile, isLoading, isConfigured, signOut } = useAuth()
+  const pathname = usePathname()
   const [showDropdown, setShowDropdown] = useState(false)
   const [mounted, setMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -35,11 +37,13 @@ export function UserMenu() {
     )
   }
 
+  const loginHref = `/login?returnTo=${encodeURIComponent(pathname)}`
+
   // Don't show anything if Supabase is not configured
   if (!isConfigured) {
     return (
       <Link
-        href="/login"
+        href={loginHref}
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-sage-700 rounded-lg hover:bg-sage-600 transition-colors"
       >
         <User className="h-4 w-4" />
@@ -57,7 +61,7 @@ export function UserMenu() {
   if (!user) {
     return (
       <Link
-        href="/login"
+        href={loginHref}
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-sage-700 rounded-lg hover:bg-sage-600 transition-colors"
       >
         <User className="h-4 w-4" />
