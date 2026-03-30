@@ -8075,6 +8075,23 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
         cl_token = os.getenv('COURTLISTENER_API_KEY', '')
         cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
 
+        def _cl_case_name_matches(cl_result, expected_name):
+            """Check that a CourtListener result actually matches the searched case name."""
+            if not expected_name:
+                return True  # No name to validate against
+            cl_name = (cl_result.get("caseName") or cl_result.get("case_name") or "").lower()
+            if not cl_name:
+                return False
+            # Extract the key party names (before and after "v.")
+            expected_parts = [p.strip().lower() for p in expected_name.split(" v. ", 1)]
+            # At least one party name must appear in the CourtListener result
+            for part in expected_parts:
+                # Use the first significant word (skip "the", "in re", etc.)
+                words = [w for w in part.split() if w not in ("the", "in", "re", "of", "a")]
+                if words and words[0] in cl_name:
+                    return True
+            return False
+
         try:
             async with httpx.AsyncClient() as client:
                 # Try citation search first
@@ -8090,18 +8107,20 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
                         if results:
                             cl_case_data = results[0]
 
-                # Try case name search
+                # Try case name search — validate the result actually matches
                 if not cl_case_data and parsed_case_name:
                     search_resp = await client.get(
                         "https://www.courtlistener.com/api/rest/v4/search/",
-                        params={"q": f'"{parsed_case_name}"', "type": "o"},
+                        params={"q": f'caseName:("{parsed_case_name}")', "type": "o"},
                         headers=cl_headers,
                         timeout=15.0,
                     )
                     if search_resp.status_code == 200:
                         results = search_resp.json().get("results", [])
-                        if results:
-                            cl_case_data = results[0]
+                        for r in results[:5]:
+                            if _cl_case_name_matches(r, parsed_case_name):
+                                cl_case_data = r
+                                break
 
         except Exception as e:
             print(f"CourtListener API error during citation verification: {e}")
