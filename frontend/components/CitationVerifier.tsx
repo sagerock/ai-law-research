@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, CheckCircle, XCircle, AlertCircle, Loader2, ExternalLink, ArrowRight, BookOpen, ShieldCheck } from 'lucide-react'
+import { Search, CheckCircle, XCircle, AlertCircle, Loader2, ExternalLink, ArrowRight, BookOpen, ShieldCheck, Copy, Check } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 
 interface VerificationResult {
@@ -23,6 +23,8 @@ interface VerificationResult {
     court: string | null
     url: string | null
   } | null
+  correct_citation: string | null
+  citation_mismatch: boolean
   courtlistener_url: string | null
   passage_verification: {
     found_in_opinion: boolean
@@ -39,6 +41,7 @@ export default function CitationVerifier() {
   const [passage, setPassage] = useState('')
   const [showPassage, setShowPassage] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [result, setResult] = useState<VerificationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -89,6 +92,13 @@ export default function CitationVerifier() {
     setPassage('')
     setResult(null)
     setError(null)
+    setCopied(false)
+  }
+
+  const copyCitation = async (text: string) => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -213,8 +223,42 @@ export default function CitationVerifier() {
                     This case was found {result.source === 'local_db' ? 'in our database' : 'on CourtListener'}.
                   </p>
 
+                  {/* Citation mismatch warning */}
+                  {result.citation_mismatch && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-yellow-800 text-sm">
+                        <AlertCircle className="h-4 w-4 inline mr-1" />
+                        <strong>Note:</strong> The citation you provided doesn&apos;t match this case&apos;s actual citation.
+                        Use the correct citation below.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Correct citation with copy button */}
+                  {result.correct_citation && (
+                    <div className="mt-4 bg-white rounded-lg border border-green-200 p-4">
+                      <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">Correct Citation</p>
+                      <div className="flex items-start gap-3">
+                        <p className="text-stone-900 font-mono text-sm flex-1 leading-relaxed">
+                          {result.correct_citation}
+                        </p>
+                        <button
+                          onClick={() => copyCitation(result.correct_citation!)}
+                          className="shrink-0 p-2 rounded-lg hover:bg-stone-100 text-stone-500 hover:text-stone-700 transition-colors"
+                          title="Copy citation"
+                        >
+                          {copied ? (
+                            <Check className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {result.case && (
-                    <div className="mt-4 bg-white/70 rounded-lg p-4 space-y-2">
+                    <div className="mt-3 bg-white/70 rounded-lg p-4 space-y-2">
                       <p className="font-semibold text-stone-900 text-base">
                         {result.case.title}
                       </p>

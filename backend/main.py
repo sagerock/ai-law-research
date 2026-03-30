@@ -8109,18 +8109,32 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
 
                 # Try case name search — validate the result actually matches
                 if not cl_case_data and parsed_case_name:
-                    search_resp = await client.get(
-                        "https://www.courtlistener.com/api/rest/v4/search/",
-                        params={"q": f'caseName:("{parsed_case_name}")', "type": "o"},
-                        headers=cl_headers,
-                        timeout=15.0,
-                    )
-                    if search_resp.status_code == 200:
-                        results = search_resp.json().get("results", [])
-                        for r in results[:5]:
-                            if _cl_case_name_matches(r, parsed_case_name):
-                                cl_case_data = r
-                                break
+                    import re as _re
+                    # Try exact name first, then simplified (strip entity suffixes)
+                    name_variants = [parsed_case_name]
+                    # Strip "LLC", "Inc.", "Corp.", "Co.", "Ltd." etc. for a looser search
+                    simplified = _re.sub(
+                        r',?\s*(LLC|Inc\.?|Corp\.?|Co\.?|Ltd\.?|L\.?P\.?|N\.?A\.?|Servs?\.?|Services)(?:\s|$|,)',
+                        '', parsed_case_name, flags=_re.IGNORECASE
+                    ).strip().rstrip(',').strip()
+                    if simplified != parsed_case_name:
+                        name_variants.append(simplified)
+
+                    for name_variant in name_variants:
+                        if cl_case_data:
+                            break
+                        search_resp = await client.get(
+                            "https://www.courtlistener.com/api/rest/v4/search/",
+                            params={"q": f'caseName:("{name_variant}")', "type": "o"},
+                            headers=cl_headers,
+                            timeout=15.0,
+                        )
+                        if search_resp.status_code == 200:
+                            results = search_resp.json().get("results", [])
+                            for r in results[:5]:
+                                if _cl_case_name_matches(r, parsed_case_name):
+                                    cl_case_data = r
+                                    break
 
         except Exception as e:
             print(f"CourtListener API error during citation verification: {e}")
@@ -8132,6 +8146,36 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
             cl_url = f"https://www.courtlistener.com{cl_url}"
 
     # --- Step 4: Build response ---
+    def _build_correct_citation(title, reporter_cite, decision_date, court_name):
+        """Build a Bluebook-style citation string from case data."""
+        if not title or not reporter_cite:
+            return None
+        year = None
+        if decision_date:
+            year = str(decision_date)[:4]
+        # SCOTUS citations omit the court name: Case, Vol U.S. Page (Year)
+        # Other courts include it: Case, Vol F.3d Page (5th Cir. Year)
+        is_scotus = reporter_cite and (" U.S. " in reporter_cite or " S. Ct. " in reporter_cite or " L. Ed." in reporter_cite)
+        paren_parts = []
+        if not is_scotus and court_name:
+            # Use short court name if available (e.g., "5th Cir." from CourtListener)
+            paren_parts.append(court_name)
+        if year:
+            paren_parts.append(year)
+        paren = " ".join(paren_parts)
+        if paren:
+            return f"{title}, {reporter_cite} ({paren})"
+        return f"{title}, {reporter_cite}"
+
+    def _check_citation_mismatch(user_cite_str, found_reporter_cite):
+        """Check if the user-provided citation differs from the actual citation."""
+        if not user_cite_str or not found_reporter_cite:
+            return False
+        # Normalize for comparison: lowercase, strip periods/spaces
+        def normalize(s):
+            return s.lower().replace(".", "").replace(" ", "")
+        return normalize(user_cite_str) != normalize(found_reporter_cite)
+
     result = {
         "found": source != "not_found",
         "source": source,
@@ -8143,6 +8187,8 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
             "year": parsed_year,
         },
         "case": None,
+        "correct_citation": None,
+        "citation_mismatch": False,
         "courtlistener_url": cl_url,
         "passage_verification": None,
     }
@@ -8151,6 +8197,11 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
         decision_date = found_case.get("decision_date")
         if decision_date:
             decision_date = str(decision_date)
+        # Use the first reporter cite (some have multiple comma-separated)
+        primary_cite = found_case.get("reporter_cite", "")
+        if primary_cite and ", " in primary_cite:
+            # e.g. "248 N.Y. 339, 162 N.E. 99 (1928)" — take the first
+            primary_cite = primary_cite.split(", ")[0]
         result["case"] = {
             "id": found_case["id"],
             "title": found_case["title"],
@@ -8160,16 +8211,32 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
             "court": court_name,
             "url": f"/case/{found_case['id']}",
         }
+        result["correct_citation"] = _build_correct_citation(
+            found_case["title"], primary_cite, decision_date, court_name
+        )
+        result["citation_mismatch"] = _check_citation_mismatch(
+            reporter_cite_str, primary_cite
+        )
 
     elif cl_case_data:
+        cl_title = cl_case_data.get("caseName") or cl_case_data.get("case_name", "")
+        cl_reporter = (cl_case_data.get("citation") or [None])[0] if isinstance(cl_case_data.get("citation"), list) else cl_case_data.get("citation")
+        cl_date = cl_case_data.get("dateFiled") or cl_case_data.get("date_filed")
+        cl_court = cl_case_data.get("court_citation_string") or cl_case_data.get("court")
         result["case"] = {
             "id": None,
-            "title": cl_case_data.get("caseName") or cl_case_data.get("case_name", ""),
-            "reporter_cite": (cl_case_data.get("citation") or [None])[0] if isinstance(cl_case_data.get("citation"), list) else cl_case_data.get("citation"),
-            "decision_date": cl_case_data.get("dateFiled") or cl_case_data.get("date_filed"),
+            "title": cl_title,
+            "reporter_cite": cl_reporter,
+            "decision_date": cl_date,
             "court": cl_case_data.get("court"),
             "url": None,
         }
+        result["correct_citation"] = _build_correct_citation(
+            cl_title, cl_reporter, cl_date, cl_court
+        )
+        result["citation_mismatch"] = _check_citation_mismatch(
+            reporter_cite_str, cl_reporter
+        )
 
     # --- Step 5: Passage verification (stretch goal) ---
     if request.passage and request.passage.strip() and result["found"]:
