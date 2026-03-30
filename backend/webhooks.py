@@ -25,7 +25,9 @@ class SearchAlertPayload(BaseModel):
 
 class WebhookMetadata(BaseModel):
     version: int
-    event_type: str
+    event_type: int
+    date_created: Optional[str] = None
+    deprecation_date: Optional[str] = None
 
 class SearchAlertWebhook(BaseModel):
     payload: SearchAlertPayload
