@@ -7941,6 +7941,266 @@ async def export_tool_document(tool_type: str, project_id: int, user: dict = Dep
     )
 
 
+# ---------------------------------------------------------------------------
+# Citation Verification Tool
+# ---------------------------------------------------------------------------
+
+class CitationVerifyRequest(BaseModel):
+    citation_text: str
+    passage: Optional[str] = None
+
+
+@app.post("/api/v1/verify-citation")
+async def verify_citation(request: CitationVerifyRequest):
+    """Verify whether a legal citation refers to a real case."""
+    from eyecite import get_citations, clean_text
+    from eyecite.models import FullCaseCitation
+    import difflib
+
+    citation_text = request.citation_text.strip()
+    if not citation_text:
+        raise HTTPException(status_code=400, detail="citation_text is required")
+
+    # --- Step 1: Parse with eyecite ---
+    cleaned = clean_text(citation_text, ['all_whitespace'])
+    raw_cites = get_citations(cleaned)
+
+    parsed_reporter = None
+    parsed_volume = None
+    parsed_page = None
+    parsed_year = None
+    parsed_case_name = None
+
+    for cite in raw_cites:
+        if isinstance(cite, FullCaseCitation):
+            if hasattr(cite, 'groups'):
+                parsed_reporter = cite.groups.get('reporter', '')
+                parsed_volume = int(cite.groups['volume']) if cite.groups.get('volume') else None
+                parsed_page = int(cite.groups['page']) if cite.groups.get('page') else None
+            if hasattr(cite, 'metadata') and cite.metadata:
+                parsed_year = int(cite.metadata.year) if cite.metadata.year else None
+                if hasattr(cite.metadata, 'plaintiff') and cite.metadata.plaintiff:
+                    parsed_case_name = cite.metadata.plaintiff
+                    if hasattr(cite.metadata, 'defendant') and cite.metadata.defendant:
+                        parsed_case_name += f" v. {cite.metadata.defendant}"
+            break  # use first full citation
+
+    # Also extract case name from raw text (before the comma)
+    if not parsed_case_name and " v. " in citation_text:
+        parsed_case_name = citation_text.split(",")[0].strip() if "," in citation_text else citation_text.strip()
+
+    # Build reporter cite string for matching
+    reporter_cite_str = None
+    if parsed_volume and parsed_reporter and parsed_page:
+        reporter_cite_str = f"{parsed_volume} {parsed_reporter} {parsed_page}"
+
+    # --- Step 2: Search local database ---
+    found_case = None
+    source = "not_found"
+
+    async with db_pool.acquire() as conn:
+        # Strategy 1: Exact reporter_cite match
+        if reporter_cite_str and not found_case:
+            row = await conn.fetchrow(
+                "SELECT id, title, reporter_cite, neutral_cite, decision_date, court_id, content FROM cases WHERE reporter_cite = $1",
+                reporter_cite_str
+            )
+            if row:
+                found_case = dict(row)
+
+        # Strategy 2: Fuzzy reporter match (handle period/spacing variations)
+        if reporter_cite_str and not found_case:
+            # Try ILIKE with wildcards between components
+            pattern = f"%{parsed_volume}%{parsed_reporter}%{parsed_page}%"
+            row = await conn.fetchrow(
+                "SELECT id, title, reporter_cite, neutral_cite, decision_date, court_id, content FROM cases WHERE reporter_cite ILIKE $1 LIMIT 1",
+                pattern
+            )
+            if row:
+                found_case = dict(row)
+
+        # Strategy 3: Case name match
+        if parsed_case_name and not found_case:
+            # Clean case name for search
+            name_search = parsed_case_name.strip()
+            row = await conn.fetchrow(
+                "SELECT id, title, reporter_cite, neutral_cite, decision_date, court_id, content FROM cases WHERE title ILIKE $1 LIMIT 1",
+                f"%{name_search}%"
+            )
+            if row:
+                found_case = dict(row)
+
+        # Get court name if we found a case
+        court_name = None
+        if found_case and found_case.get("court_id"):
+            court_row = await conn.fetchrow(
+                "SELECT name FROM courts WHERE id = $1", found_case["court_id"]
+            )
+            if court_row:
+                court_name = court_row["name"]
+
+    if found_case:
+        source = "local_db"
+
+    # --- Step 3: CourtListener API fallback ---
+    cl_url = None
+    cl_case_data = None
+    if not found_case:
+        cl_token = os.getenv('COURTLISTENER_API_KEY', '')
+        cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
+
+        try:
+            async with httpx.AsyncClient() as client:
+                # Try citation search first
+                if reporter_cite_str:
+                    search_resp = await client.get(
+                        "https://www.courtlistener.com/api/rest/v4/search/",
+                        params={"q": f'citation:("{reporter_cite_str}")', "type": "o"},
+                        headers=cl_headers,
+                        timeout=15.0,
+                    )
+                    if search_resp.status_code == 200:
+                        results = search_resp.json().get("results", [])
+                        if results:
+                            cl_case_data = results[0]
+
+                # Try case name search
+                if not cl_case_data and parsed_case_name:
+                    search_resp = await client.get(
+                        "https://www.courtlistener.com/api/rest/v4/search/",
+                        params={"q": f'"{parsed_case_name}"', "type": "o"},
+                        headers=cl_headers,
+                        timeout=15.0,
+                    )
+                    if search_resp.status_code == 200:
+                        results = search_resp.json().get("results", [])
+                        if results:
+                            cl_case_data = results[0]
+
+        except Exception as e:
+            print(f"CourtListener API error during citation verification: {e}")
+
+    if cl_case_data:
+        source = "courtlistener"
+        cl_url = cl_case_data.get("absolute_url")
+        if cl_url and not cl_url.startswith("http"):
+            cl_url = f"https://www.courtlistener.com{cl_url}"
+
+    # --- Step 4: Build response ---
+    result = {
+        "found": source != "not_found",
+        "source": source,
+        "parsed": {
+            "case_name": parsed_case_name,
+            "volume": parsed_volume,
+            "reporter": parsed_reporter,
+            "page": parsed_page,
+            "year": parsed_year,
+        },
+        "case": None,
+        "courtlistener_url": cl_url,
+        "passage_verification": None,
+    }
+
+    if found_case:
+        decision_date = found_case.get("decision_date")
+        if decision_date:
+            decision_date = str(decision_date)
+        result["case"] = {
+            "id": found_case["id"],
+            "title": found_case["title"],
+            "reporter_cite": found_case.get("reporter_cite"),
+            "neutral_cite": found_case.get("neutral_cite"),
+            "decision_date": decision_date,
+            "court": court_name,
+            "url": f"/case/{found_case['id']}",
+        }
+
+    elif cl_case_data:
+        result["case"] = {
+            "id": None,
+            "title": cl_case_data.get("caseName") or cl_case_data.get("case_name", ""),
+            "reporter_cite": cl_case_data.get("citation", [None])[0] if isinstance(cl_case_data.get("citation"), list) else cl_case_data.get("citation"),
+            "decision_date": cl_case_data.get("dateFiled") or cl_case_data.get("date_filed"),
+            "court": cl_case_data.get("court"),
+            "url": None,
+        }
+
+    # --- Step 5: Passage verification (stretch goal) ---
+    if request.passage and request.passage.strip() and result["found"]:
+        passage = request.passage.strip()
+        opinion_text = None
+
+        # Get opinion text from local DB
+        if found_case and found_case.get("content"):
+            opinion_text = found_case["content"]
+
+        if opinion_text:
+            # Normalize whitespace for matching
+            normalized_opinion = " ".join(opinion_text.split())
+            normalized_passage = " ".join(passage.split())
+
+            # Try exact substring match first
+            lower_opinion = normalized_opinion.lower()
+            lower_passage = normalized_passage.lower()
+
+            if lower_passage in lower_opinion:
+                idx = lower_opinion.index(lower_passage)
+                # Get surrounding context (200 chars each side)
+                start = max(0, idx - 200)
+                end = min(len(normalized_opinion), idx + len(normalized_passage) + 200)
+                excerpt = normalized_opinion[start:end]
+                if start > 0:
+                    excerpt = "..." + excerpt
+                if end < len(normalized_opinion):
+                    excerpt = excerpt + "..."
+                result["passage_verification"] = {
+                    "found_in_opinion": True,
+                    "match_quality": "exact",
+                    "matching_excerpt": excerpt,
+                }
+            else:
+                # Try fuzzy matching using SequenceMatcher
+                best_ratio = 0
+                best_excerpt = ""
+                window_size = len(normalized_passage) + 100
+                step = max(1, window_size // 4)
+                for i in range(0, max(1, len(normalized_opinion) - window_size), step):
+                    window = normalized_opinion[i:i + window_size]
+                    ratio = difflib.SequenceMatcher(None, lower_passage, window.lower()).ratio()
+                    if ratio > best_ratio:
+                        best_ratio = ratio
+                        start = max(0, i - 100)
+                        end = min(len(normalized_opinion), i + window_size + 100)
+                        best_excerpt = normalized_opinion[start:end]
+                        if start > 0:
+                            best_excerpt = "..." + best_excerpt
+                        if end < len(normalized_opinion):
+                            best_excerpt = best_excerpt + "..."
+
+                if best_ratio > 0.6:
+                    result["passage_verification"] = {
+                        "found_in_opinion": True,
+                        "match_quality": "close",
+                        "match_score": round(best_ratio, 2),
+                        "matching_excerpt": best_excerpt,
+                    }
+                else:
+                    result["passage_verification"] = {
+                        "found_in_opinion": False,
+                        "match_quality": "not_found",
+                        "note": "The quoted passage was not found in the opinion text available in our database.",
+                    }
+        else:
+            result["passage_verification"] = {
+                "found_in_opinion": False,
+                "match_quality": "unavailable",
+                "note": "Full opinion text is not available for passage verification.",
+            }
+
+    return result
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

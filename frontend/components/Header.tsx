@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart, FileText, Wrench } from 'lucide-react'
+import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart, FileText, Wrench, Search } from 'lucide-react'
 import { UserMenu } from '@/components/auth/UserMenu'
 
 export default function Header() {
@@ -78,6 +78,11 @@ export default function Header() {
                                                  hover:bg-sage-50 hover:text-sage-700 transition-colors">
                     <Scale className="h-4 w-4" />
                     Affidavit Builder
+                  </Link>
+                  <Link href="/verify" onClick={() => setToolsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
+                                                 hover:bg-sage-50 hover:text-sage-700 transition-colors">
+                    <Search className="h-4 w-4" />
+                    Citation Verifier
                   </Link>
                 </div>
               )}

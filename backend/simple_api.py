@@ -735,6 +735,111 @@ async def get_legal_text_cases(doc_id: str, slug: str, limit: int = 20):
     return {"results": results, "count": len(results)}
 
 
+# ---------------------------------------------------------------------------
+# Citation Verification (simplified, local DB only)
+# ---------------------------------------------------------------------------
+
+class CitationVerifyRequest(BaseModel):
+    citation_text: str
+    passage: Optional[str] = None
+
+
+@app.post("/api/v1/verify-citation")
+async def verify_citation(request: CitationVerifyRequest):
+    """Verify whether a legal citation refers to a real case (local DB only)."""
+    from eyecite import get_citations, clean_text
+    from eyecite.models import FullCaseCitation
+
+    citation_text = request.citation_text.strip()
+    if not citation_text:
+        raise HTTPException(status_code=400, detail="citation_text is required")
+
+    # Parse with eyecite
+    cleaned = clean_text(citation_text, ['all_whitespace'])
+    raw_cites = get_citations(cleaned)
+
+    parsed_reporter = None
+    parsed_volume = None
+    parsed_page = None
+    parsed_year = None
+    parsed_case_name = None
+
+    for cite in raw_cites:
+        if isinstance(cite, FullCaseCitation):
+            if hasattr(cite, 'groups'):
+                parsed_reporter = cite.groups.get('reporter', '')
+                parsed_volume = int(cite.groups['volume']) if cite.groups.get('volume') else None
+                parsed_page = int(cite.groups['page']) if cite.groups.get('page') else None
+            if hasattr(cite, 'metadata') and cite.metadata:
+                parsed_year = int(cite.metadata.year) if cite.metadata.year else None
+            break
+
+    if not parsed_case_name and " v. " in citation_text:
+        parsed_case_name = citation_text.split(",")[0].strip() if "," in citation_text else citation_text.strip()
+
+    reporter_cite_str = None
+    if parsed_volume and parsed_reporter and parsed_page:
+        reporter_cite_str = f"{parsed_volume} {parsed_reporter} {parsed_page}"
+
+    # Search local database
+    found_case = None
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        if reporter_cite_str:
+            row = await conn.fetchrow(
+                "SELECT id, title, reporter_cite, decision_date, court_id FROM cases WHERE reporter_cite = $1",
+                reporter_cite_str
+            )
+            if row:
+                found_case = dict(row)
+
+        if not found_case and parsed_case_name:
+            row = await conn.fetchrow(
+                "SELECT id, title, reporter_cite, decision_date, court_id FROM cases WHERE title ILIKE $1 LIMIT 1",
+                f"%{parsed_case_name}%"
+            )
+            if row:
+                found_case = dict(row)
+
+        court_name = None
+        if found_case and found_case.get("court_id"):
+            court_row = await conn.fetchrow("SELECT name FROM courts WHERE id = $1", found_case["court_id"])
+            if court_row:
+                court_name = court_row["name"]
+    finally:
+        await conn.close()
+
+    result = {
+        "found": found_case is not None,
+        "source": "local_db" if found_case else "not_found",
+        "parsed": {
+            "case_name": parsed_case_name,
+            "volume": parsed_volume,
+            "reporter": parsed_reporter,
+            "page": parsed_page,
+            "year": parsed_year,
+        },
+        "case": None,
+        "courtlistener_url": None,
+        "passage_verification": None,
+    }
+
+    if found_case:
+        decision_date = found_case.get("decision_date")
+        if decision_date:
+            decision_date = str(decision_date)
+        result["case"] = {
+            "id": found_case["id"],
+            "title": found_case["title"],
+            "reporter_cite": found_case.get("reporter_cite"),
+            "decision_date": decision_date,
+            "court": court_name,
+            "url": f"/case/{found_case['id']}",
+        }
+
+    return result
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
