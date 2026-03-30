@@ -254,6 +254,14 @@ const REPORTER_TO_SLUG: Record<string, string> = {
   "A.": "a",
   "F.": "f",
   "P.": "p",
+  // British reporters
+  "Q.B.D.": "qbd",
+  "Q.B.": "qb",
+  "A.C.": "ac",
+  "K.B.": "kb",
+  "Ch.": "ch",
+  "W.L.R.": "wlr",
+  "All E.R.": "all-er",
 }
 
 function genericReporterToSlug(reporter: string): string {

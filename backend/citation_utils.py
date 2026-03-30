@@ -263,6 +263,14 @@ SLUG_TO_REPORTER: dict[str, str] = {
     "a": "A.",
     "f": "F.",
     "p": "P.",
+    # British reporters
+    "qbd": "Q.B.D.",
+    "qb": "Q.B.",
+    "ac": "A.C.",
+    "kb": "K.B.",
+    "ch": "Ch.",
+    "wlr": "W.L.R.",
+    "all-er": "All E.R.",
 }
 
 # Reverse mapping: DB reporter format -> slug fragment
