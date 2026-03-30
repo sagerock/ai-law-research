@@ -9,7 +9,10 @@ from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import asyncpg
+import httpx
+import json
 import os
+from datetime import date
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -44,14 +47,12 @@ async def handle_search_alert(
     # Verify the request came from CourtListener
     client_ip = request.client.host
     if client_ip not in COURTLISTENER_IPS:
-        print(f"⚠️  Webhook from unknown IP: {client_ip}")
-        # In production, you might want to reject this
-        # raise HTTPException(status_code=403, detail="Unauthorized")
+        print(f"Warning: Webhook from unknown IP: {client_ip}")
 
     # Get idempotency key to prevent duplicate processing
     idempotency_key = request.headers.get("Idempotency-Key")
 
-    print(f"📬 Received Search Alert webhook: {webhook.payload.alert.get('name')}")
+    print(f"Received Search Alert webhook: {webhook.payload.alert.get('name')}")
     print(f"   New results: {len(webhook.payload.results)}")
 
     # Process the new cases in the background
@@ -67,6 +68,57 @@ async def handle_search_alert(
         "results_count": len(webhook.payload.results),
         "idempotency_key": idempotency_key
     }
+
+
+def extract_text_from_opinion(opinion_data: dict) -> str:
+    """Extract plain text from a CourtListener opinion response."""
+    from bs4 import BeautifulSoup
+    if opinion_data.get("plain_text") and len(opinion_data["plain_text"]) > 100:
+        return opinion_data["plain_text"]
+    for field in ["html_lawbox", "html_with_citations", "html", "html_columbia", "xml_harvard"]:
+        html_content = opinion_data.get(field, "")
+        if html_content:
+            soup = BeautifulSoup(html_content, "html.parser")
+            text = soup.get_text(separator="\n", strip=True)
+            if len(text) > 100:
+                return text
+    return ""
+
+
+async def fetch_opinion_text(cluster_id: str) -> str:
+    """Fetch full opinion text from CourtListener for a cluster."""
+    cl_token = os.getenv("COURTLISTENER_API_KEY", "")
+    cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get cluster to find sub-opinions
+            resp = await client.get(
+                f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
+                headers=cl_headers, timeout=30,
+            )
+            if resp.status_code != 200:
+                return ""
+
+            cluster = resp.json()
+            best_text = ""
+
+            for op_url in cluster.get("sub_opinions", []):
+                op_id = op_url.rstrip("/").split("/")[-1]
+                op_resp = await client.get(
+                    f"https://www.courtlistener.com/api/rest/v4/opinions/{op_id}/",
+                    headers=cl_headers, timeout=30,
+                )
+                if op_resp.status_code == 200:
+                    text = extract_text_from_opinion(op_resp.json())
+                    if len(text) > len(best_text):
+                        best_text = text
+
+            return best_text
+    except Exception as e:
+        print(f"   Error fetching opinion text for cluster {cluster_id}: {e}")
+        return ""
+
 
 async def process_new_cases(results: List[Dict], idempotency_key: str):
     """
@@ -84,8 +136,24 @@ async def process_new_cases(results: List[Dict], idempotency_key: str):
             case_id = str(result.get("cluster_id") or result.get("id"))
             case_name = result.get("caseName", "")
             court_id = result.get("court_id")
-            date_filed = result.get("dateFiled")
+            date_filed_str = result.get("dateFiled")
             url = result.get("absolute_url", "")
+
+            # Parse date
+            date_filed = None
+            if date_filed_str:
+                try:
+                    date_filed = date.fromisoformat(date_filed_str)
+                except (ValueError, TypeError):
+                    pass
+
+            # Extract citation if available
+            reporter_cite = None
+            citations = result.get("citation", [])
+            if isinstance(citations, list) and citations:
+                reporter_cite = citations[0]
+            elif isinstance(citations, str):
+                reporter_cite = citations
 
             # Check if we already have this case
             exists = await conn.fetchval(
@@ -94,7 +162,7 @@ async def process_new_cases(results: List[Dict], idempotency_key: str):
             )
 
             if exists:
-                print(f"   ℹ️  Case {case_id} already exists, skipping")
+                print(f"   Case {case_id} already exists, skipping")
                 continue
 
             # Look up court
@@ -105,30 +173,34 @@ async def process_new_cases(results: List[Dict], idempotency_key: str):
                     court_id
                 )
 
+            # Fetch full opinion text
+            opinion_text = await fetch_opinion_text(case_id)
+            if opinion_text:
+                print(f"   Fetched {len(opinion_text)} chars of opinion text")
+
             # Insert new case
             await conn.execute("""
                 INSERT INTO cases (
-                    id, title, court_id, decision_date,
-                    metadata, source_url, created_at
+                    id, title, court_id, decision_date, reporter_cite,
+                    content, metadata, source_url, created_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
                 ON CONFLICT (id) DO NOTHING
             """,
                 case_id,
                 case_name,
                 court_db_id,
                 date_filed,
-                result,  # Store full result as metadata
-                url
+                reporter_cite,
+                opinion_text if opinion_text else None,
+                json.dumps(result),
+                url if url.startswith("http") else f"https://www.courtlistener.com{url}" if url else None,
             )
 
-            print(f"   ✅ Imported case: {case_name[:60]}")
-
-            # TODO: Generate embeddings in another background task
-            # TODO: Fetch full opinion text if available
+            print(f"   Imported case: {case_name[:60]}")
 
     except Exception as e:
-        print(f"   ❌ Error processing webhook: {e}")
+        print(f"   Error processing webhook: {e}")
     finally:
         await conn.close()
 
@@ -137,35 +209,11 @@ async def handle_docket_alert(
     request: Request,
     background_tasks: BackgroundTasks
 ):
-    """
-    Handle Docket Alert webhook events.
-
-    These fire when cases you're monitoring get new filings.
-    """
-
+    """Handle Docket Alert webhook events."""
     payload = await request.json()
     idempotency_key = request.headers.get("Idempotency-Key")
-
-    print(f"📬 Received Docket Alert webhook")
-    print(f"   New entries: {len(payload.get('payload', {}).get('results', []))}")
-
-    # Process in background
-    background_tasks.add_task(
-        process_docket_updates,
-        payload,
-        idempotency_key
-    )
-
+    print(f"Received Docket Alert webhook")
     return {"status": "received", "idempotency_key": idempotency_key}
-
-async def process_docket_updates(payload: Dict, idempotency_key: str):
-    """Process docket update events"""
-
-    # TODO: Update case records with new filings
-    # TODO: Notify users who are following this case
-
-    print(f"   Processing docket updates...")
-    pass
 
 @router.get("/health")
 async def webhook_health():

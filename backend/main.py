@@ -23,6 +23,10 @@ from cryptography.fernet import Fernet, InvalidToken
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
+# Mount CourtListener webhook router
+from webhooks import router as webhook_router
+app.include_router(webhook_router)
+
 # CORS configuration - Allow all origins for now
 app.add_middleware(
     CORSMiddleware,
