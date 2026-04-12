@@ -254,12 +254,24 @@ class OutlineCreate(BaseModel):
     professor: Optional[str] = None
     law_school: Optional[str] = None
     semester: Optional[str] = None
+    year: Optional[int] = None
     description: Optional[str] = None
     filename: str
     file_url: str
     file_size: Optional[int] = None
     file_type: Optional[str] = None
-    is_public: bool = True
+    visibility: str = "private"  # private, unlisted, public
+
+
+class OutlineUpdate(BaseModel):
+    title: Optional[str] = None
+    subject: Optional[str] = None
+    professor: Optional[str] = None
+    law_school: Optional[str] = None
+    semester: Optional[str] = None
+    year: Optional[int] = None
+    description: Optional[str] = None
+    visibility: Optional[str] = None  # private, unlisted, public
 
 
 # JWT Authentication helper
@@ -3357,33 +3369,39 @@ async def vote_comment(comment_id: int, data: CommentVote, user: dict = Depends(
 # ============================================================================
 
 @app.get("/api/v1/outlines")
-async def list_outlines(subject: Optional[str] = None, limit: int = 50, offset: int = 0):
-    """Browse public outlines, optionally filtered by subject"""
+async def list_outlines(subject: Optional[str] = None, search: Optional[str] = None, limit: int = 50, offset: int = 0):
+    """Browse public outlines, optionally filtered by subject or search query"""
     async with db_pool.acquire() as conn:
+        # Build WHERE clauses
+        conditions = ["o.visibility = 'public'"]
+        params: list = []
+        param_idx = 1
+
         if subject:
-            rows = await conn.fetch("""
-                SELECT o.id, o.user_id, o.title, o.subject, o.professor, o.law_school,
-                       o.semester, o.description, o.filename, o.file_url, o.file_size,
-                       o.file_type, o.download_count, o.created_at,
-                       p.username, p.full_name
-                FROM outlines o
-                LEFT JOIN profiles p ON o.user_id = p.id
-                WHERE o.is_public = TRUE AND o.subject = $1
-                ORDER BY o.created_at DESC
-                LIMIT $2 OFFSET $3
-            """, subject, limit, offset)
-        else:
-            rows = await conn.fetch("""
-                SELECT o.id, o.user_id, o.title, o.subject, o.professor, o.law_school,
-                       o.semester, o.description, o.filename, o.file_url, o.file_size,
-                       o.file_type, o.download_count, o.created_at,
-                       p.username, p.full_name
-                FROM outlines o
-                LEFT JOIN profiles p ON o.user_id = p.id
-                WHERE o.is_public = TRUE
-                ORDER BY o.created_at DESC
-                LIMIT $1 OFFSET $2
-            """, limit, offset)
+            conditions.append(f"o.subject = ${param_idx}")
+            params.append(subject)
+            param_idx += 1
+
+        if search:
+            conditions.append(f"(o.title ILIKE ${param_idx} OR o.description ILIKE ${param_idx})")
+            params.append(f"%{search}%")
+            param_idx += 1
+
+        where_clause = " AND ".join(conditions)
+        params.append(limit)
+        params.append(offset)
+
+        rows = await conn.fetch(f"""
+            SELECT o.id, o.user_id, o.title, o.subject, o.professor, o.law_school,
+                   o.semester, o.year, o.description, o.filename, o.file_url, o.file_size,
+                   o.file_type, o.download_count, o.fork_count, o.created_at,
+                   p.username, p.full_name
+            FROM outlines o
+            LEFT JOIN profiles p ON o.user_id = p.id
+            WHERE {where_clause}
+            ORDER BY o.created_at DESC
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+        """, *params)
 
     return {
         "outlines": [
@@ -3394,12 +3412,14 @@ async def list_outlines(subject: Optional[str] = None, limit: int = 50, offset: 
                 "professor": row["professor"],
                 "law_school": row["law_school"],
                 "semester": row["semester"],
+                "year": row["year"],
                 "description": row["description"],
                 "filename": row["filename"],
                 "file_url": row["file_url"],
                 "file_size": row["file_size"],
                 "file_type": row["file_type"],
                 "download_count": row["download_count"],
+                "fork_count": row["fork_count"],
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None,
                 "username": row["username"],
                 "full_name": row["full_name"],
@@ -3416,7 +3436,7 @@ async def list_outline_subjects():
         rows = await conn.fetch("""
             SELECT subject, COUNT(*) as count
             FROM outlines
-            WHERE is_public = TRUE
+            WHERE visibility = 'public'
             GROUP BY subject
             ORDER BY count DESC
         """)
@@ -3434,8 +3454,10 @@ async def list_my_outlines(user: dict = Depends(require_auth)):
     """List current user's outlines"""
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, title, subject, professor, law_school, semester, description,
-                   filename, file_url, file_size, file_type, is_public, download_count, created_at
+            SELECT id, title, subject, professor, law_school, semester, year, description,
+                   filename, file_url, file_size, file_type, visibility, download_count,
+                   fork_count, forked_from, created_at,
+                   content IS NOT NULL as has_content
             FROM outlines
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -3450,13 +3472,17 @@ async def list_my_outlines(user: dict = Depends(require_auth)):
                 "professor": row["professor"],
                 "law_school": row["law_school"],
                 "semester": row["semester"],
+                "year": row["year"],
                 "description": row["description"],
                 "filename": row["filename"],
                 "file_url": row["file_url"],
                 "file_size": row["file_size"],
                 "file_type": row["file_type"],
-                "is_public": row["is_public"],
+                "visibility": row["visibility"],
                 "download_count": row["download_count"],
+                "fork_count": row["fork_count"],
+                "forked_from": row["forked_from"],
+                "has_content": row["has_content"],
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None,
             }
             for row in rows
@@ -3467,16 +3493,48 @@ async def list_my_outlines(user: dict = Depends(require_auth)):
 @app.post("/api/v1/outlines")
 async def create_outline(outline: OutlineCreate, user: dict = Depends(require_auth)):
     """Create a new outline (metadata only; file already uploaded to Supabase Storage)"""
+    valid_visibilities = {"private", "unlisted", "public"}
+    if outline.visibility not in valid_visibilities:
+        raise HTTPException(status_code=400, detail=f"visibility must be one of: {', '.join(sorted(valid_visibilities))}")
+
+    is_public = outline.visibility == "public"
+
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            INSERT INTO outlines (user_id, title, subject, professor, law_school, semester,
-                                  description, filename, file_url, file_size, file_type, is_public)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            RETURNING id, title, subject, professor, law_school, semester, description,
-                      filename, file_url, file_size, file_type, is_public, download_count, created_at
+            INSERT INTO outlines (user_id, title, subject, professor, law_school, semester, year,
+                                  description, filename, file_url, file_size, file_type,
+                                  visibility, is_public)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING id, title, subject, professor, law_school, semester, year, description,
+                      filename, file_url, file_size, file_type, visibility, download_count, created_at
         """, user["id"], outline.title, outline.subject, outline.professor, outline.law_school,
-            outline.semester, outline.description, outline.filename, outline.file_url,
-            outline.file_size, outline.file_type, outline.is_public)
+            outline.semester, outline.year, outline.description, outline.filename, outline.file_url,
+            outline.file_size, outline.file_type, outline.visibility, is_public)
+
+        outline_id = row["id"]
+
+        # Attempt text extraction in background; don't fail the request if it errors
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                file_resp = await client.get(outline.file_url)
+                file_resp.raise_for_status()
+                file_bytes = file_resp.content
+
+            file_type = (outline.file_type or "").lower()
+            if "pdf" in file_type:
+                extracted_text = extract_text_from_pdf(file_bytes)
+            elif "docx" in file_type or "word" in file_type:
+                extracted_text = extract_text_from_docx(file_bytes)
+            else:
+                extracted_text = file_bytes.decode("utf-8", errors="ignore")
+
+            if extracted_text:
+                await conn.execute(
+                    "UPDATE outlines SET content = $1 WHERE id = $2",
+                    extracted_text, outline_id
+                )
+        except Exception as e:
+            print(f"Text extraction failed for outline {outline_id}: {e}")
 
     return {
         "id": row["id"],
@@ -3485,12 +3543,13 @@ async def create_outline(outline: OutlineCreate, user: dict = Depends(require_au
         "professor": row["professor"],
         "law_school": row["law_school"],
         "semester": row["semester"],
+        "year": row["year"],
         "description": row["description"],
         "filename": row["filename"],
         "file_url": row["file_url"],
         "file_size": row["file_size"],
         "file_type": row["file_type"],
-        "is_public": row["is_public"],
+        "visibility": row["visibility"],
         "download_count": row["download_count"],
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
@@ -3498,13 +3557,14 @@ async def create_outline(outline: OutlineCreate, user: dict = Depends(require_au
 
 @app.get("/api/v1/outlines/{outline_id}")
 async def get_outline(outline_id: int, user: Optional[dict] = Depends(get_current_user)):
-    """Get a single outline and increment download count"""
+    """Get a single outline"""
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
             SELECT o.id, o.user_id, o.title, o.subject, o.professor, o.law_school,
-                   o.semester, o.description, o.filename, o.file_url, o.file_size,
-                   o.file_type, o.is_public, o.download_count, o.created_at,
-                   p.username, p.full_name
+                   o.semester, o.year, o.description, o.filename, o.file_url, o.file_size,
+                   o.file_type, o.visibility, o.download_count, o.fork_count, o.forked_from,
+                   o.content, o.created_at,
+                   p.username, p.full_name, p.law_school as author_school
             FROM outlines o
             LEFT JOIN profiles p ON o.user_id = p.id
             WHERE o.id = $1
@@ -3513,16 +3573,12 @@ async def get_outline(outline_id: int, user: Optional[dict] = Depends(get_curren
         if not row:
             raise HTTPException(status_code=404, detail="Outline not found")
 
-        # Private outlines require ownership
-        if not row["is_public"]:
+        # Private outlines are only visible to their owner; unlisted and public are accessible to anyone
+        if row["visibility"] == "private":
             if not user or user["id"] != row["user_id"]:
                 raise HTTPException(status_code=404, detail="Outline not found")
 
-        # Increment download count
-        await conn.execute(
-            "UPDATE outlines SET download_count = download_count + 1 WHERE id = $1",
-            outline_id
-        )
+    is_owner = user is not None and user["id"] == row["user_id"]
 
     return {
         "id": row["id"],
@@ -3531,15 +3587,22 @@ async def get_outline(outline_id: int, user: Optional[dict] = Depends(get_curren
         "professor": row["professor"],
         "law_school": row["law_school"],
         "semester": row["semester"],
+        "year": row["year"],
         "description": row["description"],
         "filename": row["filename"],
         "file_url": row["file_url"],
         "file_size": row["file_size"],
         "file_type": row["file_type"],
-        "download_count": row["download_count"] + 1,
+        "visibility": row["visibility"],
+        "download_count": row["download_count"],
+        "fork_count": row["fork_count"],
+        "forked_from": row["forked_from"],
+        "content": row["content"],
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         "username": row["username"],
         "full_name": row["full_name"],
+        "author_school": row["author_school"],
+        "is_owner": is_owner,
     }
 
 
@@ -3560,6 +3623,73 @@ async def delete_outline(outline_id: int, user: dict = Depends(require_auth)):
         await conn.execute("DELETE FROM outlines WHERE id = $1", outline_id)
 
     return {"status": "deleted", "file_url": row["file_url"]}
+
+
+@app.put("/api/v1/outlines/{outline_id}")
+async def update_outline(outline_id: int, update: OutlineUpdate, user: dict = Depends(require_auth)):
+    """Update own outline metadata"""
+    valid_visibilities = {"private", "unlisted", "public"}
+    if update.visibility is not None and update.visibility not in valid_visibilities:
+        raise HTTPException(status_code=400, detail=f"visibility must be one of: {', '.join(sorted(valid_visibilities))}")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, user_id FROM outlines WHERE id = $1", outline_id
+        )
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Outline not found")
+
+        if row["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="You can only update your own outlines")
+
+        # Build dynamic UPDATE — only set fields that were provided
+        set_clauses = ["updated_at = NOW()"]
+        params: list = []
+        param_idx = 1
+
+        updatable_fields = ["title", "subject", "professor", "law_school", "semester", "year", "description", "visibility"]
+        for field in updatable_fields:
+            value = getattr(update, field)
+            if value is not None:
+                set_clauses.append(f"{field} = ${param_idx}")
+                params.append(value)
+                param_idx += 1
+
+        # Keep is_public in sync with visibility
+        if update.visibility is not None:
+            set_clauses.append(f"is_public = ${param_idx}")
+            params.append(update.visibility == "public")
+            param_idx += 1
+
+        if len(set_clauses) == 1:
+            # Nothing to update beyond updated_at; still valid
+            pass
+
+        params.append(outline_id)
+        set_sql = ", ".join(set_clauses)
+        updated = await conn.fetchrow(
+            f"""UPDATE outlines SET {set_sql} WHERE id = ${param_idx}
+                RETURNING id, title, subject, professor, law_school, semester, year,
+                          description, visibility, download_count, fork_count, created_at, updated_at""",
+            *params
+        )
+
+    return {
+        "id": updated["id"],
+        "title": updated["title"],
+        "subject": updated["subject"],
+        "professor": updated["professor"],
+        "law_school": updated["law_school"],
+        "semester": updated["semester"],
+        "year": updated["year"],
+        "description": updated["description"],
+        "visibility": updated["visibility"],
+        "download_count": updated["download_count"],
+        "fork_count": updated["fork_count"],
+        "created_at": updated["created_at"].isoformat() if updated["created_at"] else None,
+        "updated_at": updated["updated_at"].isoformat() if updated["updated_at"] else None,
+    }
 
 
 # ============================================================================
