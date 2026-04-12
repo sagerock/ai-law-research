@@ -43,21 +43,45 @@ export interface CitatorResult {
 
 export interface Outline {
   id: number
+  user_id?: string
   title: string
   subject: string
   professor: string | null
   law_school: string | null
   semester: string | null
+  year: number | null
   description: string | null
   filename: string
   file_url: string
   file_size: number | null
   file_type: string | null
-  is_public?: boolean
+  visibility: 'private' | 'unlisted' | 'public'
   download_count: number
+  fork_count: number
+  forked_from: number | null
+  has_content?: boolean
+  content?: string
   created_at: string
   username?: string
   full_name?: string
+  author_school?: string
+  is_owner?: boolean
+}
+
+export interface OutlineConversation {
+  id: number
+  mode: 'multiple_choice' | 'practice_essay'
+  message_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface OutlineMessage {
+  id?: number
+  role: 'user' | 'assistant'
+  content: string
+  model?: string
+  created_at?: string
 }
 
 export interface StudyNote {
