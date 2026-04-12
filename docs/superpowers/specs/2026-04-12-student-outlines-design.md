@@ -1,7 +1,7 @@
 # Student Outlines & AI Study Tools
 
 **Date:** 2026-04-12
-**Status:** Draft
+**Status:** Approved
 **Feature:** Upload, share, and study from law school outlines with AI-powered quizzes and practice essays
 
 ## Overview
@@ -23,9 +23,10 @@ Law Study Group already provides AI case briefs and a personal library. Outlines
 | title | TEXT | NOT NULL | e.g., "Torts Fall 2025" |
 | subject | TEXT | NOT NULL | Dropdown value (Torts, Contracts, etc.) |
 | content | TEXT | | Extracted plain text for AI consumption |
-| original_filename | TEXT | | Name of uploaded file |
-| original_file | BYTEA | | Raw uploaded file for download |
-| original_content_type | TEXT | | MIME type of uploaded file |
+| filename | TEXT | NOT NULL | Name of uploaded file |
+| file_url | TEXT | NOT NULL | Supabase Storage URL for download |
+| file_size | INTEGER | | File size in bytes |
+| file_type | TEXT | | pdf, docx, etc. |
 | visibility | TEXT | NOT NULL, DEFAULT 'private' | private, unlisted, public |
 | school | TEXT | | Optional — law school name |
 | professor | TEXT | | Optional — professor name |
@@ -50,7 +51,7 @@ Law Study Group already provides AI case briefs and a personal library. Outlines
 | outline_id | INTEGER | NOT NULL, FK to outlines | |
 | user_id | UUID | NOT NULL, FK to profiles | |
 | mode | TEXT | NOT NULL | multiple_choice, practice_essay |
-| messages | JSONB | NOT NULL, DEFAULT '[]' | Full conversation history |
+| — | — | — | Messages stored in separate `outline_conversation_messages` table |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | |
 | updated_at | TIMESTAMPTZ | DEFAULT NOW() | |
 
@@ -187,9 +188,9 @@ Modal or dedicated section with:
 ### Conversation storage
 
 - Outline text included once in the system prompt (not repeated per message)
-- Full message history stored in `messages` JSONB column
-- Each message: `{ role: "user" | "assistant", content: "...", timestamp: "..." }`
-- History sent with each API call for conversation continuity
+- Messages stored in `outline_conversation_messages` table (matching existing `messages` table pattern)
+- Each message has: role (user/assistant), content, model, token counts, cost, timestamp
+- Full history fetched and sent with each API call for conversation continuity
 
 ## Visibility & Sharing Model
 
@@ -218,23 +219,28 @@ Modal or dedicated section with:
 
 ### Upload pipeline
 
-1. Accept multipart form upload (max file size: 10MB)
-2. Validate file type: .pdf, .docx, .txt
-3. Extract plain text:
-   - **PDF**: Use `PyPDF2` or `pdfplumber` for text extraction
-   - **DOCX**: Use `python-docx` to extract text from paragraphs
-   - **TXT**: Read directly
-4. Store extracted text in `content` column
-5. Store original file bytes in `original_file` column
-6. Store MIME type in `original_content_type` column
+1. Frontend uploads file to Supabase Storage (`outlines` bucket)
+2. Frontend sends metadata + `file_url` to backend `POST /api/v1/outlines`
+3. Backend fetches file from `file_url`, extracts text:
+   - **PDF**: `pdfplumber` (already installed)
+   - **DOCX**: `python-docx` (already installed)
+   - **TXT**: UTF-8 decode
+4. Stores extracted text in `content` column
+5. File remains in Supabase Storage, accessible via `file_url`
+6. Max file size: 10MB (validated client-side)
 
 ### Download
 
-Serve the `original_file` bytes with `Content-Disposition: attachment; filename="{original_filename}"` and the stored content type.
+Direct link to Supabase Storage URL (`file_url`). Download button hidden when no file exists.
 
-## Text-only upload
+## Implementation Note — Existing Infrastructure
 
-For students who want to paste text directly:
-- Skip file upload, write text directly to `content`
-- `original_file`, `original_filename`, `original_content_type` remain NULL
-- Download button hidden when no original file exists
+The `outlines` table, CRUD endpoints, and frontend browse/upload page already exist. This feature extends them with:
+- `visibility` TEXT column (replacing `is_public` BOOLEAN)
+- `content` TEXT column (for AI-extracted text)
+- `forked_from` INTEGER and `fork_count` INTEGER columns
+- New `outline_conversations` and `outline_conversation_messages` tables
+- New `/outline/[id]` detail page with AI study chat
+- New Outlines tab in Library page
+
+Text-only upload (pasting text directly) deferred to a future iteration.
