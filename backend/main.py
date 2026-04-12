@@ -274,6 +274,14 @@ class OutlineUpdate(BaseModel):
     visibility: Optional[str] = None  # private, unlisted, public
 
 
+class OutlineStudyStart(BaseModel):
+    mode: str  # "multiple_choice" or "practice_essay"
+
+
+class OutlineStudyMessage(BaseModel):
+    content: str
+
+
 # JWT Authentication helper
 async def get_current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
     """
@@ -3739,6 +3747,466 @@ async def fork_outline(outline_id: int, user: dict = Depends(require_auth)):
         "visibility": row["visibility"],
         "forked_from": outline_id,
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+# ============================================================================
+# Outline AI Study Sessions
+# ============================================================================
+
+@app.post("/api/v1/outlines/{outline_id}/study")
+async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: dict = Depends(require_auth)):
+    """Start an AI study session for an outline (multiple choice or practice essay)"""
+    if body.mode not in ("multiple_choice", "practice_essay"):
+        raise HTTPException(status_code=400, detail="mode must be 'multiple_choice' or 'practice_essay'")
+
+    user_id = user["id"]
+
+    # BYOK / pool check
+    user_api_key = await get_user_api_key(user_id)
+    is_byok = user_api_key is not None
+    api_key = user_api_key or ANTHROPIC_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    if not is_byok:
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
+    async with db_pool.acquire() as conn:
+        # Get outline with visibility check
+        outline = await conn.fetchrow("""
+            SELECT id, user_id, title, subject, content, visibility
+            FROM outlines WHERE id = $1
+        """, outline_id)
+
+        if not outline:
+            raise HTTPException(status_code=404, detail="Outline not found")
+
+        if outline["visibility"] == "private" and outline["user_id"] != user_id:
+            raise HTTPException(status_code=404, detail="Outline not found")
+
+        if not outline["content"] or not outline["content"].strip():
+            raise HTTPException(status_code=400, detail="Outline has no extracted text content")
+
+        # Daily limit check
+        tier_row = await conn.fetchrow(
+            "SELECT tier, messages_today, last_message_date, daily_limit, model_override FROM user_tiers WHERE user_id = $1",
+            user_id,
+        )
+
+        if not tier_row:
+            await conn.execute(
+                "INSERT INTO user_tiers (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+                user_id,
+            )
+            tier = "free"
+            messages_today = 0
+            custom_limit = None
+            model_override = None
+        else:
+            tier = tier_row["tier"]
+            messages_today = tier_row["messages_today"]
+            if tier_row["last_message_date"] != date.today():
+                messages_today = 0
+            custom_limit = tier_row["daily_limit"]
+            model_override = tier_row["model_override"]
+
+        if is_byok:
+            effective_limit = None
+        elif custom_limit is not None:
+            effective_limit = custom_limit
+        elif tier == "pro":
+            effective_limit = None
+        else:
+            effective_limit = 15
+
+        if effective_limit is not None and messages_today >= effective_limit:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+            )
+
+        # Model selection
+        if is_byok:
+            default_model = "claude-sonnet-4-6"
+        elif tier == "pro":
+            default_model = "claude-sonnet-4-6"
+        else:
+            default_model = "claude-haiku-4-5-20251001"
+        model = model_override or default_model
+
+        # Build system prompt
+        subject = outline["subject"] or "Law"
+        outline_text = outline["content"]
+        if len(outline_text) > 60000:
+            outline_text = outline_text[:60000] + "\n...[outline truncated]"
+
+        if body.mode == "multiple_choice":
+            system_prompt = f"""You are a law school study assistant helping a student prepare for their {subject} exam using their own course outline.
+
+STUDENT'S OUTLINE:
+{outline_text}
+
+YOUR TASK: Generate multiple choice questions that test the student's understanding of concepts from their outline. Follow these rules:
+- Generate ONE question at a time with 4 answer options labeled A, B, C, D
+- Questions should test conceptual understanding, not rote memorization of exact wording
+- Only ask about topics covered in the outline — never introduce topics not in their notes
+- After the student answers, explain why the correct answer is right and why wrong answers are wrong
+- Reference specific parts of their outline in your explanations
+- You may use your broader legal knowledge to give richer explanations, but questions must come from outline topics
+- After explaining, ask if they want another question or have follow-up questions
+- Keep a conversational, encouraging tone
+
+Start by generating the first multiple choice question now."""
+        else:
+            system_prompt = f"""You are a law school study assistant helping a student practice issue-spotter essays for their {subject} exam using their own course outline.
+
+STUDENT'S OUTLINE:
+{outline_text}
+
+YOUR TASK: Generate practice essay prompts (issue spotters) and provide feedback on student responses. Follow these rules:
+- Create a fact pattern that implicates issues covered in the student's outline
+- Only use topics from the outline — never test on material they haven't studied
+- When the student submits their analysis, provide detailed feedback:
+  * Which issues they correctly identified
+  * Which issues they missed
+  * How their rule statements could be stronger
+  * How their application/analysis could improve
+  * Encourage IRAC format (Issue, Rule, Application, Conclusion)
+- Reference specific parts of their outline in your feedback
+- You may use your broader legal knowledge to deepen explanations
+- After feedback, the student can ask follow-up questions about any issue
+- Keep a supportive, educational tone
+
+Start by generating the first fact pattern now."""
+
+        # Call Claude API
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "max_tokens": 2000,
+                    "system": system_prompt,
+                    "messages": [{"role": "user", "content": f"Start a {body.mode.replace('_', ' ')} session."}],
+                },
+                timeout=60.0,
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"AI service error: {resp.status_code}")
+
+        resp_data = resp.json()
+        ai_content = resp_data["content"][0]["text"]
+        input_tokens = resp_data.get("usage", {}).get("input_tokens", 0)
+        output_tokens = resp_data.get("usage", {}).get("output_tokens", 0)
+        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+
+        # Create conversation record
+        conv_row = await conn.fetchrow("""
+            INSERT INTO outline_conversations (outline_id, user_id, mode)
+            VALUES ($1, $2, $3)
+            RETURNING id, created_at
+        """, outline_id, user_id, body.mode)
+        conv_id = conv_row["id"]
+
+        # Save the initial user trigger message and AI response
+        await conn.execute("""
+            INSERT INTO outline_conversation_messages (conversation_id, role, content)
+            VALUES ($1, 'user', $2)
+        """, conv_id, f"Start a {body.mode.replace('_', ' ')} session.")
+
+        await conn.execute("""
+            INSERT INTO outline_conversation_messages
+                (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+            VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+        """, conv_id, ai_content, model, input_tokens, output_tokens, cost)
+
+        # Update daily usage
+        await conn.execute("""
+            INSERT INTO user_tiers (user_id, messages_today, last_message_date)
+            VALUES ($1, 1, CURRENT_DATE)
+            ON CONFLICT (user_id) DO UPDATE SET
+                messages_today = CASE
+                    WHEN user_tiers.last_message_date = CURRENT_DATE
+                    THEN user_tiers.messages_today + 1
+                    ELSE 1
+                END,
+                last_message_date = CURRENT_DATE,
+                updated_at = NOW()
+        """, user_id)
+
+    await log_api_usage("outline_study", input_tokens, output_tokens, cost, "byok" if is_byok else "site")
+
+    return {
+        "conversation_id": conv_id,
+        "mode": body.mode,
+        "messages": [
+            {"role": "assistant", "content": ai_content},
+        ],
+    }
+
+
+@app.post("/api/v1/outlines/{outline_id}/conversations/{conv_id}/message")
+async def outline_study_message(outline_id: int, conv_id: int, body: OutlineStudyMessage, user: dict = Depends(require_auth)):
+    """Send a message in an outline study conversation"""
+    user_id = user["id"]
+
+    # BYOK / pool check
+    user_api_key = await get_user_api_key(user_id)
+    is_byok = user_api_key is not None
+    api_key = user_api_key or ANTHROPIC_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    if not is_byok:
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
+    async with db_pool.acquire() as conn:
+        # Daily limit check
+        tier_row = await conn.fetchrow(
+            "SELECT tier, messages_today, last_message_date, daily_limit, model_override FROM user_tiers WHERE user_id = $1",
+            user_id,
+        )
+
+        if not tier_row:
+            await conn.execute(
+                "INSERT INTO user_tiers (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+                user_id,
+            )
+            tier = "free"
+            messages_today = 0
+            custom_limit = None
+            model_override = None
+        else:
+            tier = tier_row["tier"]
+            messages_today = tier_row["messages_today"]
+            if tier_row["last_message_date"] != date.today():
+                messages_today = 0
+            custom_limit = tier_row["daily_limit"]
+            model_override = tier_row["model_override"]
+
+        if is_byok:
+            effective_limit = None
+        elif custom_limit is not None:
+            effective_limit = custom_limit
+        elif tier == "pro":
+            effective_limit = None
+        else:
+            effective_limit = 15
+
+        if effective_limit is not None and messages_today >= effective_limit:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+            )
+
+        # Model selection
+        if is_byok:
+            default_model = "claude-sonnet-4-6"
+        elif tier == "pro":
+            default_model = "claude-sonnet-4-6"
+        else:
+            default_model = "claude-haiku-4-5-20251001"
+        model = model_override or default_model
+
+        # Verify conversation exists, belongs to this outline and this user
+        conv = await conn.fetchrow("""
+            SELECT id, outline_id, user_id, mode FROM outline_conversations
+            WHERE id = $1
+        """, conv_id)
+
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if conv["outline_id"] != outline_id:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if conv["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not your conversation")
+
+        # Get outline for system prompt rebuild
+        outline = await conn.fetchrow("""
+            SELECT subject, content FROM outlines WHERE id = $1
+        """, outline_id)
+
+        subject = (outline["subject"] if outline else None) or "Law"
+        outline_text = (outline["content"] if outline else "") or ""
+        if len(outline_text) > 60000:
+            outline_text = outline_text[:60000] + "\n...[outline truncated]"
+
+        mode = conv["mode"]
+        if mode == "multiple_choice":
+            system_prompt = f"""You are a law school study assistant helping a student prepare for their {subject} exam using their own course outline.
+
+STUDENT'S OUTLINE:
+{outline_text}
+
+Continue the multiple choice study session. Generate questions only from outline topics, explain answers thoroughly, and keep an encouraging tone."""
+        else:
+            system_prompt = f"""You are a law school study assistant helping a student practice issue-spotter essays for their {subject} exam using their own course outline.
+
+STUDENT'S OUTLINE:
+{outline_text}
+
+Continue the practice essay study session. Generate fact patterns only from outline topics, provide detailed IRAC feedback, and keep a supportive tone."""
+
+        # Save user message
+        await conn.execute("""
+            INSERT INTO outline_conversation_messages (conversation_id, role, content)
+            VALUES ($1, 'user', $2)
+        """, conv_id, body.content)
+
+        # Fetch full conversation history
+        history = await conn.fetch("""
+            SELECT role, content FROM outline_conversation_messages
+            WHERE conversation_id = $1
+            ORDER BY created_at ASC
+        """, conv_id)
+
+        api_messages = [{"role": h["role"], "content": h["content"]} for h in history]
+
+        # Call Claude API
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "max_tokens": 2000,
+                    "system": system_prompt,
+                    "messages": api_messages,
+                },
+                timeout=60.0,
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"AI service error: {resp.status_code}")
+
+        resp_data = resp.json()
+        ai_content = resp_data["content"][0]["text"]
+        input_tokens = resp_data.get("usage", {}).get("input_tokens", 0)
+        output_tokens = resp_data.get("usage", {}).get("output_tokens", 0)
+        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+
+        # Save AI response
+        await conn.execute("""
+            INSERT INTO outline_conversation_messages
+                (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+            VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+        """, conv_id, ai_content, model, input_tokens, output_tokens, cost)
+
+        # Update conversation timestamp
+        await conn.execute(
+            "UPDATE outline_conversations SET updated_at = NOW() WHERE id = $1",
+            conv_id,
+        )
+
+        # Update daily usage
+        await conn.execute("""
+            INSERT INTO user_tiers (user_id, messages_today, last_message_date)
+            VALUES ($1, 1, CURRENT_DATE)
+            ON CONFLICT (user_id) DO UPDATE SET
+                messages_today = CASE
+                    WHEN user_tiers.last_message_date = CURRENT_DATE
+                    THEN user_tiers.messages_today + 1
+                    ELSE 1
+                END,
+                last_message_date = CURRENT_DATE,
+                updated_at = NOW()
+        """, user_id)
+
+    await log_api_usage("outline_study", input_tokens, output_tokens, cost, "byok" if is_byok else "site")
+
+    return {
+        "role": "assistant",
+        "content": ai_content,
+        "model": model,
+        "tokens": {"input": input_tokens, "output": output_tokens},
+    }
+
+
+@app.get("/api/v1/outlines/{outline_id}/conversations")
+async def list_outline_conversations(outline_id: int, user: dict = Depends(require_auth)):
+    """List user's study conversations for an outline"""
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.mode, c.created_at, c.updated_at,
+                   COUNT(m.id) AS message_count
+            FROM outline_conversations c
+            LEFT JOIN outline_conversation_messages m ON m.conversation_id = c.id
+            WHERE c.outline_id = $1 AND c.user_id = $2
+            GROUP BY c.id, c.mode, c.created_at, c.updated_at
+            ORDER BY c.updated_at DESC
+        """, outline_id, user_id)
+
+    return [
+        {
+            "id": r["id"],
+            "mode": r["mode"],
+            "message_count": r["message_count"],
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None,
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/v1/outlines/{outline_id}/conversations/{conv_id}")
+async def get_outline_conversation(outline_id: int, conv_id: int, user: dict = Depends(require_auth)):
+    """Get a study conversation with all messages"""
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        conv = await conn.fetchrow("""
+            SELECT id, outline_id, user_id, mode, created_at, updated_at
+            FROM outline_conversations WHERE id = $1
+        """, conv_id)
+
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if conv["outline_id"] != outline_id:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if conv["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not your conversation")
+
+        messages = await conn.fetch("""
+            SELECT id, role, content, model, input_tokens, output_tokens, cost, created_at
+            FROM outline_conversation_messages
+            WHERE conversation_id = $1
+            ORDER BY created_at ASC
+        """, conv_id)
+
+    return {
+        "id": conv["id"],
+        "outline_id": conv["outline_id"],
+        "mode": conv["mode"],
+        "created_at": conv["created_at"].isoformat() if conv["created_at"] else None,
+        "updated_at": conv["updated_at"].isoformat() if conv["updated_at"] else None,
+        "messages": [
+            {
+                "id": m["id"],
+                "role": m["role"],
+                "content": m["content"],
+                "model": m["model"],
+                "input_tokens": m["input_tokens"],
+                "output_tokens": m["output_tokens"],
+                "cost": float(m["cost"]) if m["cost"] is not None else None,
+                "created_at": m["created_at"].isoformat() if m["created_at"] else None,
+            }
+            for m in messages
+        ],
     }
 
 
