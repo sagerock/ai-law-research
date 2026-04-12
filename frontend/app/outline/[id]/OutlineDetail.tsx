@@ -63,7 +63,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
 
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  const getHeaders = useCallback(() => {
+  const getHeaders = useCallback((): Record<string, string> => {
     if (!session?.access_token) return {}
     return { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }
   }, [session?.access_token])
