@@ -3692,6 +3692,56 @@ async def update_outline(outline_id: int, update: OutlineUpdate, user: dict = De
     }
 
 
+@app.post("/api/v1/outlines/{outline_id}/fork")
+async def fork_outline(outline_id: int, user: dict = Depends(require_auth)):
+    """Fork an outline to the current user's library"""
+    async with db_pool.acquire() as conn:
+        # Get source outline
+        source = await conn.fetchrow("""
+            SELECT id, user_id, title, subject, professor, law_school, semester, year,
+                   description, filename, file_url, file_size, file_type, content, visibility
+            FROM outlines WHERE id = $1
+        """, outline_id)
+
+        if not source:
+            raise HTTPException(status_code=404, detail="Outline not found")
+
+        # Can't fork private outlines you don't own
+        if source["visibility"] == "private" and source["user_id"] != user["id"]:
+            raise HTTPException(status_code=404, detail="Outline not found")
+
+        # Can't fork your own outline
+        if source["user_id"] == user["id"]:
+            raise HTTPException(status_code=400, detail="Cannot fork your own outline")
+
+        # Create the fork (starts as private)
+        row = await conn.fetchrow("""
+            INSERT INTO outlines (user_id, title, subject, professor, law_school, semester,
+                                  year, description, filename, file_url, file_size, file_type,
+                                  visibility, is_public, content, forked_from)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'private', FALSE, $13, $14)
+            RETURNING id, title, subject, visibility, created_at
+        """, user["id"], source["title"], source["subject"], source["professor"],
+            source["law_school"], source["semester"], source["year"], source["description"],
+            source["filename"], source["file_url"], source["file_size"], source["file_type"],
+            source["content"], outline_id)
+
+        # Increment fork count on original
+        await conn.execute(
+            "UPDATE outlines SET fork_count = fork_count + 1 WHERE id = $1",
+            outline_id
+        )
+
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "subject": row["subject"],
+        "visibility": row["visibility"],
+        "forked_from": outline_id,
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
 # ============================================================================
 # Study Assistant (AI chat with uploaded notes)
 # ============================================================================
