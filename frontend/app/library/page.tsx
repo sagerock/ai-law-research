@@ -19,7 +19,10 @@ import {
   Pencil,
   Library,
   BookOpen,
+  FileText,
+  GitFork,
 } from 'lucide-react'
+import { Outline } from '@/types'
 import Header from '@/components/Header'
 import {
   DndContext,
@@ -119,10 +122,11 @@ function LibraryPageContent() {
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
 
-  const [activeTab, setActiveTab] = useState<'collections' | 'bookmarks' | 'textbooks'>('collections')
+  const [activeTab, setActiveTab] = useState<'collections' | 'bookmarks' | 'textbooks' | 'outlines'>('collections')
   const [collections, setCollections] = useState<Collection[]>([])
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([])
   const [textbookBookmarks, setTextbookBookmarks] = useState<TextbookBookmark[]>([])
+  const [myOutlines, setMyOutlines] = useState<Outline[]>([])
   const [selectedCollection, setSelectedCollection] = useState<CollectionDetail | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -300,6 +304,22 @@ function LibraryPageContent() {
     } catch (err) {
       console.error('Failed to fetch textbook bookmarks:', err)
     }
+  }
+
+  // Fetch outlines owned or forked by user
+  const fetchMyOutlines = async (token?: string) => {
+    const accessToken = token || session?.access_token
+    if (!accessToken) return
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/outlines/mine`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setMyOutlines(data.outlines || [])
+      }
+    } catch { /* ignore */ }
   }
 
   const deleteTextbookBookmark = async (textbookId: number) => {
@@ -557,7 +577,8 @@ function LibraryPageContent() {
         await Promise.all([
           fetchCollections(session.access_token),
           fetchBookmarks(session.access_token),
-          fetchTextbookBookmarks(session.access_token)
+          fetchTextbookBookmarks(session.access_token),
+          fetchMyOutlines(session.access_token),
         ])
       } finally {
         setIsLoading(false)
@@ -677,6 +698,25 @@ function LibraryPageContent() {
               {textbookBookmarks.length > 0 && (
                 <span className="bg-stone-100 text-stone-600 text-xs px-2 py-0.5 rounded-full">
                   {textbookBookmarks.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('outlines')
+                setSelectedCollection(null)
+              }}
+              className={`flex items-center gap-2 px-4 py-3 font-medium border-b-2 transition ${
+                activeTab === 'outlines'
+                  ? 'text-sage-600 border-sage-600'
+                  : 'text-stone-500 border-transparent hover:text-stone-700'
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              Outlines
+              {myOutlines.length > 0 && (
+                <span className="bg-stone-100 text-stone-600 text-xs px-2 py-0.5 rounded-full">
+                  {myOutlines.length}
                 </span>
               )}
             </button>
@@ -1113,6 +1153,56 @@ function LibraryPageContent() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Outlines Tab */}
+            {activeTab === 'outlines' && (
+              <div className="w-full">
+                <div className="space-y-3">
+                  {myOutlines.length === 0 ? (
+                    <div className="text-center py-12">
+                      <FileText className="h-12 w-12 text-stone-300 mx-auto mb-3" />
+                      <p className="text-stone-600 font-medium">No outlines yet</p>
+                      <Link href="/outlines" className="text-sage-700 text-sm hover:underline mt-1 inline-block">
+                        Browse or upload outlines
+                      </Link>
+                    </div>
+                  ) : (
+                    myOutlines.map(outline => (
+                      <Link
+                        key={outline.id}
+                        href={`/outline/${outline.id}`}
+                        className="block bg-white rounded-lg border p-4 hover:shadow-md transition"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText className="h-6 w-6 text-sage-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="font-medium text-stone-900 truncate">{outline.title}</div>
+                              <div className="text-sm text-stone-500 flex items-center gap-2 flex-wrap">
+                                <span className="px-2 py-0.5 bg-sage-50 text-sage-700 text-xs rounded-full">{outline.subject}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                  outline.visibility === 'public' ? 'bg-green-100 text-green-700' :
+                                  outline.visibility === 'unlisted' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-stone-100 text-stone-600'
+                                }`}>{outline.visibility}</span>
+                                {outline.forked_from && (
+                                  <span className="flex items-center text-stone-400">
+                                    <GitFork className="h-3 w-3 mr-0.5" />forked
+                                  </span>
+                                )}
+                                {outline.has_content && (
+                                  <span className="text-green-600 text-xs">AI ready</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
               </div>
             )}
           </div>
