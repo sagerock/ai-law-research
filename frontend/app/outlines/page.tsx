@@ -17,6 +17,7 @@ import {
   X,
   Plus,
   Filter,
+  GitFork,
 } from 'lucide-react'
 
 const SUBJECT_OPTIONS = [
@@ -68,7 +69,7 @@ export default function OutlinesPage() {
   const [uploadLawSchool, setUploadLawSchool] = useState('')
   const [uploadSemester, setUploadSemester] = useState('')
   const [uploadDescription, setUploadDescription] = useState('')
-  const [uploadPublic, setUploadPublic] = useState(true)
+  const [uploadVisibility, setUploadVisibility] = useState<'private' | 'unlisted' | 'public'>('private')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -227,7 +228,7 @@ export default function OutlinesPage() {
           file_url: fileUrl,
           file_size: uploadFile.size,
           file_type: fileType,
-          is_public: uploadPublic,
+          visibility: uploadVisibility,
         }),
       })
 
@@ -254,7 +255,7 @@ export default function OutlinesPage() {
     setUploadLawSchool('')
     setUploadSemester('')
     setUploadDescription('')
-    setUploadPublic(true)
+    setUploadVisibility('private')
     setUploadFile(null)
     setUploadError(null)
   }
@@ -413,18 +414,21 @@ export default function OutlinesPage() {
                       <Download className="h-3 w-3 mr-1" />
                       {outline.download_count}
                     </span>
+                    {outline.fork_count > 0 && (
+                      <span className="flex items-center">
+                        <GitFork className="h-3 w-3 mr-1" />
+                        {outline.fork_count}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <a
-                  href={outline.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 w-full inline-flex items-center justify-center px-4 py-2 bg-stone-100 text-stone-700 rounded-lg text-sm font-medium hover:bg-stone-200 transition"
+                <Link
+                  href={`/outline/${outline.id}`}
+                  className="mt-3 w-full inline-flex items-center justify-center px-4 py-2 bg-sage-50 text-sage-700 rounded-lg text-sm font-medium hover:bg-sage-100 transition"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </a>
+                  View Outline
+                </Link>
               </div>
             ))}
           </div>
@@ -437,7 +441,7 @@ export default function OutlinesPage() {
             <div className="space-y-3">
               {myOutlines.map(outline => (
                 <div key={outline.id} className="bg-white rounded-lg border p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4 min-w-0">
+                  <Link href={`/outline/${outline.id}`} className="flex items-center gap-4 min-w-0 flex-1 hover:opacity-80 transition">
                     <FileText className="h-8 w-8 text-sage-500 flex-shrink-0" />
                     <div className="min-w-0">
                       <div className="font-medium text-stone-900 truncate">{outline.title}</div>
@@ -445,14 +449,20 @@ export default function OutlinesPage() {
                         <span className="px-2 py-0.5 bg-sage-50 text-sage-700 text-xs rounded-full">
                           {outline.subject}
                         </span>
-                        {!outline.is_public && (
-                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">Private</span>
+                        {outline.visibility === 'private' && (
+                          <span className="px-2 py-0.5 bg-stone-100 text-stone-600 text-xs rounded-full">Private</span>
+                        )}
+                        {outline.visibility === 'unlisted' && (
+                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">Unlisted</span>
+                        )}
+                        {outline.visibility === 'public' && (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Public</span>
                         )}
                         <span>{outline.download_count} downloads</span>
                         {outline.created_at && <span>{formatDate(outline.created_at)}</span>}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                   <button
                     onClick={() => handleDelete(outline.id, outline.file_url)}
                     disabled={deletingId === outline.id}
@@ -601,18 +611,18 @@ export default function OutlinesPage() {
                 />
               </div>
 
-              {/* Public Toggle */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="outline-public"
-                  checked={uploadPublic}
-                  onChange={(e) => setUploadPublic(e.target.checked)}
-                  className="h-4 w-4 text-sage-600 rounded"
-                />
-                <label htmlFor="outline-public" className="text-sm text-stone-700">
-                  Make this outline public (visible to everyone)
-                </label>
+              {/* Visibility */}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Visibility</label>
+                <select
+                  value={uploadVisibility}
+                  onChange={(e) => setUploadVisibility(e.target.value as 'private' | 'unlisted' | 'public')}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none bg-white"
+                >
+                  <option value="private">Private — only you can see it</option>
+                  <option value="unlisted">Unlisted — anyone with the link</option>
+                  <option value="public">Public — visible to everyone</option>
+                </select>
               </div>
 
               {/* Error */}
