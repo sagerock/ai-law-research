@@ -70,6 +70,8 @@ export default function OutlinesPage() {
   const [uploadSemester, setUploadSemester] = useState('')
   const [uploadDescription, setUploadDescription] = useState('')
   const [uploadVisibility, setUploadVisibility] = useState<'private' | 'unlisted' | 'public'>('private')
+  const [uploadShowAuthor, setUploadShowAuthor] = useState(false)
+  const [uploadShowSchool, setUploadShowSchool] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -209,6 +211,8 @@ export default function OutlinesPage() {
       if (uploadLawSchool.trim()) formData.append('law_school', uploadLawSchool.trim())
       if (uploadSemester.trim()) formData.append('semester', uploadSemester.trim())
       if (uploadDescription.trim()) formData.append('description', uploadDescription.trim())
+      formData.append('show_author', String(uploadShowAuthor))
+      formData.append('show_school', String(uploadShowSchool))
 
       const res = await fetch(`${API_URL}/api/v1/outlines/upload`, {
         method: 'POST',
@@ -240,6 +244,8 @@ export default function OutlinesPage() {
     setUploadSemester('')
     setUploadDescription('')
     setUploadVisibility('private')
+    setUploadShowAuthor(false)
+    setUploadShowSchool(false)
     setUploadFile(null)
     setUploadError(null)
   }
@@ -608,6 +614,31 @@ export default function OutlinesPage() {
                   <option value="public">Public — visible to everyone</option>
                 </select>
               </div>
+
+              {/* Privacy toggles */}
+              {uploadVisibility !== 'private' && (
+                <div className="space-y-2 p-3 bg-stone-50 rounded-lg">
+                  <p className="text-xs font-medium text-stone-600 mb-2">What to show publicly:</p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={uploadShowAuthor}
+                      onChange={(e) => setUploadShowAuthor(e.target.checked)}
+                      className="h-4 w-4 text-sage-600 rounded"
+                    />
+                    <span className="text-sm text-stone-700">Show my name</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={uploadShowSchool}
+                      onChange={(e) => setUploadShowSchool(e.target.checked)}
+                      className="h-4 w-4 text-sage-600 rounded"
+                    />
+                    <span className="text-sm text-stone-700">Show my law school</span>
+                  </label>
+                </div>
+              )}
 
               {/* Error */}
               {uploadError && (

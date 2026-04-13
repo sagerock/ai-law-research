@@ -272,6 +272,8 @@ class OutlineUpdate(BaseModel):
     year: Optional[int] = None
     description: Optional[str] = None
     visibility: Optional[str] = None  # private, unlisted, public
+    show_author: Optional[bool] = None
+    show_school: Optional[bool] = None
 
 
 class OutlineStudyStart(BaseModel):
@@ -3403,8 +3405,8 @@ async def list_outlines(subject: Optional[str] = None, search: Optional[str] = N
         rows = await conn.fetch(f"""
             SELECT o.id, o.user_id, o.title, o.subject, o.professor, o.law_school,
                    o.semester, o.year, o.description, o.filename, o.file_url, o.file_size,
-                   o.file_type, o.download_count, o.fork_count, o.created_at,
-                   p.username, p.full_name
+                   o.file_type, o.download_count, o.fork_count, o.show_author, o.show_school,
+                   o.created_at, p.username, p.full_name, p.law_school as author_school
             FROM outlines o
             LEFT JOIN profiles p ON o.user_id = p.id
             WHERE {where_clause}
@@ -3430,8 +3432,9 @@ async def list_outlines(subject: Optional[str] = None, search: Optional[str] = N
                 "download_count": row["download_count"],
                 "fork_count": row["fork_count"],
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-                "username": row["username"],
-                "full_name": row["full_name"],
+                "username": (row["username"] or row["full_name"]) if row["show_author"] else None,
+                "full_name": row["full_name"] if row["show_author"] else None,
+                "author_school": row["author_school"] if row["show_school"] else None,
             }
             for row in rows
         ]
@@ -3575,6 +3578,8 @@ async def upload_outline(
     semester: Optional[str] = Form(None),
     year: Optional[int] = Form(None),
     description: Optional[str] = Form(None),
+    show_author: bool = Form(False),
+    show_school: bool = Form(False),
     user: dict = Depends(require_auth),
 ):
     """Upload an outline file, extract text, store in DB"""
@@ -3608,12 +3613,14 @@ async def upload_outline(
         row = await conn.fetchrow("""
             INSERT INTO outlines (user_id, title, subject, professor, law_school, semester, year,
                                   description, filename, file_size, file_type, visibility, is_public,
-                                  content, original_file, original_content_type)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                                  content, original_file, original_content_type,
+                                  show_author, show_school)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             RETURNING id, title, subject, visibility, download_count, created_at
         """, user["id"], title, subject, professor or None, law_school or None,
             semester or None, year, description or None, filename, file_size, ext,
-            visibility, is_public, extracted_text or None, file_bytes, content_type)
+            visibility, is_public, extracted_text or None, file_bytes, content_type,
+            show_author, show_school)
 
     return {
         "id": row["id"],
@@ -3677,7 +3684,7 @@ async def get_outline(outline_id: int, user: Optional[dict] = Depends(get_curren
             SELECT o.id, o.user_id, o.title, o.subject, o.professor, o.law_school,
                    o.semester, o.year, o.description, o.filename, o.file_url, o.file_size,
                    o.file_type, o.visibility, o.download_count, o.fork_count, o.forked_from,
-                   o.content, o.created_at,
+                   o.content, o.show_author, o.show_school, o.created_at,
                    p.username, p.full_name, p.law_school as author_school
             FROM outlines o
             LEFT JOIN profiles p ON o.user_id = p.id
@@ -3693,6 +3700,10 @@ async def get_outline(outline_id: int, user: Optional[dict] = Depends(get_curren
                 raise HTTPException(status_code=404, detail="Outline not found")
 
     is_owner = user is not None and user["id"] == row["user_id"]
+
+    # Respect privacy settings — only show author info if they opted in (or if owner is viewing)
+    show_author = row["show_author"] or is_owner
+    show_school = row["show_school"] or is_owner
 
     return {
         "id": row["id"],
@@ -3712,10 +3723,12 @@ async def get_outline(outline_id: int, user: Optional[dict] = Depends(get_curren
         "fork_count": row["fork_count"],
         "forked_from": row["forked_from"],
         "content": row["content"],
+        "show_author": row["show_author"],
+        "show_school": row["show_school"],
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-        "username": row["username"],
-        "full_name": row["full_name"],
-        "author_school": row["author_school"],
+        "username": (row["username"] or row["full_name"]) if show_author else None,
+        "full_name": row["full_name"] if show_author else None,
+        "author_school": row["author_school"] if show_school else None,
         "is_owner": is_owner,
     }
 
@@ -3762,7 +3775,7 @@ async def update_outline(outline_id: int, update: OutlineUpdate, user: dict = De
         params: list = []
         param_idx = 1
 
-        updatable_fields = ["title", "subject", "professor", "law_school", "semester", "year", "description", "visibility"]
+        updatable_fields = ["title", "subject", "professor", "law_school", "semester", "year", "description", "visibility", "show_author", "show_school"]
         for field in updatable_fields:
             value = getattr(update, field)
             if value is not None:

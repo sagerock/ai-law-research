@@ -43,6 +43,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editVisibility, setEditVisibility] = useState<'private' | 'unlisted' | 'public'>('private')
+  const [editShowAuthor, setEditShowAuthor] = useState(false)
+  const [editShowSchool, setEditShowSchool] = useState(false)
   const [editDescription, setEditDescription] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -98,6 +100,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         setEditTitle(data.title)
         setEditVisibility(data.visibility)
         setEditDescription(data.description || '')
+        setEditShowAuthor(data.show_author || false)
+        setEditShowSchool(data.show_school || false)
       } catch {
         setError('Failed to load outline.')
       } finally {
@@ -143,6 +147,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
           title: editTitle.trim(),
           visibility: editVisibility,
           description: editDescription.trim() || null,
+          show_author: editShowAuthor,
+          show_school: editShowSchool,
         }),
       })
       if (!res.ok) throw new Error('Save failed')
@@ -397,6 +403,29 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                   <option value="public">Public — visible to everyone</option>
                 </select>
               </div>
+              {editVisibility !== 'private' && (
+                <div className="space-y-2 p-3 bg-stone-50 rounded-lg">
+                  <p className="text-xs font-medium text-stone-600 mb-2">What to show publicly:</p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editShowAuthor}
+                      onChange={(e) => setEditShowAuthor(e.target.checked)}
+                      className="h-4 w-4 text-sage-600 rounded"
+                    />
+                    <span className="text-sm text-stone-700">Show my name</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editShowSchool}
+                      onChange={(e) => setEditShowSchool(e.target.checked)}
+                      className="h-4 w-4 text-sage-600 rounded"
+                    />
+                    <span className="text-sm text-stone-700">Show my law school</span>
+                  </label>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleSaveEdit}
