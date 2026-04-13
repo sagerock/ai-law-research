@@ -605,7 +605,6 @@ export default function StudySessionPage() {
   // Mindmap list / picker view
   return (
     <div className="min-h-screen bg-cream">
-      <Header />
       {showUpload && (
         <MindmapUpload
           apiUrl={API_URL}
