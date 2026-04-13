@@ -125,7 +125,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         })
         if (res.ok) {
           const data = await res.json()
-          setPastSessions(data.conversations || [])
+          setPastSessions(Array.isArray(data) ? data : data.conversations || [])
         }
       } catch {
         // silently ignore
@@ -224,7 +224,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         })
         if (res.ok) {
           const data = await res.json()
-          setTopics(data.topics || [])
+          setTopics(Array.isArray(data.topics) ? data.topics : [])
         }
       } catch { /* ignore */ } finally {
         setLoadingTopics(false)

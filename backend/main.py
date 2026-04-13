@@ -3973,7 +3973,14 @@ async def get_outline_topics(outline_id: int, user: Optional[dict] = Depends(get
         if row["visibility"] == "private" and (not user or user["id"] != row["user_id"]):
             raise HTTPException(status_code=404, detail="Outline not found")
 
-    return {"topics": row["topics"] or []}
+    topics = row["topics"] or []
+    if isinstance(topics, str):
+        import json as json_mod
+        try:
+            topics = json_mod.loads(topics)
+        except Exception:
+            topics = []
+    return {"topics": topics}
 
 
 @app.post("/api/v1/outlines/{outline_id}/study")
