@@ -22,6 +22,7 @@ import {
   MessageSquare,
   AlignLeft,
   Shuffle,
+  MessageCircle,
   X,
   Check,
 } from 'lucide-react'
@@ -49,11 +50,12 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
   const [saving, setSaving] = useState(false)
 
   // Study session
-  const [activeMode, setActiveMode] = useState<'multiple_choice' | 'short_answer' | 'practice_essay' | null>(null)
-  const [pendingMode, setPendingMode] = useState<'multiple_choice' | 'short_answer' | 'practice_essay' | null>(null)
+  const [activeMode, setActiveMode] = useState<'multiple_choice' | 'short_answer' | 'practice_essay' | 'ask' | null>(null)
+  const [pendingMode, setPendingMode] = useState<'multiple_choice' | 'short_answer' | 'practice_essay' | 'ask' | null>(null)
   const [conversationId, setConversationId] = useState<number | null>(null)
   const [messages, setMessages] = useState<OutlineMessage[]>([])
   const [input, setInput] = useState('')
+  const [askInput, setAskInput] = useState('')
   const [sending, setSending] = useState(false)
   const [startingStudy, setStartingStudy] = useState(false)
 
@@ -194,7 +196,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
     }
   }
 
-  const selectMode = async (mode: 'multiple_choice' | 'short_answer' | 'practice_essay') => {
+  const selectMode = async (mode: 'multiple_choice' | 'short_answer' | 'practice_essay' | 'ask') => {
     setPendingMode(mode)
     setSelectedTopic(null)
     setCustomTopic('')
@@ -226,6 +228,26 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
       } catch { /* ignore */ } finally {
         setLoadingTopics(false)
       }
+    }
+  }
+
+  const askQuestion = async () => {
+    if (!session?.access_token || !outline || !askInput.trim()) return
+    setStartingStudy(true)
+    try {
+      const res = await fetch(`${API_URL}/api/v1/outlines/${outline.id}/study`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ mode: 'ask', topic: askInput.trim() }),
+      })
+      if (!res.ok) throw new Error('Failed to start')
+      const data = await res.json()
+      setConversationId(data.conversation_id)
+      setActiveMode('ask')
+      setMessages(data.messages || [])
+      setAskInput('')
+    } catch { /* ignore */ } finally {
+      setStartingStudy(false)
     }
   }
 
@@ -317,7 +339,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
   }
 
   const modeName = (mode: string) =>
-    mode === 'multiple_choice' ? 'Multiple Choice' : mode === 'short_answer' ? 'Short Answer' : 'Practice Essay'
+    mode === 'multiple_choice' ? 'Multiple Choice' : mode === 'short_answer' ? 'Short Answer' : mode === 'ask' ? 'Q&A' : 'Practice Essay'
 
   // Loading state
   if (loading) {
@@ -596,6 +618,39 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
             </h2>
             <p className="text-sm text-stone-500 mb-5">Practice with AI using this outline as your study material.</p>
 
+            {/* Ask a question box */}
+            {!activeMode && !pendingMode && !startingStudy && (
+              <div className="mb-6">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <MessageCircle className="absolute left-3 top-3 h-4 w-4 text-stone-400" />
+                    <input
+                      type="text"
+                      value={askInput}
+                      onChange={(e) => setAskInput(e.target.value)}
+                      placeholder="Ask a question about your outline..."
+                      className="w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && askInput.trim()) askQuestion()
+                      }}
+                    />
+                  </div>
+                  <button
+                    onClick={askQuestion}
+                    disabled={!askInput.trim()}
+                    className="px-4 py-2.5 bg-sage-700 text-white rounded-lg text-sm font-medium hover:bg-sage-600 disabled:bg-stone-300 disabled:cursor-not-allowed transition"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="flex-1 border-t border-stone-200" />
+                  <span className="text-xs text-stone-400">or practice with</span>
+                  <div className="flex-1 border-t border-stone-200" />
+                </div>
+              </div>
+            )}
+
             {!activeMode ? (
               <>
                 {startingStudy ? (
@@ -729,6 +784,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                               <BookOpen className="h-4 w-4 text-stone-400" />
                             ) : sess.mode === 'short_answer' ? (
                               <AlignLeft className="h-4 w-4 text-stone-400" />
+                            ) : sess.mode === 'ask' ? (
+                              <MessageCircle className="h-4 w-4 text-stone-400" />
                             ) : (
                               <PenTool className="h-4 w-4 text-stone-400" />
                             )}
@@ -756,6 +813,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                       <BookOpen className="h-5 w-5 text-sage-600" />
                     ) : activeMode === 'short_answer' ? (
                       <AlignLeft className="h-5 w-5 text-sage-600" />
+                    ) : activeMode === 'ask' ? (
+                      <MessageCircle className="h-5 w-5 text-sage-600" />
                     ) : (
                       <PenTool className="h-5 w-5 text-sage-600" />
                     )}

@@ -3979,7 +3979,7 @@ async def get_outline_topics(outline_id: int, user: Optional[dict] = Depends(get
 @app.post("/api/v1/outlines/{outline_id}/study")
 async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: dict = Depends(require_auth)):
     """Start an AI study session for an outline"""
-    valid_modes = {"multiple_choice", "short_answer", "practice_essay"}
+    valid_modes = {"multiple_choice", "short_answer", "practice_essay", "ask"}
     if body.mode not in valid_modes:
         raise HTTPException(status_code=400, detail=f"mode must be one of: {', '.join(sorted(valid_modes))}")
 
@@ -4110,7 +4110,7 @@ YOUR TASK: Generate short answer questions that test the student's ability to ar
 
 Start by generating the first short answer question now."""
 
-        else:  # practice_essay
+        elif body.mode == "practice_essay":
             system_prompt = f"""You are a law school study assistant helping a student practice issue-spotter essays for their {subject} exam using their own course outline.
 
 STUDENT'S OUTLINE:
@@ -4133,11 +4133,29 @@ YOUR TASK: Generate practice essay prompts (issue spotters) and provide feedback
 
 Start by generating the first fact pattern now."""
 
+        else:  # ask
+            system_prompt = f"""You are a law school study assistant helping a student understand their {subject} course material using their own course outline.
+
+STUDENT'S OUTLINE:
+{outline_text}
+
+YOUR TASK: Answer the student's questions about legal concepts covered in their outline. Follow these rules:
+- Answer clearly and thoroughly, referencing specific parts of their outline when relevant
+- Use your broader legal knowledge to give complete, accurate explanations
+- If the question relates to a topic in their outline, connect your answer to what they've studied
+- If the question is about something not in their outline, answer it but note that it's outside their current notes
+- Use examples and analogies to make complex concepts accessible
+- Keep a supportive, educational tone
+- Be concise but thorough — law students are busy"""
+
         # Build the initial user message
-        user_msg_parts = [f"Start a {body.mode.replace('_', ' ')} session."]
-        if body.topic:
-            user_msg_parts.append(f"Focus on: {body.topic}")
-        initial_user_msg = " ".join(user_msg_parts)
+        if body.mode == "ask" and body.topic:
+            initial_user_msg = body.topic  # For ask mode, topic IS the question
+        else:
+            user_msg_parts = [f"Start a {body.mode.replace('_', ' ')} session."]
+            if body.topic:
+                user_msg_parts.append(f"Focus on: {body.topic}")
+            initial_user_msg = " ".join(user_msg_parts)
 
         # Call Claude API
         async with httpx.AsyncClient() as client:

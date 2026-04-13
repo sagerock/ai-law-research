@@ -70,7 +70,7 @@ export interface Outline {
 
 export interface OutlineConversation {
   id: number
-  mode: 'multiple_choice' | 'short_answer' | 'practice_essay'
+  mode: 'multiple_choice' | 'short_answer' | 'practice_essay' | 'ask'
   message_count: number
   created_at: string
   updated_at: string
