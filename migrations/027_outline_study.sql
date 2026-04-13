@@ -17,6 +17,9 @@ ALTER TABLE outlines ADD COLUMN IF NOT EXISTS fork_count INTEGER NOT NULL DEFAUL
 -- Add year column for course year metadata
 ALTER TABLE outlines ADD COLUMN IF NOT EXISTS year INTEGER;
 
+-- AI-extracted topics from outline content
+ALTER TABLE outlines ADD COLUMN IF NOT EXISTS topics JSONB;
+
 -- Store original file in database for direct upload/download
 ALTER TABLE outlines ADD COLUMN IF NOT EXISTS original_file BYTEA;
 ALTER TABLE outlines ADD COLUMN IF NOT EXISTS original_content_type TEXT;

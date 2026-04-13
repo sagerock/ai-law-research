@@ -275,7 +275,8 @@ class OutlineUpdate(BaseModel):
 
 
 class OutlineStudyStart(BaseModel):
-    mode: str  # "multiple_choice" or "practice_essay"
+    mode: str  # "multiple_choice", "short_answer", or "practice_essay"
+    topic: Optional[str] = None  # optional topic to focus on
 
 
 class OutlineStudyMessage(BaseModel):
@@ -3859,11 +3860,115 @@ async def fork_outline(outline_id: int, user: dict = Depends(require_auth)):
 # Outline AI Study Sessions
 # ============================================================================
 
+@app.post("/api/v1/outlines/{outline_id}/extract-topics")
+async def extract_outline_topics(outline_id: int, user: dict = Depends(require_auth)):
+    """Extract key topics from an outline using AI"""
+    user_id = user["id"]
+
+    user_api_key = await get_user_api_key(user_id)
+    is_byok = user_api_key is not None
+    api_key = user_api_key or ANTHROPIC_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
+    if not is_byok:
+        if not await check_pool_available(user_id):
+            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
+
+    async with db_pool.acquire() as conn:
+        outline = await conn.fetchrow(
+            "SELECT id, user_id, content, topics, visibility FROM outlines WHERE id = $1",
+            outline_id,
+        )
+        if not outline:
+            raise HTTPException(status_code=404, detail="Outline not found")
+        if outline["visibility"] == "private" and outline["user_id"] != user_id:
+            raise HTTPException(status_code=404, detail="Outline not found")
+        if not outline["content"]:
+            raise HTTPException(status_code=400, detail="Outline has no extracted text")
+
+        # Return cached topics if available
+        if outline["topics"]:
+            return {"topics": outline["topics"]}
+
+        outline_text = outline["content"]
+        if len(outline_text) > 40000:
+            outline_text = outline_text[:40000] + "\n...[truncated]"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 1000,
+                    "system": "You extract topic names from legal outlines. Return ONLY a JSON array of topic strings, nothing else. Each topic should be 2-5 words. Extract 5-15 key topics. Example: [\"Proximate Cause\", \"Duty of Care\", \"Res Ipsa Loquitur\"]",
+                    "messages": [{"role": "user", "content": f"Extract the key topics from this outline:\n\n{outline_text}"}],
+                },
+                timeout=30.0,
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="AI service error")
+
+        resp_data = resp.json()
+        ai_text = resp_data["content"][0]["text"].strip()
+        input_tokens = resp_data.get("usage", {}).get("input_tokens", 0)
+        output_tokens = resp_data.get("usage", {}).get("output_tokens", 0)
+        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+
+        # Parse JSON array from response
+        import json as json_mod
+        try:
+            # Handle markdown code blocks
+            if "```" in ai_text:
+                ai_text = ai_text.split("```")[1]
+                if ai_text.startswith("json"):
+                    ai_text = ai_text[4:]
+            topics = json_mod.loads(ai_text.strip())
+            if not isinstance(topics, list):
+                topics = []
+            topics = [str(t).strip() for t in topics if t]
+        except Exception:
+            topics = []
+
+        if topics:
+            await conn.execute(
+                "UPDATE outlines SET topics = $1 WHERE id = $2",
+                json_mod.dumps(topics), outline_id,
+            )
+
+        await log_api_usage("outline_topics", input_tokens, output_tokens, cost, "byok" if is_byok else "site")
+
+    return {"topics": topics}
+
+
+@app.get("/api/v1/outlines/{outline_id}/topics")
+async def get_outline_topics(outline_id: int, user: Optional[dict] = Depends(get_current_user)):
+    """Get cached topics for an outline"""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT topics, visibility, user_id FROM outlines WHERE id = $1",
+            outline_id,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Outline not found")
+        if row["visibility"] == "private" and (not user or user["id"] != row["user_id"]):
+            raise HTTPException(status_code=404, detail="Outline not found")
+
+    return {"topics": row["topics"] or []}
+
+
 @app.post("/api/v1/outlines/{outline_id}/study")
 async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: dict = Depends(require_auth)):
-    """Start an AI study session for an outline (multiple choice or practice essay)"""
-    if body.mode not in ("multiple_choice", "practice_essay"):
-        raise HTTPException(status_code=400, detail="mode must be 'multiple_choice' or 'practice_essay'")
+    """Start an AI study session for an outline"""
+    valid_modes = {"multiple_choice", "short_answer", "practice_essay"}
+    if body.mode not in valid_modes:
+        raise HTTPException(status_code=400, detail=f"mode must be one of: {', '.join(sorted(valid_modes))}")
 
     user_id = user["id"]
 
@@ -3947,11 +4052,16 @@ async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: di
         if len(outline_text) > 60000:
             outline_text = outline_text[:60000] + "\n...[outline truncated]"
 
+        topic_instruction = ""
+        if body.topic:
+            topic_instruction = f"\n\nFOCUS TOPIC: The student wants to focus on **{body.topic}**. Generate questions specifically about this topic from their outline. If this topic isn't in their outline, let them know and suggest related topics you can see in their notes."
+
         if body.mode == "multiple_choice":
             system_prompt = f"""You are a law school study assistant helping a student prepare for their {subject} exam using their own course outline.
 
 STUDENT'S OUTLINE:
 {outline_text}
+{topic_instruction}
 
 YOUR TASK: Generate multiple choice questions that test the student's understanding of concepts from their outline. Follow these rules:
 - Generate ONE question at a time with 4 answer options labeled A, B, C, D
@@ -3964,11 +4074,35 @@ YOUR TASK: Generate multiple choice questions that test the student's understand
 - Keep a conversational, encouraging tone
 
 Start by generating the first multiple choice question now."""
-        else:
+
+        elif body.mode == "short_answer":
+            system_prompt = f"""You are a law school study assistant helping a student prepare for their {subject} exam using their own course outline.
+
+STUDENT'S OUTLINE:
+{outline_text}
+{topic_instruction}
+
+YOUR TASK: Generate short answer questions that test the student's ability to articulate legal concepts in their own words. Follow these rules:
+- Generate ONE question at a time
+- Questions should require 2-4 sentence answers — ask the student to define a concept, explain a rule, distinguish between two doctrines, or state the significance of a case
+- Only ask about topics covered in the outline — never introduce topics not in their notes
+- After the student answers, evaluate their response:
+  * Identify what they got right
+  * Point out anything missing or inaccurate
+  * Provide a model answer showing what a strong response looks like
+- Reference specific parts of their outline in your feedback
+- You may use your broader legal knowledge to give richer explanations, but questions must come from outline topics
+- After feedback, ask if they want another question or have follow-up questions
+- Keep a conversational, encouraging tone
+
+Start by generating the first short answer question now."""
+
+        else:  # practice_essay
             system_prompt = f"""You are a law school study assistant helping a student practice issue-spotter essays for their {subject} exam using their own course outline.
 
 STUDENT'S OUTLINE:
 {outline_text}
+{topic_instruction}
 
 YOUR TASK: Generate practice essay prompts (issue spotters) and provide feedback on student responses. Follow these rules:
 - Create a fact pattern that implicates issues covered in the student's outline
@@ -3986,6 +4120,12 @@ YOUR TASK: Generate practice essay prompts (issue spotters) and provide feedback
 
 Start by generating the first fact pattern now."""
 
+        # Build the initial user message
+        user_msg_parts = [f"Start a {body.mode.replace('_', ' ')} session."]
+        if body.topic:
+            user_msg_parts.append(f"Focus on: {body.topic}")
+        initial_user_msg = " ".join(user_msg_parts)
+
         # Call Claude API
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -3999,7 +4139,7 @@ Start by generating the first fact pattern now."""
                     "model": model,
                     "max_tokens": 2000,
                     "system": system_prompt,
-                    "messages": [{"role": "user", "content": f"Start a {body.mode.replace('_', ' ')} session."}],
+                    "messages": [{"role": "user", "content": initial_user_msg}],
                 },
                 timeout=60.0,
             )
@@ -4025,7 +4165,7 @@ Start by generating the first fact pattern now."""
         await conn.execute("""
             INSERT INTO outline_conversation_messages (conversation_id, role, content)
             VALUES ($1, 'user', $2)
-        """, conv_id, f"Start a {body.mode.replace('_', ' ')} session.")
+        """, conv_id, initial_user_msg)
 
         await conn.execute("""
             INSERT INTO outline_conversation_messages

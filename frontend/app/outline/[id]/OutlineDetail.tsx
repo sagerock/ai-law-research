@@ -20,6 +20,8 @@ import {
   PenTool,
   ArrowLeft,
   MessageSquare,
+  AlignLeft,
+  Shuffle,
   X,
   Check,
 } from 'lucide-react'
@@ -45,12 +47,19 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
   const [saving, setSaving] = useState(false)
 
   // Study session
-  const [activeMode, setActiveMode] = useState<'multiple_choice' | 'practice_essay' | null>(null)
+  const [activeMode, setActiveMode] = useState<'multiple_choice' | 'short_answer' | 'practice_essay' | null>(null)
+  const [pendingMode, setPendingMode] = useState<'multiple_choice' | 'short_answer' | 'practice_essay' | null>(null)
   const [conversationId, setConversationId] = useState<number | null>(null)
   const [messages, setMessages] = useState<OutlineMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [startingStudy, setStartingStudy] = useState(false)
+
+  // Topic selection
+  const [topics, setTopics] = useState<string[]>([])
+  const [loadingTopics, setLoadingTopics] = useState(false)
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+  const [customTopic, setCustomTopic] = useState('')
 
   // Past sessions
   const [pastSessions, setPastSessions] = useState<OutlineConversation[]>([])
@@ -179,19 +188,57 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
     }
   }
 
-  const startStudy = async (mode: 'multiple_choice' | 'practice_essay') => {
-    if (!session?.access_token || !outline) return
+  const selectMode = async (mode: 'multiple_choice' | 'short_answer' | 'practice_essay') => {
+    setPendingMode(mode)
+    setSelectedTopic(null)
+    setCustomTopic('')
+    // Fetch topics if not already loaded
+    if (topics.length === 0 && !loadingTopics && session?.access_token) {
+      setLoadingTopics(true)
+      try {
+        // Try cached topics first
+        const cached = await fetch(`${API_URL}/api/v1/outlines/${outlineId}/topics`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        })
+        if (cached.ok) {
+          const data = await cached.json()
+          if (data.topics && data.topics.length > 0) {
+            setTopics(data.topics)
+            setLoadingTopics(false)
+            return
+          }
+        }
+        // Extract topics
+        const res = await fetch(`${API_URL}/api/v1/outlines/${outlineId}/extract-topics`, {
+          method: 'POST',
+          headers: getHeaders(),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setTopics(data.topics || [])
+        }
+      } catch { /* ignore */ } finally {
+        setLoadingTopics(false)
+      }
+    }
+  }
+
+  const startStudy = async (topic?: string | null) => {
+    if (!session?.access_token || !outline || !pendingMode) return
     setStartingStudy(true)
     try {
+      const body: { mode: string; topic?: string } = { mode: pendingMode }
+      if (topic) body.topic = topic
       const res = await fetch(`${API_URL}/api/v1/outlines/${outline.id}/study`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error('Failed to start session')
       const data = await res.json()
       setConversationId(data.conversation_id)
-      setActiveMode(mode)
+      setActiveMode(pendingMode)
+      setPendingMode(null)
       setMessages(data.messages || [])
       // Refresh past sessions list
       const sessRes = await fetch(`${API_URL}/api/v1/outlines/${outlineId}/conversations`, {
@@ -263,8 +310,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  const modeName = (mode: 'multiple_choice' | 'practice_essay') =>
-    mode === 'multiple_choice' ? 'Multiple Choice Quiz' : 'Practice Essay'
+  const modeName = (mode: string) =>
+    mode === 'multiple_choice' ? 'Multiple Choice' : mode === 'short_answer' ? 'Short Answer' : 'Practice Essay'
 
   // Loading state
   if (loading) {
@@ -527,36 +574,113 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                     <Loader2 className="h-6 w-6 animate-spin text-stone-400 mr-3" />
                     <span className="text-stone-500">Starting session...</span>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                ) : !pendingMode ? (
+                  /* Step 1: Pick a mode */
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     <button
-                      onClick={() => startStudy('multiple_choice')}
+                      onClick={() => selectMode('multiple_choice')}
                       className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-stone-200 hover:border-sage-300 hover:bg-sage-50 transition group"
                     >
                       <BookOpen className="h-10 w-10 text-stone-400 group-hover:text-sage-600 transition" />
                       <div className="text-center">
-                        <div className="font-semibold text-stone-800 group-hover:text-sage-700 transition">
-                          Multiple Choice Quiz
-                        </div>
-                        <div className="text-xs text-stone-500 mt-1">
-                          Test your knowledge with targeted questions
-                        </div>
+                        <div className="font-semibold text-stone-800 group-hover:text-sage-700 transition">Multiple Choice</div>
+                        <div className="text-xs text-stone-500 mt-1">Pick from answer options</div>
                       </div>
                     </button>
                     <button
-                      onClick={() => startStudy('practice_essay')}
+                      onClick={() => selectMode('short_answer')}
+                      className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-stone-200 hover:border-sage-300 hover:bg-sage-50 transition group"
+                    >
+                      <AlignLeft className="h-10 w-10 text-stone-400 group-hover:text-sage-600 transition" />
+                      <div className="text-center">
+                        <div className="font-semibold text-stone-800 group-hover:text-sage-700 transition">Short Answer</div>
+                        <div className="text-xs text-stone-500 mt-1">Explain concepts in your own words</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => selectMode('practice_essay')}
                       className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-stone-200 hover:border-sage-300 hover:bg-sage-50 transition group"
                     >
                       <PenTool className="h-10 w-10 text-stone-400 group-hover:text-sage-600 transition" />
                       <div className="text-center">
-                        <div className="font-semibold text-stone-800 group-hover:text-sage-700 transition">
-                          Practice Essay
-                        </div>
-                        <div className="text-xs text-stone-500 mt-1">
-                          Write essay responses with AI feedback
-                        </div>
+                        <div className="font-semibold text-stone-800 group-hover:text-sage-700 transition">Practice Essay</div>
+                        <div className="text-xs text-stone-500 mt-1">Issue spotters with AI feedback</div>
                       </div>
                     </button>
+                  </div>
+                ) : (
+                  /* Step 2: Pick a topic (or random) */
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-stone-800">
+                        {pendingMode === 'multiple_choice' ? 'Multiple Choice' : pendingMode === 'short_answer' ? 'Short Answer' : 'Practice Essay'} — Pick a topic
+                      </h3>
+                      <button onClick={() => setPendingMode(null)} className="text-sm text-stone-500 hover:text-stone-700">
+                        <ArrowLeft className="h-4 w-4 inline mr-1" />Back
+                      </button>
+                    </div>
+
+                    {/* Random / all topics option */}
+                    <button
+                      onClick={() => startStudy(null)}
+                      className="w-full flex items-center gap-3 p-3 mb-3 rounded-lg border-2 border-sage-200 bg-sage-50 hover:bg-sage-100 transition text-left"
+                    >
+                      <Shuffle className="h-5 w-5 text-sage-600" />
+                      <div>
+                        <div className="font-medium text-sage-800">Random topics</div>
+                        <div className="text-xs text-sage-600">AI picks from anywhere in your outline</div>
+                      </div>
+                    </button>
+
+                    {/* Topic suggestions */}
+                    {loadingTopics ? (
+                      <div className="flex items-center gap-2 py-4 text-sm text-stone-500">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Analyzing your outline for topics...
+                      </div>
+                    ) : topics.length > 0 ? (
+                      <div className="mb-4">
+                        <div className="text-sm text-stone-600 mb-2">Or focus on a specific topic:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {topics.map(t => (
+                            <button
+                              key={t}
+                              onClick={() => { setSelectedTopic(t); setCustomTopic('') }}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                                selectedTopic === t
+                                  ? 'bg-sage-700 text-white'
+                                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Custom topic input */}
+                    <div className="flex gap-2 mt-3">
+                      <input
+                        type="text"
+                        value={customTopic}
+                        onChange={(e) => { setCustomTopic(e.target.value); setSelectedTopic(null) }}
+                        placeholder="Or type a topic..."
+                        className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && customTopic.trim()) {
+                            startStudy(customTopic.trim())
+                          }
+                        }}
+                      />
+                      {(selectedTopic || customTopic.trim()) && (
+                        <button
+                          onClick={() => startStudy(selectedTopic || customTopic.trim())}
+                          className="px-4 py-2 bg-sage-700 text-white rounded-lg text-sm font-medium hover:bg-sage-600 transition"
+                        >
+                          Start
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -574,6 +698,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                           <div className="flex items-center gap-3">
                             {sess.mode === 'multiple_choice' ? (
                               <BookOpen className="h-4 w-4 text-stone-400" />
+                            ) : sess.mode === 'short_answer' ? (
+                              <AlignLeft className="h-4 w-4 text-stone-400" />
                             ) : (
                               <PenTool className="h-4 w-4 text-stone-400" />
                             )}
@@ -599,6 +725,8 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                   <div className="flex items-center gap-2">
                     {activeMode === 'multiple_choice' ? (
                       <BookOpen className="h-5 w-5 text-sage-600" />
+                    ) : activeMode === 'short_answer' ? (
+                      <AlignLeft className="h-5 w-5 text-sage-600" />
                     ) : (
                       <PenTool className="h-5 w-5 text-sage-600" />
                     )}
