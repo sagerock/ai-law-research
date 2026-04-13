@@ -460,7 +460,7 @@ export default function StudySessionPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-cream">
-        <Header />
+
         <div className="flex items-center justify-center h-[80vh]">
           <Loader2 className="w-6 h-6 animate-spin text-sage-600" />
         </div>
@@ -471,7 +471,7 @@ export default function StudySessionPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-cream">
-        <Header />
+
         <div className="flex items-center justify-center h-[80vh]">
           <div className="text-center">
             <p className="text-stone-600 mb-3">Sign in to use Study Sessions</p>
@@ -491,7 +491,7 @@ export default function StudySessionPage() {
   if (sessionId && activeMindmapId && !completed) {
     return (
       <div className="min-h-screen bg-cream flex flex-col">
-        <Header />
+
         <DopamineFlash event={dopamineEvent} onDone={() => setDopamineEvent(null)} />
 
         {/* Top bar */}
@@ -584,7 +584,7 @@ export default function StudySessionPage() {
   if (completed) {
     return (
       <div className="min-h-screen bg-cream">
-        <Header />
+
         <div className="max-w-md mx-auto mt-20 text-center p-6">
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="text-2xl font-bold text-stone-800 mb-2">All Nodes Mastered!</h2>

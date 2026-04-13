@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { MessageCircle, Brain, FileText } from 'lucide-react'
+import Header from '@/components/Header'
 
 const TABS = [
   { href: '/study', label: 'Chat', icon: MessageCircle, match: /^\/study$/ },
@@ -15,6 +16,7 @@ export default function StudyLayout({ children }: { children: React.ReactNode })
 
   return (
     <>
+      <Header />
       <div className="border-b bg-white">
         <div className="container mx-auto px-4">
           <nav className="flex gap-1 -mb-px">
