@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { API_URL } from '@/lib/api'
 import { Outline, OutlineConversation, OutlineMessage } from '@/types'
+import Markdown from 'react-markdown'
 import Header from '@/components/Header'
 import {
   FileText,
@@ -631,7 +632,13 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                             : 'bg-stone-100 text-stone-800'
                         }`}
                       >
-                        <pre className="whitespace-pre-wrap font-sans leading-relaxed">{msg.content}</pre>
+                        {msg.role === 'assistant' ? (
+                          <div className="prose prose-sm prose-stone max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_strong]:font-semibold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mt-2 [&_h4]:mb-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1.5">
+                            <Markdown>{msg.content}</Markdown>
+                          </div>
+                        ) : (
+                          <pre className="whitespace-pre-wrap font-sans leading-relaxed">{msg.content}</pre>
+                        )}
                       </div>
                     </div>
                   ))}
