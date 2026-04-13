@@ -1164,7 +1164,7 @@ function LibraryPageContent() {
                     <div className="text-center py-12">
                       <FileText className="h-12 w-12 text-stone-300 mx-auto mb-3" />
                       <p className="text-stone-600 font-medium">No outlines yet</p>
-                      <Link href="/outlines" className="text-sage-700 text-sm hover:underline mt-1 inline-block">
+                      <Link href="/study/outlines" className="text-sage-700 text-sm hover:underline mt-1 inline-block">
                         Browse or upload outlines
                       </Link>
                     </div>

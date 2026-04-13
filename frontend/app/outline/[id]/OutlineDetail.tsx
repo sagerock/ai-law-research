@@ -339,7 +339,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         <div className="container mx-auto px-4 py-16 max-w-3xl text-center">
           <FileText className="h-16 w-16 text-stone-300 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-stone-800 mb-2">{error || 'Outline not found'}</h2>
-          <Link href="/outlines" className="mt-4 inline-flex items-center text-sage-700 hover:underline">
+          <Link href="/study/outlines" className="mt-4 inline-flex items-center text-sage-700 hover:underline">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Outlines
           </Link>
@@ -360,7 +360,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         {/* Back link */}
         <div className="mb-6">
           <Link
-            href="/outlines"
+            href="/study/outlines"
             className="inline-flex items-center text-stone-500 hover:text-stone-700 text-sm transition"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
