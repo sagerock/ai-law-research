@@ -50,12 +50,7 @@ export default function StudyPage() {
     }
   }, [session?.access_token])
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)
-    }
-  }, [authLoading, user, router])
+  // No redirect — layout shows tabs, page shows login prompt if needed
 
   // Load data once authenticated
   useEffect(() => {
@@ -389,11 +384,26 @@ export default function StudyPage() {
     )
   }
 
-  if (!user) return null
+  if (!user) {
+    return (
+      <div className="bg-cream flex-1 flex items-center justify-center py-20">
+        <div className="text-center">
+          <GraduationCap className="h-16 w-16 text-stone-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-stone-800 mb-2">AI Study Assistant</h2>
+          <p className="text-stone-500 mb-6 max-w-md">Upload your notes and chat with AI to prepare for exams. Or browse community outlines in the Outlines tab.</p>
+          <Link
+            href={`/login?returnTo=/study`}
+            className="inline-flex items-center px-6 py-3 bg-sage-700 text-white rounded-lg font-medium hover:bg-sage-600 transition"
+          >
+            Sign in to start studying
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">
-      <Header />
 
       {/* Main layout */}
       <div className="flex-1 flex overflow-hidden">

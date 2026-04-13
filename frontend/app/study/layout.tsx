@@ -15,7 +15,7 @@ export default function StudyLayout({ children }: { children: React.ReactNode })
 
   return (
     <>
-      <div className="border-b bg-white sticky top-[57px] z-40">
+      <div className="border-b bg-white">
         <div className="container mx-auto px-4">
           <nav className="flex gap-1 -mb-px">
             {TABS.map(tab => {
