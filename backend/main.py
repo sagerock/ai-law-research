@@ -3563,6 +3563,111 @@ async def create_outline(outline: OutlineCreate, user: dict = Depends(require_au
     }
 
 
+@app.post("/api/v1/outlines/upload")
+async def upload_outline(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    subject: str = Form(...),
+    visibility: str = Form("private"),
+    professor: Optional[str] = Form(None),
+    law_school: Optional[str] = Form(None),
+    semester: Optional[str] = Form(None),
+    year: Optional[int] = Form(None),
+    description: Optional[str] = Form(None),
+    user: dict = Depends(require_auth),
+):
+    """Upload an outline file, extract text, store in DB"""
+    valid_visibilities = {"private", "unlisted", "public"}
+    if visibility not in valid_visibilities:
+        raise HTTPException(status_code=400, detail="visibility must be private, unlisted, or public")
+
+    filename = file.filename or "untitled"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("pdf", "docx", "txt"):
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
+
+    file_bytes = await file.read()
+    file_size = len(file_bytes)
+
+    if file_size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size limit is 10MB")
+
+    # Extract text
+    if ext == "pdf":
+        extracted_text = extract_text_from_pdf(file_bytes)
+    elif ext == "docx":
+        extracted_text = extract_text_from_docx(file_bytes)
+    else:
+        extracted_text = file_bytes.decode("utf-8", errors="replace")
+
+    content_type = file.content_type or "application/octet-stream"
+    is_public = visibility == "public"
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO outlines (user_id, title, subject, professor, law_school, semester, year,
+                                  description, filename, file_size, file_type, visibility, is_public,
+                                  content, original_file, original_content_type)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            RETURNING id, title, subject, visibility, download_count, created_at
+        """, user["id"], title, subject, professor or None, law_school or None,
+            semester or None, year, description or None, filename, file_size, ext,
+            visibility, is_public, extracted_text or None, file_bytes, content_type)
+
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "subject": row["subject"],
+        "visibility": row["visibility"],
+        "download_count": row["download_count"],
+        "has_content": bool(extracted_text),
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@app.get("/api/v1/outlines/{outline_id}/download")
+async def download_outline(outline_id: int, user: Optional[dict] = Depends(get_current_user)):
+    """Download the original outline file"""
+    from starlette.responses import Response
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT user_id, visibility, original_file, original_content_type, filename, file_url
+            FROM outlines WHERE id = $1
+        """, outline_id)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Outline not found")
+
+        if row["visibility"] == "private":
+            if not user or user["id"] != row["user_id"]:
+                raise HTTPException(status_code=404, detail="Outline not found")
+
+        # If file stored in DB
+        if row["original_file"]:
+            await conn.execute(
+                "UPDATE outlines SET download_count = download_count + 1 WHERE id = $1",
+                outline_id
+            )
+            fname = row["filename"] or "outline"
+            return Response(
+                content=bytes(row["original_file"]),
+                media_type=row["original_content_type"] or "application/octet-stream",
+                headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+            )
+
+        # Fall back to redirect for old Supabase-stored files
+        if row["file_url"]:
+            await conn.execute(
+                "UPDATE outlines SET download_count = download_count + 1 WHERE id = $1",
+                outline_id
+            )
+            from starlette.responses import RedirectResponse
+            return RedirectResponse(url=row["file_url"])
+
+        raise HTTPException(status_code=404, detail="No file available")
+
+
 @app.get("/api/v1/outlines/{outline_id}")
 async def get_outline(outline_id: int, user: Optional[dict] = Depends(get_current_user)):
     """Get a single outline"""

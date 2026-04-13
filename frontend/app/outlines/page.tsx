@@ -199,45 +199,29 @@ export default function OutlinesPage() {
     setUploadError(null)
 
     try {
-      // 1. Upload file to Supabase Storage
-      const supabase = createClient()
-      if (!supabase) {
-        throw new Error('Supabase not configured')
-      }
+      // Upload file directly to backend (multipart form)
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      formData.append('title', uploadTitle.trim())
+      formData.append('subject', uploadSubject.trim())
+      formData.append('visibility', uploadVisibility)
+      if (uploadProfessor.trim()) formData.append('professor', uploadProfessor.trim())
+      if (uploadLawSchool.trim()) formData.append('law_school', uploadLawSchool.trim())
+      if (uploadSemester.trim()) formData.append('semester', uploadSemester.trim())
+      if (uploadDescription.trim()) formData.append('description', uploadDescription.trim())
 
-      const path = `${user.id}/${Date.now()}_${uploadFile.name}`
-      const { error: storageError } = await supabase.storage.from('outlines').upload(path, uploadFile)
-      if (storageError) throw new Error(`Upload failed: ${storageError.message}`)
-
-      const { data: urlData } = supabase.storage.from('outlines').getPublicUrl(path)
-      const fileUrl = urlData.publicUrl
-
-      // 2. Save metadata to backend
-      const fileType = uploadFile.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'docx'
-      const res = await fetch(`${API_URL}/api/v1/outlines`, {
+      const res = await fetch(`${API_URL}/api/v1/outlines/upload`, {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          title: uploadTitle.trim(),
-          subject: uploadSubject.trim(),
-          professor: uploadProfessor.trim() || null,
-          law_school: uploadLawSchool.trim() || null,
-          semester: uploadSemester.trim() || null,
-          description: uploadDescription.trim() || null,
-          filename: uploadFile.name,
-          file_url: fileUrl,
-          file_size: uploadFile.size,
-          file_type: fileType,
-          visibility: uploadVisibility,
-        }),
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        body: formData,
       })
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.detail || 'Failed to save outline')
+        throw new Error(errData.detail || 'Failed to upload outline')
       }
 
-      // 3. Success - close modal & refresh
+      // Success - close modal & refresh
       setShowUploadModal(false)
       resetUploadForm()
       await Promise.all([fetchOutlines(subjectFilter || undefined), fetchSubjects(), fetchMyOutlines()])

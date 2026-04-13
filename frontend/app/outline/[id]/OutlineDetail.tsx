@@ -469,17 +469,13 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-3">
-                {outline.file_url && (
-                  <a
-                    href={outline.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-4 py-2 bg-sage-700 text-white rounded-lg text-sm font-medium hover:bg-sage-600 transition"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </a>
-                )}
+                <a
+                  href={`${API_URL}/api/v1/outlines/${outline.id}/download`}
+                  className="inline-flex items-center px-4 py-2 bg-sage-700 text-white rounded-lg text-sm font-medium hover:bg-sage-600 transition"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </a>
                 {!isOwner && isLoggedIn && (
                   <button
                     onClick={handleFork}

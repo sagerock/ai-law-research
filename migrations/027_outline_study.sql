@@ -17,6 +17,10 @@ ALTER TABLE outlines ADD COLUMN IF NOT EXISTS fork_count INTEGER NOT NULL DEFAUL
 -- Add year column for course year metadata
 ALTER TABLE outlines ADD COLUMN IF NOT EXISTS year INTEGER;
 
+-- Store original file in database for direct upload/download
+ALTER TABLE outlines ADD COLUMN IF NOT EXISTS original_file BYTEA;
+ALTER TABLE outlines ADD COLUMN IF NOT EXISTS original_content_type TEXT;
+
 -- Update indexes for visibility-based queries
 DROP INDEX IF EXISTS idx_outlines_public;
 CREATE INDEX IF NOT EXISTS idx_outlines_visibility_subject ON outlines(visibility, subject);
