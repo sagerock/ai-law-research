@@ -2,11 +2,10 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { MessageCircle, Brain, FileText } from 'lucide-react'
+import { Brain, FileText } from 'lucide-react'
 import Header from '@/components/Header'
 
 const TABS = [
-  { href: '/study', label: 'Chat', icon: MessageCircle, match: /^\/study$/ },
   { href: '/study/session', label: 'Mindmaps', icon: Brain, match: /^\/study\/session/ },
   { href: '/study/outlines', label: 'Outlines', icon: FileText, match: /^\/study\/outlines/ },
 ]
