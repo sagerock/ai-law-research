@@ -23,6 +23,7 @@ import {
   AlignLeft,
   Shuffle,
   MessageCircle,
+  ChevronDown,
   X,
   Check,
 } from 'lucide-react'
@@ -594,19 +595,25 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
           )}
         </div>
 
-        {/* Content preview */}
+        {/* Content preview (collapsed by default) */}
         {outline.content && (
-          <div className="bg-white rounded-xl border border-stone-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-stone-900 mb-4 flex items-center">
-              <FileText className="h-5 w-5 mr-2 text-stone-500" />
-              Content Preview
-            </h2>
-            <pre className="text-sm text-stone-700 whitespace-pre-wrap font-mono leading-relaxed bg-stone-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-              {outline.content.length > 5000
-                ? outline.content.slice(0, 5000) + '\n\n...[content truncated]'
-                : outline.content}
-            </pre>
-          </div>
+          <details className="bg-white rounded-xl border border-stone-200 mb-6 group">
+            <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-stone-50 transition rounded-xl list-none">
+              <div className="flex items-center text-sm font-medium text-stone-600">
+                <FileText className="h-4 w-4 mr-2 text-stone-400" />
+                Outline Content
+                <span className="ml-2 text-stone-400 font-normal">({Math.round(outline.content.length / 1000)}k characters)</span>
+              </div>
+              <ChevronDown className="h-4 w-4 text-stone-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="px-4 pb-4">
+              <pre className="text-sm text-stone-700 whitespace-pre-wrap font-mono leading-relaxed bg-stone-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                {outline.content.length > 5000
+                  ? outline.content.slice(0, 5000) + '\n\n...[content truncated]'
+                  : outline.content}
+              </pre>
+            </div>
+          </details>
         )}
 
         {/* AI Study Tools */}
