@@ -48,6 +48,15 @@ export default function Header() {
             </Link>
 
             <Link
+              href="/outlines"
+              className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+                         rounded-lg transition-all flex items-center gap-1.5"
+            >
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Outlines</span>
+            </Link>
+
+            <Link
               href="/textbooks"
               className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
                          rounded-lg transition-all flex items-center gap-1.5"
