@@ -976,6 +976,9 @@ async def resolve_case_slug(slug: str):
             cite_no_dots = re.sub(r'\.(\s?)', r' ', cite_str).strip()
             cite_no_dots = re.sub(r'\s+', ' ', cite_no_dots)
             cite_no_dots_upper = cite_no_dots.upper()
+            # Alphanum-only: collapses "Am.Dec." vs "AM DEC" vs "AMDEC" to one form.
+            # Slug "58-amdec-385" -> "58AMDEC385"; DB "58 Am.Dec. 385, 3 Cal. 69" -> "58AMDEC3853CAL691853"
+            cite_alnum = re.sub(r'[^A-Z0-9]', '', cite_upper)
             row = await conn.fetchrow(
                 """SELECT id, reporter_cite, title FROM cases
                    WHERE reporter_cite = $1
@@ -984,12 +987,20 @@ async def resolve_case_slug(slug: str):
                       OR UPPER(reporter_cite) = $4
                       OR UPPER(SPLIT_PART(reporter_cite, ',', 1)) = $4
                       OR UPPER(REPLACE(SPLIT_PART(reporter_cite, ',', 1), '.', ' ')) LIKE $5
+                      OR REGEXP_REPLACE(
+                           UPPER(REGEXP_REPLACE(
+                             SPLIT_PART(reporter_cite, ',', 1),
+                             '\s*\([^)]*\)\s*$', ''
+                           )),
+                           '[^A-Z0-9]', '', 'g'
+                         ) = $6
                    LIMIT 1""",
                 cite_str,                    # exact match
                 f"{cite_str} (%",            # trailing year: "477 U.S. 317 (1986)"
                 f"{cite_str},%",             # multi-cite: "248 N.Y. 339, 162 N.E. 99"
                 cite_upper,                  # case-insensitive: "2016 VT 73"
                 f"%{cite_no_dots_upper}%",   # period-stripped: "Cal.Rptr." vs "Cal. Rptr."
+                cite_alnum,                  # alphanum-only, exact match on first-cite after stripping parens: "58AMDEC385"
             )
             if row:
                 canonical = build_canonical_slug(row["reporter_cite"], row["title"])
