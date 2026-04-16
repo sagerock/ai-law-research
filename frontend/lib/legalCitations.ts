@@ -232,7 +232,7 @@ function collectMatches(text: string): MatchInfo[] {
     const fullCite = `${volume} ${reporter} ${page}`
     const slug = reporterCiteToSlug(fullCite)
     // Only link if the slug looks like a valid citation (has 3 parts: vol-reporter-page)
-    if (slug.match(/^\d+-[a-z].*-\d+$/)) {
+    if (slug && slug.match(/^\d+-[a-z].*-\d+$/)) {
       let linkStart = caseMatch.index
       let linkEnd = caseMatch.index + caseMatch[0].length
 

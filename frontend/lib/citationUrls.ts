@@ -281,11 +281,11 @@ function normalizeCite(cite: string): string {
   return cite
 }
 
-export function reporterCiteToSlug(cite: string): string {
+export function reporterCiteToSlug(cite: string): string | null {
   cite = normalizeCite(cite)
   const m = cite.match(/^(\d+)\s+(.+)\s+(\d+)$/)
   if (!m) {
-    return cite.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    return null
   }
   const [, volume, reporter, page] = m
   const reporterSlug = REPORTER_TO_SLUG[reporter] ?? genericReporterToSlug(reporter)
@@ -303,7 +303,8 @@ export function caseTitleToSlug(title: string): string {
 
 export function buildCanonicalSlug(reporterCite: string | null | undefined, title: string): string {
   if (reporterCite && reporterCite.trim()) {
-    return reporterCiteToSlug(reporterCite)
+    const slug = reporterCiteToSlug(reporterCite)
+    if (slug) return slug
   }
   return caseTitleToSlug(title)
 }
