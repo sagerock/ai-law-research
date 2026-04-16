@@ -1010,6 +1010,17 @@ async def resolve_case_slug(slug: str):
                     headers={"Cache-Control": "public, max-age=86400"},
                 )
 
+        # 4. Direct case ID lookup (handles non-numeric IDs like "manual-cunningham")
+        row = await conn.fetchrow(
+            "SELECT id, reporter_cite, title FROM cases WHERE id = $1",
+            slug,
+        )
+        if row:
+            return JSONResponse(
+                content={"case_id": row["id"], "canonical_slug": build_canonical_slug(row["reporter_cite"], row["title"])},
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+
     # Log the 404 for monitoring
     try:
         async with db_pool.acquire() as conn:
