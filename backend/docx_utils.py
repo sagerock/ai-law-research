@@ -462,7 +462,7 @@ def _find_case_citations(text: str, verified_slugs: Optional[set] = None) -> lis
         full_cite = f"{volume} {reporter} {page}"
         slug = reporter_cite_to_slug(full_cite)
         # Only link if slug looks like a valid citation
-        if re.match(r'^\d+-[a-z].*-\d+$', slug):
+        if slug and re.match(r'^\d+-[a-z].*-\d+$', slug):
             if verified_slugs is not None and slug not in verified_slugs:
                 continue
 
@@ -504,7 +504,7 @@ async def verify_citation_slugs(text: str, db_pool) -> set:
             continue
         full_cite = f"{volume} {reporter} {page}"
         slug = reporter_cite_to_slug(full_cite)
-        if re.match(r'^\d+-[a-z].*-\d+$', slug) and slug not in slugs_to_check:
+        if slug and re.match(r'^\d+-[a-z].*-\d+$', slug) and slug not in slugs_to_check:
             parsed = parse_citation_slug(slug)
             if parsed:
                 v, r, p = parsed

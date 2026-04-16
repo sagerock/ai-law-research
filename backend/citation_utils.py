@@ -305,19 +305,20 @@ def _normalize_cite(cite: str) -> str:
     return cite
 
 
-def reporter_cite_to_slug(cite: str) -> str:
+def reporter_cite_to_slug(cite: str) -> Optional[str]:
     """Convert a full reporter citation to a URL slug.
 
     "550 U.S. 544" -> "550-us-544"
     "477 U.S. 317 (1986)" -> "477-us-317"
     "248 N.Y. 339, 162 N.E. 99 (1928)" -> "248-ny-339"
+
+    Returns None if the cite doesn't match the standard volume-reporter-page form
+    (e.g. UK cites like "[1957] 2 Q.B. 396"). Callers should fall back to a title slug.
     """
     cite = _normalize_cite(cite)
-    # Extract leading volume number
     m = re.match(r"^(\d+)\s+(.+)\s+(\d+)$", cite)
     if not m:
-        # Fallback: just slugify the whole thing
-        return re.sub(r"[^a-z0-9]+", "-", cite.lower()).strip("-")
+        return None
 
     volume, reporter, page = m.group(1), m.group(2), m.group(3)
     reporter_slug = REPORTER_TO_SLUG.get(reporter, _generic_reporter_to_slug(reporter))
@@ -385,5 +386,7 @@ def build_canonical_slug(reporter_cite: Optional[str], title: str) -> str:
     Prefers reporter citation; falls back to title slug.
     """
     if reporter_cite and reporter_cite.strip():
-        return reporter_cite_to_slug(reporter_cite)
+        slug = reporter_cite_to_slug(reporter_cite)
+        if slug:
+            return slug
     return case_title_to_slug(title)
