@@ -1634,7 +1634,7 @@ Format your response with clear section headers using the emoji markers shown ab
 """
 
     try:
-        # Call Anthropic Messages API with Claude Sonnet 4.6
+        # Call Anthropic Messages API with Claude Opus 4.8
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
@@ -1644,7 +1644,7 @@ Format your response with clear section headers using the emoji markers shown ab
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "claude-sonnet-4-6",
+                    "model": "claude-opus-4-8",
                     "max_tokens": 4000,
                     "messages": [
                         {
@@ -1682,11 +1682,11 @@ Format your response with clear section headers using the emoji markers shown ab
             )
 
         # Calculate cost
-        # Claude Sonnet 4.6: $3 per 1M input tokens, $15 per 1M output tokens
+        # Claude Opus 4.8: $5 per 1M input tokens, $25 per 1M output tokens
         usage = result.get("usage", {})
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
-        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+        cost = (input_tokens * 5.0 / 1_000_000) + (output_tokens * 25.0 / 1_000_000)
 
         # Save the summary to database for caching (benefits everyone)
         async with db_pool.acquire() as conn:
@@ -1702,7 +1702,7 @@ Format your response with clear section headers using the emoji markers shown ab
                     cost = EXCLUDED.cost,
                     created_at = CURRENT_TIMESTAMP
                 """,
-                case_id, summary, "claude-sonnet-4-6", input_tokens, output_tokens, cost
+                case_id, summary, "claude-opus-4-8", input_tokens, output_tokens, cost
             )
 
         print(f"💾 Saved summary for case {case_id} to database")
@@ -1721,7 +1721,7 @@ Format your response with clear section headers using the emoji markers shown ab
                 "total": input_tokens + output_tokens
             },
             "cached": False,
-            "model": "claude-sonnet-4-6"
+            "model": "claude-opus-4-8"
         }
 
     except httpx.TimeoutException:
