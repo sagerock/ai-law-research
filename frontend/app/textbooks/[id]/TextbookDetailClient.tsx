@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, ArrowLeft, Library, CheckCircle, Clock, Star } from 'lucide-react'
+import { Search, ArrowLeft, Library, CheckCircle, Clock, Star, Sparkles, Loader2, Send } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { API_URL } from '@/lib/api'
@@ -30,6 +30,7 @@ interface TextbookData {
   year: number | null
   cases: CaseItem[]
   pending_count: number
+  supports_qa?: boolean
 }
 
 const SUBJECT_LABELS: Record<string, string> = {
@@ -46,6 +47,117 @@ const SUBJECT_LABELS: Record<string, string> = {
 function subjectLabel(subject: string | null): string {
   if (!subject) return 'General'
   return SUBJECT_LABELS[subject] || subject.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+interface QASource { case?: string | null; chapter?: string | null }
+
+function AskTextbook({ textbookId }: { textbookId: number }) {
+  const [question, setQuestion] = useState('')
+  const [answer, setAnswer] = useState<string | null>(null)
+  const [sources, setSources] = useState<QASource[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const EXAMPLES = [
+    'How did Daubert change the Frye test?',
+    'When is a prior conviction admissible to impeach a witness?',
+    'What makes a statement testimonial under Crawford?',
+  ]
+
+  const ask = async (q: string) => {
+    const query = q.trim()
+    if (!query || loading) return
+    setLoading(true); setError(null); setAnswer(null); setSources([])
+    try {
+      const res = await fetch(`${API_URL}/api/v1/textbooks/${textbookId}/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: query }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.detail || 'Something went wrong.')
+      setAnswer(data.answer)
+      setSources(data.sources || [])
+    } catch (e: any) {
+      setError(e?.message || 'Could not reach the assistant. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mb-8 rounded-2xl border-2 border-sage-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="h-5 w-5 text-sage-600" />
+        <h2 className="text-lg font-semibold text-stone-900">Ask this textbook</h2>
+      </div>
+      <p className="text-sm text-stone-600 mb-3">
+        Ask any question about the material and get an answer grounded in the book&apos;s text, with citations.
+      </p>
+      <form
+        onSubmit={(e) => { e.preventDefault(); ask(question) }}
+        className="flex gap-2"
+      >
+        <input
+          type="text"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="e.g. What is the test for relevance under Rule 401?"
+          className="flex-1 px-4 py-3 border-2 border-stone-200 rounded-xl text-base
+                     focus:border-sage-500 focus:outline-none transition-colors bg-white"
+        />
+        <button
+          type="submit"
+          disabled={loading || !question.trim()}
+          className="px-4 py-3 rounded-xl bg-sage-600 text-white font-medium
+                     hover:bg-sage-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+        >
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+          <span className="hidden sm:inline">Ask</span>
+        </button>
+      </form>
+
+      {!answer && !loading && !error && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex}
+              onClick={() => { setQuestion(ex); ask(ex) }}
+              className="text-xs px-3 py-1.5 rounded-full bg-sage-50 text-sage-700
+                         hover:bg-sage-100 transition-colors"
+            >
+              {ex}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          {error}
+        </div>
+      )}
+
+      {answer && (
+        <div className="mt-4 border-t border-stone-100 pt-4">
+          <div className="whitespace-pre-wrap text-stone-800 leading-relaxed text-[15px]">{answer}</div>
+          {sources.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              <span className="text-xs text-stone-500 mr-1">Sources:</span>
+              {sources.map((s, i) => (
+                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
+                  {s.case || s.chapter}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-xs text-stone-400">
+            AI-generated from the textbook for study use — verify against the source.
+          </p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function TextbookDetailClient({ textbook }: { textbook: TextbookData }) {
@@ -180,6 +292,9 @@ export default function TextbookDetailClient({ textbook }: { textbook: TextbookD
               </span>
             </div>
           </div>
+
+          {/* Ask this textbook (AI Q&A) */}
+          {textbook.supports_qa && <AskTextbook textbookId={textbook.id} />}
 
           {/* Search filter */}
           {textbook.cases.length > 10 && (

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form, Header
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form, Header, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -5882,7 +5882,7 @@ async def get_textbook_detail(textbook_id: int):
     async with db_pool.acquire() as conn:
         # Get textbook metadata
         book = await conn.fetchrow("""
-            SELECT id, title, edition, authors, subject, isbn, year
+            SELECT id, title, edition, authors, subject, isbn, year, metadata
             FROM casebooks WHERE id = $1
         """, textbook_id)
         if not book:
@@ -5931,9 +5931,103 @@ async def get_textbook_detail(textbook_id: int):
             for r in cases
         ],
         "pending_count": pending or 0,
+        "supports_qa": bool(_casebook_qa_collection(book["metadata"])),
     }
     _textbook_detail_cache[textbook_id] = {"data": result, "time": now}
     return result
+
+
+def _casebook_qa_collection(metadata) -> Optional[str]:
+    """Return the Qdrant collection backing this casebook's AI Q&A, if any."""
+    if not metadata:
+        return None
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    return metadata.get("qdrant_collection") if isinstance(metadata, dict) else None
+
+
+@app.post("/api/v1/textbooks/{textbook_id}/ask")
+async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
+    """Answer a question about a textbook via RAG over its Qdrant collection."""
+    question = (payload.get("question") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="A question is required.")
+    if len(question) > 1000:
+        question = question[:1000]
+
+    async with db_pool.acquire() as conn:
+        book = await conn.fetchrow("SELECT title, metadata FROM casebooks WHERE id = $1", textbook_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Textbook not found")
+    collection = _casebook_qa_collection(book["metadata"])
+    if not collection:
+        raise HTTPException(status_code=400, detail="AI Q&A is not available for this textbook yet.")
+
+    qdrant_url = os.getenv("QDRANT_URL")
+    qdrant_key = os.getenv("QDRANT_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if not all([qdrant_url, qdrant_key, openai_key, anthropic_key]):
+        raise HTTPException(status_code=503, detail="AI Q&A is not configured.")
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # 1) embed the question
+        emb = await client.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+            json={"model": "text-embedding-3-small", "input": question},
+        )
+        if emb.status_code != 200:
+            raise HTTPException(status_code=502, detail="Embedding service error.")
+        vector = emb.json()["data"][0]["embedding"]
+
+        # 2) retrieve the most relevant passages from Qdrant
+        qres = await client.post(
+            f"{qdrant_url.rstrip('/')}/collections/{collection}/points/query",
+            headers={"api-key": qdrant_key, "Content-Type": "application/json"},
+            json={"query": vector, "limit": 6, "with_payload": True},
+        )
+        if qres.status_code != 200:
+            raise HTTPException(status_code=502, detail="Search service error.")
+        points = qres.json().get("result", {}).get("points", [])
+        if not points:
+            return {"answer": "I couldn't find anything in this textbook about that.", "sources": []}
+
+        context_parts, sources = [], []
+        for p in points:
+            pl = p.get("payload", {})
+            tag = pl.get("case") or pl.get("chapter") or "the text"
+            context_parts.append(f"[{tag}]\n{pl.get('text', '')}")
+            src = {"case": pl.get("case"), "chapter": pl.get("chapter")}
+            if src not in sources:
+                sources.append(src)
+        context = "\n\n---\n\n".join(context_parts)
+
+        # 3) answer with Claude, grounded in the retrieved passages
+        prompt = (
+            f"You are a study assistant for the Evidence casebook \"{book['title']}\". "
+            f"Answer the student's question using ONLY the textbook passages below. "
+            f"Write in clear plain prose with short paragraphs — do NOT use Markdown headers, "
+            f"asterisks, or bullet characters. Cite the relevant case or section inline in "
+            f"square brackets, e.g. [Daubert] or [Chapter 5]. If the passages do not answer "
+            f"the question, say so plainly.\n\n"
+            f"QUESTION: {question}\n\nTEXTBOOK PASSAGES:\n{context}"
+        )
+        ans = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
+                     "Content-Type": "application/json"},
+            json={"model": "claude-opus-4-8", "max_tokens": 1200,
+                  "messages": [{"role": "user", "content": prompt}]},
+        )
+        if ans.status_code != 200:
+            raise HTTPException(status_code=502, detail="Answer service error.")
+        answer = next((b.get("text") for b in ans.json().get("content", []) if b.get("type") == "text"), "")
+
+    return {"answer": answer or "No answer could be generated.", "sources": sources}
 
 
 # ============================================================================
