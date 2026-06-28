@@ -156,6 +156,46 @@ async def import_frcp(conn: asyncpg.Connection, dry_run: bool = False) -> int:
     return count
 
 
+async def import_fre(conn: asyncpg.Connection, dry_run: bool = False) -> int:
+    """Import Federal Rules of Evidence data."""
+    path = DATA_DIR / "fre.json"
+    if not path.exists():
+        print(f"  Skipping: {path} not found")
+        return 0
+
+    data = json.loads(path.read_text())
+    doc_id = "fre"
+    metadata = {"source": data.get("source", "")}
+
+    if not dry_run:
+        await conn.execute("""
+            INSERT INTO legal_documents (id, title, doc_type, metadata)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO UPDATE SET title = $2, metadata = $4
+        """, doc_id, data["title"], doc_id, json.dumps(metadata))
+
+    count = 0
+    for i, rule in enumerate(data["rules"]):
+        slug = rule["id"]  # rule-401
+        title = rule.get("title", "")
+        number = rule.get("number")
+        body = flatten_text(rule)
+        content = json.dumps(rule)
+
+        if dry_run:
+            print(f"  [DRY] {slug}: Rule {number} - {title}")
+        else:
+            await conn.execute("""
+                INSERT INTO legal_text_items (document_id, slug, title, number, body, content, sort_order)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (document_id, slug) DO UPDATE
+                SET title = $3, number = $4, body = $5, content = $6, sort_order = $7
+            """, doc_id, slug, title, number, body, content, i)
+        count += 1
+
+    return count
+
+
 async def import_statutes(conn: asyncpg.Connection, dry_run: bool = False) -> int:
     """Import Federal Statutes data."""
     path = DATA_DIR / "federal_statutes.json"
@@ -215,6 +255,10 @@ async def main():
 
         print("Importing FRCP...")
         n = await import_frcp(conn, args.dry_run)
+        print(f"  {n} rules")
+
+        print("Importing FRE...")
+        n = await import_fre(conn, args.dry_run)
         print(f"  {n} rules")
 
         print("Importing Federal Statutes...")

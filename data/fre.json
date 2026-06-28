@@ -1,0 +1,414 @@
+{
+ "title": "Federal Rules of Evidence",
+ "source": "Cornell Law LII (public domain)",
+ "rules": [
+  {
+   "id": "rule-101",
+   "number": "101",
+   "title": "Scope; Definitions",
+   "text": "(a) Scope. These rules apply to proceedings in United States courts. The specific courts and proceedings to which the rules apply, along with exceptions, are set out in Rule 1101.\n\n(b) Definitions. In these rules:\n\n(1) \"civil case\" means a civil action or proceeding;\n\n(2) \"criminal case\" includes a criminal proceeding;\n\n(3) \"public office\" includes a public agency;\n\n(4) \"record\" includes a memorandum, report, or data compilation;\n\n(5) a \"rule prescribed by the Supreme Court\" means a rule adopted by the Supreme Court under statutory authority; and\n\n(6) a reference to any kind of written material or any other medium includes electronically stored information."
+  },
+  {
+   "id": "rule-102",
+   "number": "102",
+   "title": "Purpose",
+   "text": "These rules should be construed so as to administer every proceeding fairly, eliminate unjustifiable expense and delay, and promote the development of evidence law, to the end of ascertaining the truth and securing a just determination."
+  },
+  {
+   "id": "rule-103",
+   "number": "103",
+   "title": "Rulings on Evidence",
+   "text": "(a) Preserving a Claim of Error. A party may claim error in a ruling to admit or exclude evidence only if the error affects a substantial right of the party and:\n\n(1) if the ruling admits evidence, a party, on the record:\n\n(A) timely objects or moves to strike; and\n\n(B) states the specific ground, unless it was apparent from the context; or\n\n(2) if the ruling excludes evidence, a party informs the court of its substance by an offer of proof, unless the substance was apparent from the context.\n\n(b) Not Needing to Renew an Objection or Offer of Proof. Once the court rules definitively on the record — either before or at trial — a party need not renew an objection or offer of proof to preserve a claim of error for appeal.\n\n(c) Court's Statement About the Ruling; Directing an Offer of Proof. The court may make any statement about the character or form of the evidence, the objection made, and the ruling. The court may direct that an offer of proof be made in question-and-answer form.\n\n(d) Preventing the Jury from Hearing Inadmissible Evidence. To the extent practicable, the court must conduct a jury trial so that inadmissible evidence is not suggested to the jury by any means.\n\n(e) Taking Notice of Plain Error. A court may take notice of a plain error affecting a substantial right, even if the claim of error was not properly preserved."
+  },
+  {
+   "id": "rule-104",
+   "number": "104",
+   "title": "Preliminary Questions",
+   "text": "(a) In General. The court must decide any preliminary question about whether a witness is qualified, a privilege exists, or evidence is admissible. In so deciding, the court is not bound by evidence rules, except those on privilege.\n\n(b) Relevance That Depends on a Fact. When the relevance of evidence depends on whether a fact exists, proof must be introduced sufficient to support a finding that the fact does exist. The court may admit the proposed evidence on the condition that the proof be introduced later.\n\n(c) Conducting a Hearing So That the Jury Cannot Hear It. The court must conduct any hearing on a preliminary question so that the jury cannot hear it if:\n\n(1) the hearing involves the admissibility of a confession;\n\n(2) a defendant in a criminal case is a witness and so requests; or\n\n(3) justice so requires.\n\n(d) Cross-Examining a Defendant in a Criminal Case. By testifying on a preliminary question, a defendant in a criminal case does not become subject to cross-examination on other issues in the case.\n\n(e) Evidence Relevant to Weight and Credibility. This rule does not limit a party's right to introduce before the jury evidence that is relevant to the weight or credibility of other evidence."
+  },
+  {
+   "id": "rule-105",
+   "number": "105",
+   "title": "Limiting Evidence That Is Not Admissible Against Other Parties or for Other Purposes",
+   "text": "If the court admits evidence that is admissible against a party or for a purpose — but not against another party or for another purpose — the court, on timely request, must restrict the evidence to its proper scope and instruct the jury accordingly."
+  },
+  {
+   "id": "rule-106",
+   "number": "106",
+   "title": "Remainder of or Related Writings or Recorded Statements",
+   "text": "If a party introduces all or part of a statement, an adverse party may require the introduction, at that time, of any other part — or any other statement — that in fairness ought to be considered at the same time. The adverse party may do so over a hearsay objection."
+  },
+  {
+   "id": "rule-201",
+   "number": "201",
+   "title": "Judicial Notice of Adjudicative Facts",
+   "text": "(a) Scope. This rule governs judicial notice of an adjudicative fact only, not a legislative fact.\n\n(b) Kinds of Facts That May Be Judicially Noticed. The court may judicially notice a fact that is not subject to reasonable dispute because it:\n\n(1) is generally known within the trial court's territorial jurisdiction; or\n\n(2) can be accurately and readily determined from sources whose accuracy cannot reasonably be questioned.\n\n(c) Taking Notice. The court:\n\n(1) may take judicial notice on its own; or\n\n(2) must take judicial notice if a party requests it and the court is supplied with the necessary information.\n\n(d) Timing. The court may take judicial notice at any stage of the proceeding.\n\n(e) Opportunity to Be Heard. On timely request, a party is entitled to be heard on the propriety of taking judicial notice and the nature of the fact to be noticed. If the court takes judicial notice before notifying a party, the party, on request, is still entitled to be heard.\n\n(f) Instructing the Jury. In a civil case, the court must instruct the jury to accept the noticed fact as conclusive. In a criminal case, the court must instruct the jury that it may or may not accept the noticed fact as conclusive."
+  },
+  {
+   "id": "rule-301",
+   "number": "301",
+   "title": "Presumptions in Civil Cases Generally",
+   "text": "In a civil case, unless a federal statute or these rules provide otherwise, the party against whom a presumption is directed has the burden of producing evidence to rebut the presumption. But this rule does not shift the burden of persuasion, which remains on the party who had it originally."
+  },
+  {
+   "id": "rule-302",
+   "number": "302",
+   "title": "Applying State Law to Presumptions in Civil Cases",
+   "text": "In a civil case, state law governs the effect of a presumption regarding a claim or defense for which state law supplies the rule of decision."
+  },
+  {
+   "id": "rule-401",
+   "number": "401",
+   "title": "Test for Relevant Evidence",
+   "text": "Evidence is relevant if:\n\n(a) it has any tendency to make a fact more or less probable than it would be without the evidence; and\n\n(b) the fact is of consequence in determining the action."
+  },
+  {
+   "id": "rule-402",
+   "number": "402",
+   "title": "General Admissibility of Relevant Evidence",
+   "text": "Relevant evidence is admissible unless any of the following provides otherwise:\n\n• the United States Constitution;\n\n• a federal statute;\n\n• these rules; or\n\n• other rules prescribed by the Supreme Court.\n\nIrrelevant evidence is not admissible."
+  },
+  {
+   "id": "rule-403",
+   "number": "403",
+   "title": "Excluding Relevant Evidence for Prejudice, Confusion, Waste of Time, or Other Reasons",
+   "text": "The court may exclude relevant evidence if its probative value is substantially outweighed by a danger of one or more of the following: unfair prejudice, confusing the issues, misleading the jury, undue delay, wasting time, or needlessly presenting cumulative evidence."
+  },
+  {
+   "id": "rule-404",
+   "number": "404",
+   "title": "Character Evidence; Other Crimes, Wrongs, or Acts",
+   "text": "(a) Character Evidence.\n\n(1) Prohibited Uses. Evidence of a person's character or character trait is not admissible to prove that on a particular occasion the person acted in accordance with the character or trait.\n\n(2) Exceptions for a Defendant or Victim in a Criminal Case. The following exceptions apply in a criminal case:\n\n(A) a defendant may offer evidence of the defendant's pertinent trait, and if the evidence is admitted, the prosecutor may offer evidence to rebut it;\n\n(B) subject to the limitations in Rule 412, a defendant may offer evidence of an alleged victim's pertinent trait, and if the evidence is admitted, the prosecutor may:\n\n(i) offer evidence to rebut it; and\n\n(ii) offer evidence of the defendant's same trait; and\n\n(C) in a homicide case, the prosecutor may offer evidence of the alleged victim's trait of peacefulness to rebut evidence that the victim was the first aggressor.\n\n(3) Exceptions for a Witness. Evidence of a witness's character may be admitted under Rules 607, 608, and 609.\n\n(b) Other Crimes, Wrongs, or Acts.\n\n(1) Prohibited Uses. Evidence of any other crime, wrong, or act is not admissible to prove a person's character in order to show that on a particular occasion the person acted in accordance with the character.\n\n(2) Permitted Uses. This evidence may be admissible for another purpose, such as proving motive, opportunity, intent, preparation, plan, knowledge, identity, absence of mistake, or lack of accident.\n\n(3) Notice in a Criminal Case. In a criminal case, the prosecutor must:\n\n(A) provide reasonable notice of any such evidence that the prosecutor intends to offer at trial, so that the defendant has a fair opportunity to meet it;\n\n(B) articulate in the notice the permitted purpose for which the prosecutor intends to offer the evidence and the reasoning that supports the purpose; and\n\n(C) do so in writing before trial — or in any form during trial if the court, for good cause, excuses lack of pretrial notice."
+  },
+  {
+   "id": "rule-405",
+   "number": "405",
+   "title": "Methods of Proving Character",
+   "text": "(a) By Reputation or Opinion. When evidence of a person's character or character trait is admissible, it may be proved by testimony about the person's reputation or by testimony in the form of an opinion. On cross-examination of the character witness, the court may allow an inquiry into relevant specific instances of the person's conduct.\n\n(b) By Specific Instances of Conduct. When a person's character or character trait is an essential element of a charge, claim, or defense, the character or trait may also be proved by relevant specific instances of the person's conduct."
+  },
+  {
+   "id": "rule-406",
+   "number": "406",
+   "title": "Habit; Routine Practice",
+   "text": "Evidence of a person's habit or an organization's routine practice may be admitted to prove that on a particular occasion the person or organization acted in accordance with the habit or routine practice. The court may admit this evidence regardless of whether it is corroborated or whether there was an eyewitness."
+  },
+  {
+   "id": "rule-407",
+   "number": "407",
+   "title": "Subsequent Remedial Measures",
+   "text": "When measures are taken that would have made an earlier injury or harm less likely to occur, evidence of the subsequent measures is not admissible to prove:\n\nnegligence;\n\nculpable conduct;\n\na defect in a product or its design; or\n\na need for a warning or instruction.\n\nBut the court may admit this evidence for another purpose, such as impeachment or — if disputed — proving ownership, control, or the feasibility of precautionary measures."
+  },
+  {
+   "id": "rule-408",
+   "number": "408",
+   "title": "Compromise Offers and Negotiations",
+   "text": "(a) Prohibited Uses. Evidence of the following is not admissible — on behalf of any party — either to prove or disprove the validity or amount of a disputed claim or to impeach by a prior inconsistent statement or a contradiction:\n\n(1) furnishing, promising, or offering — or accepting, promising to accept, or offering to accept — a valuable consideration in compromising or attempting to compromise the claim; and\n\n(2) conduct or a statement made during compromise negotiations about the claim — except when offered in a criminal case and when the negotiations related to a claim by a public office in the exercise of its regulatory, investigative, or enforcement authority.\n\n(b) Exceptions. The court may admit this evidence for another purpose, such as proving a witness's bias or prejudice, negating a contention of undue delay, or proving an effort to obstruct a criminal investigation or prosecution."
+  },
+  {
+   "id": "rule-409",
+   "number": "409",
+   "title": "Offers to Pay Medical and Similar Expenses",
+   "text": "Evidence of furnishing, promising to pay, or offering to pay medical, hospital, or similar expenses resulting from an injury is not admissible to prove liability for the injury."
+  },
+  {
+   "id": "rule-410",
+   "number": "410",
+   "title": "Pleas, Plea Discussions, and Related Statements",
+   "text": "(a) Prohibited Uses. In a civil or criminal case, evidence of the following is not admissible against the defendant who made the plea or participated in the plea discussions:\n\n(1) a guilty plea that was later withdrawn;\n\n(2) a nolo contendere plea;\n\n(3) a statement made during a proceeding on either of those pleas under Federal Rule of Criminal Procedure 11 or a comparable state procedure; or\n\n(4) a statement made during plea discussions with an attorney for the prosecuting authority if the discussions did not result in a guilty plea or they resulted in a later-withdrawn guilty plea.\n\n(b) Exceptions. The court may admit a statement described in Rule 410(a)(3) or (4):\n\n(1) in any proceeding in which another statement made during the same plea or plea discussions has been introduced, if in fairness the statements ought to be considered together; or\n\n(2) in a criminal proceeding for perjury or false statement, if the defendant made the statement under oath, on the record, and with counsel present."
+  },
+  {
+   "id": "rule-411",
+   "number": "411",
+   "title": "Liability Insurance",
+   "text": "Evidence that a person was or was not insured against liability is not admissible to prove whether the person acted negligently or otherwise wrongfully. But the court may admit this evidence for another purpose, such as proving a witness's bias or prejudice or proving agency, ownership, or control."
+  },
+  {
+   "id": "rule-412",
+   "number": "412",
+   "title": "Sex-Offense Cases: The Victim",
+   "text": "(a) Prohibited Uses. The following evidence is not admissible in a civil or criminal proceeding involving alleged sexual misconduct:\n\n(1) evidence offered to prove that a victim engaged in other sexual behavior; or\n\n(2) evidence offered to prove a victim's sexual predisposition.\n\n(b) Exceptions.\n\n(1) Criminal Cases. The court may admit the following evidence in a criminal case:\n\n(A) evidence of specific instances of a victim's sexual behavior, if offered to prove that someone other than the defendant was the source of semen, injury, or other physical evidence;\n\n(B) evidence of specific instances of a victim's sexual behavior with respect to the person accused of the sexual misconduct, if offered by the defendant to prove consent or if offered by the prosecutor; and\n\n(C) evidence whose exclusion would violate the defendant's constitutional rights.\n\n(2) Civil Cases. In a civil case, the court may admit evidence offered to prove a victim's sexual behavior or sexual predisposition if its probative value substantially outweighs the danger of harm to any victim and of unfair prejudice to any party. The court may admit evidence of a victim's reputation only if the victim has placed it in controversy.\n\n(c) Procedure to Determine Admissibility.\n\n(1) Motion. If a party intends to offer evidence under Rule 412(b), the party must:\n\n(A) file a motion that specifically describes the evidence and states the purpose for which it is to be offered;\n\n(B) do so at least 14 days before trial unless the court, for good cause, sets a different time;\n\n(C) serve the motion on all parties; and\n\n(D) notify the victim or, when appropriate, the victim's guardian or representative.\n\n(2) Hearing. Before admitting evidence under this rule, the court must conduct an in camera hearing and give the victim and parties a right to attend and be heard. Unless the court orders otherwise, the motion, related materials, and the record of the hearing must be and remain sealed.\n\n(d) Definition of \"Victim.\" In this rule, \"victim\" includes an alleged victim."
+  },
+  {
+   "id": "rule-413",
+   "number": "413",
+   "title": "Similar Crimes in Sexual-Assault Cases",
+   "text": "(a) Permitted Uses. In a criminal case in which a defendant is accused of a sexual assault, the court may admit evidence that the defendant committed any other sexual assault. The evidence may be considered on any matter to which it is relevant.\n\n(b) Disclosure to the Defendant. If the prosecutor intends to offer this evidence, the prosecutor must disclose it to the defendant, including witnesses' statements or a summary of the expected testimony. The prosecutor must do so at least 15 days before trial or at a later time that the court allows for good cause.\n\n(c) Effect on Other Rules. This rule does not limit the admission or consideration of evidence under any other rule.\n\n(d) Definition of \"Sexual Assault.\" In this rule and Rule 415, \"sexual assault\" means a crime under federal law or under state law (as \"state\" is defined in 18 U.S.C. § 513) involving:\n\n(1) any conduct prohibited by 18 U.S.C. chapter 109A;\n\n(2) contact, without consent, between any part of the defendant's body — or an object — and another person's genitals or anus;\n\n(3) contact, without consent, between the defendant's genitals or anus and any part of another person's body;\n\n(4) deriving sexual pleasure or gratification from inflicting death, bodily injury, or physical pain on another person; or\n\n(5) an attempt or conspiracy to engage in conduct described in subparagraphs (1)–(4)."
+  },
+  {
+   "id": "rule-414",
+   "number": "414",
+   "title": "Similar Crimes in Child Molestation Cases",
+   "text": "(a) Permitted Uses. In a criminal case in which a defendant is accused of child molestation, the court may admit evidence that the defendant committed any other child molestation. The evidence may be considered on any matter to which it is relevant.\n\n(b) Disclosure to the Defendant. If the prosecutor intends to offer this evidence, the prosecutor must disclose it to the defendant, including witnesses' statements or a summary of the expected testimony. The prosecutor must do so at least 15 days before trial or at a later time that the court allows for good cause.\n\n(c) Effect on Other Rules. This rule does not limit the admission or consideration of evidence under any other rule.\n\n(d) Definition of \"Child\" and \"Child Molestation.\" In this rule and Rule 415:\n\n(1) \"child\" means a person below the age of 14; and\n\n(2) \"child molestation\" means a crime under federal law or under state law (as \"state\" is defined in 18 U.S.C. § 513) involving:\n\n(A) any conduct prohibited by 18 U.S.C. chapter 109A and committed with a child;\n\n(B) any conduct prohibited by 18 U.S.C. chapter 110;\n\n(C) contact between any part of the defendant's body — or an object — and a child's genitals or anus;\n\n(D) contact between the defendant's genitals or anus and any part of a child's body;\n\n(E) deriving sexual pleasure or gratification from inflicting death, bodily injury, or physical pain on a child; or\n\n(F) an attempt or conspiracy to engage in conduct described in subparagraphs (A)–(E)."
+  },
+  {
+   "id": "rule-415",
+   "number": "415",
+   "title": "Similar Acts in Civil Cases Involving Sexual Assault or Child Molestation",
+   "text": "(a) Permitted Uses. In a civil case involving a claim for relief based on a party's alleged sexual assault or child molestation, the court may admit evidence that the party committed any other sexual assault or child molestation. The evidence may be considered as provided in Rules 413 and 414.\n\n(b) Disclosure to the Opponent. If a party intends to offer this evidence, the party must disclose it to the party against whom it will be offered, including witnesses' statements or a summary of the expected testimony. The party must do so at least 15 days before trial or at a later time that the court allows for good cause.\n\n(c) Effect on Other Rules. This rule does not limit the admission or consideration of evidence under any other rule."
+  },
+  {
+   "id": "rule-501",
+   "number": "501",
+   "title": "Privilege in General",
+   "text": "The common law — as interpreted by United States courts in the light of reason and experience — governs a claim of privilege unless any of the following provides otherwise:\n\nthe United States Constitution;\n\na federal statute; or\n\nrules prescribed by the Supreme Court.\n\nBut in a civil case, state law governs privilege regarding a claim or defense for which state law supplies the rule of decision."
+  },
+  {
+   "id": "rule-502",
+   "number": "502",
+   "title": "Attorney-Client Privilege and Work Product; Limitations on Waiver",
+   "text": "The following provisions apply, in the circumstances set out, to disclosure of a communication or information covered by the attorney-client privilege or work-product protection.\n\n(a) Disclosure Made in a Federal Proceeding or to a Federal Office or Agency; Scope of a Waiver. When the disclosure is made in a federal proceeding or to a federal office or agency and waives the attorney-client privilege or work-product protection, the waiver extends to an undisclosed communication or information in a federal or state proceeding only if:\n\n(1) the waiver is intentional;\n\n(2) the disclosed and undisclosed communications or information concern the same subject matter; and\n\n(3) they ought in fairness to be considered together.\n\n(b) Inadvertent Disclosure. When made in a federal proceeding or to a federal office or agency, the disclosure does not operate as a waiver in a federal or state proceeding if:\n\n(1) the disclosure is inadvertent;\n\n(2) the holder of the privilege or protection took reasonable steps to prevent disclosure; and\n\n(3) the holder promptly took reasonable steps to rectify the error, including (if applicable) following Federal Rule of Civil Procedure 26(b)(5)(B).\n\n(c) Disclosure Made in a State Proceeding. When the disclosure is made in a state proceeding and is not the subject of a state-court order concerning waiver, the disclosure does not operate as a waiver in a federal proceeding if the disclosure:\n\n(1) would not be a waiver under this rule if it had been made in a federal proceeding; or\n\n(2) is not a waiver under the law of the state where the disclosure occurred.\n\n(d) Controlling Effect of a Court Order. A federal court may order that the privilege or protection is not waived by disclosure connected with the litigation pending before the court — in which event the disclosure is also not a waiver in any other federal or state proceeding.\n\n(e) Controlling Effect of a Party Agreement. An agreement on the effect of disclosure in a federal proceeding is binding only on the parties to the agreement, unless it is incorporated into a court order.\n\n(f) Controlling Effect of this Rule. Notwithstanding Rules 101 and 1101, this rule applies to state proceedings and to federal court-annexed and federal court-mandated arbitration proceedings, in the circumstances set out in the rule. And notwithstanding Rule 501, this rule applies even if state law provides the rule of decision.\n\n(g) Definitions. In this rule:\n\n(1) \"attorney-client privilege\" means the protection that applicable law provides for confidential attorney-client communications; and\n\n(2) \"work-product protection\" means the protection that applicable law provides for tangible material (or its intangible equivalent) prepared in anticipation of litigation or for trial."
+  },
+  {
+   "id": "rule-601",
+   "number": "601",
+   "title": "Competency to Testify in General",
+   "text": "Every person is competent to be a witness unless these rules provide otherwise. But in a civil case, state law governs the witness's competency regarding a claim or defense for which state law supplies the rule of decision."
+  },
+  {
+   "id": "rule-602",
+   "number": "602",
+   "title": "Need for Personal Knowledge",
+   "text": "A witness may testify to a matter only if evidence is introduced sufficient to support a finding that the witness has personal knowledge of the matter. Evidence to prove personal knowledge may consist of the witness's own testimony. This rule does not apply to a witness's expert testimony under Rule 703."
+  },
+  {
+   "id": "rule-603",
+   "number": "603",
+   "title": "Oath or Affirmation to Testify Truthfully",
+   "text": "Before testifying, a witness must give an oath or affirmation to testify truthfully. It must be in a form designed to impress that duty on the witness's conscience."
+  },
+  {
+   "id": "rule-604",
+   "number": "604",
+   "title": "Interpreter",
+   "text": "An interpreter must be qualified and must give an oath or affirmation to make a true translation."
+  },
+  {
+   "id": "rule-605",
+   "number": "605",
+   "title": "Judge's Competency as a Witness",
+   "text": "The presiding judge may not testify as a witness at the trial. A party need not object to preserve the issue."
+  },
+  {
+   "id": "rule-606",
+   "number": "606",
+   "title": "Juror's Competency as a Witness",
+   "text": "(a) At the Trial. A juror may not testify as a witness before the other jurors at the trial. If a juror is called to testify, the court must give a party an opportunity to object outside the jury's presence.\n\n(b) During an Inquiry into the Validity of a Verdict or Indictment.\n\n(1) Prohibited Testimony or Other Evidence. During an inquiry into the validity of a verdict or indictment, a juror may not testify about any statement made or incident that occurred during the jury's deliberations; the effect of anything on that juror's or another juror's vote; or any juror's mental processes concerning the verdict or indictment. The court may not receive a juror's affidavit or evidence of a juror's statement on these matters.\n\n(2) Exceptions. A juror may testify about whether:\n\n(A) extraneous prejudicial information was improperly brought to the jury's attention;\n\n(B) an outside influence was improperly brought to bear on any juror; or\n\n(C) a mistake was made in entering the verdict on the verdict form."
+  },
+  {
+   "id": "rule-607",
+   "number": "607",
+   "title": "Who May Impeach a Witness",
+   "text": "Any party, including the party that called the witness, may attack the witness's credibility."
+  },
+  {
+   "id": "rule-608",
+   "number": "608",
+   "title": "A Witness's Character for Truthfulness or Untruthfulness",
+   "text": "(a) Reputation or Opinion Evidence. A witness's credibility may be attacked or supported by testimony about the witness's reputation for having a character for truthfulness or untruthfulness, or by testimony in the form of an opinion about that character. But evidence of truthful character is admissible only after the witness's character for truthfulness has been attacked.\n\n(b) Specific Instances of Conduct. Except for a criminal conviction under Rule 609, extrinsic evidence is not admissible to prove specific instances of a witness's conduct in order to attack or support the witness's character for truthfulness. But the court may, on cross-examination, allow them to be inquired into if they are probative of the character for truthfulness or untruthfulness of:\n\n(1) the witness; or\n\n(2) another witness whose character the witness being cross-examined has testified about.\n\nBy testifying on another matter, a witness does not waive any privilege against self-incrimination for testimony that relates only to the witness's character for truthfulness."
+  },
+  {
+   "id": "rule-609",
+   "number": "609",
+   "title": "Impeachment by Evidence of a Criminal Conviction",
+   "text": "(a) In General. The following rules apply to attacking a witness's character for truthfulness by evidence of a criminal conviction:\n\n(1) for a crime that, in the convicting jurisdiction, was punishable by death or by imprisonment for more than one year, the evidence:\n\n(A) must be admitted, subject to Rule 403, in a civil case or in a criminal case in which the witness is not a defendant; and\n\n(B) must be admitted in a criminal case in which the witness is a defendant, if the probative value of the evidence outweighs its prejudicial effect to that defendant; and\n\n(2) for any crime regardless of the punishment, the evidence must be admitted if the court can readily determine that establishing the elements of the crime required proving — or the witness's admitting — a dishonest act or false statement.\n\n(b) Limit on Using the Evidence After 10 Years. This subdivision (b) applies if more than 10 years have passed since the witness's conviction or release from confinement for it, whichever is later. Evidence of the conviction is admissible only if:\n\n(1) its probative value, supported by specific facts and circumstances, substantially outweighs its prejudicial effect; and\n\n(2) the proponent gives an adverse party reasonable written notice of the intent to use it so that the party has a fair opportunity to contest its use.\n\n(c) Effect of a Pardon, Annulment, or Certificate of Rehabilitation. Evidence of a conviction is not admissible if:\n\n(1) the conviction has been the subject of a pardon, annulment, certificate of rehabilitation, or other equivalent procedure based on a finding that the person has been rehabilitated, and the person has not been convicted of a later crime punishable by death or by imprisonment for more than one year; or\n\n(2) the conviction has been the subject of a pardon, annulment, or other equivalent procedure based on a finding of innocence.\n\n(d) Juvenile Adjudications. Evidence of a juvenile adjudication is admissible under this rule only if:\n\n(1) it is offered in a criminal case;\n\n(2) the adjudication was of a witness other than the defendant;\n\n(3) an adult's conviction for that offense would be admissible to attack the adult's credibility; and\n\n(4) admitting the evidence is necessary to fairly determine guilt or innocence.\n\n(e) Pendency of an Appeal. A conviction that satisfies this rule is admissible even if an appeal is pending. Evidence of the pendency is also admissible."
+  },
+  {
+   "id": "rule-610",
+   "number": "610",
+   "title": "Religious Beliefs or Opinions",
+   "text": "Evidence of a witness's religious beliefs or opinions is not admissible to attack or support the witness's credibility."
+  },
+  {
+   "id": "rule-611",
+   "number": "611",
+   "title": "Mode and Order of Examining Witnesses and Presenting Evidence",
+   "text": "(a) Control by the Court; Purposes. The court should exercise reasonable control over the mode and order of examining witnesses and presenting evidence so as to:\n\n(1) make those procedures effective for determining the truth;\n\n(2) avoid wasting time; and\n\n(3) protect witnesses from harassment or undue embarrassment.\n\n(b) Scope of Cross-Examination. Cross-examination should not go beyond the subject matter of the direct examination and matters affecting the witness's credibility. The court may allow inquiry into additional matters as if on direct examination.\n\n(c) Leading Questions. Leading questions should not be used on direct examination except as necessary to develop the witness's testimony. Ordinarily, the court should allow leading questions:\n\n(1) on cross-examination; and\n\n(2) when a party calls a hostile witness, an adverse party, or a witness identified with an adverse party."
+  },
+  {
+   "id": "rule-612",
+   "number": "612",
+   "title": "Writing Used to Refresh a Witness",
+   "text": "(a) Scope. This rule gives an adverse party certain options when a witness uses a writing to refresh memory:\n\n(1) while testifying; or\n\n(2) before testifying, if the court decides that justice requires the party to have those options.\n\n(b) Adverse Party's Options; Deleting Unrelated Matter. Unless 18 U.S.C. § 3500 provides otherwise in a criminal case, an adverse party is entitled to have the writing produced at the hearing, to inspect it, to cross-examine the witness about it, and to introduce in evidence any portion that relates to the witness's testimony. If the producing party claims that the writing includes unrelated matter, the court must examine the writing in camera, delete any unrelated portion, and order that the rest be delivered to the adverse party. Any portion deleted over objection must be preserved for the record.\n\n(c) Failure to Produce or Deliver the Writing. If a writing is not produced or is not delivered as ordered, the court may issue any appropriate order. But if the prosecution does not comply in a criminal case, the court must strike the witness's testimony or — if justice so requires — declare a mistrial."
+  },
+  {
+   "id": "rule-613",
+   "number": "613",
+   "title": "Witness's Prior Statement",
+   "text": "(a) Showing or Disclosing the Statement During Examination. When examining a witness about the witness's prior statement, a party need not show it or disclose its contents to the witness. But the party must, on request, show it or disclose its contents to an adverse party's attorney.\n\n(b) Extrinsic Evidence of a Prior Inconsistent Statement. Unless the court orders otherwise, extrinsic evidence of a witness's prior inconsistent statement may not be admitted until after the witness is given an opportunity to explain or deny the statement and an adverse party is given an opportunity to examine the witness about it. This subdivision (b) does not apply to an opposing party's statement under Rule 801(d)(2)."
+  },
+  {
+   "id": "rule-614",
+   "number": "614",
+   "title": "Court's Calling or Examining a Witness",
+   "text": "(a) Calling. The court may call a witness on its own or at a party's request. Each party is entitled to cross-examine the witness.\n\n(b) Examining. The court may examine a witness regardless of who calls the witness.\n\n(c) Objections. A party may object to the court's calling or examining a witness either at that time or at the next opportunity when the jury is not present."
+  },
+  {
+   "id": "rule-615",
+   "number": "615",
+   "title": "Excluding Witnesses",
+   "text": "(a) Excluding Witnesses. At a party's request, the court must order witnesses excluded from the courtroom so that they cannot hear other witnesses' testimony. Or the court may do so on its own. But this rule does not authorize excluding:\n\n(1) a party who is a natural person;\n\n(2) one officer or employee of a party that is not a natural person, if that officer or employee has been designated as the party's representative by its attorney;\n\n(3) any person whose presence a party shows to be essential to presenting the party's claim or defense; or\n\n(4) a person authorized by statute to be present.\n\n(b) Additional Orders to Prevent Disclosing and Accessing Testimony. An order under (a) operates only to exclude witnesses from the courtroom. But the court may also, by order:\n\n(1) prohibit disclosure of trial testimony to witnesses who are excluded from the courtroom; and\n\n(2) prohibit excluded witnesses from accessing trial testimony."
+  },
+  {
+   "id": "rule-701",
+   "number": "701",
+   "title": "Opinion Testimony by Lay Witnesses",
+   "text": "If a witness is not testifying as an expert, testimony in the form of an opinion is limited to one that is:\n\n(a) rationally based on the witness's perception;\n\n(b) helpful to clearly understanding the witness's testimony or to determining a fact in issue; and\n\n(c) not based on scientific, technical, or other specialized knowledge within the scope of Rule 702."
+  },
+  {
+   "id": "rule-702",
+   "number": "702",
+   "title": "Testimony by Expert Witnesses",
+   "text": "A witness who is qualified as an expert by knowledge, skill, experience, training, or education may testify in the form of an opinion or otherwise if the proponent demonstrates to the court that it is more likely than not that:\n\n(a) the expert's scientific, technical, or other specialized knowledge will help the trier of fact to understand the evidence or to determine a fact in issue;\n\n(b) the testimony is based on sufficient facts or data;\n\n(c) the testimony is the product of reliable principles and methods; and\n\n(d) the expert's opinion reflects a reliable application of the principles and methods to the facts of the case."
+  },
+  {
+   "id": "rule-703",
+   "number": "703",
+   "title": "Bases of an Expert's Opinion Testimony",
+   "text": "An expert may base an opinion on facts or data in the case that the expert has been made aware of or personally observed. If experts in the particular field would reasonably rely on those kinds of facts or data in forming an opinion on the subject, they need not be admissible for the opinion to be admitted. But if the facts or data would otherwise be inadmissible, the proponent of the opinion may disclose them to the jury only if their probative value in helping the jury evaluate the opinion substantially outweighs their prejudicial effect."
+  },
+  {
+   "id": "rule-704",
+   "number": "704",
+   "title": "Opinion on an Ultimate Issue",
+   "text": "(a) In General — Not Automatically Objectionable. An opinion is not objectionable just because it embraces an ultimate issue.\n\n(b) Exception. In a criminal case, an expert witness must not state an opinion about whether the defendant did or did not have a mental state or condition that constitutes an element of the crime charged or of a defense. Those matters are for the trier of fact alone."
+  },
+  {
+   "id": "rule-705",
+   "number": "705",
+   "title": "Disclosing the Facts or Data Underlying an Expert's Opinion",
+   "text": "Unless the court orders otherwise, an expert may state an opinion — and give the reasons for it — without first testifying to the underlying facts or data. But the expert may be required to disclose those facts or data on cross-examination."
+  },
+  {
+   "id": "rule-706",
+   "number": "706",
+   "title": "Court-Appointed Expert Witnesses",
+   "text": "(a) Appointment Process. On a party's motion or on its own, the court may order the parties to show cause why expert witnesses should not be appointed and may ask the parties to submit nominations. The court may appoint any expert that the parties agree on and any of its own choosing. But the court may only appoint someone who consents to act.\n\n(b) Expert's Role. The court must inform the expert of the expert's duties. The court may do so in writing and have a copy filed with the clerk or may do so orally at a conference in which the parties have an opportunity to participate. The expert:\n\n(1) must advise the parties of any findings the expert makes;\n\n(2) may be deposed by any party;\n\n(3) may be called to testify by the court or any party; and\n\n(4) may be cross-examined by any party, including the party that called the expert.\n\n(c) Compensation. The expert is entitled to a reasonable compensation, as set by the court. The compensation is payable as follows:\n\n(1) in a criminal case or in a civil case involving just compensation under the Fifth Amendment, from any funds that are provided by law; and\n\n(2) in any other civil case, by the parties in the proportion and at the time that the court directs — and the compensation is then charged like other costs.\n\n(d) Disclosing the Appointment to the Jury. The court may authorize disclosure to the jury that the court appointed the expert.\n\n(e) Parties' Choice of Their Own Experts. This rule does not limit a party in calling its own experts."
+  },
+  {
+   "id": "rule-801",
+   "number": "801",
+   "title": "Definitions That Apply to This Article; Exclusions from Hearsay",
+   "text": "The following definitions apply under this article:\n\n(a) Statement. \"Statement\" means a person's oral assertion, written assertion, or nonverbal conduct, if the person intended it as an assertion.\n\n(b) Declarant. \"Declarant\" means the person who made the statement.\n\n(c) Hearsay. \"Hearsay\" means a statement that:\n\n(1) the declarant does not make while testifying at the current trial or hearing; and\n\n(2) a party offers in evidence to prove the truth of the matter asserted in the statement.\n\n(d) Statements That Are Not Hearsay. A statement that meets the following conditions is not hearsay:\n\n(1) A Declarant-Witness's Prior Statement. The declarant testifies and is subject to cross-examination about a prior statement, and the statement:\n\n(A) is inconsistent with the declarant's testimony and was given under penalty of perjury at a trial, hearing, or other proceeding or in a deposition;\n\n(B) is consistent with the declarant's testimony and is offered:\n\n(i) to rebut an express or implied charge that the declarant recently fabricated it or acted from a recent improper influence or motive in so testifying; or\n\n(ii) to rehabilitate the declarant's credibility as a witness when attacked on another ground; or\n\n(C) identifies a person as someone the declarant perceived earlier.\n\n(2) An Opposing Party's Statement. The statement is offered against an opposing party and:\n\n(A) was made by the party in an individual or representative capacity;\n\n(B) is one the party manifested that it adopted or believed to be true;\n\n(C) was made by a person whom the party authorized to make a statement on the subject;\n\n(D) was made by the party's agent or employee on a matter within the scope of that relationship and while it existed; or\n\n(E) was made by the party's coconspirator during and in furtherance of the conspiracy.\n\nThe statement must be considered but does not by itself establish the declarant's authority under (C); the existence or scope of the relationship under (D); or the existence of the conspiracy or participation in it under (E).\n\nIf a party's claim, defense, or potential liability is directly derived from a declarant or the declarant's principal, a statement that would be admissible against the declarant or the principal under this rule is also admissible against the party."
+  },
+  {
+   "id": "rule-802",
+   "number": "802",
+   "title": "The Rule Against Hearsay",
+   "text": "Hearsay is not admissible unless any of the following provides otherwise:\n\na federal statute;\n\nthese rules; or\n\nother rules prescribed by the Supreme Court."
+  },
+  {
+   "id": "rule-803",
+   "number": "803",
+   "title": "Exceptions to the Rule Against Hearsay — Regardless of Whether the Declarant Is Available as a Witness",
+   "text": "The following are not excluded by the rule against hearsay, regardless of whether the declarant is available as a witness:\n\n(1) Present Sense Impression. A statement describing or explaining an event or condition, made while or immediately after the declarant perceived it.\n\n(2) Excited Utterance. A statement relating to a startling event or condition, made while the declarant was under the stress of excitement that it caused.\n\n(3) Then-Existing Mental, Emotional, or Physical Condition. A statement of the declarant's then-existing state of mind (such as motive, intent, or plan) or emotional, sensory, or physical condition (such as mental feeling, pain, or bodily health), but not including a statement of memory or belief to prove the fact remembered or believed unless it relates to the validity or terms of the declarant's will.\n\n(4) Statement Made for Medical Diagnosis or Treatment. A statement that:\n\n(A) is made for — and is reasonably pertinent to — medical diagnosis or treatment; and\n\n(B) describes medical history; past or present symptoms or sensations; their inception; or their general cause.\n\n(5) Recorded Recollection. A record that:\n\n(A) is on a matter the witness once knew about but now cannot recall well enough to testify fully and accurately;\n\n(B) was made or adopted by the witness when the matter was fresh in the witness's memory; and\n\n(C) accurately reflects the witness's knowledge.\n\nIf admitted, the record may be read into evidence but may be received as an exhibit only if offered by an adverse party.\n\n(6) Records of a Regularly Conducted Activity. A record of an act, event, condition, opinion, or diagnosis if:\n\n(A) the record was made at or near the time by — or from information transmitted by — someone with knowledge;\n\n(B) the record was kept in the course of a regularly conducted activity of a business, organization, occupation, or calling, whether or not for profit;\n\n(C) making the record was a regular practice of that activity;\n\n(D) all these conditions are shown by the testimony of the custodian or another qualified witness, or by a certification that complies with Rule 902(11) or (12) or with a statute permitting certification; and\n\n(E) the opponent does not show that the source of information or the method or circumstances of preparation indicate a lack of trustworthiness.\n\n(7) Absence of a Record of a Regularly Conducted Activity. Evidence that a matter is not included in a record described in paragraph (6) if:\n\n(A) the evidence is admitted to prove that the matter did not occur or exist;\n\n(B) a record was regularly kept for a matter of that kind; and\n\n(C) the opponent does not show that the possible source of the information or other circumstances indicate a lack of trustworthiness.\n\n(8) Public Records. A record or statement of a public office if:\n\n(A) it sets out:\n\n(i) the office's activities;\n\n(ii) a matter observed while under a legal duty to report, but not including, in a criminal case, a matter observed by law-enforcement personnel; or\n\n(iii) in a civil case or against the government in a criminal case, factual findings from a legally authorized investigation; and\n\n(B) the opponent does not show that the source of information or other circumstances indicate a lack of trustworthiness.\n\n(9) Public Records of Vital Statistics. A record of a birth, death, or marriage, if reported to a public office in accordance with a legal duty.\n\n(10) Absence of a Public Record. Testimony — or a certification under Rule 902 — that a diligent search failed to disclose a public record or statement if:\n\n(A) the testimony or certification is admitted to prove that\n\n(i) the record or statement does not exist; or\n\n(ii) a matter did not occur or exist, if a public office regularly kept a record or statement for a matter of that kind; and\n\n(B) in a criminal case, a prosecutor who intends to offer a certification provides written notice of that intent at least 14 days before trial, and the defendant does not object in writing within 7 days of receiving the notice — unless the court sets a different time for the notice or the objection.\n\n(11) Records of Religious Organizations Concerning Personal or Family History. A statement of birth, legitimacy, ancestry, marriage, divorce, death, relationship by blood or marriage, or similar facts of personal or family history, contained in a regularly kept record of a religious organization.\n\n(12) Certificates of Marriage, Baptism, and Similar Ceremonies. A statement of fact contained in a certificate:\n\n(A) made by a person who is authorized by a religious organization or by law to perform the act certified;\n\n(B) attesting that the person performed a marriage or similar ceremony or administered a sacrament; and\n\n(C) purporting to have been issued at the time of the act or within a reasonable time after it.\n\n(13) Family Records. A statement of fact about personal or family history contained in a family record, such as a Bible, genealogy, chart, engraving on a ring, inscription on a portrait, or engraving on an urn or burial marker.\n\n(14) Records of Documents That Affect an Interest in Property. The record of a document that purports to establish or affect an interest in property if:\n\n(A) the record is admitted to prove the content of the original recorded document, along with its signing and its delivery by each person who purports to have signed it;\n\n(B) the record is kept in a public office; and\n\n(C) a statute authorizes recording documents of that kind in that office.\n\n(15) Statements in Documents That Affect an Interest in Property. A statement contained in a document that purports to establish or affect an interest in property if the matter stated was relevant to the document's purpose — unless later dealings with the property are inconsistent with the truth of the statement or the purport of the document.\n\n(16) Statements in Ancient Documents. A statement in a document that was prepared before January 1, 1998, and whose authenticity is established.\n\n(17) Market Reports and Similar Commercial Publications. Market quotations, lists, directories, or other compilations that are generally relied on by the public or by persons in particular occupations.\n\n(18) Statements in Learned Treatises, Periodicals, or Pamphlets. A statement contained in a treatise, periodical, or pamphlet if:\n\n(A) the statement is called to the attention of an expert witness on cross-examination or relied on by the expert on direct examination; and\n\n(B) the publication is established as a reliable authority by the expert's admission or testimony, by another expert's testimony, or by judicial notice.\n\nIf admitted, the statement may be read into evidence but not received as an exhibit.\n\n(19) Reputation Concerning Personal or Family History. A reputation among a person's family by blood, adoption, or marriage — or among a person's associates or in the community — concerning the person's birth, adoption, legitimacy, ancestry, marriage, divorce, death, relationship by blood, adoption, or marriage, or similar facts of personal or family history.\n\n(20) Reputation Concerning Boundaries or General History. A reputation in a community — arising before the controversy — concerning boundaries of land in the community or customs that affect the land, or concerning general historical events important to that community, state, or nation.\n\n(21) Reputation Concerning Character. A reputation among a person's associates or in the community concerning the person's character.\n\n(22) Judgment of a Previous Conviction. Evidence of a final judgment of conviction if:\n\n(A) the judgment was entered after a trial or guilty plea, but not a nolo contendere plea;\n\n(B) the conviction was for a crime punishable by death or by imprisonment for more than a year;\n\n(C) the evidence is admitted to prove any fact essential to the judgment; and\n\n(D) when offered by the prosecutor in a criminal case for a purpose other than impeachment, the judgment was against the defendant.\n\nThe pendency of an appeal may be shown but does not affect admissibility.\n\n(23) Judgments Involving Personal, Family, or General History, or a Boundary. A judgment that is admitted to prove a matter of personal, family, or general history, or boundaries, if the matter:\n\n(A) was essential to the judgment; and\n\n(B) could be proved by evidence of reputation.\n\n(24) [Other Exceptions.] [Transferred to Rule 807.]"
+  },
+  {
+   "id": "rule-804",
+   "number": "804",
+   "title": "Exceptions to the Rule Against Hearsay — When the Declarant Is Unavailable as a Witness",
+   "text": "(a) Criteria for Being Unavailable. A declarant is considered to be unavailable as a witness if the declarant:\n\n(1) is exempted from testifying about the subject matter of the declarant's statement because the court rules that a privilege applies;\n\n(2) refuses to testify about the subject matter despite a court order to do so;\n\n(3) testifies to not remembering the subject matter;\n\n(4) cannot be present or testify at the trial or hearing because of death or a then-existing infirmity, physical illness, or mental illness; or\n\n(5) is absent from the trial or hearing and the statement's proponent has not been able, by process or other reasonable means, to procure:\n\n(A) the declarant's attendance, in the case of a hearsay exception under Rule 804(b)(1) or (6); or\n\n(B) the declarant's attendance or testimony, in the case of a hearsay exception under Rule 804(b)(2), (3), or (4).\n\nBut this subdivision (a) does not apply if the statement's proponent procured or wrongfully caused the declarant's unavailability as a witness in order to prevent the declarant from attending or testifying.\n\n(b) The Exceptions. The following are not excluded by the rule against hearsay if the declarant is unavailable as a witness:\n\n(1) Former Testimony. Testimony that:\n\n(A) was given as a witness at a trial, hearing, or lawful deposition, whether given during the current proceeding or a different one; and\n\n(B) is now offered against a party who had — or, in a civil case, whose predecessor in interest had — an opportunity and similar motive to develop it by direct, cross-, or redirect examination.\n\n(2) Statement Under the Belief of Imminent Death. In a prosecution for homicide or in a civil case, a statement that the declarant, while believing the declarant's death to be imminent, made about its cause or circumstances.\n\n(3) Statement Against Interest. A statement that:\n\n(A) a reasonable person in the declarant's position would have made only if the person believed it to be true because, when made, it was so contrary to the declarant's proprietary or pecuniary interest or had so great a tendency to invalidate the declarant's claim against someone else or to expose the declarant to civil or criminal liability; and\n\n(B) if offered in a criminal case as one that tends to expose the declarant to criminal liability, is supported by corroborating circumstances that clearly indicate its trustworthiness after considering the totality of circumstances under which it was made and any evidence that supports or undermines it.\n\n(4) Statement of Personal or Family History. A statement about:\n\n(A) the declarant's own birth, adoption, legitimacy, ancestry, marriage, divorce, relationship by blood, adoption, or marriage, or similar facts of personal or family history, even though the declarant had no way of acquiring personal knowledge about that fact; or\n\n(B) another person concerning any of these facts, as well as death, if the declarant was related to the person by blood, adoption, or marriage or was so intimately associated with the person's family that the declarant's information is likely to be accurate.\n\n(5) [Transferred to Rule 807.]\n\n(6) Statement Offered Against a Party That Wrongfully Caused the Declarant's Unavailability. A statement offered against a party that wrongfully caused — or acquiesced in wrongfully causing — the declarant's unavailability as a witness, and did so intending that result."
+  },
+  {
+   "id": "rule-805",
+   "number": "805",
+   "title": "Hearsay Within Hearsay",
+   "text": "Hearsay within hearsay is not excluded by the rule against hearsay if each part of the combined statements conforms with an exception to the rule."
+  },
+  {
+   "id": "rule-806",
+   "number": "806",
+   "title": "Attacking and Supporting the Declarant's Credibility",
+   "text": "When a hearsay statement — or a statement described in Rule 801(d)(2)(C), (D), or (E) — has been admitted in evidence, the declarant's credibility may be attacked, and then supported, by any evidence that would be admissible for those purposes if the declarant had testified as a witness. The court may admit evidence of the declarant's inconsistent statement or conduct, regardless of when it occurred or whether the declarant had an opportunity to explain or deny it. If the party against whom the statement was admitted calls the declarant as a witness, the party may examine the declarant on the statement as if on cross-examination."
+  },
+  {
+   "id": "rule-807",
+   "number": "807",
+   "title": "Residual Exception",
+   "text": "(a) In General. Under the following conditions, a hearsay statement is not excluded by the rule against hearsay even if the statement is not admissible under a hearsay exception in Rule 803 or 804:\n\n(1) the statement is supported by sufficient guarantees of trustworthiness—after considering the totality of circumstances under which it was made and evidence, if any, corroborating the statement; and\n\n(2) it is more probative on the point for which it is offered than any other evidence that the proponent can obtain through reasonable efforts.\n\n(b) Notice. The statement is admissible only if the proponent gives an adverse party reasonable notice of the intent to offer the statement—including its substance and the declarant's name— so that the party has a fair opportunity to meet it. The notice must be provided in writing before the trial or hearing—or in any form during the trial or hearing if the court, for good cause, excuses a lack of earlier notice."
+  },
+  {
+   "id": "rule-901",
+   "number": "901",
+   "title": "Authenticating or Identifying Evidence",
+   "text": "(a) In General. To satisfy the requirement of authenticating or identifying an item of evidence, the proponent must produce evidence sufficient to support a finding that the item is what the proponent claims it is.\n\n(b) Examples. The following are examples only — not a complete list — of evidence that satisfies the requirement:\n\n(1) Testimony of a Witness with Knowledge. Testimony that an item is what it is claimed to be.\n\n(2) Nonexpert Opinion About Handwriting. A nonexpert's opinion that handwriting is genuine, based on a familiarity with it that was not acquired for the current litigation.\n\n(3) Comparison by an Expert Witness or the Trier of Fact. A comparison with an authenticated specimen by an expert witness or the trier of fact.\n\n(4) Distinctive Characteristics and the Like. The appearance, contents, substance, internal patterns, or other distinctive characteristics of the item, taken together with all the circumstances.\n\n(5) Opinion About a Voice. An opinion identifying a person's voice — whether heard firsthand or through mechanical or electronic transmission or recording — based on hearing the voice at any time under circumstances that connect it with the alleged speaker.\n\n(6) Evidence About a Telephone Conversation. For a telephone conversation, evidence that a call was made to the number assigned at the time to:\n\n(A) a particular person, if circumstances, including self-identification, show that the person answering was the one called; or\n\n(B) a particular business, if the call was made to a business and the call related to business reasonably transacted over the telephone.\n\n(7) Evidence About Public Records. Evidence that:\n\n(A) a document was recorded or filed in a public office as authorized by law; or\n\n(B) a purported public record or statement is from the office where items of this kind are kept.\n\n(8) Evidence About Ancient Documents or Data Compilations. For a document or data compilation, evidence that it:\n\n(A) is in a condition that creates no suspicion about its authenticity;\n\n(B) was in a place where, if authentic, it would likely be; and\n\n(C) is at least 20 years old when offered.\n\n(9) Evidence About a Process or System. Evidence describing a process or system and showing that it produces an accurate result.\n\n(10) Methods Provided by a Statute or Rule. Any method of authentication or identification allowed by a federal statute or a rule prescribed by the Supreme Court."
+  },
+  {
+   "id": "rule-902",
+   "number": "902",
+   "title": "Evidence That Is Self-Authenticating",
+   "text": "The following items of evidence are self-authenticating; they require no extrinsic evidence of authenticity in order to be admitted:\n\n(1) Domestic Public Documents That Are Sealed and Signed. A document that bears:\n\n(A) a seal purporting to be that of the United States; any state, district, commonwealth, territory, or insular possession of the United States; the former Panama Canal Zone; the Trust Territory of the Pacific Islands; a political subdivision of any of these entities; or a department, agency, or officer of any entity named above; and\n\n(B) a signature purporting to be an execution or attestation.\n\n(2) Domestic Public Documents That Are Not Sealed but Are Signed and Certified. A document that bears no seal if:\n\n(A) it bears the signature of an officer or employee of an entity named in Rule 902(1)(A); and\n\n(B) another public officer who has a seal and official duties within that same entity certifies under seal — or its equivalent — that the signer has the official capacity and that the signature is genuine.\n\n(3) Foreign Public Documents. A document that purports to be signed or attested by a person who is authorized by a foreign country's law to do so. The document must be accompanied by a final certification that certifies the genuineness of the signature and official position of the signer or attester — or of any foreign official whose certificate of genuineness relates to the signature or attestation or is in a chain of certificates of genuineness relating to the signature or attestation. The certification may be made by a secretary of a United States embassy or legation; by a consul general, vice consul, or consular agent of the United States; or by a diplomatic or consular official of the foreign country assigned or accredited to the United States. If all parties have been given a reasonable opportunity to investigate the document's authenticity and accuracy, the court may, for good cause, either:\n\n(A) order that it be treated as presumptively authentic without final certification; or\n\n(B) allow it to be evidenced by an attested summary with or without final certification.\n\n(4) Certified Copies of Public Records. A copy of an official record — or a copy of a document that was recorded or filed in a public office as authorized by law — if the copy is certified as correct by:\n\n(A) the custodian or another person authorized to make the certification; or\n\n(B) a certificate that complies with Rule 902(1), (2), or (3), a federal statute, or a rule prescribed by the Supreme Court.\n\n(5) Official Publications. A book, pamphlet, or other publication purporting to be issued by a public authority.\n\n(6) Newspapers and Periodicals. Printed material purporting to be a newspaper or periodical.\n\n(7) Trade Inscriptions and the Like. An inscription, sign, tag, or label purporting to have been affixed in the course of business and indicating origin, ownership, or control.\n\n(8) Acknowledged Documents. A document accompanied by a certificate of acknowledgment that is lawfully executed by a notary public or another officer who is authorized to take acknowledgments.\n\n(9) Commercial Paper and Related Documents. Commercial paper, a signature on it, and related documents, to the extent allowed by general commercial law.\n\n(10) Presumptions Under a Federal Statute. A signature, document, or anything else that a federal statute declares to be presumptively or prima facie genuine or authentic.\n\n(11) Certified Domestic Records of a Regularly Conducted Activity. The original or a copy of a domestic record that meets the requirements of Rule 803(6)(A)-(C), as shown by a certification of the custodian or another qualified person that complies with a federal statute or a rule prescribed by the Supreme Court. Before the trial or hearing, the proponent must give an adverse party reasonable written notice of the intent to offer the record — and must make the record and certification available for inspection — so that the party has a fair opportunity to challenge them.\n\n(12) Certified Foreign Records of a Regularly Conducted Activity. In a civil case, the original or a copy of a foreign record that meets the requirements of Rule 902(11), modified as follows: the certification, rather than complying with a federal statute or Supreme Court rule, must be signed in a manner that, if falsely made, would subject the maker to a criminal penalty in the country where the certification is signed. The proponent must also meet the notice requirements of Rule 902(11).\n\n(13) Certified Records Generated by an Electronic Process or System. A record generated by an electronic process or system that produces an accurate result, as shown by a certification of a qualified person that complies with the certification requirements of Rule 902(11) or (12). The proponent must also meet the notice requirements of Rule 902(11).\n\n(14) Certified Data Copied from an Electronic Device, Storage Medium, or File. Data copied from an electronic device, storage medium, or file, if authenticated by a process of digital identification, as shown by a certification of a qualified person that complies with the certification requirements of Rule 902(11) or (12). The proponent also must meet the notice requirements of Rule 902(11)."
+  },
+  {
+   "id": "rule-903",
+   "number": "903",
+   "title": "Subscribing Witness",
+   "text": "A subscribing witness's testimony is necessary to authenticate a writing only if required by the law of the jurisdiction that governs its validity."
+  },
+  {
+   "id": "rule-1001",
+   "number": "1001",
+   "title": "Definitions That Apply to This Article",
+   "text": "In this article:\n\n(a) A \"writing\" consists of letters, words, numbers, or their equivalent set down in any form.\n\n(b) A \"recording\" consists of letters, words, numbers, or their equivalent recorded in any manner.\n\n(c) A \"photograph\" means a photographic image or its equivalent stored in any form.\n\n(d) An \"original\" of a writing or recording means the writing or recording itself or any counterpart intended to have the same effect by the person who executed or issued it. For electronically stored information, \"original\" means any printout — or other output readable by sight — if it accurately reflects the information. An \"original\" of a photograph includes the negative or a print from it.\n\n(e) A \"duplicate\" means a counterpart produced by a mechanical, photographic, chemical, electronic, or other equivalent process or technique that accurately reproduces the original."
+  },
+  {
+   "id": "rule-1002",
+   "number": "1002",
+   "title": "Requirement of the Original",
+   "text": "An original writing, recording, or photograph is required in order to prove its content unless these rules or a federal statute provides otherwise."
+  },
+  {
+   "id": "rule-1003",
+   "number": "1003",
+   "title": "Admissibility of Duplicates",
+   "text": "A duplicate is admissible to the same extent as the original unless a genuine question is raised about the original's authenticity or the circumstances make it unfair to admit the duplicate."
+  },
+  {
+   "id": "rule-1004",
+   "number": "1004",
+   "title": "Admissibility of Other Evidence of Content",
+   "text": "An original is not required and other evidence of the content of a writing, recording, or photograph is admissible if:\n\n(a) all the originals are lost or destroyed, and not by the proponent acting in bad faith;\n\n(b) an original cannot be obtained by any available judicial process;\n\n(c) the party against whom the original would be offered had control of the original; was at that time put on notice, by pleadings or otherwise, that the original would be a subject of proof at the trial or hearing; and fails to produce it at the trial or hearing; or\n\n(d) the writing, recording, or photograph is not closely related to a controlling issue."
+  },
+  {
+   "id": "rule-1005",
+   "number": "1005",
+   "title": "Copies of Public Records to Prove Content",
+   "text": "The proponent may use a copy to prove the content of an official record — or of a document that was recorded or filed in a public office as authorized by law — if these conditions are met: the record or document is otherwise admissible; and the copy is certified as correct in accordance with Rule 902(4) or is testified to be correct by a witness who has compared it with the original. If no such copy can be obtained by reasonable diligence, then the proponent may use other evidence to prove the content."
+  },
+  {
+   "id": "rule-1006",
+   "number": "1006",
+   "title": "Summaries to Prove Content",
+   "text": "(a) Summaries of Voluminous Materials Admissible as Evidence. The court may admit as evidence a summary, chart, or calculation offered to prove the content of voluminous admissible writings, recordings, or photographs that cannot be conveniently examined in court, whether or not they have been introduced into evidence.\n\n(b) Procedures. The proponent must make the underlying originals or duplicates available for examination or copying, or both, by other parties at a reasonable time and place. And the court may order the proponent to produce them in court.\n\n(c) Illustrative Aids Not Covered. A summary, chart, or calculation that functions only as an illustrative aid is governed by Rule 107."
+  },
+  {
+   "id": "rule-1007",
+   "number": "1007",
+   "title": "Testimony or Statement of a Party to Prove Content",
+   "text": "The proponent may prove the content of a writing, recording, or photograph by the testimony, deposition, or written statement of the party against whom the evidence is offered. The proponent need not account for the original."
+  },
+  {
+   "id": "rule-1008",
+   "number": "1008",
+   "title": "Functions of the Court and Jury",
+   "text": "Ordinarily, the court determines whether the proponent has fulfilled the factual conditions for admitting other evidence of the content of a writing, recording, or photograph under Rule 1004 or 1005. But in a jury trial, the jury determines — in accordance with Rule 104(b) — any issue about whether:\n\n(a) an asserted writing, recording, or photograph ever existed;\n\n(b) another one produced at the trial or hearing is the original; or\n\n(c) other evidence of content accurately reflects the content."
+  },
+  {
+   "id": "rule-1101",
+   "number": "1101",
+   "title": "Applicability of the Rules",
+   "text": "(a) To Courts and Judges. These rules apply to proceedings before:\n\n· United States district courts;\n\n· United States bankruptcy and magistrate judges;\n\n· United States courts of appeals;\n\n· the United States Court of Federal Claims; and\n\n· the district courts of Guam, the Virgin Islands, and the Northern Mariana Islands.\n\n(b) To Cases and Proceedings. These rules apply in:\n\n· civil cases and proceedings, including bankruptcy, admiralty, and maritime cases;\n\n· criminal cases and proceedings; and\n\n· contempt proceedings, except those in which the court may act summarily.\n\n(c) Rules on Privilege. The rules on privilege apply to all stages of a case or proceeding.\n\n(d) Exceptions. These rules — except for those on privilege — do not apply to the following:\n\n(1) the court's determination, under Rule 104(a), on a preliminary question of fact governing admissibility;\n\n(2) grand-jury proceedings; and\n\n(3) miscellaneous proceedings such as:\n\n· extradition or rendition;\n\n· issuing an arrest warrant, criminal summons, or search warrant;\n\n· a preliminary examination in a criminal case;\n\n· sentencing;\n\n· granting or revoking probation or supervised release; and\n\n· considering whether to release on bail or otherwise.\n\n(e) Other Statutes and Rules. A federal statute or a rule prescribed by the Supreme Court may provide for admitting or excluding evidence independently from these rules."
+  },
+  {
+   "id": "rule-1102",
+   "number": "1102",
+   "title": "Amendments",
+   "text": "These rules may be amended as provided in 28 U.S.C. § 2072."
+  },
+  {
+   "id": "rule-1103",
+   "number": "1103",
+   "title": "Title",
+   "text": "These rules may be cited as the Federal Rules of Evidence."
+  }
+ ]
+}
