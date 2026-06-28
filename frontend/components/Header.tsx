@@ -105,6 +105,10 @@ export default function Header() {
                                                  hover:bg-sage-50 hover:text-sage-700 transition-colors">
                     Federal Rules (FRCP)
                   </Link>
+                  <Link href="/evidence-rules" onClick={() => setRefDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
+                                                 hover:bg-sage-50 hover:text-sage-700 transition-colors">
+                    Federal Rules of Evidence
+                  </Link>
                   <Link href="/civpro" onClick={() => setRefDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700
                                                     hover:bg-sage-50 hover:text-sage-700 transition-colors">
                     Civ Pro Timeline
