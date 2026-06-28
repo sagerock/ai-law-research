@@ -750,10 +750,9 @@ async def postgres_search(query: SearchQuery):
             ct.name as court_name,
             COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count,
             (
-                -- Title relevance (weighted 10x)
-                COALESCE(ts_rank(to_tsvector('english', c.title), plainto_tsquery('english', $1)), 0) * 10 +
-                -- Content relevance
-                COALESCE(ts_rank(to_tsvector('english', COALESCE(c.content, '')), plainto_tsquery('english', $1)), 0) +
+                -- Weighted full-text relevance from the stored vector (title=A, content=B).
+                -- Reads the precomputed search_tsv instead of recomputing to_tsvector per row.
+                COALESCE(ts_rank(c.search_tsv, plainto_tsquery('english', $1)), 0) * 10 +
                 -- Boost for exact title match
                 CASE WHEN c.title ILIKE $2 THEN 5 ELSE 0 END +
                 -- Citation count boost (log scale to prevent domination)
@@ -764,8 +763,7 @@ async def postgres_search(query: SearchQuery):
         WHERE
             c.content IS NOT NULL AND c.content != ''
             AND (
-                to_tsvector('english', c.title) @@ plainto_tsquery('english', $1)
-                OR to_tsvector('english', c.content) @@ plainto_tsquery('english', $1)
+                c.search_tsv @@ plainto_tsquery('english', $1)
                 OR c.title ILIKE $2
             )
     """
