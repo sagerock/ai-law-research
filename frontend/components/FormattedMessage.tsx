@@ -24,19 +24,18 @@ function applyLegalItalics(text: string, keyPrefix: string, startIdx: number): [
   return [parts, idx]
 }
 
-function formatInline(text: string): React.ReactNode[] {
-  // First, detect legal citations and split into segments
+// Apply legal citation links + legal italics (case names, Id.) to a run of
+// plain text that contains no markdown emphasis markers.
+function linkAndItalicize(text: string, keyPrefix: string, startIdx: number): [React.ReactNode[], number] {
   const segments = parseLegalCitations(text)
-
   const parts: React.ReactNode[] = []
-  let keyIdx = 0
+  let keyIdx = startIdx
 
   for (const segment of segments) {
     if (segment.href) {
-      // Citation link
       parts.push(
         <Link
-          key={`cite${keyIdx++}`}
+          key={`${keyPrefix}cite${keyIdx++}`}
           href={segment.href}
           className="text-sage-700 hover:text-sage-900 underline decoration-sage-300 hover:decoration-sage-500"
         >
@@ -44,37 +43,52 @@ function formatInline(text: string): React.ReactNode[] {
         </Link>
       )
     } else {
-      // Process bold/italic/code within non-link text
-      const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g
-      let last = 0
-      let match: RegExpExecArray | null
-      const src = segment.text
-      while ((match = re.exec(src)) !== null) {
-        if (match.index > last) {
-          // Apply legal italics (case names, Id.) to plain text
-          const [italicParts, newIdx] = applyLegalItalics(src.slice(last, match.index), 'li', keyIdx)
-          parts.push(...italicParts)
-          keyIdx = newIdx
-        }
-        if (match[2]) {
-          parts.push(<strong key={`b${keyIdx++}`} className="font-semibold">{match[2]}</strong>)
-        } else if (match[3]) {
-          parts.push(<em key={`i${keyIdx++}`}>{match[3]}</em>)
-        } else if (match[4]) {
-          parts.push(
-            <code key={`c${keyIdx++}`} className="bg-stone-200 text-stone-800 px-1 py-0.5 rounded text-xs font-mono">
-              {match[4]}
-            </code>
-          )
-        }
-        last = match.index + match[0].length
-      }
-      if (last < src.length) {
-        const [italicParts, newIdx] = applyLegalItalics(src.slice(last), 'li', keyIdx)
-        parts.push(...italicParts)
-        keyIdx = newIdx
-      }
+      const [italicParts, newIdx] = applyLegalItalics(segment.text, `${keyPrefix}li`, keyIdx)
+      parts.push(...italicParts)
+      keyIdx = newIdx
     }
+  }
+
+  return [parts, keyIdx]
+}
+
+function formatInline(text: string): React.ReactNode[] {
+  // Parse markdown emphasis (bold/italic/code) FIRST so that emphasis markers
+  // are never split by citation detection. Citation links and legal italics are
+  // then applied within each plain-text run (and inside bold/italic content).
+  const parts: React.ReactNode[] = []
+  let keyIdx = 0
+
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g
+  let last = 0
+  let match: RegExpExecArray | null
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) {
+      const [linked, newIdx] = linkAndItalicize(text.slice(last, match.index), 'p', keyIdx)
+      parts.push(...linked)
+      keyIdx = newIdx
+    }
+    if (match[2] !== undefined) {
+      const [inner, newIdx] = linkAndItalicize(match[2], 'b', keyIdx)
+      keyIdx = newIdx
+      parts.push(<strong key={`bold${keyIdx++}`} className="font-semibold">{inner}</strong>)
+    } else if (match[3] !== undefined) {
+      const [inner, newIdx] = linkAndItalicize(match[3], 'i', keyIdx)
+      keyIdx = newIdx
+      parts.push(<em key={`em${keyIdx++}`}>{inner}</em>)
+    } else if (match[4] !== undefined) {
+      parts.push(
+        <code key={`code${keyIdx++}`} className="bg-stone-200 text-stone-800 px-1 py-0.5 rounded text-xs font-mono">
+          {match[4]}
+        </code>
+      )
+    }
+    last = match.index + match[0].length
+  }
+  if (last < text.length) {
+    const [linked, newIdx] = linkAndItalicize(text.slice(last), 'p', keyIdx)
+    parts.push(...linked)
+    keyIdx = newIdx
   }
 
   return parts.length > 0 ? parts : [<span key="full">{text}</span>]

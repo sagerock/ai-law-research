@@ -113,6 +113,20 @@ export default function Comments({ caseId }: CommentsProps) {
     }
   }, [session?.access_token])
 
+  // Pick up comments posted from elsewhere on the page (e.g. the "Post to
+  // discussion" buttons in Ask AI) without a refetch.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (!detail || detail.caseId !== caseId || !detail.comment) return
+      setComments(prev =>
+        prev.some(c => c.id === detail.comment.id) ? prev : [...prev, detail.comment]
+      )
+    }
+    window.addEventListener('discussion-comment-added', handler)
+    return () => window.removeEventListener('discussion-comment-added', handler)
+  }, [caseId])
+
   // Get auth headers
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${session?.access_token}`,
@@ -246,7 +260,7 @@ export default function Comments({ caseId }: CommentsProps) {
   }
 
   return (
-    <div>
+    <div id="discussion" className="scroll-mt-24">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <MessageSquare className="h-5 w-5 text-stone-600" />
