@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Sparkles, ChevronDown, ChevronUp, Send, Loader2, AlertCircle, LogIn, Copy, Check, HelpCircle } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronUp, Send, Loader2, AlertCircle, LogIn, Copy, Check, HelpCircle, MessageSquare } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -31,6 +31,10 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [usageLoaded, setUsageLoaded] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [postingId, setPostingId] = useState<number | null>(null)
+  const [postedId, setPostedId] = useState<number | null>(null)
+  const [postingAll, setPostingAll] = useState(false)
+  const [postedAll, setPostedAll] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -229,6 +233,67 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
     }
   }
 
+  // Post content as a comment on this case's discussion. On success, notify the
+  // Comments component on this page (via a window event) so it shows the new
+  // post without a refetch, then scroll the discussion into view.
+  const postComment = async (content: string): Promise<boolean> => {
+    const headers = getAuthHeaders()
+    if (!headers['Authorization']) {
+      setError('Your session has expired. Please sign in again.')
+      return false
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/v1/cases/${caseId}/comments`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ content }),
+      })
+      if (!res.ok) {
+        setError('Could not post to the discussion. Please try again.')
+        return false
+      }
+      const comment = await res.json()
+      window.dispatchEvent(new CustomEvent('discussion-comment-added', {
+        detail: { caseId, comment },
+      }))
+      document.getElementById('discussion')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return true
+    } catch (e) {
+      console.error('Post to discussion failed:', e)
+      setError('Could not post to the discussion. Please try again.')
+      return false
+    }
+  }
+
+  const postMessageToDiscussion = async (msg: ChatMessageType) => {
+    setError(null)
+    setPostingId(msg.id)
+    const ok = await postComment(msg.content)
+    setPostingId(null)
+    if (ok) {
+      setPostedId(msg.id)
+      setTimeout(() => setPostedId(null), 2500)
+    }
+  }
+
+  // Format the full Q&A thread as one markdown comment.
+  const buildConversationMarkdown = (): string =>
+    messages
+      .map(msg => (msg.role === 'user' ? `**Q: ${msg.content}**` : msg.content))
+      .join('\n\n')
+
+  const postConversationToDiscussion = async () => {
+    if (messages.length === 0) return
+    setError(null)
+    setPostingAll(true)
+    const ok = await postComment(buildConversationMarkdown())
+    setPostingAll(false)
+    if (ok) {
+      setPostedAll(true)
+      setTimeout(() => setPostedAll(false), 2500)
+    }
+  }
+
   return (
     <div>
       {/* Header / Toggle */}
@@ -315,21 +380,37 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                         )}
                       </div>
                       {msg.role === 'assistant' && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(msg.content)
-                            setCopiedId(msg.id)
-                            setTimeout(() => setCopiedId(null), 2000)
-                          }}
-                          className="flex items-center gap-1 mt-1 ml-1 text-xs text-stone-400
-                                     hover:text-stone-600 transition-colors"
-                        >
-                          {copiedId === msg.id ? (
-                            <><Check className="h-3 w-3 text-green-500" /> Copied</>
-                          ) : (
-                            <><Copy className="h-3 w-3" /> Copy</>
-                          )}
-                        </button>
+                        <div className="flex items-center gap-3 mt-1 ml-1">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(msg.content)
+                              setCopiedId(msg.id)
+                              setTimeout(() => setCopiedId(null), 2000)
+                            }}
+                            className="flex items-center gap-1 text-xs text-stone-400
+                                       hover:text-stone-600 transition-colors"
+                          >
+                            {copiedId === msg.id ? (
+                              <><Check className="h-3 w-3 text-green-500" /> Copied</>
+                            ) : (
+                              <><Copy className="h-3 w-3" /> Copy</>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => postMessageToDiscussion(msg)}
+                            disabled={postingId === msg.id}
+                            className="flex items-center gap-1 text-xs text-stone-400
+                                       hover:text-sage-600 transition-colors disabled:opacity-50"
+                          >
+                            {postingId === msg.id ? (
+                              <><Loader2 className="h-3 w-3 animate-spin" /> Posting</>
+                            ) : postedId === msg.id ? (
+                              <><Check className="h-3 w-3 text-green-500" /> Posted</>
+                            ) : (
+                              <><MessageSquare className="h-3 w-3" /> Post to discussion</>
+                            )}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -353,6 +434,26 @@ export default function CaseAskAI({ caseId, caseTitle }: CaseAskAIProps) {
                 )}
 
               </div>
+
+              {/* Post whole conversation to discussion */}
+              {messages.some(m => m.role === 'assistant') && !streaming && (
+                <div className="flex justify-end mb-3">
+                  <button
+                    onClick={postConversationToDiscussion}
+                    disabled={postingAll}
+                    className="inline-flex items-center gap-1.5 text-xs text-stone-500
+                               hover:text-sage-700 transition-colors disabled:opacity-50"
+                  >
+                    {postingAll ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Posting…</>
+                    ) : postedAll ? (
+                      <><Check className="h-3.5 w-3.5 text-green-500" /> Posted to discussion</>
+                    ) : (
+                      <><MessageSquare className="h-3.5 w-3.5" /> Post whole conversation to discussion</>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* Input */}
               <div className="flex gap-2">
