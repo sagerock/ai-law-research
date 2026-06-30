@@ -55,7 +55,9 @@ function renderMember(b: Block, i: number) {
     case 'table':
       return <div key={i} {...dangerous} />
     case 'diagram':
-      return <pre key={i} id={id} className="diagram" {...dangerous} />
+      return <div key={i} id={id} className="cb-diagram" {...dangerous} />
+    case 'image':
+      return <figure key={i} id={id} className="cb-figure" {...dangerous} />
     default:
       return <p key={i} id={id} {...dangerous} />
   }
@@ -83,7 +85,8 @@ function renderBlocks(blocks: Block[]) {
       case 'case': out.push(<h3 key={i} id={id} className="cb-case" {...dangerous} />); break
       case 'judge': out.push(<p key={i} id={id} className="cb-judge" {...dangerous} />); break
       case 'quote': out.push(<blockquote key={i} id={id} {...dangerous} />); break
-      case 'diagram': out.push(<pre key={i} id={id} className="diagram" {...dangerous} />); break
+      case 'diagram': out.push(<div key={i} id={id} className="cb-diagram" {...dangerous} />); break
+      case 'image': out.push(<figure key={i} id={id} className="cb-figure" {...dangerous} />); break
       case 'table': out.push(<div key={i} {...dangerous} />); break
       case 'divider': out.push(<hr key={i} id={id} />); break
       default: out.push(<p key={i} id={id} {...dangerous} />)
