@@ -4071,7 +4071,7 @@ async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: di
         if effective_limit is not None and messages_today >= effective_limit:
             raise HTTPException(
                 status_code=429,
-                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+                detail="You've reached today's free limit. Add your own API key for unlimited use, or come back tomorrow.",
             )
 
         # Model selection
@@ -4305,7 +4305,7 @@ async def outline_study_message(outline_id: int, conv_id: int, body: OutlineStud
         if effective_limit is not None and messages_today >= effective_limit:
             raise HTTPException(
                 status_code=429,
-                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+                detail="You've reached today's free limit. Add your own API key for unlimited use, or come back tomorrow.",
             )
 
         # Model selection
@@ -4883,7 +4883,7 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
         if effective_limit is not None and messages_today >= effective_limit:
             raise HTTPException(
                 status_code=429,
-                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+                detail="You've reached today's free limit. Add your own API key for unlimited use, or come back tomorrow.",
             )
 
         # Select model — BYOK users get Sonnet
@@ -5216,7 +5216,7 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
         if effective_limit is not None and messages_today >= effective_limit:
             raise HTTPException(
                 status_code=429,
-                detail="Daily message limit reached. Upgrade to Pro for unlimited messages.",
+                detail="You've reached today's free limit. Add your own API key for unlimited use, or come back tomorrow.",
             )
 
         # Select model — BYOK users get Sonnet
