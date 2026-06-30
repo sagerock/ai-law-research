@@ -56,6 +56,8 @@ interface QASource {
   case_id?: string | null
   title?: string | null
   reporter_cite?: string | null
+  reader_chapter?: string | null
+  reader_anchor?: string | null
 }
 
 function AskTextbook({ textbookId }: { textbookId: number }) {
@@ -152,22 +154,29 @@ function AskTextbook({ textbookId }: { textbookId: number }) {
           {sources.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5 items-center">
               <span className="text-xs text-stone-500 mr-1">Sources:</span>
-              {sources.map((s, i) =>
-                s.case_id ? (
-                  <Link
-                    key={i}
-                    href={buildCanonicalUrl(s.reporter_cite ?? null, s.title ?? '')}
-                    className="text-xs px-2 py-0.5 rounded-full bg-sage-50 text-sage-700
-                               hover:bg-sage-100 hover:underline transition-colors"
-                  >
-                    {s.case || s.chapter}
-                  </Link>
-                ) : (
+              {sources.map((s, i) => {
+                const label = s.case || s.chapter
+                const chip = "text-xs px-2 py-0.5 rounded-full bg-sage-50 text-sage-700 hover:bg-sage-100 hover:underline transition-colors inline-flex items-center gap-1"
+                if (s.case_id) {
+                  return (
+                    <Link key={i} href={buildCanonicalUrl(s.reporter_cite ?? null, s.title ?? '')} className={chip}>
+                      {label}
+                    </Link>
+                  )
+                }
+                if (s.reader_chapter && s.reader_anchor) {
+                  return (
+                    <Link key={i} href={`/textbooks/${textbookId}/read/${s.reader_chapter}#${s.reader_anchor}`} className={chip}>
+                      <BookOpen className="h-3 w-3" />{label}
+                    </Link>
+                  )
+                }
+                return (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
-                    {s.case || s.chapter}
+                    {label}
                   </span>
                 )
-              )}
+              })}
             </div>
           )}
           <p className="mt-3 text-xs text-stone-400">

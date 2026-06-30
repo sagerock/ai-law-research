@@ -6081,20 +6081,48 @@ async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
         if not points:
             return {"answer": "I couldn't find anything in this textbook about that.", "sources": []}
 
-        context_parts, sources = [], []
-        for p in points:
+        context_parts, sources, seen = [], [], {}
+        for p in points:  # points are already sorted by score (best first)
             pl = p.get("payload", {})
-            tag = pl.get("case") or pl.get("chapter") or "the text"
+            case_name, chapter, para = pl.get("case"), pl.get("chapter"), pl.get("para")
+            tag = case_name or chapter or "the text"
             context_parts.append(f"[{tag}]\n{pl.get('text', '')}")
-            src = {"case": pl.get("case"), "chapter": pl.get("chapter")}
-            info = case_lookup.get(_norm_case_name(pl.get("case"))) if pl.get("case") else None
+            key = (case_name, chapter)
+            if key in seen:
+                continue
+            src = {"case": case_name, "chapter": chapter, "_para": para}
+            info = case_lookup.get(_norm_case_name(case_name)) if case_name else None
             if info:
                 src["case_id"] = info["case_id"]
                 src["title"] = info["title"]
                 src["reporter_cite"] = info["reporter_cite"]
-            if src not in sources:
-                sources.append(src)
+            seen[key] = src
+            sources.append(src)
         context = "\n\n---\n\n".join(context_parts)
+
+        # Deep-link non-case sources (rules, notes, articles, chapter prose) to the
+        # exact paragraph in the reader. The Qdrant "para" is the docx paragraph index,
+        # which equals casebook_content.para_ordinal; fall back to the nearest preceding
+        # stored paragraph if that exact one wasn't indexed (e.g. an empty paragraph).
+        paras = [s["_para"] for s in sources
+                 if "case_id" not in s and isinstance(s.get("_para"), int)]
+        if paras:
+            async with db_pool.acquire() as conn:
+                locs = await conn.fetch("""
+                    SELECT DISTINCT ON (q.para) q.para AS para, c.chapter_slug, c.anchor
+                    FROM unnest($2::int[]) AS q(para)
+                    JOIN casebook_content c
+                      ON c.casebook_id = $1 AND c.anchor IS NOT NULL
+                     AND c.para_ordinal <= q.para
+                    ORDER BY q.para, c.para_ordinal DESC
+                """, textbook_id, paras)
+            loc_by_para = {r["para"]: (r["chapter_slug"], r["anchor"]) for r in locs}
+            for s in sources:
+                loc = loc_by_para.get(s.get("_para"))
+                if loc and "case_id" not in s:
+                    s["reader_chapter"], s["reader_anchor"] = loc
+        for s in sources:
+            s.pop("_para", None)
 
         # 3) answer with Claude, grounded in the retrieved passages
         prompt = (
