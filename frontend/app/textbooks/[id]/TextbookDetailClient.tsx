@@ -59,9 +59,10 @@ function AskTextbook({ textbookId }: { textbookId: number }) {
   const [error, setError] = useState<string | null>(null)
 
   const EXAMPLES = [
-    'How did Daubert change the Frye test?',
-    'When is a prior conviction admissible to impeach a witness?',
-    'What makes a statement testimonial under Crawford?',
+    'Walk me through Rules 404 and 405',
+    "What is the rape shield rule, and when doesn't it apply?",
+    'How does Daubert affect when an expert can testify?',
+    'Break down the hearsay rule and its main exceptions',
   ]
 
   const ask = async (q: string) => {
