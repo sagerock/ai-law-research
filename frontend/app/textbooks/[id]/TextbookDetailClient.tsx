@@ -49,7 +49,13 @@ function subjectLabel(subject: string | null): string {
   return SUBJECT_LABELS[subject] || subject.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-interface QASource { case?: string | null; chapter?: string | null }
+interface QASource {
+  case?: string | null
+  chapter?: string | null
+  case_id?: string | null
+  title?: string | null
+  reporter_cite?: string | null
+}
 
 function AskTextbook({ textbookId }: { textbookId: number }) {
   const [question, setQuestion] = useState('')
@@ -143,13 +149,24 @@ function AskTextbook({ textbookId }: { textbookId: number }) {
         <div className="mt-4 border-t border-stone-100 pt-4">
           <div className="whitespace-pre-wrap text-stone-800 leading-relaxed text-[15px]">{answer}</div>
           {sources.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5">
+            <div className="mt-4 flex flex-wrap gap-1.5 items-center">
               <span className="text-xs text-stone-500 mr-1">Sources:</span>
-              {sources.map((s, i) => (
-                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
-                  {s.case || s.chapter}
-                </span>
-              ))}
+              {sources.map((s, i) =>
+                s.case_id ? (
+                  <Link
+                    key={i}
+                    href={buildCanonicalUrl(s.reporter_cite ?? null, s.title ?? '')}
+                    className="text-xs px-2 py-0.5 rounded-full bg-sage-50 text-sage-700
+                               hover:bg-sage-100 hover:underline transition-colors"
+                  >
+                    {s.case || s.chapter}
+                  </Link>
+                ) : (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
+                    {s.case || s.chapter}
+                  </span>
+                )
+              )}
             </div>
           )}
           <p className="mt-3 text-xs text-stone-400">

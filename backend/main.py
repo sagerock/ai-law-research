@@ -5947,6 +5947,15 @@ def _casebook_qa_collection(metadata) -> Optional[str]:
     return metadata.get("qdrant_collection") if isinstance(metadata, dict) else None
 
 
+def _norm_case_name(s: Optional[str]) -> str:
+    """Normalize a case-name string for matching Qdrant payloads to DB rows.
+
+    Collapses punctuation/spacing to single spaces so trivial format differences
+    (e.g. "Gray." vs "Gray,", "S.E. 2d" vs "S.E.2d") still match.
+    """
+    return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
+
+
 async def _rewrite_search_queries(client, anthropic_key: str, question: str) -> List[str]:
     """Expand a student's conversational question into focused retrieval queries.
 
@@ -6002,8 +6011,20 @@ async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
 
     async with db_pool.acquire() as conn:
         book = await conn.fetchrow("SELECT title, metadata FROM casebooks WHERE id = $1", textbook_id)
+        # Map each casebook case name to its case page, so sources can link out.
+        # The Qdrant "case" payload matches casebook_cases.case_name_in_book exactly.
+        case_rows = await conn.fetch(
+            """SELECT cc.case_name_in_book, cc.case_id, c.title, c.reporter_cite
+               FROM casebook_cases cc JOIN cases c ON cc.case_id = c.id
+               WHERE cc.casebook_id = $1""",
+            textbook_id,
+        ) if book else []
     if not book:
         raise HTTPException(status_code=404, detail="Textbook not found")
+    case_lookup = {
+        _norm_case_name(r["case_name_in_book"]): r
+        for r in case_rows if r["case_name_in_book"]
+    }
     collection = _casebook_qa_collection(book["metadata"])
     if not collection:
         raise HTTPException(status_code=400, detail="AI Q&A is not available for this textbook yet.")
@@ -6059,6 +6080,11 @@ async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
             tag = pl.get("case") or pl.get("chapter") or "the text"
             context_parts.append(f"[{tag}]\n{pl.get('text', '')}")
             src = {"case": pl.get("case"), "chapter": pl.get("chapter")}
+            info = case_lookup.get(_norm_case_name(pl.get("case"))) if pl.get("case") else None
+            if info:
+                src["case_id"] = info["case_id"]
+                src["title"] = info["title"]
+                src["reporter_cite"] = info["reporter_cite"]
             if src not in sources:
                 sources.append(src)
         context = "\n\n---\n\n".join(context_parts)
