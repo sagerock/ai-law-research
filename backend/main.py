@@ -5947,6 +5947,50 @@ def _casebook_qa_collection(metadata) -> Optional[str]:
     return metadata.get("qdrant_collection") if isinstance(metadata, dict) else None
 
 
+async def _rewrite_search_queries(client, anthropic_key: str, question: str) -> List[str]:
+    """Expand a student's conversational question into focused retrieval queries.
+
+    Returns 1-4 search strings. The original question is always included as a
+    fallback, so retrieval never does worse than the single-query baseline even
+    if the rewrite call fails or returns nothing useful.
+    """
+    queries: List[str] = []
+    try:
+        prompt = (
+            "You turn a law student's question about an Evidence casebook into focused "
+            "search queries for retrieving relevant passages by vector similarity.\n"
+            "Rules:\n"
+            "- Output 1 to 3 queries, one per distinct sub-topic in the question.\n"
+            "- Expand evidence rule numbers into their topic, keeping the number. "
+            "E.g. \"Rule 405\" -> \"Federal Rule of Evidence 405 methods of proving character: "
+            "reputation, opinion, and specific instances of conduct\".\n"
+            "- Drop conversational filler; keep only substantive legal terms.\n"
+            "- Return ONLY a JSON array of strings, nothing else.\n\n"
+            f"QUESTION: {question}"
+        )
+        resp = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
+                     "Content-Type": "application/json"},
+            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 300,
+                  "messages": [{"role": "user", "content": prompt}]},
+        )
+        if resp.status_code == 200:
+            text = next((b.get("text", "") for b in resp.json().get("content", [])
+                         if b.get("type") == "text"), "")
+            start, end = text.find("["), text.rfind("]")
+            if start != -1 and end != -1:
+                parsed = json.loads(text[start:end + 1])
+                queries = [q.strip() for q in parsed if isinstance(q, str) and q.strip()][:3]
+    except Exception:
+        queries = []
+
+    # Always keep the original question as a fallback query, deduped.
+    if question not in queries:
+        queries.append(question)
+    return queries
+
+
 @app.post("/api/v1/textbooks/{textbook_id}/ask")
 async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
     """Answer a question about a textbook via RAG over its Qdrant collection."""
@@ -5972,25 +6016,40 @@ async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
         raise HTTPException(status_code=503, detail="AI Q&A is not configured.")
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        # 1) embed the question
+        # 1) rewrite the conversational question into focused search queries.
+        # A chatty question ("I'd like to talk about Rules 404 and 405") embeds
+        # toward generic overview passages and misses the specific material, and
+        # a single vector can't represent a multi-topic question well. So expand
+        # into a few targeted queries (one per sub-topic) and search each. The
+        # original question is always kept as a fallback query.
+        queries = await _rewrite_search_queries(client, anthropic_key, question)
+
+        # 2) embed all queries in one call (OpenAI accepts a list input)
         emb = await client.post(
             "https://api.openai.com/v1/embeddings",
             headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
-            json={"model": "text-embedding-3-small", "input": question},
+            json={"model": "text-embedding-3-small", "input": queries},
         )
         if emb.status_code != 200:
             raise HTTPException(status_code=502, detail="Embedding service error.")
-        vector = emb.json()["data"][0]["embedding"]
+        vectors = [d["embedding"] for d in sorted(emb.json()["data"], key=lambda d: d["index"])]
 
-        # 2) retrieve the most relevant passages from Qdrant
-        qres = await client.post(
-            f"{qdrant_url.rstrip('/')}/collections/{collection}/points/query",
-            headers={"api-key": qdrant_key, "Content-Type": "application/json"},
-            json={"query": vector, "limit": 6, "with_payload": True},
-        )
-        if qres.status_code != 200:
-            raise HTTPException(status_code=502, detail="Search service error.")
-        points = qres.json().get("result", {}).get("points", [])
+        # 3) retrieve per query and merge, keeping each passage's best score
+        merged: Dict[Any, Dict[str, Any]] = {}
+        for vector in vectors:
+            qres = await client.post(
+                f"{qdrant_url.rstrip('/')}/collections/{collection}/points/query",
+                headers={"api-key": qdrant_key, "Content-Type": "application/json"},
+                json={"query": vector, "limit": 8, "with_payload": True},
+            )
+            if qres.status_code != 200:
+                raise HTTPException(status_code=502, detail="Search service error.")
+            for p in qres.json().get("result", {}).get("points", []):
+                existing = merged.get(p["id"])
+                if existing is None or p.get("score", 0) > existing.get("score", 0):
+                    merged[p["id"]] = p
+
+        points = sorted(merged.values(), key=lambda p: p.get("score", 0), reverse=True)[:12]
         if not points:
             return {"answer": "I couldn't find anything in this textbook about that.", "sources": []}
 
