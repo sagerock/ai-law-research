@@ -24,6 +24,8 @@ interface TextbookData {
     case_name_in_book: string | null
   }>
   pending_count: number
+  supports_qa?: boolean
+  supports_reader?: boolean
 }
 
 interface PageProps {

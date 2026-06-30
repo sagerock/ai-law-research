@@ -56,3 +56,6 @@ temp/
 *api_key*
 *secret*
 credentials.json
+
+# Playwright MCP screenshot/output artifacts
+.playwright-mcp/

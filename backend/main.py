@@ -5906,6 +5906,12 @@ async def get_textbook_detail(textbook_id: int):
             WHERE casebook_id = $1 AND import_status = 'pending'
         """, textbook_id)
 
+        # Does this casebook have full readable text loaded?
+        has_reader = await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM casebook_content WHERE casebook_id = $1)",
+            textbook_id,
+        )
+
     result = {
         "id": book["id"],
         "title": book["title"],
@@ -5930,6 +5936,7 @@ async def get_textbook_detail(textbook_id: int):
         ],
         "pending_count": pending or 0,
         "supports_qa": bool(_casebook_qa_collection(book["metadata"])),
+        "supports_reader": bool(has_reader),
     }
     _textbook_detail_cache[textbook_id] = {"data": result, "time": now}
     return result
@@ -6111,6 +6118,91 @@ async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
         answer = next((b.get("text") for b in ans.json().get("content", []) if b.get("type") == "text"), "")
 
     return {"answer": answer or "No answer could be generated.", "sources": sources}
+
+
+# ============================================================================
+# Textbook Reader (full readable text, loaded by scripts/build_casebook_reader.py)
+# ============================================================================
+
+_reader_toc_cache: Dict[int, Dict[str, Any]] = {}
+READER_CACHE_TTL = 3600
+
+
+@app.get("/api/v1/textbooks/{textbook_id}/contents")
+async def textbook_contents(textbook_id: int):
+    """Table of contents: chapters (in order) with their section headings."""
+    cached = _reader_toc_cache.get(textbook_id)
+    if cached and (time.time() - cached["time"]) < READER_CACHE_TTL:
+        return cached["data"]
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT chapter_slug, section, anchor, sort_order AS ord
+            FROM casebook_content
+            WHERE casebook_id = $1 AND block_type = 'section'
+            ORDER BY sort_order
+        """, textbook_id)
+        chapters_rows = await conn.fetch("""
+            SELECT chapter_slug, chapter_title, MIN(sort_order) AS ord
+            FROM casebook_content
+            WHERE casebook_id = $1
+            GROUP BY chapter_slug, chapter_title
+            ORDER BY ord
+        """, textbook_id)
+
+    if not chapters_rows:
+        raise HTTPException(status_code=404, detail="No reader content for this textbook.")
+
+    sections_by_chapter: Dict[str, List[Dict[str, Any]]] = {}
+    for r in rows:
+        sections_by_chapter.setdefault(r["chapter_slug"], []).append(
+            {"section": r["section"], "anchor": r["anchor"]})
+
+    chapters = [
+        {
+            "slug": c["chapter_slug"],
+            "title": c["chapter_title"],
+            "sections": sections_by_chapter.get(c["chapter_slug"], []),
+        }
+        for c in chapters_rows
+    ]
+    data = {"textbook_id": textbook_id, "chapters": chapters}
+    _reader_toc_cache[textbook_id] = {"data": data, "time": time.time()}
+    return data
+
+
+@app.get("/api/v1/textbooks/{textbook_id}/read/{chapter_slug}")
+async def textbook_chapter(textbook_id: int, chapter_slug: str):
+    """One chapter's blocks, in order, plus prev/next chapter slugs for paging."""
+    async with db_pool.acquire() as conn:
+        blocks = await conn.fetch("""
+            SELECT sort_order, block_type, group_id, html, anchor, section
+            FROM casebook_content
+            WHERE casebook_id = $1 AND chapter_slug = $2
+            ORDER BY sort_order
+        """, textbook_id, chapter_slug)
+        if not blocks:
+            raise HTTPException(status_code=404, detail="Chapter not found.")
+        order = await conn.fetch("""
+            SELECT chapter_slug, chapter_title, MIN(sort_order) AS ord
+            FROM casebook_content WHERE casebook_id = $1
+            GROUP BY chapter_slug, chapter_title ORDER BY ord
+        """, textbook_id)
+
+    slugs = [r["chapter_slug"] for r in order]
+    titles = {r["chapter_slug"]: r["chapter_title"] for r in order}
+    idx = slugs.index(chapter_slug)
+    return {
+        "slug": chapter_slug,
+        "title": titles[chapter_slug],
+        "prev": slugs[idx - 1] if idx > 0 else None,
+        "next": slugs[idx + 1] if idx < len(slugs) - 1 else None,
+        "blocks": [
+            {"type": b["block_type"], "group_id": b["group_id"],
+             "html": b["html"], "anchor": b["anchor"]}
+            for b in blocks
+        ],
+    }
 
 
 # ============================================================================

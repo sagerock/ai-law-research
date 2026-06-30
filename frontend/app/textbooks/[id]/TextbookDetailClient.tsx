@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, ArrowLeft, Library, CheckCircle, Clock, Star, Sparkles, Loader2, Send } from 'lucide-react'
+import { Search, ArrowLeft, Library, CheckCircle, Clock, Star, Sparkles, Loader2, Send, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { API_URL } from '@/lib/api'
@@ -31,6 +31,7 @@ interface TextbookData {
   cases: CaseItem[]
   pending_count: number
   supports_qa?: boolean
+  supports_reader?: boolean
 }
 
 const SUBJECT_LABELS: Record<string, string> = {
@@ -309,6 +310,16 @@ export default function TextbookDetailClient({ textbook }: { textbook: TextbookD
                 {briefCount} briefs available
               </span>
             </div>
+            {textbook.supports_reader && (
+              <Link
+                href={`/textbooks/${textbook.id}/read`}
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2.5 rounded-xl bg-sage-600
+                           text-white font-medium hover:bg-sage-700 transition-colors"
+              >
+                <BookOpen className="h-5 w-5" />
+                Read the full book
+              </Link>
+            )}
           </div>
 
           {/* Ask this textbook (AI Q&A) */}
