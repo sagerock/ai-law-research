@@ -40,7 +40,12 @@ export async function middleware(request: NextRequest) {
   // server-side makes authorization decisions from this session — SSR pages
   // are public and the FastAPI backend validates JWTs itself — so paying a
   // Supabase network round-trip on every request isn't worth it.
-  await supabase.auth.getSession()
+  try {
+    await supabase.auth.getSession()
+  } catch {
+    // A malformed/corrupt auth cookie must never take down the page —
+    // serve it without a session and let the client sort the cookie out
+  }
 
   return response
 }

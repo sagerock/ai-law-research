@@ -10,13 +10,24 @@ export async function GET(request: NextRequest) {
     next = '/'
   }
 
+  // Behind Railway's proxy, request.url is the internal host (localhost:8080),
+  // so redirect from the forwarded host — falling back to the configured site
+  // URL. In local dev, origin is already correct (and http).
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const baseUrl =
+    process.env.NODE_ENV === 'development'
+      ? origin
+      : forwardedHost
+        ? `https://${forwardedHost}`
+        : process.env.NEXT_PUBLIC_SITE_URL || origin
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (code && supabaseUrl && supabaseKey) {
     // Create the redirect response up front so the session cookies from the
     // code exchange get attached to it
-    const response = NextResponse.redirect(`${origin}${next}`)
+    const response = NextResponse.redirect(`${baseUrl}${next}`)
 
     const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
@@ -31,14 +42,18 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    try {
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error) {
-      return response
+      if (!error) {
+        return response
+      }
+      console.error('OAuth code exchange failed:', error.message)
+    } catch (err) {
+      console.error('OAuth code exchange threw:', err)
     }
-    console.error('OAuth code exchange failed:', error.message)
   }
 
   // Return to home page with error indicator
-  return NextResponse.redirect(`${origin}/?auth_error=true`)
+  return NextResponse.redirect(`${baseUrl}/?auth_error=true`)
 }
