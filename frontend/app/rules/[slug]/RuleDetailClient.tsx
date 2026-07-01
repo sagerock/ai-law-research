@@ -90,6 +90,12 @@ export default function RuleDetailClient({ data }: { data: RuleData }) {
     ? `Rule ${data.number} — ${data.title}`
     : data.title
 
+  // Point "back" at the index for this rule's own corpus: FRE rules live under
+  // /evidence-rules, FRCP under /rules.
+  const isFre = docForSlug(data.slug) === 'fre'
+  const backHref = isFre ? '/evidence-rules' : '/rules'
+  const backLabel = isFre ? 'All Evidence Rules' : 'All Rules'
+
   const handleCopyAll = () => {
     navigator.clipboard.writeText(data.body).then(() => {
       setCopied(true)
@@ -103,8 +109,8 @@ export default function RuleDetailClient({ data }: { data: RuleData }) {
 
       <section className="py-8 px-4">
         <div className="container mx-auto max-w-3xl">
-          <Link href="/rules" className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700 mb-4">
-            <ArrowLeft className="h-4 w-4 mr-1" /> All Rules
+          <Link href={backHref} className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700 mb-4">
+            <ArrowLeft className="h-4 w-4 mr-1" /> {backLabel}
           </Link>
 
           <div className="bg-white rounded-xl border border-stone-200 p-6 sm:p-8">
