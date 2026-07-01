@@ -7,28 +7,19 @@ export const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-let supabaseInstance: SupabaseClient | null = null
-
+// Browser-only client. createBrowserClient is a singleton per browser context;
+// server code (route handlers, middleware) must use createServerClient with
+// request/response cookie adapters instead — this client can't read or write
+// cookies on the server.
 export function createClient(): SupabaseClient | null {
   if (!isSupabaseConfigured) {
     return null
   }
 
-  if (!supabaseInstance) {
-    supabaseInstance = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-        },
-      }
-    )
-  }
-
-  return supabaseInstance
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 }
 
 // Type definitions for our database tables

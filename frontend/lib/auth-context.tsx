@@ -141,55 +141,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const initAuth = async () => {
-      const version = ++authVersionRef.current
-
-      try {
-        // getSession() acquires a navigator lock with infinite timeout internally.
-        // Race against 10s to avoid hanging when another tab holds the lock.
-        const { data: { session: initialSession }, error } = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('getSession timed out')), 10000)
-          ),
-        ])
-
-        if (error) {
-          console.error('Error getting session:', error)
-        }
-
-        await applySession(
-          error ? null : (initialSession ?? null),
-          version
-        )
-      } catch (error: any) {
-        if (error?.message === 'getSession timed out') {
-          // getSession() is waiting on navigator.locks held by another tab.
-          // Don't clear cookies — the other tab may be refreshing. Proceed
-          // without session; onAuthStateChange will update us when it's done.
-          console.warn('Auth init timed out (likely waiting on another tab), proceeding without session')
-        } else {
-          console.error('Error initializing auth:', error)
-        }
-        await applySession(null, version)
-      } finally {
-        if (mounted) {
-          clearTimeout(timeoutId)
-          setIsLoading(false)
-        }
-      }
-    }
-
-    // Failsafe: if auth takes longer than 15 seconds, stop loading anyway
+    // Failsafe: if the INITIAL_SESSION event hasn't arrived in 10 seconds
+    // (e.g. navigator lock held by a jammed tab), stop showing the loading
+    // state. Don't touch session state — applying null here is what used to
+    // make logged-in users look logged out.
     timeoutId = setTimeout(() => {
       if (mounted) {
         setIsLoading(false)
       }
-    }, 15000)
+    }, 10000)
 
-    initAuth()
-
-    // Listen for auth changes
+    // No explicit getSession() call on init: onAuthStateChange fires
+    // INITIAL_SESSION with the cookie-stored session once the client
+    // initializes. Middleware keeps the token fresh server-side, so this
+    // resolves from cookies without a network refresh.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mounted) return
