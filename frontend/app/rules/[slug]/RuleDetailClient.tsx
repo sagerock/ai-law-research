@@ -23,9 +23,68 @@ interface RuleData {
   }
 }
 
+// Parse a flat rule string into an indented outline. Legal subdivisions follow
+// the hierarchy (a) → (1) → (A) → (i), separated by blank lines in the source.
+interface RuleBlock {
+  marker: string | null
+  text: string
+  level: number
+}
+
+function isRoman(s: string): boolean {
+  return /^[ivxlcdm]+$/.test(s)
+}
+
+// FRCP is numbered 1–86; FRE is 101–1103 — no overlap, so the rule number
+// alone tells us which document a "rule-N" slug belongs to. Mirrors page.tsx.
+function docForSlug(slug: string): 'fre' | 'frcp' {
+  const m = slug.match(/rule-(\d+)/)
+  const n = m ? parseInt(m[1], 10) : 0
+  return n >= 101 ? 'fre' : 'frcp'
+}
+
+function parseOutline(text: string): RuleBlock[] {
+  const blocks: RuleBlock[] = []
+  let lastLevel = 0
+
+  for (const raw of text.split(/\n\n+/)) {
+    const para = raw.trim()
+    if (!para) continue
+
+    const match = para.match(/^\(([A-Za-z0-9]+)\)\s*/)
+    if (!match) {
+      // Continuation / intro text with no leading marker — indent to context.
+      blocks.push({ marker: null, text: para, level: lastLevel })
+      continue
+    }
+
+    const token = match[1]
+    let level: number
+    if (/^\d+$/.test(token)) {
+      level = 1 // (1)
+    } else if (/^[A-Z]+$/.test(token)) {
+      level = 2 // (A)
+    } else if (isRoman(token) && lastLevel >= 2) {
+      level = 3 // (i) — only when nested under an (A)-level subdivision
+    } else {
+      level = 0 // (a)
+    }
+
+    lastLevel = level
+    blocks.push({
+      marker: `(${token})`,
+      text: para.slice(match[0].length),
+      level,
+    })
+  }
+
+  return blocks
+}
+
 export default function RuleDetailClient({ data }: { data: RuleData }) {
   const [copied, setCopied] = useState(false)
   const content = data.content
+  const outline = content.text ? parseOutline(content.text) : []
 
   const displayTitle = data.number
     ? `Rule ${data.number} — ${data.title}`
@@ -68,9 +127,24 @@ export default function RuleDetailClient({ data }: { data: RuleData }) {
               </div>
             </div>
 
-            {/* Main text */}
-            {content.text && (
-              <p className="text-stone-800 leading-relaxed mb-4">{content.text}</p>
+            {/* Main text, rendered as an indented outline */}
+            {outline.length > 0 && (
+              <div className="space-y-3">
+                {outline.map((block, i) => (
+                  <p
+                    key={i}
+                    className="text-stone-800 leading-relaxed"
+                    style={{ paddingLeft: `${block.level * 1.75}rem` }}
+                  >
+                    {block.marker && (
+                      <span className="font-semibold text-stone-900 mr-1.5">
+                        {block.marker}
+                      </span>
+                    )}
+                    {block.text}
+                  </p>
+                ))}
+              </div>
             )}
 
             {/* Subsections */}
@@ -79,7 +153,7 @@ export default function RuleDetailClient({ data }: { data: RuleData }) {
             )}
           </div>
 
-          <RelatedCases docId="frcp" slug={data.slug} />
+          <RelatedCases docId={docForSlug(data.slug)} slug={data.slug} />
         </div>
       </section>
     </div>
