@@ -1373,6 +1373,94 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _fetch_opinion_text_from_cl(cluster_id: str) -> Optional[str]:
+    """Fetch opinion plain text for a CourtListener cluster. No auth, no AI, no cost.
+    The opinion is free public record — this is deliberately separate from the paid AI brief."""
+    from bs4 import BeautifulSoup as BS4
+    cl_token = os.getenv('COURTLISTENER_API_KEY', '')
+    cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
+    base = "https://www.courtlistener.com/api/rest/v4"
+
+    def extract(opinion_data: dict) -> str:
+        if opinion_data.get("plain_text") and len(opinion_data["plain_text"]) > 100:
+            return opinion_data["plain_text"]
+        for field in ["html_lawbox", "html_with_citations", "html", "html_columbia", "xml_harvard"]:
+            html_content = opinion_data.get(field, "")
+            if html_content:
+                text = BS4(html_content, 'html.parser').get_text(separator='\n', strip=True)
+                if len(text) > 100:
+                    return text
+        return ""
+
+    fetched = None
+    try:
+        async with httpx.AsyncClient() as client:
+            # Strategy 1: cluster -> sub_opinions -> opinion text
+            if cl_headers:
+                r = await client.get(f"{base}/clusters/{cluster_id}/", headers=cl_headers, timeout=30.0)
+                if r.status_code == 200:
+                    for opinion_url in r.json().get("sub_opinions", []):
+                        oid = opinion_url.rstrip("/").split("/")[-1]
+                        orr = await client.get(f"{base}/opinions/{oid}/", headers=cl_headers, timeout=30.0)
+                        if orr.status_code == 200:
+                            t = extract(orr.json())
+                            if len(t) > 500:
+                                fetched = t; break
+            # Strategy 2: opinion directly by cluster id
+            if not fetched:
+                orr = await client.get(f"{base}/opinions/{cluster_id}/", headers=cl_headers, timeout=30.0)
+                if orr.status_code == 200:
+                    t = extract(orr.json())
+                    if len(t) > 500:
+                        fetched = t
+            # Strategy 3: search opinions by cluster (handles mismatched ids)
+            if not fetched and cl_headers:
+                sr = await client.get(f"{base}/opinions/", params={"cluster": cluster_id},
+                                      headers=cl_headers, timeout=30.0)
+                if sr.status_code == 200:
+                    for result in sr.json().get("results", []):
+                        t = extract(result)
+                        if len(t) > 500:
+                            fetched = t; break
+    except Exception as e:
+        print(f"CL opinion fetch error for {cluster_id}: {e}")
+    return fetched
+
+
+@app.post("/api/v1/cases/{case_id}/fetch-opinion")
+async def fetch_opinion(case_id: str):
+    """Pull the public opinion text for a stub case and store it (graduate the stub).
+    No auth, no AI, no cost — the opinion is free public record. The paid AI brief stays
+    gated in /summarize. Idempotent: returns quickly if the case already has content."""
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT content, metadata FROM cases WHERE id = $1", case_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Case not found")
+        if row["content"] and len(row["content"]) > 200:
+            return {"case_id": case_id, "is_stub": False, "fetched": False, "already_had_content": True}
+
+        text = await _fetch_opinion_text_from_cl(case_id)
+        if not text:
+            return {"case_id": case_id, "is_stub": True, "fetched": False,
+                    "detail": "Opinion text not available electronically from CourtListener."}
+
+        metadata = row["metadata"]
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+        if isinstance(metadata, dict):
+            metadata.pop("stub", None)
+
+        await conn.execute(
+            "UPDATE cases SET content = $1, metadata = $2, updated_at = NOW() WHERE id = $3",
+            text, json.dumps(metadata) if metadata else None, case_id,
+        )
+        print(f"Graduated stub {case_id}: saved {len(text)} chars of opinion text")
+        return {"case_id": case_id, "is_stub": False, "fetched": True, "chars": len(text)}
+
+
 @app.post("/api/v1/cases/{case_id}/summarize")
 async def summarize_case(case_id: str, authorization: Optional[str] = Header(None)):
     """Generate an AI-powered case brief summary"""

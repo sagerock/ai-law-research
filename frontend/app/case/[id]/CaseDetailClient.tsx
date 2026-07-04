@@ -115,6 +115,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [authority, setAuthority] = useState<AuthorityData | null>(null)
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set())
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [opinionFetching, setOpinionFetching] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
 
@@ -151,6 +152,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     fetchCachedSummary()
     fetchCitations()
     fetchAuthority()
+    fetchOpinionIfStub()
   }, [caseId])
 
   // Re-fetch user's summary rating when session becomes available
@@ -379,6 +381,25 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       if (data.available) setAuthority(data)
     } catch (err) {
       console.log('Failed to load authority report:', err)
+    }
+  }
+
+  // Stub cases have no opinion text yet. The opinion is free public record, so pull it
+  // from CourtListener automatically on view (no login) — the paid AI brief stays gated.
+  const fetchOpinionIfStub = async () => {
+    if (!caseData.is_stub) return
+    setOpinionFetching(true)
+    try {
+      await fetch(`${API_URL}/api/v1/cases/${caseId}/fetch-opinion`, { method: 'POST' })
+      const caseResp = await fetch(`${API_URL}/api/v1/cases/${caseId}`)
+      if (caseResp.ok) {
+        const refreshed = await caseResp.json()
+        setLocalCaseData(refreshed)
+      }
+    } catch {
+      // Non-critical — the fallback UI still offers the CourtListener link.
+    } finally {
+      setOpinionFetching(false)
     }
   }
 
@@ -661,7 +682,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       This case is cited by {localCaseData.metadata?.citation_count || 'other'} case{(localCaseData.metadata?.citation_count || 0) !== 1 ? 's' : ''} in our database but doesn&apos;t have a brief yet.
                     </p>
                     <p className="text-amber-800 text-sm mb-3">
-                      Generate an AI brief to get the full case analysis. The opinion text will be fetched from CourtListener automatically.
+                      The full opinion loads automatically. Generate an AI brief for a structured analysis — the issue, holding, and key rules.
                     </p>
                     {!user ? (
                       <Link
@@ -1056,6 +1077,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       </details>
                     </div>
                   )}
+                </div>
+              ) : opinionFetching ? (
+                <div className="bg-sage-50 border border-sage-200 rounded-lg p-6 text-center">
+                  <Loader2 className="h-10 w-10 text-sage-600 mx-auto mb-3 animate-spin" />
+                  <p className="text-stone-600">Fetching the opinion from CourtListener&hellip;</p>
                 </div>
               ) : (
                 <div className="bg-sage-50 border border-sage-200 rounded-lg p-6 text-center">
