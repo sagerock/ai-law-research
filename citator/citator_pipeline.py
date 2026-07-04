@@ -5,7 +5,7 @@
 
 Pipeline (all mechanical — NO LLM, the treatment layer is a later stage):
   1. TRACE   target cluster -> citing cluster_ids   (local: citation-map + opinion_cluster.parquet)
-  2. RESOLVE each cluster -> court_id/name/date/status (CourtListener search API, cached in sqlite)
+  2. RESOLVE each cluster -> court_id/name/date/status (LOCAL: cluster_court.parquet, no API)
   3. TIER    each citer relative to the target, using data/court_authority.parquet:
        BINDING-ON-TARGET  — can actually overrule/limit it (SCOTUS, same court later,
                             higher court in the same line)
@@ -17,14 +17,13 @@ Pipeline (all mechanical — NO LLM, the treatment layer is a later stage):
 The tier answers "COULD this court bind the target?" (structural). Whether a citer actually
 engages the cited holding is the treatment layer's job — kept deliberately separate.
 """
-import duckdb, sqlite3, sys, os, time, json, urllib.parse, urllib.request, re
+import duckdb, sys, os, re
 
 HERE = os.path.dirname(__file__)
 CMAP = "/mnt/d/backups/ai-law-research/data/courtlistener/citation-map-2025-12-02.csv"
 LOOK = "/home/sage/lawdata/opinion_cluster.parquet"
 COURT_AUTH = os.path.join(HERE, "data", "court_authority.parquet")
-CACHE = os.path.join(HERE, "data", "cluster_meta.db")
-KEY = None  # loaded from .env
+CLUSTER_COURT = os.path.join(HERE, "data", "cluster_court.parquet")
 
 TIER_ORDER = ["BINDING-ON-TARGET", "SAME-LINE-LOWER", "PERSUASIVE-SISTER",
               "SAME-CASE-HISTORY", "UNKNOWN"]
@@ -32,15 +31,6 @@ STATE_RANK = {"STATE_TRIAL": 0, "STATE_APPEALS": 1, "STATE_SUPREME": 2}
 FED_LOWER = {"FED_APPEALS", "FED_DISTRICT", "FED_BANKRUPTCY"}
 GENERIC_PARTY = {"united states", "united states of america", "u.s.", "us", "state", "people",
                  "commonwealth", "in re", "ex parte", "matter", "et al", "estate", "city", "county"}
-
-
-def load_key():
-    global KEY
-    with open("/mnt/d/dev/ai-law-research/.env") as f:
-        for line in f:
-            if line.startswith("COURTLISTENER_API_KEY"):
-                KEY = line.split("=", 1)[1].strip().strip('"').strip("'")
-    return KEY
 
 
 # ---------- 1. TRACE ----------
@@ -65,76 +55,26 @@ def trace(target_cluster_id):
     return sorted(set(citer_clusters))
 
 
-# ---------- 2. RESOLVE (cached) ----------
-def _cache():
-    db = sqlite3.connect(CACHE)
-    db.execute("""create table if not exists cluster_meta(
-        cluster_id integer primary key, court_id text, case_name text,
-        date_filed text, status text)""")
-    return db
-
-
-def _api_get(path):
-    req = urllib.request.Request("https://www.courtlistener.com/api/rest/v4/" + path,
-                                 headers={"Authorization": f"Token {KEY}"})
-    return json.load(urllib.request.urlopen(req, timeout=60))
-
-
-def resolve_via_docket(cid):
-    """Fallback for clusters missing from the search index: cluster -> docket -> court.
-    Returns (court_id, case_name, date_filed, status) or None."""
-    try:
-        cl = _api_get(f"clusters/{cid}/")
-        docket_url = cl.get("docket") or ""
-        did = docket_url.rstrip("/").split("/")[-1]
-        court_id = None
-        if did.isdigit():
-            dk = _api_get(f"dockets/{did}/")
-            court_id = (dk.get("court") or "").rstrip("/").split("/")[-1] or None
-        return (court_id, cl.get("case_name"), cl.get("date_filed"), cl.get("precedential_status"))
-    except Exception as e:
-        print(f"  ! docket fallback failed for {cid}: {e}", file=sys.stderr)
-        return None
-
-
+# ---------- 2. RESOLVE (local — cluster_court.parquet, no API) ----------
 def resolve(cluster_ids):
-    # One cluster per call: CL's search parser silently truncates OR-batched cluster_id
-    # queries (returns partial results with no error) — the exact silent-partial-failure
-    # class this project refuses to trust. Per-id + verified count is the honest path.
-    # Clusters absent from the search index fall back to cluster->docket->court.
-    db = _cache()
-    have = {r[0] for r in db.execute("select cluster_id from cluster_meta").fetchall()}
-    todo = [c for c in cluster_ids if c not in have]
-    via_docket, unresolved = 0, []
-    for n, cid in enumerate(todo, 1):
-        url = "https://www.courtlistener.com/api/rest/v4/search/?" + urllib.parse.urlencode(
-            {"type": "o", "q": f"cluster_id:{cid}", "page_size": 5})
-        req = urllib.request.Request(url, headers={"Authorization": f"Token {KEY}"})
-        row = None
-        try:
-            data = json.load(urllib.request.urlopen(req, timeout=60))
-            results = data.get("results", [])
-            if results:
-                r = results[0]
-                row = (cid, r.get("court_id"), r.get("caseName"), r.get("dateFiled"), r.get("status"))
-        except Exception as e:
-            print(f"  ! search error on {cid}: {e}", file=sys.stderr); time.sleep(2)
-        if row is None:  # search miss -> docket fallback
-            fb = resolve_via_docket(cid)
-            if fb:
-                row = (cid, *fb); via_docket += 1
-            else:
-                unresolved.append(cid)
-        if row:
-            db.execute("insert or replace into cluster_meta values (?,?,?,?,?)", row)
-        if n % 20 == 0 or n == len(todo):
-            db.commit(); print(f"  resolved {n}/{len(todo)} new clusters", file=sys.stderr)
-        time.sleep(0.2)
-    db.commit()
-    if via_docket:
-        print(f"  + {via_docket} resolved via docket fallback (not in search index)", file=sys.stderr)
-    if unresolved:
-        print(f"  ! {len(unresolved)} truly unresolved: {unresolved[:10]}", file=sys.stderr)
+    """Local court/name/date/precedential lookup from cluster_court.parquet — no CourtListener API.
+    Built once from the dockets bulk file (build_cluster_court.py); 100% court coverage on the
+    2025-12-02 corpus. Returns {cluster_id: {court_id, case_name, date_filed, status}}."""
+    if not cluster_ids:
+        return {}
+    con = duckdb.connect(); con.execute("SET enable_progress_bar=false"); con.execute("SET threads=4")
+    con.execute("CREATE TEMP TABLE want(cluster_id BIGINT)")
+    con.executemany("INSERT INTO want VALUES (?)", [(int(c),) for c in cluster_ids])
+    rows = con.execute(f"""
+        SELECT cc.cluster_id, cc.court_id, cc.case_name, cc.date_filed, cc.precedential_status
+        FROM read_parquet('{CLUSTER_COURT}') cc JOIN want w ON w.cluster_id = cc.cluster_id
+    """).fetchall()
+    out = {cid: {"court_id": court, "case_name": name, "date_filed": date, "status": status}
+           for cid, court, name, date, status in rows}
+    missing = [c for c in cluster_ids if int(c) not in out]
+    if missing:
+        print(f"  ! {len(missing)} clusters not in corpus (post-cutoff?): {missing[:10]}", file=sys.stderr)
+    return {c: out[int(c)] for c in cluster_ids if int(c) in out}
     meta = {}
     for cid, court, name, date, status in db.execute(
             "select cluster_id,court_id,case_name,date_filed,status from cluster_meta").fetchall():
@@ -206,7 +146,6 @@ def tier(T, C):
 
 # ---------- 4. REPORT ----------
 def run(target_cluster_id, target_name=None):
-    load_key()
     ca = load_court_auth()
 
     citer_clusters = trace(target_cluster_id)

@@ -37,11 +37,17 @@ async def run(target_ids):
             cid = c["citer_cluster_id"]
             # metadata carries provenance + the court label so the stub page can show a court
             meta = f'{{"source": "citer_stub", "cl_court": {_json(c["citer_court_name"])}}}'
+            # a few corpus clusters have no case_name — cases.title is NOT NULL, so fall back
+            # to court + year (e.g. "8th Cir. case (1989)") rather than crash
+            title = c["citer_name"]
+            if not title:
+                yr = f" ({c['citer_date'].year})" if c["citer_date"] else ""
+                title = f"{c['citer_court_name'] or 'Court'} case{yr}"
             status = await conn.execute(
                 """INSERT INTO cases (id, title, decision_date, source_url, metadata, precedential)
                    VALUES ($1, $2, $3, $4, $5::jsonb, true)
                    ON CONFLICT (id) DO NOTHING""",
-                cid, c["citer_name"], c["citer_date"], CL_OPINION.format(cid), meta)
+                cid, title, c["citer_date"], CL_OPINION.format(cid), meta)
             if status.endswith("1"):
                 created += 1
             else:
