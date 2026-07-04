@@ -1376,10 +1376,24 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
 async def _fetch_opinion_text_from_cl(cluster_id: str) -> Optional[str]:
     """Fetch opinion plain text for a CourtListener cluster. No auth, no AI, no cost.
     The opinion is free public record — this is deliberately separate from the paid AI brief."""
-    from bs4 import BeautifulSoup as BS4
+    import re
+    try:
+        from bs4 import BeautifulSoup as BS4  # nicer HTML->text if available
+    except Exception:
+        BS4 = None
     cl_token = os.getenv('COURTLISTENER_API_KEY', '')
     cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
     base = "https://www.courtlistener.com/api/rest/v4"
+
+    def strip_html(html_content: str) -> str:
+        if BS4 is not None:
+            return BS4(html_content, 'html.parser').get_text(separator='\n', strip=True)
+        # regex fallback so a missing bs4 never breaks opinion loading
+        text = re.sub(r'(?is)<(script|style)[^>]*>.*?</\1>', ' ', html_content)
+        text = re.sub(r'(?i)<br\s*/?>|</p>|</div>', '\n', text)
+        text = re.sub(r'<[^>]+>', '', text)
+        text = re.sub(r'[ \t]+', ' ', text)
+        return re.sub(r'\n\s*\n\s*\n+', '\n\n', text).strip()
 
     def extract(opinion_data: dict) -> str:
         if opinion_data.get("plain_text") and len(opinion_data["plain_text"]) > 100:
@@ -1387,7 +1401,7 @@ async def _fetch_opinion_text_from_cl(cluster_id: str) -> Optional[str]:
         for field in ["html_lawbox", "html_with_citations", "html", "html_columbia", "xml_harvard"]:
             html_content = opinion_data.get(field, "")
             if html_content:
-                text = BS4(html_content, 'html.parser').get_text(separator='\n', strip=True)
+                text = strip_html(html_content)
                 if len(text) > 100:
                     return text
         return ""

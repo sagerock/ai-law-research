@@ -61,7 +61,7 @@ def main():
     print(f"{len(ids)} distinct citer stubs to graduate", flush=True)
     if not wait_for_endpoint(ids[0]):
         sys.exit(1)
-    got = failed = had = 0
+    got = no_text = had = errors = 0
     for n, cid in enumerate(ids, 1):
         code, body = post_fetch(cid)
         if code == 200 and isinstance(body, dict):
@@ -70,14 +70,15 @@ def main():
             elif body.get("already_had_content"):
                 had += 1
             else:
-                failed += 1
+                no_text += 1
         else:
-            failed += 1
+            errors += 1  # HTTP error (e.g. 500) or network failure — not the same as "no text"
         if n % 20 == 0 or n == len(ids):
-            print(f"  {n}/{len(ids)}  fetched={got} already={had} no_text={failed}", flush=True)
+            print(f"  {n}/{len(ids)}  fetched={got} already={had} no_text={no_text} errors={errors}",
+                  flush=True)
         time.sleep(0.3)
-    print(f"DONE: {got} opinions pulled, {had} already had text, {failed} had no electronic text",
-          flush=True)
+    print(f"DONE: {got} opinions pulled, {had} already had text, "
+          f"{no_text} no electronic text, {errors} errors", flush=True)
 
 
 if __name__ == "__main__":
