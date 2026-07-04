@@ -69,6 +69,30 @@ interface CitationData {
   cited_count: number
 }
 
+interface AuthorityCiter {
+  id: string
+  name?: string
+  court_id?: string
+  court_name?: string
+  date?: string
+  in_site: boolean
+}
+
+interface AuthorityData {
+  case_id: string
+  available: boolean
+  total?: number
+  counts?: Record<string, number>
+  tiers?: Record<string, AuthorityCiter[]>
+}
+
+const AUTHORITY_TIERS: Record<string, { label: string; gloss: string; dot: string; text: string }> = {
+  'BINDING-ON-TARGET': { label: 'Binding on this case', gloss: 'Can overrule or limit it', dot: 'bg-amber-500', text: 'text-amber-700' },
+  'SAME-LINE-LOWER': { label: 'Bound by this case', gloss: 'Lower courts applying it', dot: 'bg-sage-600', text: 'text-sage-700' },
+  'PERSUASIVE-SISTER': { label: 'Persuasive only', gloss: 'Other jurisdictions — cannot bind', dot: 'bg-stone-400', text: 'text-stone-600' },
+  'SAME-CASE-HISTORY': { label: "This case's own later history", gloss: 'Proceedings of the same party', dot: 'bg-violet-500', text: 'text-violet-700' },
+}
+
 interface CaseDetailClientProps {
   caseData: CaseDetail
   caseId: string
@@ -88,6 +112,8 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const { user, session } = useAuth()
   const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
   const [citations, setCitations] = useState<CitationData | null>(null)
+  const [authority, setAuthority] = useState<AuthorityData | null>(null)
+  const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set())
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
@@ -124,6 +150,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   useEffect(() => {
     fetchCachedSummary()
     fetchCitations()
+    fetchAuthority()
   }, [caseId])
 
   // Re-fetch user's summary rating when session becomes available
@@ -341,6 +368,17 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       console.log(`Loaded ${data.citing_count} citing cases, ${data.cited_count} cited cases`)
     } catch (err) {
       console.log('Failed to load citations:', err)
+    }
+  }
+
+  const fetchAuthority = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/authority`)
+      if (!response.ok) return
+      const data = await response.json()
+      if (data.available) setAuthority(data)
+    } catch (err) {
+      console.log('Failed to load authority report:', err)
     }
   }
 
@@ -1061,6 +1099,74 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
           {/* Sidebar - Right 1/3 */}
           <div className="space-y-6">
+            {/* Authority Report (OpenCite) — citers ranked by binding force */}
+            {authority && authority.tiers && (
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <h3 className="text-md font-semibold text-stone-900 mb-1 flex items-center">
+                  <Scale className="h-4 w-4 mr-2 text-sage-600" />
+                  Authority Report
+                </h3>
+                <p className="text-xs text-stone-500 mb-4">
+                  {authority.total} citing cases, ranked by binding force
+                </p>
+
+                <div className="space-y-4">
+                  {Object.entries(authority.tiers).map(([tier, citers]) => {
+                    const meta = AUTHORITY_TIERS[tier] || { label: tier, gloss: '', dot: 'bg-stone-400', text: 'text-stone-600' }
+                    const expanded = expandedTiers.has(tier)
+                    const shown = expanded ? citers : citers.slice(0, 4)
+                    return (
+                      <div key={tier}>
+                        <div className="flex items-baseline mb-0.5">
+                          <span className={`h-2 w-2 rounded-full mr-2 shrink-0 ${meta.dot}`}></span>
+                          <span className={`text-sm font-medium ${meta.text}`}>{meta.label}</span>
+                          <span className="ml-1.5 text-xs text-stone-400">({citers.length})</span>
+                        </div>
+                        <p className="text-xs text-stone-400 mb-2 ml-4">{meta.gloss}</p>
+                        <div className="space-y-1.5 ml-4">
+                          {shown.map((c) => {
+                            const yr = c.date ? new Date(c.date).getFullYear() : ''
+                            const inner = (
+                              <>
+                                <p className="text-sm text-stone-800 line-clamp-2 leading-snug">{c.name || 'Unknown case'}</p>
+                                <p className="text-xs text-stone-500 mt-0.5">
+                                  {c.court_name || c.court_id || ''}{yr ? ` • ${yr}` : ''}
+                                </p>
+                              </>
+                            )
+                            return c.in_site ? (
+                              <Link key={c.id} href={`/case/${c.id}`} className="block p-1.5 -mx-1.5 rounded hover:bg-stone-50">
+                                {inner}
+                              </Link>
+                            ) : (
+                              <div key={c.id} className="p-1.5 -mx-1.5">{inner}</div>
+                            )
+                          })}
+                        </div>
+                        {citers.length > 4 && (
+                          <button
+                            onClick={() => setExpandedTiers((prev) => {
+                              const n = new Set(prev)
+                              n.has(tier) ? n.delete(tier) : n.add(tier)
+                              return n
+                            })}
+                            className="text-xs text-sage-600 hover:text-sage-700 mt-1.5 ml-4"
+                          >
+                            {expanded ? 'Show fewer' : `Show all ${citers.length}`}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <p className="text-[11px] text-stone-400 mt-4 pt-3 border-t leading-snug">
+                  Tiers computed from court hierarchy — no AI. &ldquo;Binding&rdquo; reflects a court&rsquo;s
+                  authority, not whether the citing case agreed. Open-data citator; corpus through Dec 2025.
+                </p>
+              </div>
+            )}
+
             {/* Citation Network Panel */}
             {citations && (citations.citing_count > 0 || citations.cited_count > 0) && (
               <div className="bg-white rounded-lg shadow-sm border p-4">

@@ -1193,6 +1193,57 @@ async def get_citator(case_id: str):
             positive_treatments=positive[:5]
         )
 
+# Order tiers by binding force for the authority report (OpenCite phase 1).
+_AUTHORITY_TIER_ORDER = [
+    "BINDING-ON-TARGET", "SAME-LINE-LOWER", "PERSUASIVE-SISTER", "SAME-CASE-HISTORY",
+]
+
+@app.get("/api/v1/cases/{case_id}/authority")
+async def get_authority_report(case_id: str):
+    """Authority-tier citer report: who cites this case, ranked by binding force.
+
+    Precomputed offline (citator/citator_pipeline.py) from the full CourtListener citation
+    graph + court hierarchy — mechanical, no AI. Returns {} when no report exists for the case
+    so the frontend can simply hide the panel."""
+    async with db_pool.acquire() as conn:
+        try:
+            rows = await conn.fetch(
+                """
+                SELECT ac.citer_cluster_id, ac.citer_name, ac.citer_court_id,
+                       ac.citer_court_name, ac.citer_date, ac.tier,
+                       (c.id IS NOT NULL) AS in_site
+                FROM case_authority_citers ac
+                LEFT JOIN cases c ON c.id = ac.citer_cluster_id
+                WHERE ac.target_case_id = $1
+                ORDER BY ac.citer_date NULLS LAST
+                """,
+                case_id,
+            )
+        except asyncpg.exceptions.UndefinedTableError:
+            return {"case_id": case_id, "available": False}
+
+    if not rows:
+        return {"case_id": case_id, "available": False}
+
+    tiers = {t: [] for t in _AUTHORITY_TIER_ORDER}
+    for r in rows:
+        tiers.setdefault(r["tier"], []).append({
+            "id": r["citer_cluster_id"],
+            "name": r["citer_name"],
+            "court_id": r["citer_court_id"],
+            "court_name": r["citer_court_name"],
+            "date": r["citer_date"].isoformat() if r["citer_date"] else None,
+            "in_site": r["in_site"],
+        })
+    counts = {t: len(v) for t, v in tiers.items() if v}
+    return {
+        "case_id": case_id,
+        "available": True,
+        "total": len(rows),
+        "counts": counts,
+        "tiers": {t: tiers[t] for t in _AUTHORITY_TIER_ORDER if tiers.get(t)},
+    }
+
 @app.get("/api/v1/cases/{case_id}/summary")
 async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_current_user)):
     """Get cached AI summary if it exists, with rating info"""
