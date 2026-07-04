@@ -746,26 +746,28 @@ async def postgres_search(query: SearchQuery):
     sql = """
         SELECT
             c.id, c.title, c.court_id, c.decision_date,
-            c.reporter_cite, c.content, c.metadata,
+            c.reporter_cite, c.neutral_cite, c.metadata,
             ct.name as court_name,
             COALESCE((c.metadata->>'citation_count')::int, 0) as citation_count,
             (
-                -- Weighted full-text relevance from the stored vector (title=A, content=B).
-                -- Reads the precomputed search_tsv instead of recomputing to_tsvector per row.
+                -- Case-name relevance from the title-only vector (search is scoped to
+                -- name + citation, not full opinion text — see migration 007).
                 COALESCE(ts_rank(c.search_tsv, plainto_tsquery('english', $1)), 0) * 10 +
                 -- Boost for exact title match
                 CASE WHEN c.title ILIKE $2 THEN 5 ELSE 0 END +
+                -- Citation match boost (e.g. "61 F.3d 45") — set above the max ts_rank
+                -- contribution so an exact citation lands first, ahead of title token noise
+                CASE WHEN c.reporter_cite ILIKE $2 OR c.neutral_cite ILIKE $2 THEN 20 ELSE 0 END +
                 -- Citation count boost (log scale to prevent domination)
                 LN(GREATEST(COALESCE((c.metadata->>'citation_count')::int, 0), 1) + 1) * 0.1
             ) as score
         FROM cases c
         LEFT JOIN courts ct ON c.court_id = ct.id
         WHERE
-            c.content IS NOT NULL AND c.content != ''
-            AND (
-                c.search_tsv @@ plainto_tsquery('english', $1)
-                OR c.title ILIKE $2
-            )
+            c.search_tsv @@ plainto_tsquery('english', $1)
+            OR c.title ILIKE $2
+            OR c.reporter_cite ILIKE $2
+            OR c.neutral_cite ILIKE $2
     """
 
     params = [query.query, f"%{query.query}%"]
@@ -810,7 +812,7 @@ async def postgres_search(query: SearchQuery):
             "court_name": court_name,
             "decision_date": row["decision_date"].isoformat() if row["decision_date"] else "",
             "reporter_cite": row["reporter_cite"] or "",
-            "content": row["content"][:500] if row["content"] else "",
+            "content": "",  # search is name/citation scoped; no opinion-text snippet
             "citation_count": row["citation_count"],
             "score": float(row["score"])
         })
