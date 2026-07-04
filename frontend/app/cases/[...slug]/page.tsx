@@ -59,6 +59,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: canonicalUrl,
     },
+    // Stub cases (no opinion text yet — e.g. citers pulled in from the citation graph)
+    // are thin content until "graduated"; keep them out of the index until populated.
+    ...(caseData.is_stub ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: `${caseName} | Law Study Group`,
       description: `Case brief for ${caseName}`,
