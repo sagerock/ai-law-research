@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
 import io
+import asyncio
 import asyncpg
 import httpx
 import anthropic
@@ -1043,6 +1044,33 @@ async def resolve_case_slug(slug: str):
 
     raise HTTPException(status_code=404, detail="Case not found")
 
+# ---- Opinion text in S3 (blob storage; Postgres keeps only metadata/tiers) ----
+OPINIONS_BUCKET = os.getenv("OPINIONS_BUCKET", "lawstudygroup-opinions")
+_s3_client = None
+
+
+def _s3():
+    global _s3_client
+    if _s3_client is None:
+        import boto3
+        _s3_client = boto3.client("s3")
+    return _s3_client
+
+
+def _read_opinion_s3_sync(cluster_id: str):
+    try:
+        obj = _s3().get_object(Bucket=OPINIONS_BUCKET, Key=f"opinions/{cluster_id}.txt")
+        return obj["Body"].read().decode("utf-8")
+    except Exception:
+        return None  # not in S3 (missing key or S3 error) — caller falls back
+
+
+async def read_opinion_from_s3(cluster_id: str) -> Optional[str]:
+    """Opinion text lives in S3, keyed by cluster_id. Returns text or None.
+    Runs the blocking boto3 call off the event loop."""
+    return await asyncio.to_thread(_read_opinion_s3_sync, str(cluster_id))
+
+
 @app.get("/api/v1/cases/{case_id}")
 async def get_case(case_id: str):
     """Get a specific case by ID"""
@@ -1061,7 +1089,14 @@ async def get_case(case_id: str):
 
     result = dict(row)
 
-    # Add stub indicator
+    # Opinion text lives in S3 (keyed by cluster_id); use it when Postgres has none.
+    if not result.get("content"):
+        s3_text = await read_opinion_from_s3(case_id)
+        if s3_text:
+            result["content"] = s3_text
+            result["content_type"] = "plain_text"
+
+    # Add stub indicator (a case is a stub only if it has no opinion text anywhere)
     result["is_stub"] = not result.get("content")
 
     # Parse metadata if it's a JSON string
@@ -5430,7 +5465,7 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
     case_title = case_row["title"] or "Unknown Case"
     case_court = case_row["court_id"] or "Unknown Court"
     case_date = str(case_row["decision_date"]) if case_row["decision_date"] else "Unknown Date"
-    case_text = case_row["content"] or ""
+    case_text = case_row["content"] or (await read_opinion_from_s3(case_id)) or ""
     if len(case_text) > 15000:
         case_text = case_text[:15000] + "\n...[opinion text truncated]"
 
