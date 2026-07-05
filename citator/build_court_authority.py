@@ -44,6 +44,12 @@ _STATES_BY_LEN = sorted(STATE_CIRCUIT, key=len, reverse=True)
 APPEALS_CIRCUIT = {f"ca{n}": n for n in range(1, 12)}
 APPEALS_CIRCUIT.update({"cadc": "DC", "cafc": "FED"})
 
+# Districts whose short_name names no state — hand-assigned. The Canal Zone district sat
+# in the Fifth Circuit (old 28 U.S.C. § 41; court abolished 1982). `orld` (District of
+# Orleans, 1804-1812) predates the circuit system — appeals went straight to SCOTUS — and
+# `usdistct` is CL's generic parent node, not a court; both correctly stay circuit-less.
+DISTRICT_OVERRIDE = {"canalzoned": (5, "Canal Zone")}
+
 
 def state_of(short_name: str):
     """Find the state/territory named in a court's short_name (longest match wins)."""
@@ -66,6 +72,9 @@ def classify(court_id, jurisdiction, short_name):
         return "OTHER", None, None
     if j in ("FD", "FB", "FS"):
         level = {"FD": "FED_DISTRICT", "FB": "FED_BANKRUPTCY", "FS": "OTHER"}[j]
+        if court_id in DISTRICT_OVERRIDE:
+            circ, st = DISTRICT_OVERRIDE[court_id]
+            return level, circ, st
         st = state_of(short_name)
         return level, (STATE_CIRCUIT.get(st) if st else None), st
     if j in ("S", "SS"):
