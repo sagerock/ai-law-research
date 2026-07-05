@@ -24,7 +24,13 @@ con.execute(rf"""
   COPY (
     SELECT TRY_CAST(c.id AS BIGINT) AS cluster_id,
            dc.court_id,
-           c.case_name,
+           -- CL stores the display name in case_name, but ~50k clusters (0.5%) have it
+           -- empty with the name only in case_name_full/_short. Mirror the API's
+           -- best-case-name coalescing so the local pipeline matches what resolve()
+           -- used to get from CourtListener.
+           COALESCE(NULLIF(TRIM(c.case_name), ''),
+                    NULLIF(TRIM(c.case_name_full), ''),
+                    NULLIF(TRIM(c.case_name_short), '')) AS case_name,
            c.date_filed,
            c.precedential_status
     FROM read_csv('{CLUSTERS}', header=true, quote='"', escape='\', all_varchar=true,
