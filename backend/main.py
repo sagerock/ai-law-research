@@ -1106,6 +1106,11 @@ async def get_case(case_id: str):
         except json.JSONDecodeError:
             result["metadata"] = {}
 
+    # Citer stubs have no courts-table row (court_id is null) but carry their court
+    # label in metadata.cl_court (set by citator/stub_citers.py) — surface it
+    if not result.get("court_name") and isinstance(result.get("metadata"), dict):
+        result["court_name"] = result["metadata"].get("cl_court")
+
     # Try to get full opinion text from metadata
     if result.get("metadata") and isinstance(result["metadata"], dict):
         opinions = result["metadata"].get("opinions", [])
