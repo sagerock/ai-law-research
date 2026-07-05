@@ -24,6 +24,12 @@ CMAP = "/mnt/d/backups/ai-law-research/data/courtlistener/citation-map-2025-12-0
 LOOK = "/home/sage/lawdata/opinion_cluster.parquet"
 COURT_AUTH = os.path.join(HERE, "data", "court_authority.parquet")
 CLUSTER_COURT = os.path.join(HERE, "data", "cluster_court.parquet")
+TOKEN_DF = os.path.join(HERE, "data", "name_token_df.parquet")
+
+# A party token is "distinctive" only if rare across the corpus (build_token_df.py):
+# 'palsgraf' (df 3) identifies its case; 'railroad' (df 66k) flagged every
+# "...Railroad..." citer as Erie's own history.
+RARE_MAX = 5000
 
 TIER_ORDER = ["BINDING-ON-TARGET", "SAME-LINE-LOWER", "PERSUASIVE-SISTER",
               "SAME-CASE-HISTORY", "UNKNOWN"]
@@ -107,12 +113,42 @@ def distinctive_parties(name):
     return tokens
 
 
+def token_df(tokens):
+    """Corpus document frequency for the given name tokens (targeted parquet lookup)."""
+    if not tokens:
+        return {}
+    con = duckdb.connect(); con.execute("SET enable_progress_bar=false")
+    ph = ",".join("?" * len(tokens))
+    return dict(con.execute(
+        f"SELECT token, df FROM read_parquet('{TOKEN_DF}') WHERE token IN ({ph})",
+        list(tokens)).fetchall())
+
+
+def history_matcher(name):
+    """(tokens, match_all) for same-case-history detection, rarity-gated.
+
+    Rare tokens (df <= RARE_MAX) identify the case alone — any one matching a citer
+    name means the target's own later proceedings. A target with only common tokens
+    (International Shoe: 'international' 49k, 'washington' 36k) falls back to requiring
+    ALL of them together; with a single common token (US v. Virginia -> 'virginia'),
+    detection is off — better to under-flag than mark thousands of strangers."""
+    toks = distinctive_parties(name)
+    df = token_df(toks)
+    rare = {t for t in toks if df.get(t, 0) <= RARE_MAX}
+    if rare:
+        return rare, False
+    if len(toks) >= 2:
+        return toks, True
+    return set(), False
+
+
 def tier(T, C):
     """T, C: dicts with court_id, level, circuit, state, case_name. All citers postdate T."""
     # same-case lineage (the target's own later proceedings) — flagged for human read
     if T["_tokens"] and C.get("case_name"):
         cl = C["case_name"].lower()
-        if any(tok in cl for tok in T["_tokens"]):
+        hit = all if T.get("_match_all") else any
+        if hit(tok in cl for tok in T["_tokens"]):
             return "SAME-CASE-HISTORY"
     if C["level"] is None:
         return "UNKNOWN"
@@ -156,7 +192,7 @@ def run(target_cluster_id, target_name=None):
     tcourt = tmeta.get("court_id")
     T = {"court_id": tcourt, "case_name": target_name or tmeta.get("case_name"),
          **ca.get(tcourt, {"level": None, "circuit": None, "state": None})}
-    T["_tokens"] = distinctive_parties(T["case_name"])
+    T["_tokens"], T["_match_all"] = history_matcher(T["case_name"])
 
     rows = []
     for cid in citer_clusters:
