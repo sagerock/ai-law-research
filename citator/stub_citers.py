@@ -49,6 +49,10 @@ async def run(target_ids):
             if not title:
                 yr = f" ({c['citer_date'].year})" if c["citer_date"] else ""
                 title = f"{c['citer_court_name'] or 'Court'} case{yr}"
+            # consolidated-appeal names from case_name_full can run >2700 bytes, which
+            # overflows the btree cap on idx_cases_title — truncate at a word boundary
+            if len(title) > 300:
+                title = title[:300].rsplit(" ", 1)[0] + " …"
             records.append((cid, title, c["citer_date"], CL_OPINION.format(cid), meta))
         # executemany pipelines the batch (row-by-row was one ~50ms round trip per citer;
         # landmark targets have 100k+); ON CONFLICT still guards against races
