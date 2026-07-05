@@ -1234,6 +1234,9 @@ async def get_citator(case_id: str):
 _AUTHORITY_TIER_ORDER = [
     "BINDING-ON-TARGET", "SAME-LINE-LOWER", "PERSUASIVE-SISTER", "SAME-CASE-HISTORY",
 ]
+# Landmark cases have five- and six-figure citer counts (Celotex ~116k) — cap the payload
+# per tier and return true counts; the panel shows "N most recent of M".
+_AUTHORITY_TIER_CAP = 100
 
 @app.get("/api/v1/cases/{case_id}/authority")
 async def get_authority_report(case_id: str):
@@ -1241,20 +1244,31 @@ async def get_authority_report(case_id: str):
 
     Precomputed offline (citator/citator_pipeline.py) from the full CourtListener citation
     graph + court hierarchy — mechanical, no AI. Returns {} when no report exists for the case
-    so the frontend can simply hide the panel."""
+    so the frontend can simply hide the panel. Each tier is capped at the newest
+    _AUTHORITY_TIER_CAP citers; `counts` always carries the true totals."""
     async with db_pool.acquire() as conn:
         try:
+            count_rows = await conn.fetch(
+                "SELECT tier, count(*) AS n FROM case_authority_citers"
+                " WHERE target_case_id = $1 GROUP BY tier",
+                case_id,
+            )
             rows = await conn.fetch(
                 """
-                SELECT ac.citer_cluster_id, ac.citer_name, ac.citer_court_id,
-                       ac.citer_court_name, ac.citer_date, ac.tier,
-                       (c.id IS NOT NULL) AS in_site
-                FROM case_authority_citers ac
-                LEFT JOIN cases c ON c.id = ac.citer_cluster_id
-                WHERE ac.target_case_id = $1
-                ORDER BY ac.citer_date NULLS LAST
+                WITH ranked AS (
+                    SELECT ac.citer_cluster_id, ac.citer_name, ac.citer_court_id,
+                           ac.citer_court_name, ac.citer_date, ac.tier,
+                           (c.id IS NOT NULL) AS in_site,
+                           ROW_NUMBER() OVER (PARTITION BY ac.tier
+                                              ORDER BY ac.citer_date DESC NULLS LAST) AS rn
+                    FROM case_authority_citers ac
+                    LEFT JOIN cases c ON c.id = ac.citer_cluster_id
+                    WHERE ac.target_case_id = $1
+                )
+                SELECT * FROM ranked WHERE rn <= $2
+                ORDER BY citer_date DESC NULLS LAST
                 """,
-                case_id,
+                case_id, _AUTHORITY_TIER_CAP,
             )
         except asyncpg.exceptions.UndefinedTableError:
             return {"case_id": case_id, "available": False}
@@ -1262,6 +1276,7 @@ async def get_authority_report(case_id: str):
     if not rows:
         return {"case_id": case_id, "available": False}
 
+    counts = {r["tier"]: r["n"] for r in count_rows}
     tiers = {t: [] for t in _AUTHORITY_TIER_ORDER}
     for r in rows:
         tiers.setdefault(r["tier"], []).append({
@@ -1272,11 +1287,10 @@ async def get_authority_report(case_id: str):
             "date": r["citer_date"].isoformat() if r["citer_date"] else None,
             "in_site": r["in_site"],
         })
-    counts = {t: len(v) for t, v in tiers.items() if v}
     return {
         "case_id": case_id,
         "available": True,
-        "total": len(rows),
+        "total": sum(counts.values()),
         "counts": counts,
         "tiers": {t: tiers[t] for t in _AUTHORITY_TIER_ORDER if tiers.get(t)},
     }
@@ -2120,15 +2134,28 @@ async def get_transparency_stats():
     }
 
 
+@app.get("/api/v1/sitemap/count")
+async def get_sitemap_count():
+    """Total case count so the frontend can chunk the sitemap (50k URLs/file protocol cap)."""
+    async with db_pool.acquire() as conn:
+        n = await conn.fetchval("SELECT count(*) FROM cases")
+    return {"count": n}
+
+
 @app.get("/api/v1/sitemap/cases")
-async def get_sitemap_cases():
-    """Get all case IDs, titles, and citation slugs for sitemap generation"""
+async def get_sitemap_cases(offset: int = 0, limit: Optional[int] = None):
+    """Case IDs, titles, and citation slugs for sitemap generation.
+
+    offset/limit page through the set for chunked sitemaps (the site is past the 50k
+    URLs-per-file protocol cap); omitting limit returns everything, as before.
+    Ordered by id so pagination is stable — decision_date shifts as cases are added."""
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT id, title, decision_date, reporter_cite
             FROM cases
-            ORDER BY decision_date DESC NULLS LAST
-        """)
+            ORDER BY id
+            OFFSET $1 LIMIT $2
+        """, offset, limit)
 
     return {
         "cases": [

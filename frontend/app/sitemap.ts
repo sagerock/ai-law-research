@@ -3,6 +3,10 @@ import { MetadataRoute } from 'next'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://lawstudygroup.com'
 
+// Sitemap protocol caps 50k URLs per file; the case count is past that, so we chunk.
+// Chunks are served at /sitemap/[id].xml and listed in robots.ts.
+export const CHUNK = 40000
+
 interface CaseForSitemap {
   id: string
   title: string
@@ -11,8 +15,23 @@ interface CaseForSitemap {
   canonical_slug: string
 }
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticPages: MetadataRoute.Sitemap = [
+export async function generateSitemaps(): Promise<{ id: number }[]> {
+  try {
+    const response = await fetch(`${API_URL}/api/v1/sitemap/count`, {
+      next: { revalidate: 3600 },
+    })
+    if (!response.ok) return [{ id: 0 }]
+    const { count } = await response.json()
+    const n = Math.max(1, Math.ceil(count / CHUNK))
+    return Array.from({ length: n }, (_, id) => ({ id }))
+  } catch {
+    return [{ id: 0 }]
+  }
+}
+
+export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
+  // static pages ride along in the first chunk
+  const staticPages: MetadataRoute.Sitemap = id === 0 ? [
     {
       url: SITE_URL,
       lastModified: new Date(),
@@ -31,15 +50,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
-  ]
+  ] : []
 
   try {
-    const response = await fetch(`${API_URL}/api/v1/sitemap/cases`, {
-      next: { revalidate: 3600 }
-    })
+    const response = await fetch(
+      `${API_URL}/api/v1/sitemap/cases?offset=${id * CHUNK}&limit=${CHUNK}`,
+      { next: { revalidate: 3600 } }
+    )
 
     if (!response.ok) {
-      console.error('Failed to fetch cases for sitemap')
+      console.error('Failed to fetch cases for sitemap chunk', id)
       return staticPages
     }
 
@@ -55,7 +75,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [...staticPages, ...casePages]
   } catch (error) {
-    console.error('Error generating sitemap:', error)
+    console.error('Error generating sitemap chunk', id, error)
     return staticPages
   }
 }

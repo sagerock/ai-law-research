@@ -1141,12 +1141,15 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     const meta = AUTHORITY_TIERS[tier] || { label: tier, gloss: '', dot: 'bg-stone-400', text: 'text-stone-600' }
                     const expanded = expandedTiers.has(tier)
                     const shown = expanded ? citers : citers.slice(0, 4)
+                    // The API caps each tier at its newest ~100 citers; counts carries true totals
+                    const tierCount = authority.counts?.[tier] ?? citers.length
+                    const truncated = tierCount > citers.length
                     return (
                       <div key={tier}>
                         <div className="flex items-baseline mb-0.5">
                           <span className={`h-2 w-2 rounded-full mr-2 shrink-0 ${meta.dot}`}></span>
                           <span className={`text-sm font-medium ${meta.text}`}>{meta.label}</span>
-                          <span className="ml-1.5 text-xs text-stone-400">({citers.length})</span>
+                          <span className="ml-1.5 text-xs text-stone-400">({tierCount.toLocaleString()})</span>
                         </div>
                         <p className="text-xs text-stone-400 mb-2 ml-4">{meta.gloss}</p>
                         <div className="space-y-1.5 ml-4">
@@ -1169,6 +1172,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                             )
                           })}
                         </div>
+                        {expanded && truncated && (
+                          <p className="text-[11px] text-stone-400 mt-1.5 ml-4">
+                            Showing the {citers.length} most recent of {tierCount.toLocaleString()} citing cases.
+                          </p>
+                        )}
                         {citers.length > 4 && (
                           <button
                             onClick={() => setExpandedTiers((prev) => {
@@ -1178,7 +1186,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                             })}
                             className="text-xs text-sage-600 hover:text-sage-700 mt-1.5 ml-4"
                           >
-                            {expanded ? 'Show fewer' : `Show all ${citers.length}`}
+                            {expanded ? 'Show fewer' : (truncated ? `Show ${citers.length} most recent` : `Show all ${citers.length}`)}
                           </button>
                         )}
                       </div>

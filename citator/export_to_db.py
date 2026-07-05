@@ -42,7 +42,7 @@ async def push(target_id, rows, labels):
     await conn.execute(SCHEMA)
     # replace this target's rows so re-runs reflect the latest computation
     await conn.execute("DELETE FROM case_authority_citers WHERE target_case_id = $1", str(target_id))
-    n = 0
+    records = []
     for cid, name, court_id, date, tl, C in rows:
         d = None
         if date:
@@ -50,19 +50,21 @@ async def push(target_id, rows, labels):
                 d = datetime.date.fromisoformat(date[:10])
             except ValueError:
                 d = None
-        await conn.execute("""
-            INSERT INTO case_authority_citers
-              (target_case_id, citer_cluster_id, citer_name, citer_court_id,
-               citer_court_name, citer_date, tier)
-            VALUES ($1,$2,$3,$4,$5,$6,$7)
-            ON CONFLICT (target_case_id, citer_cluster_id) DO UPDATE SET
-              citer_name=EXCLUDED.citer_name, citer_court_id=EXCLUDED.citer_court_id,
-              citer_court_name=EXCLUDED.citer_court_name, citer_date=EXCLUDED.citer_date,
-              tier=EXCLUDED.tier, run_date=CURRENT_DATE
-        """, str(target_id), str(cid), name, court_id, labels.get(court_id), d, tl)
-        n += 1
+        records.append((str(target_id), str(cid), name, court_id, labels.get(court_id), d, tl))
+    # executemany pipelines the batch — one round trip per flush, not per row
+    # (row-by-row was ~50ms RTT each; Celotex-scale targets have 100k+ citers)
+    await conn.executemany("""
+        INSERT INTO case_authority_citers
+          (target_case_id, citer_cluster_id, citer_name, citer_court_id,
+           citer_court_name, citer_date, tier)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        ON CONFLICT (target_case_id, citer_cluster_id) DO UPDATE SET
+          citer_name=EXCLUDED.citer_name, citer_court_id=EXCLUDED.citer_court_id,
+          citer_court_name=EXCLUDED.citer_court_name, citer_date=EXCLUDED.citer_date,
+          tier=EXCLUDED.tier, run_date=CURRENT_DATE
+    """, records)
     await conn.close()
-    return n
+    return len(records)
 
 
 def main():

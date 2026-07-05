@@ -32,9 +32,15 @@ async def run(target_ids):
         citers = await conn.fetch(
             """SELECT citer_cluster_id, citer_name, citer_court_name, citer_date
                FROM case_authority_citers WHERE target_case_id = $1""", str(tid))
-        created = skipped = 0
+        # skip ids already present so the executemany batch is pure inserts
+        existing = {r["id"] for r in await conn.fetch(
+            "SELECT id FROM cases WHERE id = ANY($1)",
+            [c["citer_cluster_id"] for c in citers])}
+        records = []
         for c in citers:
             cid = c["citer_cluster_id"]
+            if cid in existing:
+                continue
             # metadata carries provenance + the court label so the stub page can show a court
             meta = f'{{"source": "citer_stub", "cl_court": {_json(c["citer_court_name"])}}}'
             # a few corpus clusters have no case_name — cases.title is NOT NULL, so fall back
@@ -43,17 +49,15 @@ async def run(target_ids):
             if not title:
                 yr = f" ({c['citer_date'].year})" if c["citer_date"] else ""
                 title = f"{c['citer_court_name'] or 'Court'} case{yr}"
-            status = await conn.execute(
-                """INSERT INTO cases (id, title, decision_date, source_url, metadata, precedential)
-                   VALUES ($1, $2, $3, $4, $5::jsonb, true)
-                   ON CONFLICT (id) DO NOTHING""",
-                cid, title, c["citer_date"], CL_OPINION.format(cid), meta)
-            if status.endswith("1"):
-                created += 1
-            else:
-                skipped += 1
-        print(f"  target {tid}: {created} stubs created, {skipped} already present "
-              f"({len(citers)} citers total)")
+            records.append((cid, title, c["citer_date"], CL_OPINION.format(cid), meta))
+        # executemany pipelines the batch (row-by-row was one ~50ms round trip per citer;
+        # landmark targets have 100k+); ON CONFLICT still guards against races
+        await conn.executemany(
+            """INSERT INTO cases (id, title, decision_date, source_url, metadata, precedential)
+               VALUES ($1, $2, $3, $4, $5::jsonb, true)
+               ON CONFLICT (id) DO NOTHING""", records)
+        print(f"  target {tid}: {len(records)} stubs created, {len(existing)} already present "
+              f"({len(citers)} citers total)", flush=True)
     await conn.close()
 
 
