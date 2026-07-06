@@ -1,0 +1,5 @@
+140872	Grable: stored text is cert grant, needs canonical merits cluster
+148164	Shady Grove: stored text is CA2 remand order, needs canonical merits cluster
+463012	not People v. Lauria (1967) - famous-name mismatch, 9th Cir table affirmance
+12018	US v. Gibbs: one-line table affirmance, no opinion
+62948	not Citizens United v. FEC - matched to Oak Grove v. FAA (shares 'citizens'+'federal')

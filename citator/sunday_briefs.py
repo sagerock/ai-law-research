@@ -19,6 +19,16 @@ import asyncio, asyncpg, boto3, json, os, sys
 HERE = os.path.dirname(__file__)
 CURATED = "/mnt/d/backups/ai-law-research/data/1L_core_cases.json"
 BUCKET = os.getenv("OPINIONS_BUCKET", "lawstudygroup-opinions")
+# cases with no briefable opinion (table affirmances, cert grants, wrong-cluster ids):
+# `opinion` auto-appends here, `list` excludes — otherwise they clog every batch
+SKIPLIST = os.path.join(HERE, "data", "briefs_skiplist.txt")
+MIN_OPINION = 2500  # chars; below this it's a procedural order, not an opinion
+
+
+def skiplist():
+    if not os.path.exists(SKIPLIST):
+        return set()
+    return {ln.split("\t")[0].strip() for ln in open(SKIPLIST) if ln.strip()}
 
 # the 30 landmark targets (canonical cluster ids, 2026-07-05 run)
 LANDMARKS = [
@@ -39,29 +49,68 @@ def prod_url():
 
 
 def curated_ids():
-    """Curated 1L case ids ordered by casebook count (desc), landmarks excluded."""
+    """Curated 1L cases [(id, name, date)] by casebook count (desc), landmarks excluded."""
     d = json.load(open(CURATED))
     seen = {}
     for v in d.values():
         for c in v["cases"]:
             cid = c.get("courtlistener_id")
-            if cid and (cid not in seen or c["casebook_count"] > seen[cid]):
-                seen[cid] = c["casebook_count"]
-    return [cid for cid, _ in sorted(seen.items(), key=lambda x: -x[1])
+            if cid and (cid not in seen or c["casebook_count"] > seen[cid][2]):
+                seen[cid] = (c["name"], c.get("date_filed"), c["casebook_count"])
+    return [(cid, nm, dt) for cid, (nm, dt, _) in sorted(seen.items(), key=lambda x: -x[1][2])
             if cid not in LANDMARKS]
+
+
+def _sides(name):
+    """Distinctive tokens for (plaintiff side, defendant side) of a caption."""
+    sys.path.insert(0, HERE)
+    from citator_pipeline import distinctive_parties
+    import re
+    parts = re.split(r"\s+v\.?\s+", name, maxsplit=1, flags=re.I)
+    if len(parts) != 2:
+        return None
+    return distinctive_parties(parts[0]), distinctive_parties(parts[1])
+
+
+def identity_matches(curated_name, stored_title):
+    """The curated JSON's CL ids are unreliable (famous-name mismatches: its 'Brown v.
+    Board' was Brown & Root v. NLRB; 'Brown v. Kendall' points at a Kendall Brown habeas).
+    Its dates/citations for bad entries come from the wrong cluster itself, so the NAME is
+    the only ground truth. Match ORDER-AWARE: plaintiff-side tokens must overlap the
+    stored plaintiff side, defendant-side the defendant side — coincidental shared
+    surnames on the wrong side ('Kendall Brown v. Wilmot') then fail."""
+    sys.path.insert(0, HERE)
+    from citator_pipeline import distinctive_parties
+    ca, sa = _sides(curated_name), _sides(stored_title)
+    if ca and sa:
+        (cp, cd), (sp, sd) = ca, sa
+        p_ok = not cp or not sp or bool(cp & sp)
+        d_ok = not cd or not sd or bool(cd & sd)
+        return p_ok and d_ok
+    a, b = distinctive_parties(curated_name), distinctive_parties(stored_title)
+    if not a or not b:  # single-generic-name captions (e.g. "In re Baby M") — let through
+        return True
+    return bool(a & b)
 
 
 async def cmd_list(n):
     conn = await asyncpg.connect(prod_url())
-    queue, out = LANDMARKS + curated_ids(), []
+    queue = [(c, None, None) for c in LANDMARKS] + curated_ids()  # landmarks hand-verified
+    out, skip = [], skiplist()
+    ids = [c for c, _, _ in queue]
     briefed = {r["case_id"] for r in await conn.fetch(
-        "SELECT case_id FROM ai_summaries WHERE case_id = ANY($1)", queue)}
+        "SELECT case_id FROM ai_summaries WHERE case_id = ANY($1)", ids)}
     exists = {r["id"]: r for r in await conn.fetch(
-        "SELECT id, title, decision_date FROM cases WHERE id = ANY($1)", queue)}
-    for cid in queue:
-        if cid in briefed or cid not in exists:
+        "SELECT id, title, decision_date FROM cases WHERE id = ANY($1)", ids)}
+    for cid, curated_name, curated_date in queue:
+        if cid in briefed or cid not in exists or cid in skip:
             continue
         r = exists[cid]
+        if curated_name and not identity_matches(curated_name, r["title"]):
+            print(f"  ! id mismatch, skipping {cid}: curated {curated_name!r} "
+                  f"vs stored {r['title'][:50]!r} ({r['decision_date']})",
+                  file=sys.stderr)
+            continue
         out.append({"id": cid, "title": r["title"],
                     "date": r["decision_date"].isoformat() if r["decision_date"] else None})
         if len(out) >= n:
@@ -81,8 +130,14 @@ async def cmd_opinion(cid):
         conn = await asyncpg.connect(prod_url())
         text = await conn.fetchval("SELECT content FROM cases WHERE id = $1", cid)
         await conn.close()
-    if not text:
-        print(f"NO OPINION TEXT for {cid}", file=sys.stderr); sys.exit(1)
+    if not text or len(text) < MIN_OPINION:
+        # table affirmance / cert grant / wrong cluster — blacklist so it stops
+        # reappearing in every batch; a human should re-resolve or exclude it
+        with open(SKIPLIST, "a") as f:
+            f.write(f"{cid}\t{len(text or '')} chars, auto-skipped {__import__('datetime').date.today()}\n")
+        print(f"SKIPPED {cid}: opinion text is {len(text or '')} chars — procedural order or "
+              f"missing, added to {os.path.basename(SKIPLIST)}", file=sys.stderr)
+        sys.exit(1)
     # same truncation the paid endpoint uses: first 18k + last 2k
     if len(text) > 20000:
         text = text[:18000] + "\n\n[...middle section omitted...]\n\n" + text[-2000:]
