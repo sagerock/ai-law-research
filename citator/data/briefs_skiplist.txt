@@ -3,3 +3,32 @@
 463012	not People v. Lauria (1967) - famous-name mismatch, 9th Cir table affirmance
 12018	US v. Gibbs: one-line table affirmance, no opinion
 62948	not Citizens United v. FEC - matched to Oak Grove v. FAA (shares 'citizens'+'federal')
+107598	933 chars, auto-skipped 2026-07-06
+2173	1698 chars, auto-skipped 2026-07-06
+115290	504 chars, auto-skipped 2026-07-06
+195460	1042 chars, auto-skipped 2026-07-06
+16848	190 chars, auto-skipped 2026-07-06
+5550484	254 chars, auto-skipped 2026-07-06
+838971	445 chars, auto-skipped 2026-07-06
+1654734	148 chars, auto-skipped 2026-07-06
+481281	200 chars, auto-skipped 2026-07-06
+847343	People v. Marrero: order denying leave to appeal (MCR 6.508(D)), no briefable opinion - recurs at queue-top, manual skip 2026-07-06
+119257	347 chars, auto-skipped 2026-07-06
+3614171	121 chars, auto-skipped 2026-07-06
+3952	2257 chars, auto-skipped 2026-07-06
+94036	2100 chars, auto-skipped 2026-07-06
+16846	196 chars, auto-skipped 2026-07-06
+824958	2342 chars, auto-skipped 2026-07-06
+828624	2485 chars, auto-skipped 2026-07-06
+117247	201 chars, auto-skipped 2026-07-06
+8337	2106 chars, auto-skipped 2026-07-06
+14918	1263 chars, auto-skipped 2026-07-06
+16377	158 chars, auto-skipped 2026-07-06
+12993	192 chars, auto-skipped 2026-07-06
+823784	2355 chars, auto-skipped 2026-07-06
+10290	205 chars, auto-skipped 2026-07-06
+12146	1780 chars, auto-skipped 2026-07-06
+657582	143 chars, auto-skipped 2026-07-06
+5962941	1533 chars, auto-skipped 2026-07-06
+3636031	Lawrence v. Fox: corpus text for this cluster is a 1999 NC workers-comp case, not the 1859 opinion (CL data flaw)
+3302988	Harrington v. Taylor: corpus text is a CA asset-marshaling case, not the 1945 NC case (CL data flaw)
