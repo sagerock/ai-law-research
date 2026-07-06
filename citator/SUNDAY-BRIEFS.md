@@ -59,6 +59,29 @@ full Sunday ≈ $5-equivalent — small against a weekly Max allowance.)
    If the `list` command returns fewer than 20 cases, the queue is running dry —
    say so prominently so Sage can decide the next priority tier.
 
+## Style discipline (read this twice — it's where briefs drift)
+
+Written by the Fable 5 sessions that ran the first batches, for whichever model runs
+the next ones:
+
+- **The template is the whole format.** Start the brief with `**📋 Facts**` — nothing
+  above it. No `# Legal Brief:` title, no `##` markdown headers, no "Here is a brief
+  of...", no case-name line. The page already shows the case name; anything you add
+  above the first section is clutter a student scrolls past.
+- **Quote the opinion, sparingly and exactly.** One or two verbatim phrases per brief
+  ("negligence in the air, so to speak") anchor it to the real text. If you can't find
+  the quote in the provided text, don't use it.
+- **The Significance section is the exam section.** Don't just say the case is
+  important — place it in its doctrinal arc: what earlier rule it displaced, what later
+  cases built on it (name them), and what a student would cite it FOR. This is the
+  section that separates a useful brief from a book report.
+- **Brief the text you were given, not the case you remember.** If the opinion text
+  contradicts your memory of the case, follow the text and note the discrepancy. If the
+  text is clearly a DIFFERENT case than the title suggests, say so in your report and
+  skip it — a wrong brief is worse than no brief.
+- **Don't pad.** 3,500-4,200 chars is the sweet spot. If a section is done in three
+  sentences, stop.
+
 ## Notes
 
 - Landmark cases (Erie, Palsgraf, Celotex...) come first in the queue — give them

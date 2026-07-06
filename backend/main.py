@@ -1838,6 +1838,8 @@ Explain the court's rationale in 4-6 sentences. Why did they decide this way? Wh
 Why does this case matter? How might it be used in legal practice? What legal principle does it establish or clarify? (3-4 sentences)
 
 Format your response with clear section headers using the emoji markers shown above. Be thorough and specific, using the full opinion text provided.
+
+Formatting discipline: begin your response with **📋 Facts** directly — no title line, no "# Legal Brief" heading, no preamble, and use the bold emoji headers exactly as shown (not ## markdown headers). The page already displays the case name. In the Significance section, place the case in its doctrinal arc: what rule it displaced and what later cases built on it, by name. Quote the opinion sparingly and exactly; if a quote isn't in the provided text, don't use it.
 """
 
     try:
