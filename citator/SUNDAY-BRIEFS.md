@@ -6,13 +6,13 @@ moves data. Work sequentially, stop at the batch limit, report at the end.
 
 ## Batch limit
 
-**20 briefs per session.** Hard stop — the cron wrapper runs 5 fresh sessions per
-Sunday (100 total). The per-session cap keeps each session inside the 200k context
+**20 briefs per session.** Hard stop — the cron wrapper runs 15 fresh sessions per
+Sunday (300 total). The per-session cap keeps each session inside the 200k context
 window with zero auto-compactions (compaction burns extra usage); the total cap
 preserves Monday-morning headroom before the weekly reset. If anything errors
 repeatedly, stop early and note it; never push past 20 in one session.
-(Calibration 2026-07-05: a brief costs ~6.5-7k tokens ≈ $0.05 Opus-equivalent, so a
-full Sunday ≈ $5-equivalent — small against a weekly Max allowance.)
+(Calibrated on real /usage 2026-07-06: ~0.02 weekly-limit points per brief, so a full
+300-brief Sunday ≈ 6-10% of the weekly pool — the week ends >50% unused regardless.)
 
 ## Steps
 
