@@ -3,6 +3,7 @@ import { Instrument_Serif, DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
+import Footer from "@/components/Footer";
 import "./globals.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -58,7 +59,10 @@ export default function RootLayout({
         className={`${instrumentSerif.variable} ${dmSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          {children}
+          <div className="min-h-screen flex flex-col">
+            <div className="flex-1">{children}</div>
+            <Footer />
+          </div>
         </Providers>
       </body>
     </html>
