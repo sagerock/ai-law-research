@@ -197,6 +197,16 @@ class SummaryRating(BaseModel):
     rating: int  # 1, -1, or 0 to remove
 
 
+class BriefPreference(BaseModel):
+    preferred_version: str
+
+
+class BriefInteraction(BaseModel):
+    event_type: str
+    version: str
+    passage_id: Optional[str] = None
+
+
 class CommentVote(BaseModel):
     vote_type: int  # 1, -1, or 0 to remove
 
@@ -1419,7 +1429,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
         structured_candidates = []
         try:
             candidate_rows = await conn.fetch(
-                """SELECT provider, model, summary, created_at
+                """SELECT provider, model, summary, content_hash, created_at
                    FROM structured_summary_candidates
                    WHERE case_id = $1
                    ORDER BY CASE provider WHEN 'claude' THEN 1 WHEN 'openai' THEN 2 ELSE 3 END""",
@@ -1433,6 +1443,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
                     "provider": candidate["provider"],
                     "model": candidate["model"],
                     "summary": candidate_summary,
+                    "content_hash": candidate["content_hash"],
                     "created_at": candidate["created_at"].isoformat() if candidate["created_at"] else None,
                 })
         except asyncpg.exceptions.UndefinedTableError:
@@ -1441,8 +1452,33 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
                     "provider": "claude",
                     "model": cached["structured_model"],
                     "summary": structured_summary,
+                    "content_hash": opinion_content_hash,
                     "created_at": cached["structured_created_at"].isoformat() if cached["structured_created_at"] else None,
                 })
+
+        if not opinion_passages and structured_candidates:
+            candidate_hash = next(
+                (candidate.get("content_hash") for candidate in structured_candidates if candidate.get("content_hash")),
+                None,
+            )
+            if candidate_hash:
+                opinion_content_hash = candidate_hash
+                passage_rows = await conn.fetch(
+                    """SELECT passage_id, ordinal, opinion_part, text
+                       FROM opinion_passages
+                       WHERE case_id = $1 AND content_hash = $2
+                       ORDER BY ordinal""",
+                    case_id, candidate_hash,
+                )
+                opinion_passages = [
+                    {
+                        "id": passage["passage_id"],
+                        "ordinal": passage["ordinal"],
+                        "opinion_part": passage["opinion_part"],
+                        "text": passage["text"],
+                    }
+                    for passage in passage_rows
+                ]
 
         return {
             "summary_id": cached["id"],
@@ -1513,6 +1549,69 @@ async def rate_summary(case_id: str, data: SummaryRating, user: dict = Depends(r
     except Exception as e:
         print(f"Error in rate_summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/cases/{case_id}/brief-preference")
+async def get_brief_preference(case_id: str, user: Optional[dict] = Depends(get_current_user)):
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT preferred_version, COUNT(*) AS count
+               FROM brief_preferences WHERE case_id = $1
+               GROUP BY preferred_version""",
+            case_id,
+        )
+        user_preference = None
+        if user:
+            user_preference = await conn.fetchval(
+                "SELECT preferred_version FROM brief_preferences WHERE case_id = $1 AND user_id = $2",
+                case_id, user["id"],
+            )
+    return {
+        "counts": {row["preferred_version"]: row["count"] for row in rows},
+        "user_preference": user_preference,
+    }
+
+
+@app.put("/api/v1/cases/{case_id}/brief-preference")
+async def set_brief_preference(
+    case_id: str,
+    data: BriefPreference,
+    user: dict = Depends(require_auth),
+):
+    allowed = {"claude", "openai", "original", "no_preference"}
+    if data.preferred_version not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid brief preference")
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO brief_preferences
+               (user_id, case_id, preferred_version, created_at, updated_at)
+               VALUES ($1, $2, $3, NOW(), NOW())
+               ON CONFLICT (user_id, case_id) DO UPDATE SET
+                   preferred_version = EXCLUDED.preferred_version,
+                   updated_at = NOW()""",
+            user["id"], case_id, data.preferred_version,
+        )
+    return await get_brief_preference(case_id, user)
+
+
+@app.post("/api/v1/cases/{case_id}/brief-interactions")
+async def record_brief_interaction(
+    case_id: str,
+    data: BriefInteraction,
+    user: dict = Depends(require_auth),
+):
+    if data.event_type not in {"source_click", "tab_select"}:
+        raise HTTPException(status_code=400, detail="Invalid interaction type")
+    if data.version not in {"claude", "openai", "original"}:
+        raise HTTPException(status_code=400, detail="Invalid brief version")
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO brief_interactions
+               (user_id, case_id, event_type, version, passage_id)
+               VALUES ($1, $2, $3, $4, $5)""",
+            user["id"], case_id, data.event_type, data.version, data.passage_id,
+        )
+    return {"status": "recorded"}
 
 
 async def _fetch_opinion_text_from_cl(cluster_id: str) -> Optional[str]:

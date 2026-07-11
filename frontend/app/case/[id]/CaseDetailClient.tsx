@@ -176,6 +176,9 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [thumbsUp, setThumbsUp] = useState(0)
   const [thumbsDown, setThumbsDown] = useState(0)
   const [ratingLoading, setRatingLoading] = useState(false)
+  const [briefPreference, setBriefPreference] = useState<string | null>(null)
+  const [briefPreferenceCounts, setBriefPreferenceCounts] = useState<Record<string, number>>({})
+  const [briefPreferenceLoading, setBriefPreferenceLoading] = useState(false)
 
   // Library feature state
   const [isBookmarked, setIsBookmarked] = useState(false)
@@ -215,6 +218,58 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     })
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
     highlightTimerRef.current = setTimeout(() => setHighlightedPassage(null), 5000)
+    trackBriefInteraction('source_click', activeBrief, passageId)
+  }
+
+  const trackBriefInteraction = async (eventType: 'source_click' | 'tab_select', version: string, passageId?: string) => {
+    if (!session?.access_token || !['claude', 'openai', 'original'].includes(version)) return
+    try {
+      await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-interactions`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ event_type: eventType, version, passage_id: passageId || null }),
+      })
+    } catch {
+      // Analytics must never interrupt reading.
+    }
+  }
+
+  const selectBrief = (version: string) => {
+    setActiveBrief(version)
+    trackBriefInteraction('tab_select', version)
+  }
+
+  const fetchBriefPreference = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-preference`, {
+        headers: getAuthHeaders(),
+      })
+      if (!response.ok) return
+      const data = await response.json()
+      setBriefPreference(data.user_preference || null)
+      setBriefPreferenceCounts(data.counts || {})
+    } catch {
+      // Preference feedback is optional.
+    }
+  }
+
+  const saveBriefPreference = async (preferredVersion: string) => {
+    if (!session?.access_token) return
+    setBriefPreferenceLoading(true)
+    try {
+      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-preference`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ preferred_version: preferredVersion }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setBriefPreference(data.user_preference)
+        setBriefPreferenceCounts(data.counts || {})
+      }
+    } finally {
+      setBriefPreferenceLoading(false)
+    }
   }
 
   const renderSourceButtons = (sources: string[], label: string) => (
@@ -237,6 +292,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   useEffect(() => () => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
   }, [])
+
+  useEffect(() => {
+    fetchBriefPreference()
+  }, [caseId, session?.access_token])
 
   useEffect(() => {
     fetchCachedSummary()
@@ -860,7 +919,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           <button
                             key={candidate.provider}
                             type="button"
-                            onClick={() => setActiveBrief(candidate.provider)}
+                            onClick={() => selectBrief(candidate.provider)}
                             className={`rounded px-2.5 py-1 ${activeBrief === candidate.provider ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
                           >
                             {candidate.provider === 'claude' ? 'Claude' : candidate.provider === 'openai' ? 'OpenAI' : candidate.provider}
@@ -868,7 +927,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         ))}
                         <button
                           type="button"
-                          onClick={() => setActiveBrief('original')}
+                          onClick={() => selectBrief('original')}
                           className={`rounded px-2.5 py-1 ${activeBrief === 'original' ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
                         >
                           Original
@@ -1048,6 +1107,40 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     })})()}
 
                   </div>
+                  )}
+
+                  {structuredCandidates.length > 0 && (
+                    <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                      <p className="text-sm font-medium text-stone-800">Which brief helped you more?</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {[
+                          ...structuredCandidates.map(candidate => ({
+                            value: candidate.provider,
+                            label: candidate.provider === 'claude' ? 'Claude linked' : candidate.provider === 'openai' ? 'OpenAI linked' : candidate.provider,
+                          })),
+                          { value: 'original', label: 'Original' },
+                          { value: 'no_preference', label: 'No preference' },
+                        ].map(option => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            disabled={!session?.access_token || briefPreferenceLoading}
+                            onClick={() => saveBriefPreference(option.value)}
+                            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                              briefPreference === option.value
+                                ? 'border-sage-500 bg-sage-600 text-white'
+                                : 'border-stone-300 bg-white text-stone-600 hover:border-sage-300'
+                            } disabled:cursor-not-allowed disabled:opacity-50`}
+                          >
+                            {option.label}
+                            {(briefPreferenceCounts[option.value] || 0) > 0 && ` · ${briefPreferenceCounts[option.value]}`}
+                          </button>
+                        ))}
+                      </div>
+                      {!session?.access_token && (
+                        <p className="mt-2 text-xs text-stone-500">Sign in to record a preference.</p>
+                      )}
+                    </div>
                   )}
 
                   {/* Rating + Token usage and cost info */}

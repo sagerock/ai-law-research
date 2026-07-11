@@ -22,3 +22,10 @@ def test_labels_majority_and_dissent():
     assert [p["opinion_part"] for p in passages] == [
         "majority", "majority", "majority", "dissent", "dissent", "dissent"
     ]
+
+
+def test_labels_concurrence_generically():
+    _, passages = build_opinion_passages(
+        "[by Smith]\nMajority sentence.\n[Concurrence by Jones]\nSeparate sentence."
+    )
+    assert [p["opinion_part"] for p in passages] == ["majority", "concurrence"]

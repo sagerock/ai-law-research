@@ -9,12 +9,15 @@ these subcommands; the MODEL writes the briefs, this script only moves data.
     sunday_briefs.py list [N]        next N un-briefed cases by priority (JSON)
     sunday_briefs.py opinion <id>    print the opinion text (S3, PG fallback), pre-truncated
     sunday_briefs.py save <id> <file> [model]   upsert brief into ai_summaries + usage log
+    sunday_briefs.py candidate-list [N]         next source-linked pilot cases
+    sunday_briefs.py candidate-opinion <id>     persist + print passage-tagged opinion JSON
+    sunday_briefs.py candidate-save <id> <file> <model> <content-hash>
 
 Priority: (1) the 30 citator landmarks, (2) curated 1L cases (by casebook count),
 (3) nothing yet — expand when tiers 1-2 run dry. Cost is logged as $0 with
 source='subscription' so the transparency dashboard reflects reality.
 """
-import asyncio, asyncpg, boto3, json, os, sys
+import asyncio, asyncpg, boto3, json, os, re, sys
 
 HERE = os.path.dirname(__file__)
 CURATED = "/mnt/d/backups/ai-law-research/data/1L_core_cases.json"
@@ -23,6 +26,26 @@ BUCKET = os.getenv("OPINIONS_BUCKET", "lawstudygroup-opinions")
 # `opinion` auto-appends here, `list` excludes — otherwise they clog every batch
 SKIPLIST = os.path.join(HERE, "data", "briefs_skiplist.txt")
 MIN_OPINION = 2500  # chars; below this it's a procedural order, not an opinion
+BACKEND = os.path.join(os.path.dirname(HERE), "backend")
+sys.path.insert(0, BACKEND)
+from opinion_passages import build_opinion_passages
+
+# Diverse, hand-verified pilot: civil procedure, constitutional law, and jurisdiction;
+# modern/older OCR opinions; majority-only and separate-opinion cases.
+SOURCE_PILOT_IDS = [
+    "111722",  # Celotex
+    "104200",  # International Shoe
+    "103012",  # Erie
+    "84759",   # Marbury
+    "104357",  # Hickman
+    "107082",  # Griswold
+    "105221",  # Brown
+    "107024",  # Hanna
+    "118144",  # Glucksberg
+    "96889",   # Mottley
+]
+SOURCE_PROVIDER = "claude"
+SOURCE_PACKET_CHARS = 80000
 
 
 def skiplist():
@@ -40,6 +63,8 @@ LANDMARKS = [
 
 
 def prod_url():
+    if os.getenv("PROD_DATABASE_URL") or os.getenv("DATABASE_URL"):
+        return os.getenv("PROD_DATABASE_URL") or os.getenv("DATABASE_URL")
     for path in ("/mnt/d/dev/ai-law-research/backend/.env", "/mnt/d/dev/ai-law-research/.env"):
         if os.path.exists(path):
             for line in open(path):
@@ -174,6 +199,218 @@ async def cmd_save(cid, path, model):
     print(f"saved brief for {cid} ({len(summary)} chars, model {model})")
 
 
+def read_full_opinion(cid):
+    try:
+        obj = boto3.client("s3").get_object(Bucket=BUCKET, Key=f"opinions/{cid}.txt")
+        return obj["Body"].read().decode("utf-8"), "s3"
+    except Exception:
+        return None, None
+
+
+async def cmd_candidate_list(n):
+    conn = await asyncpg.connect(prod_url())
+    try:
+        completed = {row["case_id"] for row in await conn.fetch(
+            """SELECT case_id FROM structured_summary_candidates
+               WHERE provider = $1 AND case_id = ANY($2)""",
+            SOURCE_PROVIDER, SOURCE_PILOT_IDS,
+        )}
+        rows = await conn.fetch(
+            """SELECT c.id, c.title, c.decision_date
+               FROM cases c JOIN ai_summaries s ON s.case_id = c.id
+               WHERE c.id = ANY($1)""",
+            SOURCE_PILOT_IDS,
+        )
+        by_id = {row["id"]: row for row in rows}
+        queue = [
+            {
+                "id": cid,
+                "title": by_id[cid]["title"],
+                "date": by_id[cid]["decision_date"].isoformat() if by_id[cid]["decision_date"] else None,
+            }
+            for cid in SOURCE_PILOT_IDS
+            if cid in by_id and cid not in completed and cid not in skiplist()
+        ][:n]
+        print(json.dumps(queue, indent=1))
+    finally:
+        await conn.close()
+
+
+async def cmd_candidate_opinion(cid):
+    if cid not in SOURCE_PILOT_IDS:
+        raise SystemExit(f"{cid} is not in the source-linked pilot allowlist")
+    text, source = await asyncio.to_thread(read_full_opinion, cid)
+    conn = await asyncpg.connect(prod_url())
+    try:
+        if not text:
+            text = await conn.fetchval("SELECT content FROM cases WHERE id = $1", cid)
+            source = "database"
+        if not text or len(text) < MIN_OPINION:
+            raise SystemExit(f"Opinion for {cid} is missing or too short ({len(text or '')} chars)")
+        title = await conn.fetchval("SELECT title FROM cases WHERE id = $1", cid)
+        content_hash, passages = build_opinion_passages(text)
+        async with conn.transaction():
+            await conn.executemany(
+                """INSERT INTO opinion_passages
+                   (case_id, content_hash, passage_id, ordinal, opinion_part, text)
+                   VALUES ($1, $2, $3, $4, $5, $6)
+                   ON CONFLICT (case_id, content_hash, passage_id) DO UPDATE SET
+                       ordinal = EXCLUDED.ordinal,
+                       opinion_part = EXCLUDED.opinion_part,
+                       text = EXCLUDED.text""",
+                [
+                    (cid, content_hash, p["id"], p["ordinal"], p["opinion_part"], p["text"])
+                    for p in passages
+                ],
+            )
+
+        selected, chars = [], 0
+        for passage in passages:
+            if chars + len(passage["text"]) > 65000:
+                break
+            selected.append(passage)
+            chars += len(passage["text"])
+        if len(selected) < len(passages):
+            tail, tail_chars = [], 0
+            for passage in reversed(passages):
+                if tail_chars + len(passage["text"]) > 15000:
+                    break
+                tail.append(passage)
+                tail_chars += len(passage["text"])
+            selected_ids = {p["id"] for p in selected}
+            selected.extend(p for p in reversed(tail) if p["id"] not in selected_ids)
+        packet = {
+            "case_id": cid,
+            "title": title,
+            "content_hash": content_hash,
+            "source": source,
+            "is_partial_packet": len(selected) < len(passages),
+            "total_passages": len(passages),
+            "passages": selected,
+        }
+        print(json.dumps(packet, ensure_ascii=False))
+    finally:
+        await conn.close()
+
+
+def validate_candidate(candidate, passages):
+    errors = []
+    limits = {"facts": 4, "issue": 1, "holding": 2, "rule": 2,
+              "majority_reasoning": 4, "dissent": 4}
+    allowed = set(limits) | {"significance"}
+    if not isinstance(candidate, dict):
+        return ["top level must be an object"]
+    if set(candidate) != allowed:
+        errors.append(f"keys must be exactly {sorted(allowed)}")
+    passage_by_id = {p["passage_id"]: p for p in passages}
+    for section, maximum in limits.items():
+        claims = candidate.get(section)
+        minimum = 0 if section == "dissent" else 1
+        if not isinstance(claims, list) or not minimum <= len(claims) <= maximum:
+            errors.append(f"{section} must contain {minimum}-{maximum} claims")
+            continue
+        for index, claim in enumerate(claims):
+            if not isinstance(claim, dict) or set(claim) != {"text", "sources"}:
+                errors.append(f"{section}[{index}] must contain only text and sources")
+                continue
+            if not isinstance(claim["text"], str) or not claim["text"].strip():
+                errors.append(f"{section}[{index}] has invalid text")
+            sources = claim["sources"]
+            if not isinstance(sources, list) or not sources or len(sources) != len(set(sources)):
+                errors.append(f"{section}[{index}] has missing or duplicate sources")
+                continue
+            unknown = [source for source in sources if source not in passage_by_id]
+            if unknown:
+                errors.append(f"{section}[{index}] has unknown sources: {unknown}")
+                continue
+            parts = {passage_by_id[source]["opinion_part"] for source in sources}
+            if section == "majority_reasoning" and "dissent" in parts:
+                errors.append(f"{section}[{index}] cites dissent")
+            if section == "dissent" and any(part != "dissent" for part in parts):
+                errors.append(f"{section}[{index}] cites non-dissent passage")
+    significance = candidate.get("significance")
+    if not isinstance(significance, str) or not significance.strip() or re.search(r"op-[0-9a-f]", significance):
+        errors.append("significance must be unsourced editorial text")
+    words = len(re.findall(r"\b\w+\b", " ".join(
+        [claim.get("text", "") for section in limits for claim in candidate.get(section, []) if isinstance(claim, dict)]
+        + ([significance] if isinstance(significance, str) else [])
+    )))
+    if not 400 <= words <= 800:
+        errors.append(f"candidate must contain 400-800 words, got {words}")
+    return errors
+
+
+async def record_candidate_failure(conn, cid, content_hash, stage, error):
+    await conn.execute(
+        """INSERT INTO structured_summary_failures
+           (case_id, provider, content_hash, stage, error)
+           VALUES ($1, $2, $3, $4, $5)""",
+        cid, SOURCE_PROVIDER, content_hash, stage, error[:4000],
+    )
+
+
+async def cmd_candidate_save(cid, path, model, content_hash):
+    conn = await asyncpg.connect(prod_url())
+    try:
+        try:
+            candidate = json.load(open(path))
+        except Exception as error:
+            await record_candidate_failure(conn, cid, content_hash, "parse", str(error))
+            raise SystemExit(f"REFUSING candidate: invalid JSON: {error}")
+        passages = await conn.fetch(
+            """SELECT passage_id, opinion_part, text FROM opinion_passages
+               WHERE case_id = $1 AND content_hash = $2""",
+            cid, content_hash,
+        )
+        if not passages:
+            await record_candidate_failure(conn, cid, content_hash, "stale_source", "No passages for content hash")
+            raise SystemExit("REFUSING candidate: content hash is stale or unknown")
+        errors = validate_candidate(candidate, passages)
+        if errors:
+            message = "; ".join(errors)
+            await record_candidate_failure(conn, cid, content_hash, "validation", message)
+            raise SystemExit(f"REFUSING candidate: {message}")
+        output_chars = len(json.dumps(candidate))
+        input_chars = sum(len(row["text"]) for row in passages)
+        metadata = {
+            "source": "subscription",
+            "schema_version": "v1",
+            "input_tokens_estimate": input_chars // 4,
+            "output_tokens_estimate": output_chars // 4,
+        }
+        async with conn.transaction():
+            await conn.execute(
+                """INSERT INTO structured_summary_candidates
+                   (case_id, provider, model, summary, content_hash, generation_metadata,
+                    validation_version, created_at)
+                   VALUES ($1, $2, $3, $4::jsonb, $5, $6::jsonb, 'v1', NOW())
+                   ON CONFLICT (case_id, provider) DO UPDATE SET
+                       model = EXCLUDED.model,
+                       summary = EXCLUDED.summary,
+                       content_hash = EXCLUDED.content_hash,
+                       generation_metadata = EXCLUDED.generation_metadata,
+                       validation_version = EXCLUDED.validation_version,
+                       created_at = NOW()""",
+                cid, SOURCE_PROVIDER, model, json.dumps(candidate), content_hash, json.dumps(metadata),
+            )
+            await conn.execute(
+                """INSERT INTO api_usage_log
+                   (usage_date, usage_type, call_count, input_tokens, output_tokens,
+                    estimated_cost, source, updated_at)
+                   VALUES (CURRENT_DATE, 'structured_summary', 1, $1, $2, 0,
+                           'subscription', CURRENT_TIMESTAMP)
+                   ON CONFLICT (usage_date, usage_type) DO UPDATE SET
+                       call_count = api_usage_log.call_count + 1,
+                       input_tokens = api_usage_log.input_tokens + EXCLUDED.input_tokens,
+                       output_tokens = api_usage_log.output_tokens + EXCLUDED.output_tokens,
+                       updated_at = CURRENT_TIMESTAMP""",
+                input_chars // 4, output_chars // 4,
+            )
+        print(f"saved structured candidate for {cid} ({model}, {content_hash[:12]})")
+    finally:
+        await conn.close()
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__); sys.exit(1)
@@ -185,6 +422,12 @@ def main():
     elif cmd == "save":
         model = sys.argv[4] if len(sys.argv) > 4 else "claude-sunday-batch"
         asyncio.run(cmd_save(sys.argv[2], sys.argv[3], model))
+    elif cmd == "candidate-list":
+        asyncio.run(cmd_candidate_list(int(sys.argv[2]) if len(sys.argv) > 2 else 10))
+    elif cmd == "candidate-opinion" and len(sys.argv) == 3:
+        asyncio.run(cmd_candidate_opinion(sys.argv[2]))
+    elif cmd == "candidate-save" and len(sys.argv) == 6:
+        asyncio.run(cmd_candidate_save(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
     else:
         print(__doc__); sys.exit(1)
 

@@ -24,17 +24,15 @@ def split_sentences(text: str) -> list[str]:
 def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[str, list[dict]]:
     normalized = normalize_opinion_text(text)
     content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-    labeled = text.replace("[by Cardozo]", "\nMAJORITY\n").replace(
-        "[Dissent by Andrews]", "\nDISSENT\n"
-    )
     opinion_part = "opinion"
     sentences: list[tuple[str, str]] = []
-    for block in labeled.splitlines():
+    for block in text.splitlines():
         block = block.strip()
         if not block:
             continue
-        if block in {"MAJORITY", "DISSENT"}:
-            opinion_part = block.lower()
+        marker = re.fullmatch(r"\[(?:(Dissent|Concurrence)\s+by|by)\s+[^]]+\]", block, re.I)
+        if marker:
+            opinion_part = (marker.group(1) or "majority").lower()
             continue
         sentences.extend((opinion_part, sentence) for sentence in split_sentences(block))
 
