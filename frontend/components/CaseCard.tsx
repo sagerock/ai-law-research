@@ -3,6 +3,7 @@
 import { Case } from '@/types'
 import { Calendar, FileText, TrendingUp, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
+import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 
 interface CaseCardProps {
   case: Case
@@ -84,9 +85,9 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
           <p
             className="text-sm text-stone-700 line-clamp-3 mb-3"
             dangerouslySetInnerHTML={{
-              __html: (caseItem.snippet || caseItem.content || '').replace(
-                /<em>/g, '<em class="font-semibold text-sage-700 not-italic bg-sage-50 px-1 rounded">'
-              )
+              __html: sanitizeLegalHtml(caseItem.snippet || caseItem.content || '', {
+                highlightSearchTerms: true,
+              }),
             }}
           />
         )}

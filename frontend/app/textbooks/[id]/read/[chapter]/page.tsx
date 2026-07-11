@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import Header from '@/components/Header'
+import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 import '../reader.css'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -46,7 +47,7 @@ const GROUP_LABEL = new Set(['rule', 'note', 'problem'])
 
 function renderMember(b: Block, i: number) {
   const id = b.anchor || undefined
-  const dangerous = { dangerouslySetInnerHTML: { __html: b.html } }
+  const dangerous = { dangerouslySetInnerHTML: { __html: sanitizeLegalHtml(b.html) } }
   switch (b.type) {
     case 'rule': case 'note': case 'problem':
       return <p key={i} id={id} className="label" {...dangerous} />
@@ -78,7 +79,7 @@ function renderBlocks(blocks: Block[]) {
       continue
     }
     const id = b.anchor || undefined
-    const dangerous = { dangerouslySetInnerHTML: { __html: b.html } }
+    const dangerous = { dangerouslySetInnerHTML: { __html: sanitizeLegalHtml(b.html) } }
     switch (b.type) {
       case 'section': out.push(<h2 key={i} id={id} className="cb-section" {...dangerous} />); break
       case 'subsection': out.push(<h3 key={i} id={id} className="cb-subsection" {...dangerous} />); break

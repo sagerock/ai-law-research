@@ -5,6 +5,7 @@ import { Search, BookOpen, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import Header from '@/components/Header'
+import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 
 interface StatuteItem {
   id: number
@@ -142,7 +143,9 @@ export default function StatutesPage() {
                       </h3>
                       <p
                         className="text-sm text-stone-600 mt-1 line-clamp-3"
-                        dangerouslySetInnerHTML={{ __html: r.snippet }}
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeLegalHtml(r.snippet, { highlightSearchTerms: true }),
+                        }}
                       />
                     </Link>
                   ))}

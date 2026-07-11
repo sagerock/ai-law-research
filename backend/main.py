@@ -21,6 +21,7 @@ from jose import jwt, JWTError
 from uuid import UUID
 from citation_utils import parse_citation_slug, slug_to_reporter_cite, case_title_to_slug, build_canonical_slug
 from cryptography.fernet import Fernet, InvalidToken
+from webhook_security import require_kofi_verification_token
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
@@ -2189,10 +2190,14 @@ async def kofi_webhook(data: str = Form(...)):
     try:
         # Parse the JSON data from the form field
         payload = json.loads(data)
+        require_kofi_verification_token(payload.get("verification_token"))
 
         # Extract donation info
         transaction_id = payload.get("kofi_transaction_id")
         amount = float(payload.get("amount", 0))
+        currency = payload.get("currency", "USD")
+        if not transaction_id or amount <= 0 or amount > 100000:
+            raise HTTPException(status_code=400, detail="Invalid donation payload")
         from_name = payload.get("from_name", "Anonymous")
         message = payload.get("message")
         donation_type = payload.get("type", "Donation")
@@ -2202,30 +2207,42 @@ async def kofi_webhook(data: str = Form(...)):
 
         # Store in database
         async with db_pool.acquire() as conn:
-            await conn.execute("""
+            async with conn.transaction():
+                inserted = await conn.fetchval("""
                 INSERT INTO donations (
-                    kofi_transaction_id, from_name, message, amount,
+                    kofi_transaction_id, from_name, message, amount, currency,
                     donation_type, is_public, is_subscription, tier_name, raw_data
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 ON CONFLICT (kofi_transaction_id) DO NOTHING
+                RETURNING id
             """,
-                transaction_id, from_name, message, amount,
+                transaction_id, from_name, message, amount, currency,
                 donation_type, is_public, is_subscription, tier_name,
                 json.dumps(payload)
-            )
+                )
+                if inserted is not None:
+                    await conn.execute(
+                        """INSERT INTO pool_ledger
+                           (amount, entry_type, description, reference_id, created_by)
+                           VALUES ($1, 'donation', $2, $3, 'kofi')""",
+                        abs(amount), f"Ko-fi from {from_name}", transaction_id,
+                    )
 
-        # Credit the community pool
-        await credit_pool(amount, "donation", f"Ko-fi from {from_name}", transaction_id, "kofi")
-
-        print(f"☕ Ko-fi donation received: ${amount} from {from_name}")
+        status = "success" if inserted is not None else "duplicate"
+        if inserted is not None:
+            print(f"Ko-fi donation received: ${amount} from {from_name}")
 
         # Return 200 as Ko-fi expects
-        return {"status": "success"}
+        return {"status": status}
 
+    except HTTPException:
+        raise
+    except (json.JSONDecodeError, TypeError, ValueError) as e:
+        print(f"Ko-fi webhook payload error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid donation payload")
     except Exception as e:
         print(f"❌ Ko-fi webhook error: {e}")
-        # Still return 200 to prevent retries for malformed data
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail="Webhook processing failed")
 
 
 async def extract_citations(text: str):

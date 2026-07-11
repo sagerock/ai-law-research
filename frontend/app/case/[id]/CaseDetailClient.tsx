@@ -11,6 +11,7 @@ import Header from '@/components/Header'
 import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
 import CaseAskAI from '@/components/CaseAskAI'
+import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 
 export interface CaseDetail {
   id: string
@@ -1048,7 +1049,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     {localCaseData.content.includes('<') && localCaseData.content.includes('>') ? (
                       <div
                         className="text-sm leading-relaxed text-stone-700"
-                        dangerouslySetInnerHTML={{ __html: localCaseData.content }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeLegalHtml(localCaseData.content) }}
                       />
                     ) : (
                       <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-stone-700">

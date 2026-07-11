@@ -5,7 +5,7 @@ This module receives and processes webhook events from CourtListener
 to keep the database updated with new cases in real-time.
 """
 
-from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Request, BackgroundTasks, Header
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import asyncpg
@@ -13,11 +13,9 @@ import httpx
 import json
 import os
 from datetime import date
+from webhook_security import require_webhook_secret
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
-
-# IP addresses that CourtListener webhooks come from
-COURTLISTENER_IPS = ["34.210.230.218", "54.189.59.91"]
 
 class SearchAlertPayload(BaseModel):
     alert: Dict[str, Any]
@@ -37,7 +35,8 @@ class SearchAlertWebhook(BaseModel):
 async def handle_search_alert(
     request: Request,
     webhook: SearchAlertWebhook,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    webhook_secret: Optional[str] = Header(None, alias="X-Webhook-Secret"),
 ):
     """
     Handle Search Alert webhook events from CourtListener.
@@ -46,10 +45,7 @@ async def handle_search_alert(
     We automatically import them into our database.
     """
 
-    # Verify the request came from CourtListener
-    client_ip = request.client.host
-    if client_ip not in COURTLISTENER_IPS:
-        print(f"Warning: Webhook from unknown IP: {client_ip}")
+    require_webhook_secret(webhook_secret)
 
     # Get idempotency key to prevent duplicate processing
     idempotency_key = request.headers.get("Idempotency-Key")
@@ -209,9 +205,11 @@ async def process_new_cases(results: List[Dict], idempotency_key: str):
 @router.post("/courtlistener/docket-alert")
 async def handle_docket_alert(
     request: Request,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    webhook_secret: Optional[str] = Header(None, alias="X-Webhook-Secret"),
 ):
     """Handle Docket Alert webhook events."""
+    require_webhook_secret(webhook_secret)
     payload = await request.json()
     idempotency_key = request.headers.get("Idempotency-Key")
     print(f"Received Docket Alert webhook")

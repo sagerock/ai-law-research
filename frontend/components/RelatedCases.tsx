@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FileText, Calendar, TrendingUp } from 'lucide-react'
 import { API_URL } from '@/lib/api'
+import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 
 interface RelatedCase {
   id: string
@@ -62,10 +63,7 @@ export default function RelatedCases({ docId, slug }: { docId: string; slug: str
                 <p
                   className="text-xs text-stone-600 mt-2 line-clamp-2"
                   dangerouslySetInnerHTML={{
-                    __html: c.snippet.replace(
-                      /<em>/g,
-                      '<em class="font-semibold text-sage-700 not-italic bg-sage-50 px-0.5 rounded">'
-                    )
+                    __html: sanitizeLegalHtml(c.snippet, { highlightSearchTerms: true }),
                   }}
                 />
               )}

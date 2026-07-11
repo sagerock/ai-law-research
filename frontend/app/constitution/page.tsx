@@ -5,6 +5,7 @@ import { Search, BookOpen, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import Header from '@/components/Header'
+import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 
 interface ConstitutionItem {
   id: number
@@ -134,7 +135,9 @@ export default function ConstitutionPage() {
                       <h3 className="font-semibold text-stone-900">{r.title}</h3>
                       <p
                         className="text-sm text-stone-600 mt-1 line-clamp-3"
-                        dangerouslySetInnerHTML={{ __html: r.snippet }}
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeLegalHtml(r.snippet, { highlightSearchTerms: true }),
+                        }}
                       />
                     </Link>
                   ))}

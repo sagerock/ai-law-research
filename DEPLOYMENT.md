@@ -228,3 +228,11 @@ railway rollback
 # Check previous deployments
 railway deployments
 ```
+# Webhook Security
+
+Configure these backend environment variables before enabling webhook delivery:
+
+- `KOFI_VERIFICATION_TOKEN`: The verification token shown in Ko-fi's webhook settings. Ko-fi includes it in each webhook payload.
+- `COURTLISTENER_WEBHOOK_SECRET`: A random secret sent in the `X-Webhook-Secret` header by the CourtListener webhook sender. `WEBHOOK_SECRET` remains a fallback for existing deployments.
+
+Both webhook integrations fail closed when their secret is missing. Apply `migrations/029_webhook_idempotency.sql` before re-enabling Ko-fi delivery.
