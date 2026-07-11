@@ -61,6 +61,12 @@ interface CaseSummary {
   }>
   structured_summary?: StructuredSummary | null
   structured_model?: string | null
+  structured_candidates?: Array<{
+    provider: string
+    model: string
+    summary: StructuredSummary
+    created_at?: string | null
+  }>
 }
 
 interface StructuredClaim {
@@ -148,8 +154,17 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
   const [highlightedPassage, setHighlightedPassage] = useState<string | null>(null)
-  const [showStructuredBrief, setShowStructuredBrief] = useState(true)
+  const [activeBrief, setActiveBrief] = useState('claude')
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const structuredCandidates = caseSummary?.structured_candidates?.length
+    ? caseSummary.structured_candidates
+    : caseSummary?.structured_summary
+      ? [{ provider: 'claude', model: caseSummary.structured_model || 'Claude', summary: caseSummary.structured_summary }]
+      : []
+  const activeStructuredCandidate = activeBrief === 'original'
+    ? null
+    : structuredCandidates.find(candidate => candidate.provider === activeBrief) || structuredCandidates[0] || null
 
   // Collection back-navigation context
   const collectionId = searchParams.get('collection')
@@ -834,31 +849,34 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
               {caseSummary ? (
                 <div className="space-y-4">
-                  {caseSummary.structured_summary && (
+                  {structuredCandidates.length > 0 && (
                     <div className="flex items-center justify-between rounded-lg border border-sage-200 bg-sage-50 px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-sage-900">Source-linked brief preview</p>
                         <p className="text-xs text-sage-700">Every numbered source jumps to supporting opinion language.</p>
                       </div>
                       <div className="inline-flex rounded-md border border-sage-200 bg-white p-0.5 text-xs">
+                        {structuredCandidates.map(candidate => (
+                          <button
+                            key={candidate.provider}
+                            type="button"
+                            onClick={() => setActiveBrief(candidate.provider)}
+                            className={`rounded px-2.5 py-1 ${activeBrief === candidate.provider ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
+                          >
+                            {candidate.provider === 'claude' ? 'Claude' : candidate.provider === 'openai' ? 'OpenAI' : candidate.provider}
+                          </button>
+                        ))}
                         <button
                           type="button"
-                          onClick={() => setShowStructuredBrief(true)}
-                          className={`rounded px-2.5 py-1 ${showStructuredBrief ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
-                        >
-                          Source-linked
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowStructuredBrief(false)}
-                          className={`rounded px-2.5 py-1 ${!showStructuredBrief ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
+                          onClick={() => setActiveBrief('original')}
+                          className={`rounded px-2.5 py-1 ${activeBrief === 'original' ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
                         >
                           Original
                         </button>
                       </div>
                     </div>
                   )}
-                  {showStructuredBrief && caseSummary.structured_summary ? (
+                  {activeStructuredCandidate ? (
                     <div className="space-y-5">
                       {([
                         ['facts', '📋 Facts'],
@@ -871,7 +889,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         <section key={sectionKey}>
                           <h4 className="mb-2 text-lg font-bold text-stone-900">{label}</h4>
                           <div className="space-y-2">
-                            {caseSummary.structured_summary![sectionKey].map((claim, claimIndex) => (
+                            {activeStructuredCandidate.summary[sectionKey].map((claim, claimIndex) => (
                               <p key={claimIndex} className="leading-relaxed text-stone-700">
                                 {claim.text}
                                 {renderSourceButtons(claim.sources, label)}
@@ -882,7 +900,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       ))}
                       <section>
                         <h4 className="mb-2 text-lg font-bold text-stone-900">🎯 Significance</h4>
-                        <p className="leading-relaxed text-stone-700">{caseSummary.structured_summary.significance}</p>
+                        <p className="leading-relaxed text-stone-700">{activeStructuredCandidate.summary.significance}</p>
                         <p className="mt-1 text-xs italic text-stone-500">Editorial synthesis; not presented as language from the opinion.</p>
                       </section>
                     </div>
@@ -1069,7 +1087,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     {/* Model info + cost */}
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-4 text-stone-600">
-                        <span>🤖 Generated by {(showStructuredBrief && caseSummary.structured_summary ? caseSummary.structured_model : caseSummary.model) || 'Claude'}</span>
+                        <span>🤖 Generated by {(activeStructuredCandidate ? activeStructuredCandidate.model : caseSummary.model) || 'Claude'}</span>
                         {caseSummary.tokens_used && (
                           <span className="text-stone-500">
                             {caseSummary.tokens_used.total.toLocaleString()} tokens

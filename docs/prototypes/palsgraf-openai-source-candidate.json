@@ -1,0 +1,160 @@
+{
+  "case_id": "3602780",
+  "model": "gpt-5.6-sol",
+  "usage": {
+    "input_tokens": 16693,
+    "input_tokens_details": {
+      "cache_write_tokens": 16690,
+      "cached_tokens": 0
+    },
+    "output_tokens": 2604,
+    "output_tokens_details": {
+      "reasoning_tokens": 1275
+    },
+    "total_tokens": 19297
+  },
+  "candidate": {
+    "facts": [
+      {
+        "text": "Palsgraf, having purchased a ticket for Rockaway Beach, was standing on the railroad\u2019s station platform.",
+        "sources": [
+          "op-6596ad651d311402"
+        ]
+      },
+      {
+        "text": "As a moving train departed, two guards helped an unsteady passenger board; during their assistance, his small newspaper-wrapped package fell onto the rails.",
+        "sources": [
+          "op-8eb7da682587d4bf",
+          "op-b27be9bd3a9e6b0e",
+          "op-b95bb07625e958b8"
+        ]
+      },
+      {
+        "text": "Although nothing about the package disclosed that it contained fireworks, the package exploded upon falling.",
+        "sources": [
+          "op-9d8b88708063a67e",
+          "op-98361a3d79259ef7",
+          "op-10146485be65875a"
+        ]
+      },
+      {
+        "text": "The explosion\u2019s shock toppled scales many feet away at the platform\u2019s other end; the scales struck and injured Palsgraf.",
+        "sources": [
+          "op-c922ca724f9df297",
+          "op-7cfe38a10dafc7d3"
+        ]
+      }
+    ],
+    "issue": [
+      {
+        "text": "When railroad employees negligently dislodge an apparently harmless package, may a distant passenger recover for resulting injuries even though she was outside the reasonably apparent danger zone, or must liability turn solely on whether her injuries were proximately caused by the negligent act?",
+        "sources": [
+          "op-38f486ab5e490d21",
+          "op-ef86a31992ba2fc3",
+          "op-b87723edadcd4546"
+        ]
+      }
+    ],
+    "holding": [
+      {
+        "text": "No. Relative to Palsgraf, the guards\u2019 conduct was not negligence because nothing indicated that the package posed danger to someone so far away.",
+        "sources": [
+          "op-71c6518f287468f4",
+          "op-3b73ca113644291a",
+          "op-2199b17aa9742d6b"
+        ]
+      },
+      {
+        "text": "The court reversed the judgments below and dismissed the complaint, with costs.",
+        "sources": [
+          "op-0f69e3be8ba1bb6a"
+        ]
+      }
+    ],
+    "rule": [
+      {
+        "text": "Negligence is relational: the reasonably perceptible risk defines the duty, which extends only to persons within the range of reasonable apprehension. Negligence is actionable only when it invades the plaintiff\u2019s own legally protected interest.",
+        "sources": [
+          "op-f593c38989454ee4",
+          "op-97c823d54e7c790c"
+        ]
+      },
+      {
+        "text": "Duty and liability must be established before the scope of recoverable consequences is considered. Without a tort against the plaintiff, proximate-cause analysis is unnecessary.",
+        "sources": [
+          "op-1dce35021b6137e4",
+          "op-b76df6a889a1b024",
+          "op-2c6afb6ad15782df"
+        ]
+      }
+    ],
+    "majority_reasoning": [
+      {
+        "text": "Cardozo reasoned that a negligence plaintiff sues for breach of a duty owed personally to her, not derivatively to vindicate a right belonging to someone else.",
+        "sources": [
+          "op-c9d10898f28cc737",
+          "op-577d060547d1f173"
+        ]
+      },
+      {
+        "text": "Even the most cautious observer could not have anticipated that the newspaper-wrapped parcel would cause wreckage throughout the station. The conduct therefore presented no apparent, unreasonable probability of invading Palsgraf\u2019s bodily security.",
+        "sources": [
+          "op-c56c4ebdef5679c5",
+          "op-3986b1721bfd484d"
+        ]
+      },
+      {
+        "text": "Any possible wrong to the package holder concerned his property, while Palsgraf asserted bodily injury. A wrong threatening one interest could not generate, by derivation, a claim for invasion of another person\u2019s distinct interest.",
+        "sources": [
+          "op-23affdd195e886ae",
+          "op-3381ab14462ba2f7",
+          "op-6f986b64e206651f"
+        ]
+      },
+      {
+        "text": "Because no duty ran to Palsgraf, there was no tort against her. Whether the explosion and falling scales were proximate consequences therefore could not create liability.",
+        "sources": [
+          "op-1dce35021b6137e4",
+          "op-2c6afb6ad15782df"
+        ]
+      }
+    ],
+    "dissent": [
+      {
+        "text": "Andrews rejected duty limited to foreseeable plaintiffs. Everyone owes society a duty to avoid acts unreasonably threatening others, and anyone actually injured may complain even if outside the ordinarily anticipated danger zone.",
+        "sources": [
+          "op-ed557fe218e51a83",
+          "op-cbfd9dc6400a81df",
+          "op-396b155503e3b9e5"
+        ]
+      },
+      {
+        "text": "Once an unreasonable act occurs, Andrews would treat liability as a proximate-cause question. Proximate cause is a practical limitation grounded in convenience, public policy, and a rough sense of justice rather than pure logic.",
+        "sources": [
+          "op-c95e5f5e9b426fca",
+          "op-b87723edadcd4546",
+          "op-3688dc9d9f2a7f6b"
+        ]
+      },
+      {
+        "text": "Relevant considerations include whether the negligence was a substantial factor, whether cause and injury formed a natural and continuous sequence, whether intervening causes broke the connection, and whether the result was too remote.",
+        "sources": [
+          "op-febd36dbf08af185",
+          "op-b6b50e6fd17f0fd6",
+          "op-728202aebb1002d6",
+          "op-31b27abcd29f9783"
+        ]
+      },
+      {
+        "text": "Here, the explosion directly and substantially produced Palsgraf\u2019s injury, with little spatial and no temporal remoteness. Because an explosion could foreseeably injure someone at her distance, Andrews would not reject proximate cause as a matter of law and would affirm.",
+        "sources": [
+          "op-7d21481527757a47",
+          "op-5a913a332cb03dfd",
+          "op-5386c748c03f7fa9",
+          "op-3371fabd778c29a6"
+        ]
+      }
+    ],
+    "significance": "Palsgraf is foundational for negligence doctrine\u2019s treatment of foreseeability. Cardozo places foreseeability within duty, limiting protection to plaintiffs within the apparent zone of risk; Andrews places it principally within proximate cause, after recognizing a broader duty to society. The opinions frame an enduring debate over whether unforeseeable-plaintiff cases should be resolved categorically by judges as duty questions or through flexible, policy-sensitive causal analysis."
+  }
+}

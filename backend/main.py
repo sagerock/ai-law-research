@@ -1416,6 +1416,34 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             except json.JSONDecodeError:
                 structured_summary = None
 
+        structured_candidates = []
+        try:
+            candidate_rows = await conn.fetch(
+                """SELECT provider, model, summary, created_at
+                   FROM structured_summary_candidates
+                   WHERE case_id = $1
+                   ORDER BY CASE provider WHEN 'claude' THEN 1 WHEN 'openai' THEN 2 ELSE 3 END""",
+                case_id,
+            )
+            for candidate in candidate_rows:
+                candidate_summary = candidate["summary"]
+                if isinstance(candidate_summary, str):
+                    candidate_summary = json.loads(candidate_summary)
+                structured_candidates.append({
+                    "provider": candidate["provider"],
+                    "model": candidate["model"],
+                    "summary": candidate_summary,
+                    "created_at": candidate["created_at"].isoformat() if candidate["created_at"] else None,
+                })
+        except asyncpg.exceptions.UndefinedTableError:
+            if structured_summary:
+                structured_candidates.append({
+                    "provider": "claude",
+                    "model": cached["structured_model"],
+                    "summary": structured_summary,
+                    "created_at": cached["structured_created_at"].isoformat() if cached["structured_created_at"] else None,
+                })
+
         return {
             "summary_id": cached["id"],
             "summary": cached["summary"],
@@ -1437,6 +1465,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             "structured_summary": structured_summary,
             "structured_model": cached["structured_model"],
             "structured_created_at": cached["structured_created_at"].isoformat() if cached["structured_created_at"] else None,
+            "structured_candidates": structured_candidates,
         }
 
 
