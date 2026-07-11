@@ -215,6 +215,11 @@ async def cmd_candidate_list(n):
                WHERE provider = $1 AND case_id = ANY($2)""",
             SOURCE_PROVIDER, SOURCE_PILOT_IDS,
         )}
+        held = {row["case_id"] for row in await conn.fetch(
+            """SELECT DISTINCT case_id FROM structured_summary_failures
+               WHERE provider = $1 AND stage = 'semantic_review' AND case_id = ANY($2)""",
+            SOURCE_PROVIDER, SOURCE_PILOT_IDS,
+        )}
         rows = await conn.fetch(
             """SELECT c.id, c.title, c.decision_date
                FROM cases c JOIN ai_summaries s ON s.case_id = c.id
@@ -229,7 +234,7 @@ async def cmd_candidate_list(n):
                 "date": by_id[cid]["decision_date"].isoformat() if by_id[cid]["decision_date"] else None,
             }
             for cid in SOURCE_PILOT_IDS
-            if cid in by_id and cid not in completed and cid not in skiplist()
+            if cid in by_id and cid not in completed and cid not in held and cid not in skiplist()
         ][:n]
         print(json.dumps(queue, indent=1))
     finally:
@@ -382,14 +387,17 @@ async def cmd_candidate_save(cid, path, model, content_hash):
             await conn.execute(
                 """INSERT INTO structured_summary_candidates
                    (case_id, provider, model, summary, content_hash, generation_metadata,
-                    validation_version, created_at)
-                   VALUES ($1, $2, $3, $4::jsonb, $5, $6::jsonb, 'v1', NOW())
+                    validation_version, review_status, created_at)
+                   VALUES ($1, $2, $3, $4::jsonb, $5, $6::jsonb, 'v1', 'pending', NOW())
                    ON CONFLICT (case_id, provider) DO UPDATE SET
                        model = EXCLUDED.model,
                        summary = EXCLUDED.summary,
                        content_hash = EXCLUDED.content_hash,
                        generation_metadata = EXCLUDED.generation_metadata,
                        validation_version = EXCLUDED.validation_version,
+                       review_status = 'pending',
+                       reviewed_at = NULL,
+                       review_notes = NULL,
                        created_at = NOW()""",
                 cid, SOURCE_PROVIDER, model, json.dumps(candidate), content_hash, json.dumps(metadata),
             )
