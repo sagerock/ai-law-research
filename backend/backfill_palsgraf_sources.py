@@ -16,7 +16,7 @@ CASE_ID = "3602780"
 QUERIES = {
     "facts": [
         "guards helped the passenger board and dislodged the package onto the rails",
-        "fireworks exploded and scales many feet away fell and injured the plaintiff",
+        "fireworks when they fell exploded shock threw down scales at the other end of the platform many feet away",
     ],
     "issue": [
         "risk reasonably perceived defines duty to persons within the range of apprehension",
@@ -29,7 +29,7 @@ QUERIES = {
         "risk reasonably perceived defines the duty to be obeyed and imports relation",
         "law of causation remote or proximate is foreign when no duty is owed",
         "due care is a duty to protect society not A B or C alone",
-        "natural and continuous sequence direct connection made explosion proximate cause",
+        "explosion direct cause substantial factor natural continuous sequence direct connection concussion smashed weighing machine",
     ],
 }
 WORD_RE = re.compile(r"[a-z][a-z'-]{2,}")
