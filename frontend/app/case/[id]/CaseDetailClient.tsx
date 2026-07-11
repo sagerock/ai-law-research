@@ -59,6 +59,23 @@ interface CaseSummary {
     opinion_part: string
     text: string
   }>
+  structured_summary?: StructuredSummary | null
+  structured_model?: string | null
+}
+
+interface StructuredClaim {
+  text: string
+  sources: string[]
+}
+
+interface StructuredSummary {
+  facts: StructuredClaim[]
+  issue: StructuredClaim[]
+  holding: StructuredClaim[]
+  rule: StructuredClaim[]
+  majority_reasoning: StructuredClaim[]
+  dissent: StructuredClaim[]
+  significance: string
 }
 
 interface CaseReference {
@@ -131,6 +148,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
   const [highlightedPassage, setHighlightedPassage] = useState<string | null>(null)
+  const [showStructuredBrief, setShowStructuredBrief] = useState(true)
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Collection back-navigation context
@@ -183,6 +201,23 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
     highlightTimerRef.current = setTimeout(() => setHighlightedPassage(null), 5000)
   }
+
+  const renderSourceButtons = (sources: string[], label: string) => (
+    <span className="ml-2 inline-flex items-center gap-1 align-middle">
+      {sources.map((passageId, sourceIndex) => (
+        <button
+          key={passageId}
+          type="button"
+          onClick={() => showOpinionPassage(passageId)}
+          className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-sage-200 bg-sage-50 px-1 text-[10px] font-semibold text-sage-700 hover:border-sage-400 hover:bg-sage-100 focus:outline-none focus:ring-2 focus:ring-sage-500"
+          aria-label={`View opinion source ${sourceIndex + 1} for ${label}`}
+          title="Jump to the supporting sentence in the opinion"
+        >
+          {sourceIndex + 1}
+        </button>
+      ))}
+    </span>
+  )
 
   useEffect(() => () => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
@@ -799,6 +834,59 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
               {caseSummary ? (
                 <div className="space-y-4">
+                  {caseSummary.structured_summary && (
+                    <div className="flex items-center justify-between rounded-lg border border-sage-200 bg-sage-50 px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium text-sage-900">Source-linked brief preview</p>
+                        <p className="text-xs text-sage-700">Every numbered source jumps to supporting opinion language.</p>
+                      </div>
+                      <div className="inline-flex rounded-md border border-sage-200 bg-white p-0.5 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setShowStructuredBrief(true)}
+                          className={`rounded px-2.5 py-1 ${showStructuredBrief ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
+                        >
+                          Source-linked
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowStructuredBrief(false)}
+                          className={`rounded px-2.5 py-1 ${!showStructuredBrief ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
+                        >
+                          Original
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {showStructuredBrief && caseSummary.structured_summary ? (
+                    <div className="space-y-5">
+                      {([
+                        ['facts', '📋 Facts'],
+                        ['issue', '⚖️ Issue'],
+                        ['holding', '📚 Holding'],
+                        ['rule', '📖 Rule'],
+                        ['majority_reasoning', '💡 Majority Reasoning'],
+                        ['dissent', '🗣️ Dissent'],
+                      ] as const).map(([sectionKey, label]) => (
+                        <section key={sectionKey}>
+                          <h4 className="mb-2 text-lg font-bold text-stone-900">{label}</h4>
+                          <div className="space-y-2">
+                            {caseSummary.structured_summary![sectionKey].map((claim, claimIndex) => (
+                              <p key={claimIndex} className="leading-relaxed text-stone-700">
+                                {claim.text}
+                                {renderSourceButtons(claim.sources, label)}
+                              </p>
+                            ))}
+                          </div>
+                        </section>
+                      ))}
+                      <section>
+                        <h4 className="mb-2 text-lg font-bold text-stone-900">🎯 Significance</h4>
+                        <p className="leading-relaxed text-stone-700">{caseSummary.structured_summary.significance}</p>
+                        <p className="mt-1 text-xs italic text-stone-500">Editorial synthesis; not presented as language from the opinion.</p>
+                      </section>
+                    </div>
+                  ) : (
                   <div className="prose prose-sm max-w-none space-y-4">
                     {(() => {
                       // Render inline **bold**, *italic*, and legal citation links
@@ -942,6 +1030,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     })})()}
 
                   </div>
+                  )}
 
                   {/* Rating + Token usage and cost info */}
                   <div className="mt-6 pt-4 border-t border-stone-200 space-y-3">
@@ -980,7 +1069,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     {/* Model info + cost */}
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-4 text-stone-600">
-                        <span>🤖 Generated by {caseSummary.model || 'Claude'}</span>
+                        <span>🤖 Generated by {(showStructuredBrief && caseSummary.structured_summary ? caseSummary.structured_model : caseSummary.model) || 'Claude'}</span>
                         {caseSummary.tokens_used && (
                           <span className="text-stone-500">
                             {caseSummary.tokens_used.total.toLocaleString()} tokens

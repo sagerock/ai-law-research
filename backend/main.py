@@ -1309,7 +1309,8 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
     async with db_pool.acquire() as conn:
         cached = await conn.fetchrow(
             """
-            SELECT id, summary, model, input_tokens, output_tokens, cost, created_at
+            SELECT id, summary, model, input_tokens, output_tokens, cost, created_at,
+                   structured_summary, structured_model, structured_created_at
             FROM ai_summaries
             WHERE case_id = $1
             """,
@@ -1426,6 +1427,9 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             "source_links": source_links,
             "opinion_content_hash": opinion_content_hash,
             "opinion_passages": opinion_passages,
+            "structured_summary": cached["structured_summary"],
+            "structured_model": cached["structured_model"],
+            "structured_created_at": cached["structured_created_at"].isoformat() if cached["structured_created_at"] else None,
         }
 
 
