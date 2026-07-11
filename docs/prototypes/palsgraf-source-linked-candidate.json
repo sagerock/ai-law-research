@@ -1,0 +1,160 @@
+{
+  "case_id": "3602780",
+  "model": "claude-opus-4-8",
+  "usage": {
+    "input_tokens": 22607,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 2178,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global"
+  },
+  "candidate": {
+    "facts": [
+      {
+        "text": "Plaintiff was standing on the defendant railroad's platform after buying a ticket to Rockaway Beach when a passenger carrying a package jumped aboard a moving train and, seeming about to fall, was helped by one guard and pushed by another, dislodging the package onto the rails.",
+        "sources": [
+          "op-6596ad651d311402",
+          "op-8eb7da682587d4bf",
+          "op-b27be9bd3a9e6b0e",
+          "op-b95bb07625e958b8"
+        ]
+      },
+      {
+        "text": "The package, about fifteen inches long and wrapped in newspaper, contained fireworks, but nothing in its appearance gave notice of its contents.",
+        "sources": [
+          "op-9d8b88708063a67e",
+          "op-98361a3d79259ef7"
+        ]
+      },
+      {
+        "text": "When the package fell, the fireworks exploded, and the shock threw down scales at the other end of the platform many feet away.",
+        "sources": [
+          "op-10146485be65875a",
+          "op-c922ca724f9df297"
+        ]
+      },
+      {
+        "text": "The falling scales struck the plaintiff, causing the injuries for which she sues.",
+        "sources": [
+          "op-7cfe38a10dafc7d3"
+        ]
+      }
+    ],
+    "issue": [
+      {
+        "text": "Whether a defendant whose servant's negligent act was a wrong only to the holder of a package is liable to a plaintiff standing far away who was unforeseeably injured by the resulting explosion.",
+        "sources": [
+          "op-71c6518f287468f4",
+          "op-beda504988828d7a"
+        ]
+      }
+    ],
+    "holding": [
+      {
+        "text": "The guard's conduct, even if a wrong to the package holder, was not negligence in relation to the distant plaintiff, because nothing in the situation gave notice that the falling package threatened peril to persons so removed.",
+        "sources": [
+          "op-71c6518f287468f4",
+          "op-3b73ca113644291a",
+          "op-2199b17aa9742d6b"
+        ]
+      },
+      {
+        "text": "The judgments of the Appellate Division and Trial Term are reversed and the complaint dismissed.",
+        "sources": [
+          "op-0f69e3be8ba1bb6a"
+        ]
+      }
+    ],
+    "rule": [
+      {
+        "text": "Negligence is not actionable unless it involves the invasion of a legally protected interest, the violation of a right owed to the complaining party; proof of negligence in the air will not do.",
+        "sources": [
+          "op-97c823d54e7c790c",
+          "op-5ebd069e56c006f1"
+        ]
+      },
+      {
+        "text": "The risk reasonably to be perceived defines the duty to be obeyed, so that the orbit of the danger disclosed to reasonable vigilance is the orbit of the duty.",
+        "sources": [
+          "op-f593c38989454ee4",
+          "op-30a028398ef76536"
+        ]
+      }
+    ],
+    "majority_reasoning": [
+      {
+        "text": "Because negligence and duty are correlative, a plaintiff must show a wrong to herself, a violation of her own right, and not merely conduct that was wrongful toward someone else.",
+        "sources": [
+          "op-457d0216dfc2db9f",
+          "op-db08704ca8ebdedb",
+          "op-6f00bd063680e0be"
+        ]
+      },
+      {
+        "text": "If no hazard was apparent to the eye of ordinary vigilance, an act harmless in appearance toward the plaintiff does not become a tort merely because it was a wrong to another person.",
+        "sources": [
+          "op-6ccdd5ffb42197d7",
+          "op-0bb653f771562f67"
+        ]
+      },
+      {
+        "text": "The plaintiff sues in her own right for a personal wrong, not as the vicarious beneficiary of a breach of duty owed to another, so her cause of action is original and primary and cannot be built upon a wrong to the package holder.",
+        "sources": [
+          "op-dfe78460b5e1c4d0",
+          "op-126c4f114b14b1cd",
+          "op-6f986b64e206651f"
+        ]
+      },
+      {
+        "text": "Here nothing suggested to the most cautious mind that the newspaper-wrapped parcel would spread wreckage through the station, so even a knowing and willful throwing of it would not have threatened the plaintiff's safety, and liability can be no greater for an inadvertent act.",
+        "sources": [
+          "op-c56c4ebdef5679c5",
+          "op-e25bd933c6c2dd22",
+          "op-efdabf8977d66ea7"
+        ]
+      }
+    ],
+    "dissent": [
+      {
+        "text": "Andrews contends that due care is a duty owed to society at large to refrain from acts that unreasonably threaten the safety of others, not merely a duty to particular foreseeable individuals.",
+        "sources": [
+          "op-9e2b0c20e4db0438",
+          "op-ed557fe218e51a83"
+        ]
+      },
+      {
+        "text": "An unreasonable act is a wrong not only to those within the radius of danger but to all who might have been there, so anyone in fact injured, even outside the apparent danger zone, may complain.",
+        "sources": [
+          "op-6497b866dd5f5f9c",
+          "op-cbfd9dc6400a81df",
+          "op-396b155503e3b9e5"
+        ]
+      },
+      {
+        "text": "The controlling question is therefore not duty but proximate cause, which the law limits arbitrarily for reasons of convenience, public policy, and a rough sense of justice rather than by strict logic.",
+        "sources": [
+          "op-b87723edadcd4546",
+          "op-3688dc9d9f2a7f6b",
+          "op-2a18f2edfd3ae861"
+        ]
+      },
+      {
+        "text": "Because the explosion was a substantial factor producing the plaintiff's injuries in a natural and continuous sequence, with no remoteness in time and little in space, Andrews could not say as a matter of law that her injuries were not the proximate result of the negligence.",
+        "sources": [
+          "op-7d21481527757a47",
+          "op-5a913a332cb03dfd",
+          "op-3371fabd778c29a6"
+        ]
+      }
+    ],
+    "significance": "Palsgraf is the foundational American authority on duty and foreseeability in negligence. Cardozo's majority establishes that duty runs only to plaintiffs within the reasonably foreseeable zone of danger, making foreseeability an element of duty rather than merely proximate cause. Andrews's influential dissent reframes negligence as a duty to the world, resolving liability through proximate-cause analysis. The competing approaches continue to shape modern tort doctrine, jury instructions, and the Restatements."
+  }
+}

@@ -66,3 +66,11 @@ Preserve the current brief style, but add structured source fields for Facts, Is
 ## Pilot Implementation
 
 The production pilot uses sentence-level passages. Each passage ID is derived from a hash of its normalized text, so unchanged passages retain their IDs if text is inserted elsewhere in the opinion. The summary remains unchanged; section-to-passage mappings are stored separately and returned by the summary API.
+
+## Regeneration Result
+
+A constrained Claude Opus 4.8 regeneration produced a 626-word candidate, compared with 592 words in the current Claude Fable 5 brief. It contains 17 atomic claims and 41 validated opinion references. The complete candidate is in `palsgraf-source-linked-candidate.md`.
+
+The regenerated brief is better structured: it adds a distinct Rule section, separates atomic propositions, and ties every doctrinal claim to exact opinion sentences. The current brief remains slightly more natural as continuous prose. The regenerated candidate should not replace production yet because the pilot UI currently displays sources at section level; doing so would discard the candidate's principal advantage, claim-level attribution.
+
+Recommended next iteration: preserve this candidate as the target format, add inline claim-source rendering, and then A/B test both briefs in the page before replacing the production summary.
