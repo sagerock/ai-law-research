@@ -1409,6 +1409,13 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
         except asyncpg.exceptions.UndefinedTableError:
             pass
 
+        structured_summary = cached["structured_summary"]
+        if isinstance(structured_summary, str):
+            try:
+                structured_summary = json.loads(structured_summary)
+            except json.JSONDecodeError:
+                structured_summary = None
+
         return {
             "summary_id": cached["id"],
             "summary": cached["summary"],
@@ -1427,7 +1434,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             "source_links": source_links,
             "opinion_content_hash": opinion_content_hash,
             "opinion_passages": opinion_passages,
-            "structured_summary": cached["structured_summary"],
+            "structured_summary": structured_summary,
             "structured_model": cached["structured_model"],
             "structured_created_at": cached["structured_created_at"].isoformat() if cached["structured_created_at"] else None,
         }
