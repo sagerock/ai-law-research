@@ -922,7 +922,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                             onClick={() => selectBrief(candidate.provider)}
                             className={`rounded px-2.5 py-1 ${activeBrief === candidate.provider ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
                           >
-                            {candidate.provider === 'claude' ? 'Claude' : candidate.provider === 'openai' ? 'OpenAI' : candidate.provider}
+                            {candidate.provider === 'claude' ? 'Annotated' : candidate.provider === 'openai' ? 'OpenAI' : candidate.provider}
                           </button>
                         ))}
                         <button
@@ -1116,7 +1116,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         {[
                           ...structuredCandidates.map(candidate => ({
                             value: candidate.provider,
-                            label: candidate.provider === 'claude' ? 'Claude linked' : candidate.provider === 'openai' ? 'OpenAI linked' : candidate.provider,
+                            label: candidate.provider === 'claude' ? 'Annotated' : candidate.provider === 'openai' ? 'OpenAI linked' : candidate.provider,
                           })),
                           { value: 'original', label: 'Original' },
                           { value: 'no_preference', label: 'No preference' },
