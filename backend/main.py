@@ -1387,7 +1387,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             link_rows = await conn.fetch(
                 """SELECT section_key, content_hash, passage_id, confidence
                    FROM summary_source_links
-                   WHERE case_id = $1 AND review_status = 'approved'
+                   WHERE case_id = $1
                    ORDER BY section_key, passage_id""",
                 case_id,
             )
@@ -1431,7 +1431,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             candidate_rows = await conn.fetch(
                 """SELECT provider, model, summary, content_hash, created_at
                    FROM structured_summary_candidates
-                   WHERE case_id = $1
+                   WHERE case_id = $1 AND review_status = 'approved'
                    ORDER BY CASE provider WHEN 'claude' THEN 1 WHEN 'openai' THEN 2 ELSE 3 END""",
                 case_id,
             )
