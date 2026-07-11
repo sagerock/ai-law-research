@@ -30,7 +30,7 @@
 
 - [x] Secure and make webhooks idempotent.
 - [x] Sanitize rendered HTML.
-- [ ] Harden remote downloads and uploads.
+- [x] Harden remote downloads and uploads.
 - [ ] Centralize paid AI authorization and accounting.
 - [ ] Repair authentication recovery and redirects.
 - [ ] Fix profile updates.

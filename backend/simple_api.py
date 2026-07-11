@@ -6,6 +6,7 @@ Works with the data we've already imported
 """
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Header
+from document_security import read_upload_limited
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -327,8 +328,7 @@ async def analyze_brief(
     if file_ext not in allowed_extensions:
         raise HTTPException(status_code=400, detail=f"File type {file_ext} not supported")
 
-    # Read file content
-    content = await file.read()
+    content = await read_upload_limited(file)
 
     # Initialize analyzer
     analyzer = BriefAnalyzer(

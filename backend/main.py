@@ -17,11 +17,13 @@ import time
 import json
 import re
 import random
+import zipfile
 from jose import jwt, JWTError
 from uuid import UUID
 from citation_utils import parse_citation_slug, slug_to_reporter_cite, case_title_to_slug, build_canonical_slug
 from cryptography.fernet import Fernet, InvalidToken
 from webhook_security import require_kofi_verification_token
+from document_security import download_storage_file, read_upload_limited, validate_remote_url
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
@@ -1943,17 +1945,16 @@ Formatting discipline: begin your response with **📋 Facts** directly — no t
 @app.post("/api/v1/briefcheck")
 async def check_brief(file: UploadFile = File(...)):
     """Analyze a brief for missing authorities and treatments"""
-    
-    # Read file content
-    content = await file.read()
-    
-    # Extract text based on file type
-    if file.filename.endswith(".pdf"):
-        text = extract_text_from_pdf(content)
-    elif file.filename.endswith(".docx"):
-        text = extract_text_from_docx(content)
-    else:
-        text = content.decode("utf-8")
+    filename = file.filename or "untitled"
+    extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if extension not in ("pdf", "docx", "txt"):
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
+
+    content = await read_upload_limited(file)
+    try:
+        text = await extract_document_text(content, extension)
+    except (ValueError, UnicodeError):
+        raise HTTPException(status_code=400, detail="Could not safely parse document")
     
     # Extract citations from brief
     citations = await extract_citations(text)
@@ -2292,22 +2293,45 @@ def extract_key_arguments(text: str, max_passages=5):
 def extract_text_from_pdf(content: bytes) -> str:
     """Extract text from PDF using pdfplumber"""
     import pdfplumber
+    if not content.startswith(b"%PDF-"):
+        raise ValueError("File is not a valid PDF")
     text = ""
     pdf_file = io.BytesIO(content)
     with pdfplumber.open(pdf_file) as pdf:
+        if len(pdf.pages) > 300:
+            raise ValueError("PDF page limit is 300")
         for page in pdf.pages:
             page_text = page.extract_text()
             if page_text:
                 text += page_text + "\n"
+                if len(text) > 2_000_000:
+                    raise ValueError("Extracted text limit is 2,000,000 characters")
     return text.strip()
 
 def extract_text_from_docx(content: bytes) -> str:
     """Extract text from DOCX using python-docx"""
     from docx import Document
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            entries = archive.infolist()
+            if len(entries) > 2_000 or sum(entry.file_size for entry in entries) > 50 * 1024 * 1024:
+                raise ValueError("DOCX expanded size limit is 50MB")
+    except zipfile.BadZipFile:
+        raise ValueError("File is not a valid DOCX")
     doc_file = io.BytesIO(content)
     doc = Document(doc_file)
     text = "\n".join(para.text for para in doc.paragraphs if para.text.strip())
+    if len(text) > 2_000_000:
+        raise ValueError("Extracted text limit is 2,000,000 characters")
     return text.strip()
+
+
+async def extract_document_text(content: bytes, extension: str) -> str:
+    if extension == "pdf":
+        return await asyncio.to_thread(extract_text_from_pdf, content)
+    if extension == "docx":
+        return await asyncio.to_thread(extract_text_from_docx, content)
+    return content.decode("utf-8", errors="replace")
 
 
 # ============================================================================
@@ -3768,6 +3792,7 @@ async def create_outline(outline: OutlineCreate, user: dict = Depends(require_au
         raise HTTPException(status_code=400, detail=f"visibility must be one of: {', '.join(sorted(valid_visibilities))}")
 
     is_public = outline.visibility == "public"
+    await validate_remote_url(outline.file_url)
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
@@ -3783,28 +3808,20 @@ async def create_outline(outline: OutlineCreate, user: dict = Depends(require_au
 
         outline_id = row["id"]
 
-        # Attempt text extraction in background; don't fail the request if it errors
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                file_resp = await client.get(outline.file_url)
-                file_resp.raise_for_status()
-                file_bytes = file_resp.content
-
-            file_type = (outline.file_type or "").lower()
-            if "pdf" in file_type:
-                extracted_text = extract_text_from_pdf(file_bytes)
-            elif "docx" in file_type or "word" in file_type:
-                extracted_text = extract_text_from_docx(file_bytes)
-            else:
-                extracted_text = file_bytes.decode("utf-8", errors="ignore")
-
-            if extracted_text:
+    # Do not hold a database connection during network I/O or document parsing.
+    try:
+        file_bytes = await download_storage_file(outline.file_url)
+        file_type = (outline.file_type or "").lower()
+        extension = "pdf" if "pdf" in file_type else "docx" if "docx" in file_type or "word" in file_type else "txt"
+        extracted_text = await extract_document_text(file_bytes, extension)
+        if extracted_text:
+            async with db_pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE outlines SET content = $1 WHERE id = $2",
                     extracted_text, outline_id
                 )
-        except Exception as e:
-            print(f"Text extraction failed for outline {outline_id}: {e}")
+    except Exception as e:
+        print(f"Text extraction failed for outline {outline_id}: {e}")
 
     return {
         "id": row["id"],
@@ -3850,19 +3867,14 @@ async def upload_outline(
     if ext not in ("pdf", "docx", "txt"):
         raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
 
-    file_bytes = await file.read()
+    file_bytes = await read_upload_limited(file)
     file_size = len(file_bytes)
 
-    if file_size > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size limit is 10MB")
-
     # Extract text
-    if ext == "pdf":
-        extracted_text = extract_text_from_pdf(file_bytes)
-    elif ext == "docx":
-        extracted_text = extract_text_from_docx(file_bytes)
-    else:
-        extracted_text = file_bytes.decode("utf-8", errors="replace")
+    try:
+        extracted_text = await extract_document_text(file_bytes, ext)
+    except (ValueError, UnicodeError):
+        raise HTTPException(status_code=400, detail="Could not safely parse document")
 
     content_type = file.content_type or "application/octet-stream"
     is_public = visibility == "public"
@@ -4788,19 +4800,14 @@ async def upload_study_note(
     if ext not in ("pdf", "docx", "txt"):
         raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
 
-    content = await file.read()
+    content = await read_upload_limited(file)
     file_size = len(content)
 
-    if file_size > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size limit is 10MB")
-
     # Extract text
-    if ext == "pdf":
-        extracted_text = extract_text_from_pdf(content)
-    elif ext == "docx":
-        extracted_text = extract_text_from_docx(content)
-    else:
-        extracted_text = content.decode("utf-8", errors="replace")
+    try:
+        extracted_text = await extract_document_text(content, ext)
+    except (ValueError, UnicodeError):
+        raise HTTPException(status_code=400, detail="Could not safely parse document")
 
     if not extracted_text or len(extracted_text) < 10:
         raise HTTPException(status_code=400, detail="Could not extract text from file")
@@ -6918,9 +6925,7 @@ async def upload_mindmap(
     if not filename.endswith(".mindmap.json") and not filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="Only .mindmap.json or .json files are supported")
 
-    content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size limit is 10MB")
+    content = await read_upload_limited(file)
 
     try:
         data = json.loads(content.decode("utf-8"))
@@ -8246,22 +8251,14 @@ async def upload_msj_document(
         raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
 
     # Read and extract text
-    content = await file.read()
+    content = await read_upload_limited(file)
     file_size = len(content)
-
-    if file_size > 10 * 1024 * 1024:  # 10MB limit
-        raise HTTPException(status_code=400, detail="File size must be under 10MB")
 
     extracted_text = ""
     try:
-        if ext == "pdf":
-            extracted_text = extract_text_from_pdf(content)
-        elif ext == "docx":
-            extracted_text = extract_text_from_docx(content)
-        else:
-            extracted_text = content.decode("utf-8", errors="replace")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to extract text: {str(e)}")
+        extracted_text = await extract_document_text(content, ext)
+    except (ValueError, UnicodeError):
+        raise HTTPException(status_code=400, detail="Could not safely parse document")
 
     if not extracted_text.strip():
         raise HTTPException(status_code=400, detail="Could not extract any text from this file")
@@ -9043,22 +9040,14 @@ async def upload_tool_document(
     if ext not in ("pdf", "docx", "txt"):
         raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
 
-    content = await file.read()
+    content = await read_upload_limited(file)
     file_size = len(content)
-
-    if file_size > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size must be under 10MB")
 
     extracted_text = ""
     try:
-        if ext == "pdf":
-            extracted_text = extract_text_from_pdf(content)
-        elif ext == "docx":
-            extracted_text = extract_text_from_docx(content)
-        else:
-            extracted_text = content.decode("utf-8", errors="replace")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to extract text: {str(e)}")
+        extracted_text = await extract_document_text(content, ext)
+    except (ValueError, UnicodeError):
+        raise HTTPException(status_code=400, detail="Could not safely parse document")
 
     if not extracted_text.strip():
         raise HTTPException(status_code=400, detail="Could not extract any text from this file")
