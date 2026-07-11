@@ -1,0 +1,24 @@
+from opinion_passages import build_opinion_passages
+
+
+def test_passage_ids_survive_insertions_before_unchanged_text():
+    original = "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence. Sixth sentence."
+    changed = "New sentence. " + original
+    _, original_passages = build_opinion_passages(original)
+    _, changed_passages = build_opinion_passages(changed)
+    assert [p["id"] for p in original_passages] == [p["id"] for p in changed_passages[1:]]
+
+
+def test_content_hash_changes_when_opinion_changes():
+    first_hash, _ = build_opinion_passages("One sentence. Two sentence. Three sentence.")
+    second_hash, _ = build_opinion_passages("One sentence. Different sentence. Three sentence.")
+    assert first_hash != second_hash
+
+
+def test_labels_majority_and_dissent():
+    _, passages = build_opinion_passages(
+        "[by Cardozo]\nOne. Two. Three.\n[Dissent by Andrews]\nFour. Five. Six."
+    )
+    assert [p["opinion_part"] for p in passages] == [
+        "majority", "majority", "majority", "dissent", "dissent", "dissent"
+    ]

@@ -1309,7 +1309,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
     async with db_pool.acquire() as conn:
         cached = await conn.fetchrow(
             """
-            SELECT summary, model, input_tokens, output_tokens, cost, created_at
+            SELECT id, summary, model, input_tokens, output_tokens, cost, created_at
             FROM ai_summaries
             WHERE case_id = $1
             """,
@@ -1369,7 +1369,47 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             case_id
         )
 
+        source_links = {}
+        opinion_passages = []
+        opinion_content_hash = None
+        try:
+            link_rows = await conn.fetch(
+                """SELECT section_key, content_hash, passage_id, confidence
+                   FROM summary_source_links
+                   WHERE case_id = $1
+                   ORDER BY section_key, passage_id""",
+                case_id,
+            )
+            if link_rows:
+                opinion_content_hash = link_rows[0]["content_hash"]
+                for link in link_rows:
+                    if link["content_hash"] != opinion_content_hash:
+                        continue
+                    source_links.setdefault(link["section_key"], []).append({
+                        "passage_id": link["passage_id"],
+                        "confidence": float(link["confidence"]) if link["confidence"] is not None else None,
+                    })
+                passage_rows = await conn.fetch(
+                    """SELECT passage_id, ordinal, opinion_part, text
+                       FROM opinion_passages
+                       WHERE case_id = $1 AND content_hash = $2
+                       ORDER BY ordinal""",
+                    case_id, opinion_content_hash,
+                )
+                opinion_passages = [
+                    {
+                        "id": passage["passage_id"],
+                        "ordinal": passage["ordinal"],
+                        "opinion_part": passage["opinion_part"],
+                        "text": passage["text"],
+                    }
+                    for passage in passage_rows
+                ]
+        except asyncpg.exceptions.UndefinedTableError:
+            pass
+
         return {
+            "summary_id": cached["id"],
             "summary": cached["summary"],
             "cost": float(cached["cost"]) if cached["cost"] else 0,
             "citing_cases": [dict(r) for r in citing_query],
@@ -1383,6 +1423,9 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
             "cached_at": cached["created_at"].isoformat() if cached["created_at"] else None,
             "model": cached["model"],
             "ratings": ratings,
+            "source_links": source_links,
+            "opinion_content_hash": opinion_content_hash,
+            "opinion_passages": opinion_passages,
         }
 
 

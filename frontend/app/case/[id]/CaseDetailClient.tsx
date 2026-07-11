@@ -48,6 +48,17 @@ interface CaseSummary {
     thumbs_down: number
     user_rating: number | null
   }
+  source_links?: Record<string, Array<{
+    passage_id: string
+    confidence: number | null
+  }>>
+  opinion_content_hash?: string | null
+  opinion_passages?: Array<{
+    id: string
+    ordinal: number
+    opinion_part: string
+    text: string
+  }>
 }
 
 interface CaseReference {
@@ -119,6 +130,8 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [opinionFetching, setOpinionFetching] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
+  const [highlightedPassage, setHighlightedPassage] = useState<string | null>(null)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Collection back-navigation context
   const collectionId = searchParams.get('collection')
@@ -148,6 +161,32 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       'Content-Type': 'application/json'
     }
   }
+
+  const sectionKeyFromHeader = (header: string) => {
+    const normalized = header.replace(/[📋⚖️📚💡🎯]/g, '').trim().toLowerCase()
+    if (normalized.startsWith('fact')) return 'facts'
+    if (normalized.startsWith('issue')) return 'issue'
+    if (normalized.startsWith('holding')) return 'holding'
+    if (normalized.startsWith('reason')) return 'reasoning'
+    if (normalized.startsWith('significance')) return 'significance'
+    return normalized
+  }
+
+  const showOpinionPassage = (passageId: string) => {
+    setHighlightedPassage(passageId)
+    requestAnimationFrame(() => {
+      document.getElementById(`passage-${passageId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    })
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    highlightTimerRef.current = setTimeout(() => setHighlightedPassage(null), 5000)
+  }
+
+  useEffect(() => () => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+  }, [])
 
   useEffect(() => {
     fetchCachedSummary()
@@ -839,10 +878,28 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                       // ## Section header (with or without emoji)
                       if (trimmed.match(/^##\s+/) || trimmed.match(/^\*\*[📋⚖️📚💡🎯]/)) {
                         const headerText = trimmed.replace(/^##\s+/, '').replace(/\*\*/g, '').trim()
+                        const sectionSources = caseSummary.source_links?.[sectionKeyFromHeader(headerText)] || []
                         return (
                           <div key={idx} className="mt-6 first:mt-0">
-                            <h4 className="text-lg font-bold text-stone-900 mb-2 flex items-center">
+                            <h4 className="text-lg font-bold text-stone-900 mb-2 flex flex-wrap items-center gap-2">
                               {headerText}
+                              {sectionSources.length > 0 && (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-normal">
+                                  <span className="text-stone-400">Opinion sources</span>
+                                  {sectionSources.map((source, sourceIndex) => (
+                                    <button
+                                      key={source.passage_id}
+                                      type="button"
+                                      onClick={() => showOpinionPassage(source.passage_id)}
+                                      className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-sage-200 bg-sage-50 px-1.5 font-semibold text-sage-700 hover:border-sage-400 hover:bg-sage-100 focus:outline-none focus:ring-2 focus:ring-sage-500"
+                                      aria-label={`View opinion source ${sourceIndex + 1} for ${headerText}`}
+                                      title="Jump to supporting language in the opinion"
+                                    >
+                                      {sourceIndex + 1}
+                                    </button>
+                                  ))}
+                                </span>
+                              )}
                             </h4>
                           </div>
                         )
@@ -1045,8 +1102,32 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   )}
 
                   <div className="prose prose-neutral max-w-none">
-                    {/* Check if content contains HTML tags */}
-                    {localCaseData.content.includes('<') && localCaseData.content.includes('>') ? (
+                    {caseSummary?.opinion_passages && caseSummary.opinion_passages.length > 0 ? (
+                      <div className="text-sm leading-7 text-stone-700">
+                        {caseSummary.opinion_passages.map((passage, passageIndex) => {
+                          const previousPart = caseSummary.opinion_passages?.[passageIndex - 1]?.opinion_part
+                          return (
+                            <span key={passage.id}>
+                              {passage.opinion_part !== previousPart && passage.opinion_part !== 'opinion' && (
+                                <span className="mb-3 mt-6 block border-b border-stone-200 pb-2 text-base font-semibold capitalize text-stone-900 first:mt-0">
+                                  {passage.opinion_part} opinion
+                                </span>
+                              )}
+                              <span
+                                id={`passage-${passage.id}`}
+                                className={`scroll-mt-24 rounded px-0.5 transition-colors duration-500 ${
+                                  highlightedPassage === passage.id
+                                    ? 'bg-amber-100 ring-2 ring-amber-300'
+                                    : 'bg-transparent'
+                                }`}
+                              >
+                                {passage.text}
+                              </span>{' '}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    ) : localCaseData.content.includes('<') && localCaseData.content.includes('>') ? (
                       <div
                         className="text-sm leading-relaxed text-stone-700"
                         dangerouslySetInnerHTML={{ __html: sanitizeLegalHtml(localCaseData.content) }}

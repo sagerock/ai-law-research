@@ -34,6 +34,7 @@ postgres-data/
 # IDE
 .vscode/
 .idea/
+.obsidian/
 *.swp
 *.swo
 .DS_Store
