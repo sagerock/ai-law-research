@@ -188,8 +188,10 @@ source-linked briefs.
 Next: Run and monitor the source rebuild until the 67-case source-linked gap is exhausted;
 triage rejected candidates under the existing two-strike process. Audit the six synthetic cases
 manually for external citation identifiers rather than forcing them through CourtListener IDs.
-Deployment: pending backend auto-deploy after commit
-Commit: pending
+The 23-cycle source rebuild was started in the background on 2026-07-12 (PID/log details are
+machine-local; canonical log `/home/sage/logs/source-rebuild.log`).
+Deployment: backend `364f07d7-c184-45bb-9811-6f785b7a2da0` successful
+Commit: `f020d18`
 
 Resolved (Sol, 2026-07-12): local backend testing now uses a project `.venv` pinned to
 production's Python 3.11 via `uv`. Run `make test-setup` once and `make test-local` thereafter.
