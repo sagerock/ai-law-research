@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## AI Collaboration
+
+Read `AI_COLLABORATION.md` before substantial work. It is the shared handoff file for Claude and other AI coding assistants. Update its durable decisions, current handoffs, deployment state, and commit state when your work changes them. Keep it concise and never place secrets in it.
+
 ## Project Overview
 
 **Law Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.6, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
