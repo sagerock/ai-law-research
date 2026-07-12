@@ -64,6 +64,18 @@ is what existed before 2026-07-12, and per-endpoint copies invite silent diverge
   merely decorated with citations, not verifiable. Keep it strict even when it slows
   brief throughput. (Sage + Claude, 2026-07-12.)
 
+### Case Information Placement
+
+Case identity and student-facing metadata live in a `Case Information` card at the top
+of the case-page sidebar, before Authority Report and Citation Network. The sidebar is the
+right home because these fields are reference material used while reading, while the page
+header should remain concise. The card uses structured API fields (court, decision date,
+reporter/neutral citation, docket, precedential status) plus the curated subject. Raw import
+metadata is intentionally not displayed: cluster IDs, match confidence, and ingestion source
+are operational details rather than useful legal study context. Rejected alternative: leaving
+the old `Additional Information` card below the citator panels, where large authority reports
+made it effectively undiscoverable. (Claude diagnosis + Sol implementation, 2026-07-12.)
+
 ## Open Questions
 
 Genuine design questions left for the next assistant. If you can resolve one (with
@@ -77,50 +89,18 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
-### Case-info panel buried at the bottom of the case-page sidebar
-Owner: Claude (investigated); second opinion requested from GPT 5.6 Sol
-Status: ready for review — diagnosis done, fix is a design decision
-Files: `frontend/app/case/[id]/CaseDetailClient.tsx` (sidebar, ~lines 1420–1587)
-Summary: Sage remembers case information at the top of the right column on case pages;
-it appears to have disappeared. Investigation findings (all verified against production
-on 2026-07-12, using Erie R.R. v. Tompkins `/cases/304-us-64` as the test case):
+No active handoff.
 
-- Nothing was ever removed. Full git history of the sidebar shows the same three panels
-  since the file's first commit: Authority Report (added June, commit `a42dc72`),
-  Citation Network, and "Additional Information" (the metadata card) — in that order,
-  metadata card always last.
-- All three panels render in the production DOM today (verified via live DOM query;
-  accessibility snapshots taken too early miss the client-fetched panels).
-- Diagnosis: before the Authority Report shipped, most cases had an empty (hidden)
-  Citation Network, so the "Additional Information" card was effectively the *top* of
-  the sidebar. The Authority Report now renders thousands of citers in expandable tiers
-  (Erie: 16,828), pushing the case-info card below the fold by several screens. Buried,
-  not deleted.
-- The card's content is also weak: for CourtListener-imported cases it shows raw
-  metadata (`cluster id`, `match confidence`, `source`, `subject`) instead of what a
-  student wants (court, decision date, reporter cite, docket number, precedential
-  status) — all of which the API already returns as top-level fields.
-
-Proposed fix (Claude's view, open to disagreement): add a proper "Case Information"
-card pinned at the top of the sidebar built from the structured case fields
-(court_name, decision_date, reporter_cite, neutral_cite, docket_number, precedential,
-subject), and drop the raw-metadata "Additional Information" card rather than keeping
-both. Question for Sol: is top-of-sidebar the right home, or does case info belong in
-the page header under the title? And is any raw metadata worth keeping?
-
-Related production bug found during investigation: `GET /api/v1/cases/{id}/citator`
-returns 500 in production (e.g. case 103012). The frontend no longer calls it (it uses
-`/authority`, which works), so user impact is nil, but the endpoint is broken or should
-be removed.
-Next: Sol reviews the diagnosis and proposal; whoever implements updates this entry.
-Deployment: not deployed
-Commit: diagnosis only, nothing to commit yet
+Resolved from the prior handoff: the case-info card was moved above the citator panels and
+rebuilt from structured fields. The unrelated legacy `/citator` endpoint remains broken but
+has no frontend caller; it is tracked here so a future API cleanup does not lose the finding.
 
 ## Deployment State
 
-No deploy/commit gap. The 2026-07-12 direct Railway deployments (backend opinion-loader
-refactor `b12ed65d`, frontend source-linked upgrade button `bca2303c`) were committed to
-`main` on 2026-07-12 as `c1fed18` and `a6dad3d`.
+- Case Information sidebar redesign deployed to the frontend as Railway deployment
+  `eb3c15d1-0b59-4ad0-86d0-2b0928a8eb4f` on 2026-07-12; implementation is included in
+  the commit that records this decision.
+- Earlier 2026-07-12 deployments were committed to `main` as `c1fed18` and `a6dad3d`.
 
 ## Update Template
 

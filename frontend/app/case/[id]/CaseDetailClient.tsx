@@ -30,6 +30,9 @@ export interface CaseDetail {
   metadata?: any
   is_stub?: boolean
   reporter_cite?: string
+  neutral_cite?: string
+  docket_number?: string
+  precedential?: boolean
 }
 
 interface CaseSummary {
@@ -1418,6 +1421,66 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
           {/* Sidebar - Right 1/3 */}
           <div className="space-y-6">
+            {/* Stable case identity stays visible above the much longer citator panels. */}
+            <div className="bg-white rounded-lg shadow-sm border p-4">
+              <h3 className="text-md font-semibold text-stone-900 mb-3 flex items-center">
+                <FileText className="h-4 w-4 mr-2 text-sage-600" />
+                Case Information
+              </h3>
+              <dl className="divide-y divide-stone-100">
+                {(localCaseData.court_name || localCaseData.court_id) && (
+                  <div className="py-2.5 first:pt-0">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Court</dt>
+                    <dd className="mt-1 text-sm text-stone-900">{localCaseData.court_name || localCaseData.court_id}</dd>
+                  </div>
+                )}
+                {(localCaseData.decision_date || localCaseData.date_filed) && (
+                  <div className="py-2.5">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Decision Date</dt>
+                    <dd className="mt-1 text-sm text-stone-900">
+                      {new Date(localCaseData.decision_date || localCaseData.date_filed || '').toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                      })}
+                    </dd>
+                  </div>
+                )}
+                {(localCaseData.reporter_cite || localCaseData.metadata?.citation) && (
+                  <div className="py-2.5">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Citation</dt>
+                    <dd className="mt-1 text-sm text-stone-900">{localCaseData.reporter_cite || localCaseData.metadata.citation}</dd>
+                  </div>
+                )}
+                {localCaseData.neutral_cite && (
+                  <div className="py-2.5">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Neutral Citation</dt>
+                    <dd className="mt-1 text-sm text-stone-900">{localCaseData.neutral_cite}</dd>
+                  </div>
+                )}
+                {localCaseData.docket_number && (
+                  <div className="py-2.5">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Docket</dt>
+                    <dd className="mt-1 text-sm text-stone-900">{localCaseData.docket_number}</dd>
+                  </div>
+                )}
+                {localCaseData.precedential !== undefined && localCaseData.precedential !== null && (
+                  <div className="py-2.5">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Status</dt>
+                    <dd className="mt-1 text-sm text-stone-900">
+                      {localCaseData.precedential ? 'Precedential' : 'Nonprecedential'}
+                    </dd>
+                  </div>
+                )}
+                {localCaseData.metadata?.subject && (
+                  <div className="py-2.5 last:pb-0">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Subject</dt>
+                    <dd className="mt-1 text-sm capitalize text-stone-900">
+                      {String(localCaseData.metadata.subject).replace(/-/g, ' ')}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
             {/* Authority Report (OpenCite) — citers ranked by binding force */}
             {authority && authority.tiers && (
               <div className="bg-white rounded-lg shadow-sm border p-4">
@@ -1556,34 +1619,6 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
               </div>
             )}
 
-            {/* Additional Metadata */}
-            {caseData.metadata && Object.keys(caseData.metadata).length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border p-4">
-                <h3 className="text-md font-semibold text-stone-900 mb-3">Additional Information</h3>
-                <dl className="space-y-3">
-                  {Object.entries(caseData.metadata)
-                    .filter(([key, value]) => {
-                      // Only show useful, non-complex fields
-                      if (typeof value === 'object' && value !== null) return false
-                      // Skip empty or very long values
-                      if (!value || (typeof value === 'string' && value.length > 200)) return false
-                      // Skip technical fields
-                      if (['meta', 'opinions'].includes(key)) return false
-                      return true
-                    })
-                    .map(([key, value]) => (
-                      <div key={key} className="pb-2 border-b border-stone-100 last:border-0">
-                        <dt className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
-                          {key.replace(/_/g, ' ')}
-                        </dt>
-                        <dd className="text-sm text-stone-900 break-words">
-                          {String(value)}
-                        </dd>
-                      </div>
-                    ))}
-                </dl>
-              </div>
-            )}
           </div>
         </div>
       </main>
