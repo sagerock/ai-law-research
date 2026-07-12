@@ -30,7 +30,9 @@ errors repeatedly, stop early and note it.
    The JSON contains `content_hash`, passage IDs, opinion-part labels, and source text. Brief
    only this packet. If `is_partial_packet` is true, do not claim to cover omitted material.
 
-3. Write one JSON object to a scratch file with exactly these keys:
+3. Write one JSON object to a scratch file **under /tmp** (e.g. `/tmp/brief_<id>.json` —
+   never inside the repository; repo-dir scratch files litter `git status` for everyone)
+   with exactly these keys:
 
        {
          "facts": [{"text": "...", "sources": ["op-..."]}],
