@@ -95,6 +95,13 @@ Resolved from the prior handoff: the case-info card was moved above the citator 
 rebuilt from structured fields. The unrelated legacy `/citator` endpoint remains broken but
 has no frontend caller; it is tracked here so a future API cleanup does not lose the finding.
 
+Follow-up fix (Claude, 2026-07-12): case dates on the case page rendered one day early
+(and one year early for Jan 1 dates) in US timezones — date-only strings like
+`1938-04-25` were parsed as UTC midnight but formatted in local time. All date rendering
+in `CaseDetailClient.tsx` now goes through UTC-pinned helpers (`formatCaseDate`,
+`caseYear`). If you render `decision_date` anywhere new, use those helpers or pass
+`timeZone: 'UTC'`.
+
 ## Deployment State
 
 - Case Information sidebar redesign deployed to the frontend as Railway deployment

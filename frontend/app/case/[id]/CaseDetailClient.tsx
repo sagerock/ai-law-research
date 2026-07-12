@@ -131,6 +131,12 @@ const AUTHORITY_TIERS: Record<string, { label: string; gloss: string; dot: strin
   'SAME-CASE-HISTORY': { label: "This case's own later history", gloss: 'Proceedings of the same party', dot: 'bg-violet-500', text: 'text-violet-700' },
 }
 
+// Decision dates are date-only strings; format them in UTC so they don't shift
+// back a day (or a year, for Jan 1 dates) in timezones west of Greenwich.
+const formatCaseDate = (date: string, options?: Intl.DateTimeFormatOptions) =>
+  new Date(date).toLocaleDateString('en-US', { timeZone: 'UTC', ...options })
+const caseYear = (date: string) => new Date(date).getUTCFullYear()
+
 interface CaseDetailClientProps {
   caseData: CaseDetail
   caseId: string
@@ -668,7 +674,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 {(caseData.decision_date || caseData.date_filed) && (
                   <span className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
-                    {new Date(caseData.decision_date || caseData.date_filed || '').toLocaleDateString('en-US')}
+                    {formatCaseDate(caseData.decision_date || caseData.date_filed || '')}
                   </span>
                 )}
                 {caseData.citation_count !== undefined && (
@@ -1438,7 +1444,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   <div className="py-2.5">
                     <dt className="text-xs font-medium uppercase tracking-wide text-stone-500">Decision Date</dt>
                     <dd className="mt-1 text-sm text-stone-900">
-                      {new Date(localCaseData.decision_date || localCaseData.date_filed || '').toLocaleDateString('en-US', {
+                      {formatCaseDate(localCaseData.decision_date || localCaseData.date_filed || '', {
                         year: 'numeric', month: 'long', day: 'numeric'
                       })}
                     </dd>
@@ -1510,7 +1516,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         <p className="text-xs text-stone-400 mb-2 ml-4">{meta.gloss}</p>
                         <div className="space-y-1.5 ml-4">
                           {shown.map((c) => {
-                            const yr = c.date ? new Date(c.date).getFullYear() : ''
+                            const yr = c.date ? caseYear(c.date) : ''
                             const inner = (
                               <>
                                 <p className="text-sm text-stone-800 line-clamp-2 leading-snug">{c.name || 'Unknown case'}</p>
@@ -1583,7 +1589,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                             {c.title || c.case_name || 'Untitled Case'}
                           </p>
                           <p className="text-xs text-stone-500 mt-1">
-                            {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${new Date(c.decision_date).getFullYear()}` : ''}
+                            {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${caseYear(c.decision_date)}` : ''}
                           </p>
                         </Link>
                       ))}
@@ -1609,7 +1615,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                             {c.title || c.case_name || 'Untitled Case'}
                           </p>
                           <p className="text-xs text-stone-500 mt-1">
-                            {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${new Date(c.decision_date).getFullYear()}` : ''}
+                            {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${caseYear(c.decision_date)}` : ''}
                           </p>
                         </Link>
                       ))}
