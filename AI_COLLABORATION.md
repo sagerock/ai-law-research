@@ -108,6 +108,23 @@ subscription credits, not API dollars. Design decisions and why (2026-07-12):
 - Held pilot cases (5 of 10) stay held; the pilot's 50% hold rate is the reason the gate
   exists, not a reason to loosen it.
 
+### Source-Linked Brief Is the Only Brief Shown (decided 2026-07-12, implementation pending)
+
+When a case has an approved source-linked brief, the page shows ONLY it; the traditional
+brief is hidden, not deleted. Why: (1) the linked brief is the only version whose claims
+passed semantic review — it has a verifiable pedigree the legacy text never had; (2) with
+both visible, students read the lower-friction plain version and never build the
+click-to-verify habit that is the site's core pedagogical differentiator; (3) Sage
+validated the linked brief under real class pressure (evidence class, 2026-07-12) and did
+not miss the old one. Cases without an approved structured brief (and cases whose
+candidates were rejected) keep showing the traditional brief — the rule is per-case.
+The brief-preference voting UI retires with this change (it compared two versions that
+are no longer both visible) and is replaced by a report-a-problem link that asks the
+question that still matters: is this brief wrong? Rejected alternative: keeping both
+visible and letting preference votes decide — it optimizes for comfort over the
+verification habit, and the votes would mostly measure friction, not quality.
+(Sage decision + Claude rationale; implementation: Sol — see Current Handoffs.)
+
 ### Case Information Placement
 
 Case identity and student-facing metadata live in a `Case Information` card at the top
@@ -141,6 +158,36 @@ with an existing decision, add your case here instead of silently changing the c
   2026-07-12 by Claude while unifying the validators; no evidence gathered yet.)
 
 ## Current Handoffs
+
+### Show only the source-linked brief + report-a-problem link
+Owner: Sol (requested by Sage; rationale by Claude — see the Architecture Decision above)
+Status: planned
+Files: `frontend/app/case/[id]/CaseDetailClient.tsx`; backend `main.py` (new report
+endpoint); one new migration
+Summary: implement the decision above.
+1. Display rule (frontend): when an approved source-linked brief exists for the case,
+   render only it; hide the traditional brief text. No approved structured brief → page
+   unchanged. Hide, never delete — `ai_summaries.summary` stays in the DB as fallback.
+2. Retire the brief-preference voting UI (the `brief-preference` fetch/save state and
+   buttons in `CaseDetailClient.tsx`). Backend `/brief-preference` endpoints can stay or
+   go — Sol's call; if they stay, nothing should render them.
+3. Report-a-problem link on the brief. Proposed design (Sage has NOT fixed the
+   logistics — improve freely, but keep it this simple or simpler):
+   - Small link under the brief: "See a problem with this brief? Report it."
+   - Click opens a one-field form (optional free text, e.g. "the holding cites the
+     dissent") and POSTs to a new endpoint `POST /api/v1/cases/{id}/brief-report`.
+   - New table `brief_reports` (id, case_id, summary_version tag, note, user_id nullable,
+     created_at). Require login OR rate-limit anonymous reports per IP — spam is the
+     main risk; do not require login if it kills the habit of reporting.
+   - Surfacing (the unsettled part): minimum viable is the table itself — a weekly
+     assistant session queries unresolved reports and triages them into the semantic
+     review queue (a report on a source-linked brief is grounds to re-review it).
+     Do NOT build an admin UI yet; that is scope creep until reports actually arrive.
+4. Record deployment + commit here per the working agreement, and clear this entry when
+   done. If you disagree with any of the rationale, argue under Open Questions before
+   implementing differently — Sage approved this specific shape.
+Deployment: not deployed
+Commit: not committed
 
 ### Structured brief rebuild — first supervised cycle
 Owner: Claude (with Sage)
