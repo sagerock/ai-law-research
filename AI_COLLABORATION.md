@@ -163,6 +163,11 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+Resolved (Sol, 2026-07-12): approved source-linked briefs are now the only version shown;
+legacy text remains stored as fallback. Preference voting was removed from the frontend and
+replaced with anonymous-friendly, rate-limited problem reporting. Implementation and migration
+are in `67977a8`; backend deployment `9991329f`, frontend deployment `59d09313`.
+
 ### Structured brief rebuild — first supervised cycle
 Owner: Claude (with Sage)
 Status: in progress
@@ -204,8 +209,9 @@ in `CaseDetailClient.tsx` now goes through UTC-pinned helpers (`formatCaseDate`,
 
 ## Deployment State
 
-- Single source-linked brief display and problem reporting are included in the implementation
-  commit that records this decision; Railway auto-deploy from `main` is the rollout path.
+- Single source-linked brief display and problem reporting: commit `67977a8`; backend
+  auto-deploy `9991329f-b88f-4662-a27e-8a615af3e1e4`; frontend auto-deploy
+  `59d09313-bc91-444c-84a7-56839dd5ccfa` (all successful, 2026-07-12). No gap.
 - Abbreviated-caption search fix: committed as `3eda0f6` and live via backend auto-deploy
   `c32f6e5c` (2026-07-12), superseding Sol's direct deploy `8e6d6219`. No gap.
 - Case Information sidebar redesign deployed to the frontend as Railway deployment
