@@ -501,14 +501,14 @@ async def cmd_review_save(cid, path):
         if not row:
             raise SystemExit(f"No pending candidate for {cid}")
         async with conn.transaction():
-            status = "approved" if verdict["verdict"] == "approve" else "held"
+            status = "approved" if verdict["verdict"] == "approve" else "rejected"
             await conn.execute(
                 """UPDATE structured_summary_candidates
                    SET review_status = $3, reviewed_at = NOW(), review_notes = $4
                    WHERE case_id = $1 AND provider = $2""",
                 cid, SOURCE_PROVIDER, status, notes,
             )
-            if status == "held":
+            if status == "rejected":
                 await record_candidate_failure(conn, cid, row["content_hash"], "semantic_review", notes)
         print(f"{status} candidate for {cid}")
     finally:
