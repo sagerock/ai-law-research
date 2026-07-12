@@ -3,8 +3,8 @@
 
     python stub_citers.py <target_cluster_id> [<target_cluster_id> ...]
 
-Reads the citers already in `case_authority_citers` (pushed by export_to_db.py) and inserts
-a minimal stub row into `cases` for each one not already present. A stub carries only what we
+Reads the newest 100 citers per authority tier (the same cap exposed by the API) and inserts a
+minimal stub row into `cases` for each one not already present. A stub carries only what we
 already computed (id = CL cluster_id, title, date, court label, CourtListener source link) and
 NO opinion text — so the site's existing lazy-fetch "graduates" it to a full case on first visit
 (main.py get_case). ON CONFLICT DO NOTHING: never touches a real, already-imported case.
@@ -30,8 +30,18 @@ async def run(target_ids):
     conn = await asyncpg.connect(prod_url())
     for tid in target_ids:
         citers = await conn.fetch(
-            """SELECT citer_cluster_id, citer_name, citer_court_name, citer_date
-               FROM case_authority_citers WHERE target_case_id = $1""", str(tid))
+            """WITH ranked AS (
+                   SELECT citer_cluster_id, citer_name, citer_court_name, citer_date,
+                          ROW_NUMBER() OVER (
+                              PARTITION BY tier ORDER BY citer_date DESC NULLS LAST
+                          ) AS rn
+                   FROM case_authority_citers
+                   WHERE target_case_id = $1
+               )
+               SELECT citer_cluster_id, citer_name, citer_court_name, citer_date
+               FROM ranked WHERE rn <= 100""",
+            str(tid),
+        )
         # skip ids already present so the executemany batch is pure inserts
         existing = {r["id"] for r in await conn.fetch(
             "SELECT id FROM cases WHERE id = ANY($1)",

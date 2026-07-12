@@ -183,8 +183,10 @@ locally curated `cheng-ev-*` cases cannot use the numeric bulk citation graph. Z
 are valid corpus results (for example Smith v. Savannah Homes has no incoming rows; Frye and
 Meza have no mapped outgoing rows). The source-linked generator no longer requires a legacy
 brief first. Approved structured-only briefs now display and count on textbook pages; semantic
-review remains mandatory before publication. Baseline was 29 legacy briefs but only 8 approved
-source-linked briefs.
+review remains mandatory before publication. Display-capped authority citers (newest 100 per
+tier) now receive lightweight internal stubs, so every authority case shown on these pages links
+to Law Study Group and lazily hydrates on first visit. Baseline was 29 legacy briefs but only 8
+approved source-linked briefs.
 Next: Run and monitor the source rebuild until the 67-case source-linked gap is exhausted;
 triage rejected candidates under the existing two-strike process. Audit the six synthetic cases
 manually for external citation identifiers rather than forcing them through CourtListener IDs.

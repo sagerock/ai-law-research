@@ -1493,14 +1493,19 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                             const yr = c.date ? caseYear(c.date) : ''
                             const inner = (
                               <>
-                                <p className="text-sm text-stone-800 line-clamp-2 leading-snug">{c.name || 'Unknown case'}</p>
+                                <div className={`flex items-start gap-1.5 ${c.in_site ? 'text-sage-700 group-hover:text-sage-800' : 'text-stone-800'}`}>
+                                  <p className={`text-sm line-clamp-2 leading-snug ${c.in_site ? 'font-medium underline decoration-sage-300 underline-offset-2' : ''}`}>
+                                    {c.name || 'Unknown case'}
+                                  </p>
+                                  {c.in_site && <ExternalLink className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />}
+                                </div>
                                 <p className="text-xs text-stone-500 mt-0.5">
                                   {c.court_name || c.court_id || ''}{yr ? ` • ${yr}` : ''}
                                 </p>
                               </>
                             )
                             return c.in_site ? (
-                              <Link key={c.id} href={`/case/${c.id}`} className="block p-1.5 -mx-1.5 rounded hover:bg-stone-50">
+                              <Link key={c.id} href={`/case/${c.id}`} className="group block p-1.5 -mx-1.5 rounded hover:bg-sage-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500">
                                 {inner}
                               </Link>
                             ) : (
