@@ -60,6 +60,12 @@ errors repeatedly, stop early and note it.
 
 ## Quality rules
 
+- **Every specific in a sourced claim must appear in a cited passage.** The #1 rejection
+  cause (9 of the first 22 candidates) is a claim that is broadly right but asserts a
+  specific — a year, a name, a dollar figure, "sole", "first", a procedural outcome —
+  that no cited passage states. You know these cases from training; the reviewer only
+  accepts what the passages say. When a specific isn't in a passage, generalize the
+  claim or drop the specific. Save what you remember for Significance.
 - Distinguish the judgment from dicta and procedural history.
 - Keep majority reasoning separate from dissents and concurrences.
 - Cite only language that actually supports the claim, not merely nearby language.
