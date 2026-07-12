@@ -173,6 +173,24 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Cheng Evidence textbook coverage
+Owner: Sol (mechanical data), Claude (generation/review worker)
+Status: in progress
+Files: `citator/export_casebook_citations.py`, `citator/sunday_briefs.py`, `backend/main.py`
+Summary: Textbook `2467` is the priority source-linked brief queue. Citation authority and
+outgoing edges were processed for all 69 CourtListener-backed cases in the 75-case book; six
+locally curated `cheng-ev-*` cases cannot use the numeric bulk citation graph. Zero-result cases
+are valid corpus results (for example Smith v. Savannah Homes has no incoming rows; Frye and
+Meza have no mapped outgoing rows). The source-linked generator no longer requires a legacy
+brief first. Approved structured-only briefs now display and count on textbook pages; semantic
+review remains mandatory before publication. Baseline was 29 legacy briefs but only 8 approved
+source-linked briefs.
+Next: Run and monitor the source rebuild until the 67-case source-linked gap is exhausted;
+triage rejected candidates under the existing two-strike process. Audit the six synthetic cases
+manually for external citation identifiers rather than forcing them through CourtListener IDs.
+Deployment: pending backend auto-deploy after commit
+Commit: pending
+
 Resolved (Sol, 2026-07-12): local backend testing now uses a project `.venv` pinned to
 production's Python 3.11 via `uv`. Run `make test-setup` once and `make test-local` thereafter.
 `pytest.ini` limits discovery to unit suites in `backend/` and `citator/`, excluding live/network

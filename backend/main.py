@@ -1385,8 +1385,14 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
         except Exception as e:
             print(f"Warning: summary_ratings query failed: {e}")
 
+        has_legacy_summary = bool(cached)
         if not cached:
-            return {"summary": None, "cached": False, "ratings": ratings}
+            cached = {
+                "id": None, "summary": None, "model": None,
+                "input_tokens": 0, "output_tokens": 0, "cost": 0,
+                "created_at": None, "structured_summary": None,
+                "structured_model": None, "structured_created_at": None,
+            }
 
         # Get citing and cited cases for the response
         citing_query = await conn.fetch(
@@ -1524,7 +1530,7 @@ async def get_case_summary(case_id: str, user: Optional[dict] = Depends(get_curr
                 "output": cached["output_tokens"],
                 "total": cached["input_tokens"] + cached["output_tokens"]
             },
-            "cached": True,
+            "cached": has_legacy_summary or bool(structured_candidates),
             "cached_at": cached["created_at"].isoformat() if cached["created_at"] else None,
             "model": cached["model"],
             "ratings": ratings,
@@ -6265,7 +6271,13 @@ async def get_textbooks():
             SELECT cb.id, cb.title, cb.edition, cb.authors, cb.subject,
                    cb.isbn, cb.year,
                    COUNT(DISTINCT cc.case_id) as case_count,
-                   COUNT(DISTINCT s.case_id) as brief_count
+                   COUNT(DISTINCT cc.case_id) FILTER (
+                       WHERE s.case_id IS NOT NULL OR EXISTS (
+                           SELECT 1 FROM structured_summary_candidates k
+                           WHERE k.case_id = cc.case_id
+                             AND k.provider = 'claude' AND k.review_status = 'approved'
+                       )
+                   ) as brief_count
             FROM casebooks cb
             LEFT JOIN casebook_cases cc ON cc.casebook_id = cb.id
             LEFT JOIN ai_summaries s ON s.case_id = cc.case_id
@@ -6317,7 +6329,11 @@ async def get_textbook_detail(textbook_id: int):
         cases = await conn.fetch("""
             SELECT cc.case_id as id, c.title, c.reporter_cite, c.decision_date,
                    ct.name as court_name,
-                   CASE WHEN s.case_id IS NOT NULL THEN true ELSE false END as has_brief,
+                    CASE WHEN s.case_id IS NOT NULL OR EXISTS (
+                        SELECT 1 FROM structured_summary_candidates k
+                        WHERE k.case_id = c.id
+                          AND k.provider = 'claude' AND k.review_status = 'approved'
+                    ) THEN true ELSE false END as has_brief,
                    cc.chapter, cc.sort_order, cc.case_name_in_book
             FROM casebook_cases cc
             JOIN cases c ON cc.case_id = c.id

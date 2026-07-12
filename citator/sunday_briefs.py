@@ -51,6 +51,7 @@ SOURCE_PILOT_IDS = [
 ]
 SOURCE_PROVIDER = "claude"
 SOURCE_PACKET_CHARS = 80000
+PRIORITY_CASEBOOK_ID = 2467
 
 
 def skiplist():
@@ -213,7 +214,7 @@ def read_full_opinion(cid):
 
 
 async def cmd_candidate_list(n):
-    """Rebuild queue: every case with a legacy brief and no structured candidate.
+    """Source-linked queue: priority casebook cases, then the existing rebuild pool.
 
     The 10-case pilot (SOURCE_PILOT_IDS) graduated 2026-07-12: 5 approved, 5 held
     at semantic review. Queue priority mirrors the legacy batch — landmarks first
@@ -223,17 +224,24 @@ async def cmd_candidate_list(n):
     conn = await asyncpg.connect(prod_url())
     try:
         rows = await conn.fetch(
-            """SELECT s.case_id, c.title, c.decision_date,
+            """SELECT c.id AS case_id, c.title, c.decision_date,
                       (SELECT COUNT(*) FROM citations t
-                       WHERE t.target_case_id = s.case_id) AS cites
-               FROM ai_summaries s
-               JOIN cases c ON c.id = s.case_id
-               WHERE NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
-                                 WHERE k.case_id = s.case_id AND k.provider = $1)
-                 AND NOT EXISTS (SELECT 1 FROM structured_summary_failures f
-                                 WHERE f.case_id = s.case_id AND f.provider = $1
-                                   AND f.stage = 'semantic_review')""",
-            SOURCE_PROVIDER,
+                       WHERE t.target_case_id = c.id) AS cites,
+                      EXISTS (SELECT 1 FROM casebook_cases cc
+                              WHERE cc.case_id = c.id AND cc.casebook_id = $2) AS priority_casebook,
+                      (SELECT cc.sort_order FROM casebook_cases cc
+                       WHERE cc.case_id = c.id AND cc.casebook_id = $2
+                       LIMIT 1) AS priority_order
+               FROM cases c
+               WHERE (EXISTS (SELECT 1 FROM ai_summaries s WHERE s.case_id = c.id)
+                      OR EXISTS (SELECT 1 FROM casebook_cases cc
+                                 WHERE cc.case_id = c.id AND cc.casebook_id = $2))
+                 AND NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
+                                  WHERE k.case_id = c.id AND k.provider = $1)
+                  AND NOT EXISTS (SELECT 1 FROM structured_summary_failures f
+                                  WHERE f.case_id = c.id AND f.provider = $1
+                                    AND f.stage = 'semantic_review')""",
+            SOURCE_PROVIDER, PRIORITY_CASEBOOK_ID,
         )
         skip = skiplist()
         landmark_rank = {cid: i for i, cid in enumerate(LANDMARKS)}
@@ -241,11 +249,13 @@ async def cmd_candidate_list(n):
 
         def rank(row):
             cid = row["case_id"]
+            if row["priority_casebook"]:
+                return (0, row["priority_order"] or 999999)
             if cid in landmark_rank:
-                return (0, landmark_rank[cid])
+                return (1, landmark_rank[cid])
             if cid in curated_rank:
-                return (1, curated_rank[cid])
-            return (2, -row["cites"])
+                return (2, curated_rank[cid])
+            return (3, -row["cites"])
 
         queue = [
             {
@@ -261,19 +271,7 @@ async def cmd_candidate_list(n):
         await conn.close()
 
 
-async def has_legacy_brief(conn, cid):
-    return await conn.fetchval("SELECT 1 FROM ai_summaries WHERE case_id = $1", cid)
-
-
 async def cmd_candidate_opinion(cid):
-    conn_check = await asyncpg.connect(prod_url())
-    try:
-        eligible = await has_legacy_brief(conn_check, cid)
-    finally:
-        await conn_check.close()
-    if not eligible:
-        raise SystemExit(f"{cid} has no legacy brief — the rebuild queue only covers "
-                         "already-briefed cases; use the legacy workflow for new ones")
     text, source = await asyncio.to_thread(read_full_opinion, cid)
     conn = await asyncpg.connect(prod_url())
     try:
