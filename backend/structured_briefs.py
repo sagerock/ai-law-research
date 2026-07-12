@@ -68,6 +68,39 @@ def validate_structured_summary(candidate: dict, passages: list[dict]) -> list[s
     return errors
 
 
+def repair_unknown_sources(candidate: dict, passages: list[dict]) -> None:
+    """Fix near-miss passage IDs in place before validation.
+
+    Models occasionally emit a real passage ID with a character added or dropped
+    at the end. When exactly one known ID is a prefix of the cited ID (or vice
+    versa), the intended passage is unambiguous, so repairing it locally is
+    cheaper than a regeneration round-trip.
+    """
+    if not isinstance(candidate, dict):
+        return
+    known = {
+        passage.get("passage_id", passage.get("id"))
+        for passage in passages
+    }
+    for claims in candidate.values():
+        if not isinstance(claims, list):
+            continue
+        for claim in claims:
+            if not isinstance(claim, dict) or not isinstance(claim.get("sources"), list):
+                continue
+            sources = claim["sources"]
+            for index, source in enumerate(sources):
+                if not isinstance(source, str) or source in known:
+                    continue
+                matches = [
+                    passage_id for passage_id in known
+                    if isinstance(passage_id, str)
+                    and (passage_id.startswith(source) or source.startswith(passage_id))
+                ]
+                if len(matches) == 1 and matches[0] not in sources:
+                    sources[index] = matches[0]
+
+
 def build_source_packet(text: str, max_leading_chars: int = 65000, max_trailing_chars: int = 15000):
     content_hash, passages = build_opinion_passages(text)
     selected, chars = [], 0

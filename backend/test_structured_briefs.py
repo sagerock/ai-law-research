@@ -4,6 +4,7 @@ import unittest
 from structured_briefs import (
     build_source_packet,
     parse_structured_response,
+    repair_unknown_sources,
     structured_summary_to_text,
     validate_structured_summary,
 )
@@ -36,6 +37,37 @@ class StructuredBriefTests(unittest.TestCase):
         value["facts"][0]["sources"] = ["op-invented"]
         errors = validate_structured_summary(value, self.passages)
         self.assertTrue(any("unknown sources" in error for error in errors))
+
+    def test_repairs_source_id_with_extra_trailing_character(self):
+        passages = [{"id": "op-050f959b963a1792", "opinion_part": "opinion", "text": "S."}]
+        value = valid_summary()
+        for section in value:
+            if isinstance(value[section], list):
+                for claim in value[section]:
+                    claim["sources"] = ["op-050f959b963a1792"]
+        value["rule"][0]["sources"] = ["op-050f959b963a17925"]
+        repair_unknown_sources(value, passages)
+        self.assertEqual(value["rule"][0]["sources"], ["op-050f959b963a1792"])
+        self.assertEqual(validate_structured_summary(value, passages), [])
+
+    def test_repairs_truncated_source_id(self):
+        passages = [{"id": "op-abcdef0123456789", "opinion_part": "opinion", "text": "S."}]
+        value = valid_summary()
+        value["facts"][0]["sources"] = ["op-abcdef012345678"]
+        repair_unknown_sources(value, passages)
+        self.assertEqual(value["facts"][0]["sources"], ["op-abcdef0123456789"])
+
+    def test_leaves_ambiguous_and_unmatched_sources_alone(self):
+        passages = [
+            {"id": "op-aa11", "opinion_part": "opinion", "text": "S."},
+            {"id": "op-aa12", "opinion_part": "opinion", "text": "S."},
+        ]
+        value = valid_summary()
+        value["facts"][0]["sources"] = ["op-aa1"]      # prefix of two known IDs
+        value["issue"][0]["sources"] = ["op-zz99"]     # matches nothing
+        repair_unknown_sources(value, passages)
+        self.assertEqual(value["facts"][0]["sources"], ["op-aa1"])
+        self.assertEqual(value["issue"][0]["sources"], ["op-zz99"])
 
     def test_builds_stable_passages_and_packet(self):
         text = "First supported sentence.\nSecond supported sentence."

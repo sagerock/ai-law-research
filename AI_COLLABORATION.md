@@ -63,6 +63,15 @@ is what existed before 2026-07-12, and per-endpoint copies invite silent diverge
   review gate covers the second, so the gate is load-bearing — without it the briefs are
   merely decorated with citations, not verifiable. Keep it strict even when it slows
   brief throughput. (Sage + Claude, 2026-07-12.)
+- Generation is resilient, validation is not: the on-demand endpoint deterministically
+  repairs near-miss passage IDs (`repair_unknown_sources` — a model sometimes emits a
+  real ID with one trailing character added or dropped; a unique prefix match identifies
+  the intended passage) and gives the model one corrective retry with the validation
+  errors fed back before failing. Validation rules themselves are never loosened — a
+  wrong-but-plausible source is exactly what the feature exists to prevent. Trigger: a
+  user hit `unknown sources: ['op-050f959b963a17925']` (17 hex chars; real IDs are 16)
+  on case 667589, 2026-07-12. The Sunday batch pipeline does not use the repair/retry
+  path yet — worth unifying if batch failure rates matter.
 
 ### Case Information Placement
 
@@ -89,7 +98,18 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
-No active handoff.
+### Search: word-boundary title matching
+Owner: unknown assistant (found live in the working tree, 2026-07-12 ~11:10 UTC)
+Status: appears complete — implemented, tested, and direct-deployed to the backend
+Files: `backend/search_utils.py`, `backend/test_search_utils.py`, `backend/main.py` (search endpoint)
+Summary: search now matches title terms at word boundaries via `case_title_terms`
+alongside the ILIKE pattern. Found uncommitted while another assistant's session was
+(or had just been) active. Claude committed it to `main` on 2026-07-12 so the
+backend's GitHub auto-deploy would not wipe the direct deploy on the next push —
+not to claim the work. Owner: please verify the commit matches your intent, add your
+rationale here, and clear this entry.
+Deployment: direct deploys `104a19cd` / `fe1d8976` (2026-07-12), then via auto-deploy
+Commit: committed by Claude on the owner's behalf
 
 Resolved from the prior handoff: the case-info card was moved above the citator panels and
 rebuilt from structured fields. The unrelated legacy `/citator` endpoint remains broken but

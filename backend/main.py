@@ -28,6 +28,7 @@ from opinion_loader import is_courtlistener_id, load_opinion_text
 from structured_briefs import (
     build_source_packet,
     build_structured_prompt,
+    repair_unknown_sources,
     parse_structured_response,
     structured_summary_to_text,
     validate_structured_summary,
@@ -1871,67 +1872,87 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
     prompt = build_structured_prompt(case_name, str(court), date_str, selected_passages)
 
     try:
-        # Call Anthropic Messages API with Claude Opus 4.8
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "claude-opus-4-8",
-                    "max_tokens": 4000,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                },
-                timeout=90.0  # Increased timeout for longer cases
-            )
+        # Call Anthropic Messages API with Claude Opus 4.8. A brief that fails
+        # validation gets one corrective round-trip with the errors fed back,
+        # so a near-miss (typoed passage ID, word-count overshoot) becomes a
+        # retry instead of a user-facing 502.
+        messages = [{"role": "user", "content": prompt}]
+        structured_summary = None
+        validation_errors: list = []
+        input_tokens = 0
+        output_tokens = 0
+        for attempt in range(2):
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "claude-opus-4-8",
+                        "max_tokens": 4000,
+                        "messages": messages
+                    },
+                    timeout=90.0  # Increased timeout for longer cases
+                )
 
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Anthropic API error: {response.text}"
-            )
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Anthropic API error: {response.text}"
+                )
 
-        result = response.json()
-        print(f"Claude API Response: stop_reason={result.get('stop_reason')}")  # Debug logging
+            result = response.json()
+            print(f"Claude API Response: stop_reason={result.get('stop_reason')}")  # Debug logging
 
-        # Extract and validate source-linked JSON from Claude's response.
-        content_blocks = result.get("content", [])
-        response_text = None
+            usage = result.get("usage", {})
+            input_tokens += usage.get("input_tokens", 0)
+            output_tokens += usage.get("output_tokens", 0)
 
-        for block in content_blocks:
-            if block.get("type") == "text":
-                response_text = block.get("text")
+            # Extract and validate source-linked JSON from Claude's response.
+            content_blocks = result.get("content", [])
+            response_text = None
+
+            for block in content_blocks:
+                if block.get("type") == "text":
+                    response_text = block.get("text")
+                    break
+
+            if not response_text:
+                print(f"Could not find text in response. Content blocks: {len(content_blocks)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Could not extract text from Claude response"
+                )
+
+            try:
+                structured_summary = parse_structured_response(response_text)
+            except (json.JSONDecodeError, TypeError) as error:
+                structured_summary = None
+                validation_errors = [f"response was not valid JSON: {error}"]
+            else:
+                repair_unknown_sources(structured_summary, selected_passages)
+                validation_errors = validate_structured_summary(structured_summary, selected_passages)
+
+            if not validation_errors:
                 break
 
-        if not response_text:
-            print(f"Could not find text in response. Content blocks: {len(content_blocks)}")
-            raise HTTPException(
-                status_code=500,
-                detail="Could not extract text from Claude response"
-            )
+            print(f"Brief attempt {attempt + 1} failed validation: {'; '.join(validation_errors)}")
+            messages.append({"role": "assistant", "content": response_text})
+            messages.append({"role": "user", "content": (
+                "That brief failed validation: " + "; ".join(validation_errors)
+                + ". Return the corrected JSON only, following every requirement "
+                "in the original instructions."
+            )})
 
-        try:
-            structured_summary = parse_structured_response(response_text)
-        except (json.JSONDecodeError, TypeError) as error:
-            raise HTTPException(status_code=502, detail=f"Claude returned invalid brief JSON: {error}")
-        validation_errors = validate_structured_summary(structured_summary, selected_passages)
         if validation_errors:
             raise HTTPException(status_code=502, detail="Invalid source-linked brief: " + "; ".join(validation_errors))
         summary = structured_summary_to_text(structured_summary)
 
-        # Calculate cost
+        # Calculate cost (accumulated across attempts)
         # Claude Opus 4.8: $5 per 1M input tokens, $25 per 1M output tokens
-        usage = result.get("usage", {})
-        input_tokens = usage.get("input_tokens", 0)
-        output_tokens = usage.get("output_tokens", 0)
         cost = (input_tokens * 5.0 / 1_000_000) + (output_tokens * 25.0 / 1_000_000)
 
         generation_metadata = json.dumps({
