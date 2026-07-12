@@ -155,8 +155,13 @@ reasoning to the wrong court — the gate catching a real hallucination on its f
 scaled run. The review session also caught and fixed the 'held' vs 'rejected'
 status-constraint bug mid-run (committed as 9800bc2). Throughput: ~3 briefs per
 ~22-minute cycle; ~890 remaining.
-Next: decide whether tonight's 7:03pm cron keeps running the LEGACY runbook or
-switches to `source_rebuild_burn.sh` (Sage's call).
+Next: monitor the 10-cycle daytime run (log `/home/sage/logs/source-rebuild.log`) and
+tonight's cron output; clear or regenerate rejected candidates as they accumulate.
+Decision (Sage, 2026-07-12): Sunday credits focus on the rebuild until the ~890-case
+backlog is done. The 7:03pm cron now runs `source_rebuild_burn.sh 15`; the legacy
+un-briefed-cases batch (`run_sunday_briefs.sh`) is paused, not retired — restore or
+split the pool when the rebuild clears. Both brief versions stay on rebuilt pages
+(traditional + source-linked); brief-preference votes will inform any later change.
 Deployment: n/a (citator scripts run locally against prod DB)
 Commit: see git log for this branch
 
