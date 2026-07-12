@@ -1557,11 +1557,14 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         <Link
                           key={c.id}
                           href={`/case/${c.id}`}
-                          className="block p-2 hover:bg-stone-50 rounded border border-transparent hover:border-stone-200"
+                          className="group block p-2 rounded border border-stone-200 hover:border-sage-300 hover:bg-sage-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500"
                         >
-                          <p className="text-sm font-medium text-sage-600 hover:text-sage-700 line-clamp-2">
-                            {c.title || c.case_name || 'Untitled Case'}
-                          </p>
+                          <div className="flex items-start gap-1.5 text-sage-700 group-hover:text-sage-800">
+                            <p className="text-sm font-medium underline decoration-sage-300 underline-offset-2 line-clamp-2">
+                              {c.title || c.case_name || 'Untitled Case'}
+                            </p>
+                            <ExternalLink className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                          </div>
                           <p className="text-xs text-stone-500 mt-1">
                             {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${caseYear(c.decision_date)}` : ''}
                           </p>
@@ -1583,11 +1586,14 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         <Link
                           key={c.id}
                           href={`/case/${c.id}`}
-                          className="block p-2 hover:bg-stone-50 rounded border border-transparent hover:border-stone-200"
+                          className="group block p-2 rounded border border-stone-200 hover:border-sage-300 hover:bg-sage-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500"
                         >
-                          <p className="text-sm font-medium text-sage-600 hover:text-sage-700 line-clamp-2">
-                            {c.title || c.case_name || 'Untitled Case'}
-                          </p>
+                          <div className="flex items-start gap-1.5 text-sage-700 group-hover:text-sage-800">
+                            <p className="text-sm font-medium underline decoration-sage-300 underline-offset-2 line-clamp-2">
+                              {c.title || c.case_name || 'Untitled Case'}
+                            </p>
+                            <ExternalLink className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                          </div>
                           <p className="text-xs text-stone-500 mt-1">
                             {c.court_name || 'Unknown Court'} {c.decision_date ? `• ${caseYear(c.decision_date)}` : ''}
                           </p>
