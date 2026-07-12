@@ -21,7 +21,21 @@ changing it.
 - Do not overwrite another assistant's active work. Note overlapping work under Current Handoffs.
 - Production deployment does not imply a Git commit or push. Record those states separately.
   (House style: this repo pushes straight to `main`; commit and push promptly after deploying
-  so the Deployment State section below can stay empty.)
+  so the Deployment State section below can stay empty. Note: both Railway services now
+  auto-deploy from GitHub `main`, so a push replaces any direct deploy — commit before or
+  with your direct deploys, or the next assistant's push will silently roll yours back.)
+
+## Working Styles
+
+Sage's observation from the first day of multi-assistant collaboration (2026-07-12), kept
+here as context, not as assignment — either assistant may do any work: Claude tends toward
+strategy and framing (this doc's rationale-first structure, turning vague reports into
+diagnoses before code, coordination when sessions collide); Sol tends toward fast, precise
+implementation (case-info card, abbreviated-caption search — shipped and deployed while
+Claude was still mid-investigation on an adjacent bug). Practical use: cross-cutting or
+ambiguous problems benefit from a Claude-style framing pass first; well-scoped
+implementation is Sol's fast path. Structure teaches behavior — keep this doc's templates
+demanding rationale, and every assistant's entries get better.
 
 ## Architecture Decisions
 
@@ -85,6 +99,15 @@ are operational details rather than useful legal study context. Rejected alterna
 the old `Additional Information` card below the citator panels, where large authority reports
 made it effectively undiscoverable. (Claude diagnosis + Sol implementation, 2026-07-12.)
 
+### Abbreviated Case Captions in Search
+
+Homepage case search treats meaningful caption words as order-independent, literal title
+tokens after removing connectors such as `v.` and `versus`. This allows a textbook caption
+like `United States v. Ince` to find the stored `United States v. Nigel D. Ince`. PostgreSQL
+English full-text stemming was rejected for this path because it reduced `Ince` to `inc`,
+creating corporate-name false positives such as `Prince`. Exact citation and contiguous-title
+matches still rank ahead of token matches. (Sol, 2026-07-12.)
+
 ## Open Questions
 
 Genuine design questions left for the next assistant. If you can resolve one (with
@@ -98,18 +121,12 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
-### Search: word-boundary title matching
-Owner: unknown assistant (found live in the working tree, 2026-07-12 ~11:10 UTC)
-Status: appears complete — implemented, tested, and direct-deployed to the backend
-Files: `backend/search_utils.py`, `backend/test_search_utils.py`, `backend/main.py` (search endpoint)
-Summary: search now matches title terms at word boundaries via `case_title_terms`
-alongside the ILIKE pattern. Found uncommitted while another assistant's session was
-(or had just been) active. Claude committed it to `main` on 2026-07-12 so the
-backend's GitHub auto-deploy would not wipe the direct deploy on the next push —
-not to claim the work. Owner: please verify the commit matches your intent, add your
-rationale here, and clear this entry.
-Deployment: direct deploys `104a19cd` / `fe1d8976` (2026-07-12), then via auto-deploy
-Commit: committed by Claude on the owner's behalf
+No active handoff.
+
+Resolved: the abbreviated-caption search work (Sol) was found uncommitted mid-session;
+Claude committed it as `3eda0f6` so a push would not roll back Sol's direct deploy, and
+Sol recorded its rationale under Architecture Decisions. Verified working in production
+(`United States v. Ince` finds `United States v. Nigel D. Ince`).
 
 Resolved from the prior handoff: the case-info card was moved above the citator panels and
 rebuilt from structured fields. The unrelated legacy `/citator` endpoint remains broken but
@@ -124,6 +141,8 @@ in `CaseDetailClient.tsx` now goes through UTC-pinned helpers (`formatCaseDate`,
 
 ## Deployment State
 
+- Abbreviated-caption search fix: committed as `3eda0f6` and live via backend auto-deploy
+  `c32f6e5c` (2026-07-12), superseding Sol's direct deploy `8e6d6219`. No gap.
 - Case Information sidebar redesign deployed to the frontend as Railway deployment
   `eb3c15d1-0b59-4ad0-86d0-2b0928a8eb4f` on 2026-07-12; implementation is included in
   the commit that records this decision.
