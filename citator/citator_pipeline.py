@@ -61,6 +61,28 @@ def trace(target_cluster_id):
     return sorted(set(citer_clusters))
 
 
+def trace_cited(target_cluster_id):
+    """Return clusters cited by every opinion in the target cluster."""
+    con = duckdb.connect(); con.execute("SET threads=3"); con.execute("SET memory_limit='4GB'")
+    con.execute("SET enable_progress_bar=false")
+    ops = [r[0] for r in con.execute(
+        f"SELECT opinion_id FROM read_parquet('{LOOK}') WHERE cluster_id = {target_cluster_id}").fetchall()]
+    if not ops:
+        return []
+    idl = ",".join(map(str, ops))
+    cited_ops = [r[0] for r in con.execute(f"""
+        SELECT DISTINCT CAST(cited_opinion_id AS BIGINT) FROM
+        read_csv('{CMAP}', header=true, quote='"',
+          columns={{'id':'VARCHAR','depth':'VARCHAR','cited_opinion_id':'BIGINT','citing_opinion_id':'BIGINT'}})
+        WHERE citing_opinion_id IN ({idl})""").fetchall()]
+    if not cited_ops:
+        return []
+    cited_clusters = [r[0] for r in con.execute(
+        f"SELECT DISTINCT cluster_id FROM read_parquet('{LOOK}') "
+        f"WHERE opinion_id IN ({','.join(map(str, cited_ops))})").fetchall()]
+    return sorted(set(cited_clusters) - {target_cluster_id})
+
+
 # ---------- 2. RESOLVE (local — cluster_court.parquet, no API) ----------
 def resolve(cluster_ids):
     """Local court/name/date/precedential lookup from cluster_court.parquet — no CourtListener API.
