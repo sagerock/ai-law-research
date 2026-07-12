@@ -25,6 +25,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from webhook_security import require_kofi_verification_token
 from document_security import download_storage_file, read_upload_limited, validate_remote_url
 from opinion_loader import is_courtlistener_id, load_opinion_text
+from search_utils import case_title_terms
 from structured_briefs import (
     build_source_packet,
     build_structured_prompt,
@@ -6657,8 +6658,18 @@ async def search_cases(q: str = "", limit: int = 50):
         raise HTTPException(status_code=400, detail="Query must be at least 2 characters")
 
     pattern = f"%{q.strip()}%"
+    title_terms = case_title_terms(q)
+    params = [pattern]
+    title_conditions = []
+    for term in title_terms:
+        params.append(rf"\m{term}\M")
+        title_conditions.append(f"c.title ~* ${len(params)}")
+    token_match = " AND ".join(title_conditions) if title_conditions else "FALSE"
+    params.append(min(limit, 100))
+    limit_param = len(params)
+
     async with db_pool.acquire() as conn:
-        rows = await conn.fetch("""
+        rows = await conn.fetch(f"""
             SELECT c.id, c.title, c.reporter_cite, c.decision_date,
                    ct.name as court_name,
                    CASE WHEN s.case_id IS NOT NULL THEN true ELSE false END as has_brief,
@@ -6666,10 +6677,20 @@ async def search_cases(q: str = "", limit: int = 50):
             FROM cases c
             LEFT JOIN ai_summaries s ON s.case_id = c.id
             LEFT JOIN courts ct ON c.court_id = ct.id
-            WHERE c.title ILIKE $1 OR c.reporter_cite ILIKE $1
-            ORDER BY citation_count DESC, c.title
-            LIMIT $2
-        """, pattern, min(limit, 100))
+            WHERE c.title ILIKE $1
+               OR c.reporter_cite ILIKE $1
+               OR ({token_match})
+            ORDER BY
+                CASE
+                    WHEN c.reporter_cite ILIKE $1 THEN 0
+                    WHEN c.title ILIKE $1 THEN 1
+                    ELSE 2
+                END,
+                citation_count DESC,
+                LENGTH(c.title),
+                c.title
+            LIMIT ${limit_param}
+        """, *params)
 
     return {
         "cases": [
