@@ -173,6 +173,20 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Crawford citation coverage
+Owner: Claude (with Sage)
+Status: planned, priority request
+Files: `citator/citator_pipeline.py`, `citator/export_to_db.py`, citation graph import tooling
+Summary: Populate citation coverage for Crawford v. Washington, site case/CourtListener cluster
+`134724` (`541 U.S. 36`). Production currently returns zero citing and cited cases and no
+authority report. This is a user-requested Evidence-class priority. Build/export the authority
+report (later cases citing Crawford) and, if the current tooling permits, populate Crawford's
+outgoing cited authorities as well. Do not build a user-facing request button.
+Next: Run the offline citator for cluster `134724`, export it, verify `/authority`; separately
+assess/import outgoing citation edges and verify `/citations` in both directions.
+Deployment: n/a (offline data operation)
+Commit: n/a
+
 Resolved (Sol, 2026-07-12): approved source-linked briefs are now the only version shown;
 legacy text remains stored as fallback. Preference voting was removed from the frontend and
 replaced with anonymous-friendly, rate-limited problem reporting. Implementation and migration
