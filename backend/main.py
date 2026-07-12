@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form, Header, Body
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form, Header, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -18,6 +18,8 @@ import json
 import re
 import random
 import zipfile
+import hashlib
+import hmac
 from jose import jwt, JWTError
 from uuid import UUID
 from citation_utils import parse_citation_slug, slug_to_reporter_cite, case_title_to_slug, build_canonical_slug
@@ -215,6 +217,10 @@ class BriefInteraction(BaseModel):
     event_type: str
     version: str
     passage_id: Optional[str] = None
+
+
+class BriefReport(BaseModel):
+    note: Optional[str] = None
 
 
 class CommentVote(BaseModel):
@@ -488,6 +494,24 @@ async def startup():
                 )
             """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_comment_votes_comment_id ON comment_votes(comment_id)")
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS brief_reports (
+                    id BIGSERIAL PRIMARY KEY,
+                    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+                    summary_version TEXT NOT NULL,
+                    note TEXT,
+                    user_id TEXT,
+                    reporter_fingerprint TEXT,
+                    resolved BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    CHECK (user_id IS NOT NULL OR reporter_fingerprint IS NOT NULL)
+                )
+            """)
+            await conn.execute("""CREATE INDEX IF NOT EXISTS idx_brief_reports_unresolved
+                                  ON brief_reports(resolved, created_at DESC)""")
+            await conn.execute("""CREATE INDEX IF NOT EXISTS idx_brief_reports_fingerprint
+                                  ON brief_reports(reporter_fingerprint, created_at DESC)
+                                  WHERE reporter_fingerprint IS NOT NULL""")
             # Textbook bookmarks table
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS textbook_bookmarks (
@@ -1621,6 +1645,66 @@ async def record_brief_interaction(
             user["id"], case_id, data.event_type, data.version, data.passage_id,
         )
     return {"status": "recorded"}
+
+
+@app.post("/api/v1/cases/{case_id}/brief-report")
+async def report_brief_problem(
+    case_id: str,
+    data: BriefReport,
+    request: Request,
+    user: Optional[dict] = Depends(get_current_user),
+):
+    note = (data.note or "").strip()
+    if len(note) > 2000:
+        raise HTTPException(status_code=400, detail="Report note must be 2,000 characters or fewer")
+
+    user_id = str(user["id"]) if user else None
+    fingerprint = None
+    if not user_id:
+        forwarded = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
+        client_ip = forwarded or (request.client.host if request.client else "unknown")
+        secret = (ENCRYPTION_KEY or SUPABASE_JWT_SECRET or "brief-report-rate-limit").encode()
+        fingerprint = hmac.new(secret, client_ip.encode(), hashlib.sha256).hexdigest()
+
+    async with db_pool.acquire() as conn:
+        case_exists = await conn.fetchval("SELECT EXISTS(SELECT 1 FROM cases WHERE id = $1)", case_id)
+        if not case_exists:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        if fingerprint:
+            recent_count = await conn.fetchval(
+                """SELECT COUNT(*) FROM brief_reports
+                   WHERE reporter_fingerprint = $1
+                     AND created_at >= NOW() - INTERVAL '1 hour'""",
+                fingerprint,
+            )
+            if recent_count >= 5:
+                raise HTTPException(status_code=429, detail="Too many reports. Please try again later.")
+
+        candidate = await conn.fetchrow(
+            """SELECT provider, model FROM structured_summary_candidates
+               WHERE case_id = $1 AND review_status = 'approved'
+               ORDER BY CASE provider WHEN 'claude' THEN 1 WHEN 'openai' THEN 2 ELSE 3 END
+               LIMIT 1""",
+            case_id,
+        )
+        if candidate:
+            summary_version = f"source-linked:{candidate['provider']}:{candidate['model']}"
+        else:
+            legacy_model = await conn.fetchval("SELECT model FROM ai_summaries WHERE case_id = $1", case_id)
+            if not legacy_model:
+                raise HTTPException(status_code=400, detail="This case does not have a brief to report")
+            summary_version = f"legacy:{legacy_model}"
+
+        report_id = await conn.fetchval(
+            """INSERT INTO brief_reports
+               (case_id, summary_version, note, user_id, reporter_fingerprint)
+               VALUES ($1, $2, $3, $4, $5)
+               RETURNING id""",
+            case_id, summary_version, note or None, user_id, fingerprint,
+        )
+
+    return {"status": "recorded", "report_id": report_id}
 
 
 async def _fetch_opinion_text_from_cl(cluster_id: str) -> Optional[str]:

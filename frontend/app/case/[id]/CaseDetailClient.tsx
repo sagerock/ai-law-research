@@ -163,17 +163,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
   const [highlightedPassage, setHighlightedPassage] = useState<string | null>(null)
-  const [activeBrief, setActiveBrief] = useState('claude')
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const structuredCandidates = caseSummary?.structured_candidates?.length
-    ? caseSummary.structured_candidates
-    : caseSummary?.structured_summary
-      ? [{ provider: 'claude', model: caseSummary.structured_model || 'Claude', summary: caseSummary.structured_summary }]
-      : []
-  const activeStructuredCandidate = activeBrief === 'original'
-    ? null
-    : structuredCandidates.find(candidate => candidate.provider === activeBrief) || structuredCandidates[0] || null
+  // The API exposes only approved candidates here; never bypass review via the legacy column.
+  const structuredCandidates = caseSummary?.structured_candidates || []
+  const activeStructuredCandidate = structuredCandidates[0] || null
 
   // Collection back-navigation context
   const collectionId = searchParams.get('collection')
@@ -185,9 +179,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [thumbsUp, setThumbsUp] = useState(0)
   const [thumbsDown, setThumbsDown] = useState(0)
   const [ratingLoading, setRatingLoading] = useState(false)
-  const [briefPreference, setBriefPreference] = useState<string | null>(null)
-  const [briefPreferenceCounts, setBriefPreferenceCounts] = useState<Record<string, number>>({})
-  const [briefPreferenceLoading, setBriefPreferenceLoading] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportNote, setReportNote] = useState('')
+  const [reportStatus, setReportStatus] = useState<'idle' | 'sent' | 'error'>('idle')
+  const [reportSubmitting, setReportSubmitting] = useState(false)
 
   // Library feature state
   const [isBookmarked, setIsBookmarked] = useState(false)
@@ -227,7 +222,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     })
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
     highlightTimerRef.current = setTimeout(() => setHighlightedPassage(null), 5000)
-    trackBriefInteraction('source_click', activeBrief, passageId)
+    trackBriefInteraction('source_click', activeStructuredCandidate?.provider || 'original', passageId)
   }
 
   const trackBriefInteraction = async (eventType: 'source_click' | 'tab_select', version: string, passageId?: string) => {
@@ -243,41 +238,24 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     }
   }
 
-  const selectBrief = (version: string) => {
-    setActiveBrief(version)
-    trackBriefInteraction('tab_select', version)
-  }
-
-  const fetchBriefPreference = async () => {
+  const submitBriefReport = async () => {
+    setReportSubmitting(true)
+    setReportStatus('idle')
     try {
-      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-preference`, {
-        headers: getAuthHeaders(),
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
+      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-report`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ note: reportNote.trim() || null }),
       })
-      if (!response.ok) return
-      const data = await response.json()
-      setBriefPreference(data.user_preference || null)
-      setBriefPreferenceCounts(data.counts || {})
+      if (!response.ok) throw new Error('Report failed')
+      setReportStatus('sent')
+      setReportNote('')
     } catch {
-      // Preference feedback is optional.
-    }
-  }
-
-  const saveBriefPreference = async (preferredVersion: string) => {
-    if (!session?.access_token) return
-    setBriefPreferenceLoading(true)
-    try {
-      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-preference`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ preferred_version: preferredVersion }),
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setBriefPreference(data.user_preference)
-        setBriefPreferenceCounts(data.counts || {})
-      }
+      setReportStatus('error')
     } finally {
-      setBriefPreferenceLoading(false)
+      setReportSubmitting(false)
     }
   }
 
@@ -301,10 +279,6 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   useEffect(() => () => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
   }, [])
-
-  useEffect(() => {
-    fetchBriefPreference()
-  }, [caseId, session?.access_token])
 
   useEffect(() => {
     fetchCachedSummary()
@@ -929,29 +903,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
               {caseSummary ? (
                 <div className="space-y-4">
                   {structuredCandidates.length > 0 && (
-                    <div className="flex items-center justify-between rounded-lg border border-sage-200 bg-sage-50 px-3 py-2">
+                    <div className="rounded-lg border border-sage-200 bg-sage-50 px-3 py-2">
                       <div>
-                        <p className="text-sm font-medium text-sage-900">Source-linked brief preview</p>
+                        <p className="text-sm font-medium text-sage-900">Source-linked brief</p>
                         <p className="text-xs text-sage-700">Every numbered source jumps to supporting opinion language.</p>
-                      </div>
-                      <div className="inline-flex rounded-md border border-sage-200 bg-white p-0.5 text-xs">
-                        {structuredCandidates.map(candidate => (
-                          <button
-                            key={candidate.provider}
-                            type="button"
-                            onClick={() => selectBrief(candidate.provider)}
-                            className={`rounded px-2.5 py-1 ${activeBrief === candidate.provider ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
-                          >
-                            {candidate.provider === 'claude' ? 'Annotated' : candidate.provider === 'openai' ? 'OpenAI' : candidate.provider}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => selectBrief('original')}
-                          className={`rounded px-2.5 py-1 ${activeBrief === 'original' ? 'bg-sage-600 text-white' : 'text-stone-600 hover:bg-stone-50'}`}
-                        >
-                          Original
-                        </button>
                       </div>
                     </div>
                   )}
@@ -1129,39 +1084,58 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   </div>
                   )}
 
-                  {structuredCandidates.length > 0 && (
-                    <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
-                      <p className="text-sm font-medium text-stone-800">Which brief helped you more?</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {[
-                          ...structuredCandidates.map(candidate => ({
-                            value: candidate.provider,
-                            label: candidate.provider === 'claude' ? 'Annotated' : candidate.provider === 'openai' ? 'OpenAI linked' : candidate.provider,
-                          })),
-                          { value: 'original', label: 'Original' },
-                          { value: 'no_preference', label: 'No preference' },
-                        ].map(option => (
+                  <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                    {!reportOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReportOpen(true)
+                          setReportStatus('idle')
+                        }}
+                        className="text-xs text-stone-600 underline decoration-stone-300 hover:text-red-700 hover:decoration-red-300"
+                      >
+                        See a problem with this brief? Report it.
+                      </button>
+                    ) : reportStatus === 'sent' ? (
+                      <p className="text-sm text-sage-700">Thank you. We&apos;ll review this brief.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <label htmlFor="brief-report-note" className="block text-sm font-medium text-stone-800">
+                          What looks wrong? <span className="font-normal text-stone-500">Optional</span>
+                        </label>
+                        <textarea
+                          id="brief-report-note"
+                          value={reportNote}
+                          onChange={(event) => setReportNote(event.target.value)}
+                          maxLength={2000}
+                          rows={3}
+                          placeholder="For example: The holding cites the dissent."
+                          className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-sage-500 focus:outline-none focus:ring-1 focus:ring-sage-500"
+                        />
+                        {reportStatus === 'error' && (
+                          <p className="text-xs text-red-600">We couldn&apos;t submit the report. Please try again.</p>
+                        )}
+                        <div className="flex items-center gap-2">
                           <button
-                            key={option.value}
                             type="button"
-                            disabled={!session?.access_token || briefPreferenceLoading}
-                            onClick={() => saveBriefPreference(option.value)}
-                            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                              briefPreference === option.value
-                                ? 'border-sage-500 bg-sage-600 text-white'
-                                : 'border-stone-300 bg-white text-stone-600 hover:border-sage-300'
-                            } disabled:cursor-not-allowed disabled:opacity-50`}
+                            onClick={submitBriefReport}
+                            disabled={reportSubmitting}
+                            className="rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sage-600 disabled:opacity-50"
                           >
-                            {option.label}
-                            {(briefPreferenceCounts[option.value] || 0) > 0 && ` · ${briefPreferenceCounts[option.value]}`}
+                            {reportSubmitting ? 'Sending...' : 'Send report'}
                           </button>
-                        ))}
+                          <button
+                            type="button"
+                            onClick={() => setReportOpen(false)}
+                            disabled={reportSubmitting}
+                            className="px-2 py-1.5 text-xs text-stone-500 hover:text-stone-700 disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                      {!session?.access_token && (
-                        <p className="mt-2 text-xs text-stone-500">Sign in to record a preference.</p>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Rating + Token usage and cost info */}
                   <div className="mt-6 pt-4 border-t border-stone-200 space-y-3">
