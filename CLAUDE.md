@@ -60,6 +60,12 @@ python simple_api.py           # Simplified API for local dev (port 8000)
 uvicorn main:app --reload      # Full API with OpenSearch integration
 ```
 
+### Local backend tests
+```bash
+make test-setup                # One-time: create .venv with production's Python 3.11
+make test-local                # Run backend and citator unit tests
+```
+
 ### Frontend (Next.js 16 with React 19)
 ```bash
 cd frontend

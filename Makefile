@@ -1,4 +1,4 @@
-.PHONY: help setup dev stop clean test deploy logs
+.PHONY: help setup dev stop clean test test-setup test-local deploy logs
 
 help:
 	@echo "Legal Research Tool - Available Commands:"
@@ -7,6 +7,8 @@ help:
 	@echo "  make stop     - Stop all services"
 	@echo "  make clean    - Clean up containers and volumes"
 	@echo "  make test     - Run tests"
+	@echo "  make test-setup - Create the local Python 3.11 test environment"
+	@echo "  make test-local - Run backend and citator unit tests locally"
 	@echo "  make deploy   - Deploy to Railway"
 	@echo "  make logs     - View logs"
 	@echo "  make etl      - Run ETL pipeline"
@@ -36,6 +38,13 @@ clean:
 
 test:
 	docker-compose exec backend pytest
+
+test-setup:
+	uv venv --python 3.11 .venv
+	uv pip install --python .venv/bin/python -r backend/requirements-dev.txt
+
+test-local:
+	.venv/bin/python -m pytest
 
 deploy:
 	@echo "Deploying to Railway..."

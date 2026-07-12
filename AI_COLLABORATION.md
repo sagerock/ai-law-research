@@ -173,6 +173,11 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+Resolved (Sol, 2026-07-12): local backend testing now uses a project `.venv` pinned to
+production's Python 3.11 via `uv`. Run `make test-setup` once and `make test-local` thereafter.
+`pytest.ini` limits discovery to unit suites in `backend/` and `citator/`, excluding live/network
+scripts under `scripts/`. Initial verification passed all 80 tests.
+
 ### Crawford citation coverage
 Owner: Sol
 Status: completed
