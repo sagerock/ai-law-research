@@ -9,9 +9,12 @@ these subcommands; the MODEL writes the briefs, this script only moves data.
     sunday_briefs.py list [N]        next N un-briefed cases by priority (JSON)
     sunday_briefs.py opinion <id>    print the opinion text (S3, PG fallback), pre-truncated
     sunday_briefs.py save <id> <file> [model]   upsert brief into ai_summaries + usage log
-    sunday_briefs.py candidate-list [N]         next source-linked pilot cases
+    sunday_briefs.py candidate-list [N]         next rebuild cases (legacy brief, no structured)
     sunday_briefs.py candidate-opinion <id>     persist + print passage-tagged opinion JSON
     sunday_briefs.py candidate-save <id> <file> <model> <content-hash>
+    sunday_briefs.py review-list [N]            pending candidates awaiting semantic review
+    sunday_briefs.py review-fetch <id>          candidate claims with cited passage texts
+    sunday_briefs.py review-save <id> <file>    apply {"verdict": "approve"|"hold", "notes"}
 
 Priority: (1) the 30 citator landmarks, (2) curated 1L cases (by casebook count),
 (3) nothing yet — expand when tiers 1-2 run dry. Cost is logged as $0 with
@@ -209,42 +212,67 @@ def read_full_opinion(cid):
 
 
 async def cmd_candidate_list(n):
+    """Rebuild queue: every case with a legacy brief and no structured candidate.
+
+    The 10-case pilot (SOURCE_PILOT_IDS) graduated 2026-07-12: 5 approved, 5 held
+    at semantic review. Queue priority mirrors the legacy batch — landmarks first
+    (most-visited pages), curated 1L cases next, everything else by citation count.
+    Cases held at semantic review stay excluded until a human clears the failure row.
+    """
     conn = await asyncpg.connect(prod_url())
     try:
-        completed = {row["case_id"] for row in await conn.fetch(
-            """SELECT case_id FROM structured_summary_candidates
-               WHERE provider = $1 AND case_id = ANY($2)""",
-            SOURCE_PROVIDER, SOURCE_PILOT_IDS,
-        )}
-        held = {row["case_id"] for row in await conn.fetch(
-            """SELECT DISTINCT case_id FROM structured_summary_failures
-               WHERE provider = $1 AND stage = 'semantic_review' AND case_id = ANY($2)""",
-            SOURCE_PROVIDER, SOURCE_PILOT_IDS,
-        )}
         rows = await conn.fetch(
-            """SELECT c.id, c.title, c.decision_date
-               FROM cases c JOIN ai_summaries s ON s.case_id = c.id
-               WHERE c.id = ANY($1)""",
-            SOURCE_PILOT_IDS,
+            """SELECT s.case_id, c.title, c.decision_date,
+                      (SELECT COUNT(*) FROM citations t
+                       WHERE t.target_case_id = s.case_id) AS cites
+               FROM ai_summaries s
+               JOIN cases c ON c.id = s.case_id
+               WHERE NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
+                                 WHERE k.case_id = s.case_id AND k.provider = $1)
+                 AND NOT EXISTS (SELECT 1 FROM structured_summary_failures f
+                                 WHERE f.case_id = s.case_id AND f.provider = $1
+                                   AND f.stage = 'semantic_review')""",
+            SOURCE_PROVIDER,
         )
-        by_id = {row["id"]: row for row in rows}
+        skip = skiplist()
+        landmark_rank = {cid: i for i, cid in enumerate(LANDMARKS)}
+        curated_rank = {cid: i for i, (cid, _, _) in enumerate(curated_ids())}
+
+        def rank(row):
+            cid = row["case_id"]
+            if cid in landmark_rank:
+                return (0, landmark_rank[cid])
+            if cid in curated_rank:
+                return (1, curated_rank[cid])
+            return (2, -row["cites"])
+
         queue = [
             {
-                "id": cid,
-                "title": by_id[cid]["title"],
-                "date": by_id[cid]["decision_date"].isoformat() if by_id[cid]["decision_date"] else None,
+                "id": row["case_id"],
+                "title": row["title"],
+                "date": row["decision_date"].isoformat() if row["decision_date"] else None,
             }
-            for cid in SOURCE_PILOT_IDS
-            if cid in by_id and cid not in completed and cid not in held and cid not in skiplist()
+            for row in sorted(rows, key=rank)
+            if row["case_id"] not in skip
         ][:n]
         print(json.dumps(queue, indent=1))
     finally:
         await conn.close()
 
 
+async def has_legacy_brief(conn, cid):
+    return await conn.fetchval("SELECT 1 FROM ai_summaries WHERE case_id = $1", cid)
+
+
 async def cmd_candidate_opinion(cid):
-    if cid not in SOURCE_PILOT_IDS:
-        raise SystemExit(f"{cid} is not in the source-linked pilot allowlist")
+    conn_check = await asyncpg.connect(prod_url())
+    try:
+        eligible = await has_legacy_brief(conn_check, cid)
+    finally:
+        await conn_check.close()
+    if not eligible:
+        raise SystemExit(f"{cid} has no legacy brief — the rebuild queue only covers "
+                         "already-briefed cases; use the legacy workflow for new ones")
     text, source = await asyncio.to_thread(read_full_opinion, cid)
     conn = await asyncpg.connect(prod_url())
     try:
@@ -252,7 +280,11 @@ async def cmd_candidate_opinion(cid):
             text = await conn.fetchval("SELECT content FROM cases WHERE id = $1", cid)
             source = "database"
         if not text or len(text) < MIN_OPINION:
-            raise SystemExit(f"Opinion for {cid} is missing or too short ({len(text or '')} chars)")
+            with open(SKIPLIST, "a") as f:
+                f.write(f"{cid}\t{len(text or '')} chars, auto-skipped (candidate) "
+                        f"{__import__('datetime').date.today()}\n")
+            raise SystemExit(f"SKIPPED {cid}: opinion is missing or too short "
+                             f"({len(text or '')} chars) — added to skiplist")
         title = await conn.fetchval("SELECT title FROM cases WHERE id = $1", cid)
         content_hash, passages = build_opinion_passages(text)
         async with conn.transaction():
@@ -377,6 +409,112 @@ async def cmd_candidate_save(cid, path, model, content_hash):
         await conn.close()
 
 
+async def cmd_review_list(n):
+    """Pending structured candidates awaiting semantic review, oldest first."""
+    conn = await asyncpg.connect(prod_url())
+    try:
+        rows = await conn.fetch(
+            """SELECT k.case_id, c.title, k.model, k.created_at
+               FROM structured_summary_candidates k
+               JOIN cases c ON c.id = k.case_id
+               WHERE k.provider = $1 AND k.review_status = 'pending'
+               ORDER BY k.created_at
+               LIMIT $2""",
+            SOURCE_PROVIDER, n,
+        )
+        print(json.dumps([
+            {"id": r["case_id"], "title": r["title"], "model": r["model"],
+             "created_at": r["created_at"].isoformat()}
+            for r in rows
+        ], indent=1))
+    finally:
+        await conn.close()
+
+
+async def cmd_review_fetch(cid):
+    """Print a pending candidate with each claim's cited passage texts for review."""
+    conn = await asyncpg.connect(prod_url())
+    try:
+        row = await conn.fetchrow(
+            """SELECT summary, content_hash, model FROM structured_summary_candidates
+               WHERE case_id = $1 AND provider = $2 AND review_status = 'pending'""",
+            cid, SOURCE_PROVIDER,
+        )
+        if not row:
+            raise SystemExit(f"No pending candidate for {cid}")
+        candidate = json.loads(row["summary"])
+        passages = {
+            p["passage_id"]: p for p in await conn.fetch(
+                """SELECT passage_id, opinion_part, text FROM opinion_passages
+                   WHERE case_id = $1 AND content_hash = $2""",
+                cid, row["content_hash"],
+            )
+        }
+        title = await conn.fetchval("SELECT title FROM cases WHERE id = $1", cid)
+        claims = []
+        for section, value in candidate.items():
+            if not isinstance(value, list):
+                continue
+            for index, claim in enumerate(value):
+                claims.append({
+                    "section": section,
+                    "index": index,
+                    "text": claim["text"],
+                    "sources": [
+                        {"id": sid,
+                         "opinion_part": passages[sid]["opinion_part"] if sid in passages else "MISSING",
+                         "text": passages[sid]["text"] if sid in passages else "MISSING"}
+                        for sid in claim["sources"]
+                    ],
+                })
+        print(json.dumps({
+            "case_id": cid,
+            "title": title,
+            "model": row["model"],
+            "content_hash": row["content_hash"],
+            "significance": candidate.get("significance"),
+            "claims": claims,
+        }, ensure_ascii=False, indent=1))
+    finally:
+        await conn.close()
+
+
+async def cmd_review_save(cid, path):
+    """Apply a review verdict: {"verdict": "approve"|"hold", "notes": "..."}.
+
+    Approve publishes the candidate (the frontend only shows approved ones).
+    Hold records a semantic_review failure, which also removes the case from the
+    rebuild queue until a human clears it — deliberate: a brief that failed human-level
+    review should not be silently regenerated and re-approved by the same pipeline.
+    """
+    verdict = json.load(open(path))
+    if verdict.get("verdict") not in ("approve", "hold") or not str(verdict.get("notes", "")).strip():
+        raise SystemExit('Verdict file must be {"verdict": "approve"|"hold", "notes": "<specific reasons>"}')
+    notes = str(verdict["notes"])[:4000]
+    conn = await asyncpg.connect(prod_url())
+    try:
+        row = await conn.fetchrow(
+            """SELECT content_hash FROM structured_summary_candidates
+               WHERE case_id = $1 AND provider = $2 AND review_status = 'pending'""",
+            cid, SOURCE_PROVIDER,
+        )
+        if not row:
+            raise SystemExit(f"No pending candidate for {cid}")
+        async with conn.transaction():
+            status = "approved" if verdict["verdict"] == "approve" else "held"
+            await conn.execute(
+                """UPDATE structured_summary_candidates
+                   SET review_status = $3, reviewed_at = NOW(), review_notes = $4
+                   WHERE case_id = $1 AND provider = $2""",
+                cid, SOURCE_PROVIDER, status, notes,
+            )
+            if status == "held":
+                await record_candidate_failure(conn, cid, row["content_hash"], "semantic_review", notes)
+        print(f"{status} candidate for {cid}")
+    finally:
+        await conn.close()
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__); sys.exit(1)
@@ -394,6 +532,12 @@ def main():
         asyncio.run(cmd_candidate_opinion(sys.argv[2]))
     elif cmd == "candidate-save" and len(sys.argv) == 6:
         asyncio.run(cmd_candidate_save(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
+    elif cmd == "review-list":
+        asyncio.run(cmd_review_list(int(sys.argv[2]) if len(sys.argv) > 2 else 10))
+    elif cmd == "review-fetch" and len(sys.argv) == 3:
+        asyncio.run(cmd_review_fetch(sys.argv[2]))
+    elif cmd == "review-save" and len(sys.argv) == 4:
+        asyncio.run(cmd_review_save(sys.argv[2], sys.argv[3]))
     else:
         print(__doc__); sys.exit(1)
 

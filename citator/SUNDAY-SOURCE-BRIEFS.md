@@ -1,16 +1,27 @@
-# Sunday source-linked brief pilot runbook
+# Sunday source-linked brief batch — generation runbook
 
-Generate exactly one structured, source-linked case brief using leftover subscription capacity.
-The helper owns the queue, passages, validation, and database writes. You write the candidate.
+Generate structured, source-linked case briefs using leftover subscription capacity.
+The helper owns the queue, passages, validation, and database writes. You write the candidates.
 Never invoke the legacy `save` command and never replace the Original brief.
 
-## Steps
+The queue is the REBUILD backlog: cases that already have a legacy brief but no structured
+one (~890 as of 2026-07-12), landmarks first. Your candidates land as `pending` and are NOT
+shown to students until a separate review session approves them — do not review your own
+candidates; a fresh context judges support more honestly than the one that wrote the claims.
 
-1. Get one pilot case:
+## Batch limit
+
+**3 candidates per session.** Hard stop. Source packets are large (up to 80k chars each);
+three keeps the session inside the context window with no auto-compaction. If anything
+errors repeatedly, stop early and note it.
+
+## Steps — repeat up to 3 times, one case at a time
+
+1. Get the next case:
 
        /home/sage/.venvs/lawdata/bin/python /mnt/d/dev/ai-law-research/citator/sunday_briefs.py candidate-list 1
 
-   If the returned array is empty, report that the pilot is complete and stop.
+   If the returned array is empty, report that the rebuild queue is dry and stop.
 
 2. Fetch its source packet:
 
@@ -42,8 +53,8 @@ Never invoke the legacy `save` command and never replace the Original brief.
        /home/sage/.venvs/lawdata/bin/python /mnt/d/dev/ai-law-research/citator/sunday_briefs.py candidate-save <id> <scratch-file> "<model-id> (sunday-source-batch)" <content_hash>
 
 5. If validation rejects the candidate, read the error, correct the scratch file once, and
-   retry. If it fails again, report the failure and stop. Do not weaken, bypass, or guess
-   around validation.
+   retry. If it fails again, report the failure and move to the next case. Do not weaken,
+   bypass, or guess around validation.
 
 ## Quality rules
 
@@ -52,4 +63,4 @@ Never invoke the legacy `save` command and never replace the Original brief.
 - Cite only language that actually supports the claim, not merely nearby language.
 - Do not add later doctrinal history to sourced sections; reserve it for Significance.
 - If the packet appears to contain the wrong case, do not save it.
-- Report the case ID, title, model, content hash, and save result when done.
+- After the batch, report: case IDs, titles, model, content hashes, save results, failures.

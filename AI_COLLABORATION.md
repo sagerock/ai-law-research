@@ -87,6 +87,27 @@ is what existed before 2026-07-12, and per-endpoint copies invite silent diverge
   on case 667589, 2026-07-12. The Sunday batch pipeline does not use the repair/retry
   path yet — worth unifying if batch failure rates matter.
 
+### Structured Brief Rebuild (legacy → source-linked)
+
+The ~900 legacy briefs are being rebuilt as source-linked briefs using leftover
+subscription credits, not API dollars. Design decisions and why (2026-07-12):
+
+- The rebuild queue (`sunday_briefs.py candidate-list`) covers only cases that already
+  have a legacy brief — the legacy Sunday batch keeps covering un-briefed cases, so the
+  two queues never race for the same case. Priority mirrors the legacy batch: landmarks,
+  curated 1L, then citation count — most-visited pages convert first.
+- Generation and semantic review run in SEPARATE fresh sessions (`SUNDAY-SOURCE-BRIEFS.md`
+  vs `SOURCE-BRIEF-REVIEW.md`, wrapped by `source_rebuild_burn.sh`). A context that wrote
+  a claim is the worst judge of whether its citation supports it. Generation runs on
+  Sonnet (cheap; every candidate is gated anyway), review on the strongest default model —
+  spend quality where it's load-bearing.
+- Review verdicts are scripted (`review-list` / `review-fetch` / `review-save`): approve
+  publishes; hold records a `semantic_review` failure that also removes the case from the
+  rebuild queue until a human clears it — a brief that failed review must not be silently
+  regenerated and re-approved by the same pipeline.
+- Held pilot cases (5 of 10) stay held; the pilot's 50% hold rate is the reason the gate
+  exists, not a reason to loosen it.
+
 ### Case Information Placement
 
 Case identity and student-facing metadata live in a `Case Information` card at the top
@@ -121,7 +142,18 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
-No active handoff.
+### Structured brief rebuild — first supervised cycle
+Owner: Claude (with Sage)
+Status: in progress
+Files: `citator/sunday_briefs.py`, `citator/SUNDAY-SOURCE-BRIEFS.md`,
+`citator/SOURCE-BRIEF-REVIEW.md`, `citator/source_rebuild_burn.sh`
+Summary: rebuild queue opened beyond the pilot; semantic review scripted; first
+supervised cycle (3 candidates + review) launched 2026-07-12 morning. Log:
+`/home/sage/logs/source-rebuild.log`.
+Next: inspect first-cycle results; decide whether tonight's 7:03pm cron should keep
+running the LEGACY runbook or switch to `source_rebuild_burn.sh` (Sage's call).
+Deployment: n/a (citator scripts run locally against prod DB)
+Commit: see git log for this branch
 
 Resolved: the abbreviated-caption search work (Sol) was found uncommitted mid-session;
 Claude committed it as `3eda0f6` so a push would not roll back Sol's direct deploy, and
