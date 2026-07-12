@@ -24,6 +24,14 @@ from citation_utils import parse_citation_slug, slug_to_reporter_cite, case_titl
 from cryptography.fernet import Fernet, InvalidToken
 from webhook_security import require_kofi_verification_token
 from document_security import download_storage_file, read_upload_limited, validate_remote_url
+from opinion_loader import is_courtlistener_id, load_opinion_text
+from structured_briefs import (
+    build_source_packet,
+    build_structured_prompt,
+    parse_structured_response,
+    structured_summary_to_text,
+    validate_structured_summary,
+)
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
 
@@ -1102,12 +1110,11 @@ async def get_case(case_id: str):
 
     result = dict(row)
 
-    # Opinion text lives in S3 (keyed by cluster_id); use it when Postgres has none.
-    if not result.get("content"):
-        s3_text = await read_opinion_from_s3(case_id)
-        if s3_text:
-            result["content"] = s3_text
-            result["content_type"] = "plain_text"
+    opinion = await load_opinion_text(case_id, result.get("content"), read_opinion_from_s3)
+    result["content"] = opinion.text
+    result["opinion_source"] = opinion.source
+    if opinion.source == "s3":
+        result["content_type"] = "plain_text"
 
     # Add stub indicator (a case is a stub only if it has no opinion text anywhere)
     result["is_stub"] = not result.get("content")
@@ -1617,6 +1624,8 @@ async def record_brief_interaction(
 async def _fetch_opinion_text_from_cl(cluster_id: str) -> Optional[str]:
     """Fetch opinion plain text for a CourtListener cluster. No auth, no AI, no cost.
     The opinion is free public record — this is deliberately separate from the paid AI brief."""
+    if not is_courtlistener_id(cluster_id):
+        return None
     import re
     try:
         from bs4 import BeautifulSoup as BS4  # nicer HTML->text if available
@@ -1691,13 +1700,15 @@ async def fetch_opinion(case_id: str):
         row = await conn.fetchrow("SELECT content, metadata FROM cases WHERE id = $1", case_id)
         if not row:
             raise HTTPException(status_code=404, detail="Case not found")
-        if row["content"] and len(row["content"]) > 200:
-            return {"case_id": case_id, "is_stub": False, "fetched": False, "already_had_content": True}
-
-        text = await _fetch_opinion_text_from_cl(case_id)
-        if not text:
+        opinion = await load_opinion_text(
+            case_id, row["content"], read_opinion_from_s3, _fetch_opinion_text_from_cl
+        )
+        if not opinion.text:
             return {"case_id": case_id, "is_stub": True, "fetched": False,
-                    "detail": "Opinion text not available electronically from CourtListener."}
+                    "detail": "Opinion text is unavailable in storage and from CourtListener."}
+        if opinion.source != "courtlistener":
+            return {"case_id": case_id, "is_stub": False, "fetched": False,
+                    "already_had_content": True, "source": opinion.source}
 
         metadata = row["metadata"]
         if isinstance(metadata, str):
@@ -1710,10 +1721,11 @@ async def fetch_opinion(case_id: str):
 
         await conn.execute(
             "UPDATE cases SET content = $1, metadata = $2, updated_at = NOW() WHERE id = $3",
-            text, json.dumps(metadata) if metadata else None, case_id,
+            opinion.text, json.dumps(metadata) if metadata else None, case_id,
         )
-        print(f"Graduated stub {case_id}: saved {len(text)} chars of opinion text")
-        return {"case_id": case_id, "is_stub": False, "fetched": True, "chars": len(text)}
+        print(f"Graduated stub {case_id}: saved {len(opinion.text)} chars of opinion text")
+        return {"case_id": case_id, "is_stub": False, "fetched": True,
+                "chars": len(opinion.text), "source": opinion.source}
 
 
 @app.post("/api/v1/cases/{case_id}/summarize")
@@ -1732,7 +1744,7 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
 
     # Get the case from database and related cases
     async with db_pool.acquire() as conn:
-        # Check if we already have a cached summary
+        # A legacy text summary is not a hit for the source-linked generator.
         cached = await conn.fetchrow(
             """
             SELECT summary, model, input_tokens, output_tokens, cost, created_at
@@ -1741,9 +1753,16 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
             """,
             case_id
         )
+        structured_cached = await conn.fetchval(
+            """SELECT EXISTS(
+                   SELECT 1 FROM structured_summary_candidates
+                   WHERE case_id = $1 AND provider = 'claude' AND review_status = 'approved'
+               )""",
+            case_id,
+        )
         row = await conn.fetchrow(
             """
-            SELECT c.*, ct.name as court_name
+            SELECT c.*, c.content AS opinion_content, ct.name as court_name
             FROM cases c
             LEFT JOIN courts ct ON c.court_id = ct.id
             WHERE c.id = $1
@@ -1779,29 +1798,16 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
             case_id
         )
 
-        # Return cached summary if it exists
-        if cached:
-            print(f"✅ Returning cached summary for case {case_id}")
-            return {
-                "summary": cached["summary"],
-                "cost": float(cached["cost"]) if cached["cost"] else 0,
-                "citing_cases": [dict(r) for r in citing_query],
-                "cited_cases": [dict(r) for r in cited_query],
-                "tokens_used": {
-                    "input": cached["input_tokens"],
-                    "output": cached["output_tokens"],
-                    "total": cached["input_tokens"] + cached["output_tokens"]
-                },
-                "cached": True,
-                "cached_at": cached["created_at"].isoformat() if cached["created_at"] else None,
-                "model": cached["model"]
-            }
+        if cached and structured_cached:
+            print(f"Returning cached source-linked summary for case {case_id}")
+            return await get_case_summary(case_id, current_user)
 
     case_data = dict(row)
-    is_stub = not case_data.get("content")
+    case_data["content"] = case_data.pop("opinion_content", None) or case_data.get("content")
+    opinion = await load_opinion_text(case_id, case_data.get("content"), read_opinion_from_s3)
 
     # Stub cases require authentication (cost protection)
-    if is_stub:
+    if not opinion.text:
         user = await get_current_user(authorization)
         if not user:
             raise HTTPException(
@@ -1809,96 +1815,14 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
                 detail="Sign in to generate briefs for cases not yet in our database"
             )
 
-        # Fetch opinion text from CourtListener API
-        cluster_id = case_id
-        print(f"Fetching opinion from CourtListener for stub case {cluster_id}...")
-
-        fetched_content = None
-        cl_token = os.getenv('COURTLISTENER_API_KEY', '')
-        cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
-
-        def extract_text_from_opinion(opinion_data: dict) -> str:
-            """Extract plain text from a CourtListener opinion response."""
-            from bs4 import BeautifulSoup as BS4
-            # Try plain text first
-            if opinion_data.get("plain_text") and len(opinion_data["plain_text"]) > 100:
-                return opinion_data["plain_text"]
-            # Try HTML fields in order of preference
-            for field in ["html_lawbox", "html_with_citations", "html", "html_columbia", "xml_harvard"]:
-                html_content = opinion_data.get(field, "")
-                if html_content:
-                    soup = BS4(html_content, 'html.parser')
-                    text = soup.get_text(separator='\n', strip=True)
-                    if len(text) > 100:
-                        return text
-            return ""
-
-        try:
-            async with httpx.AsyncClient() as client:
-                # Strategy 1: Get cluster → find opinion IDs → fetch opinion text
-                if cl_headers:
-                    cluster_resp = await client.get(
-                        f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
-                        headers=cl_headers,
-                        timeout=30.0,
-                    )
-                    if cluster_resp.status_code == 200:
-                        cluster_data = cluster_resp.json()
-                        opinion_urls = cluster_data.get("sub_opinions", [])
-
-                        for opinion_url in opinion_urls:
-                            opinion_id = opinion_url.rstrip("/").split("/")[-1]
-                            opinion_resp = await client.get(
-                                f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
-                                headers=cl_headers,
-                                timeout=30.0,
-                            )
-                            if opinion_resp.status_code == 200:
-                                text = extract_text_from_opinion(opinion_resp.json())
-                                if len(text) > 500:
-                                    fetched_content = text
-                                    print(f"  Got {len(text)} chars via cluster sub_opinions")
-                                    break
-                    else:
-                        print(f"  Cluster API returned {cluster_resp.status_code}")
-
-                # Strategy 2: Try fetching opinion directly by cluster ID
-                if not fetched_content:
-                    opinion_resp = await client.get(
-                        f"https://www.courtlistener.com/api/rest/v4/opinions/{cluster_id}/",
-                        headers=cl_headers,
-                        timeout=30.0,
-                    )
-                    if opinion_resp.status_code == 200:
-                        text = extract_text_from_opinion(opinion_resp.json())
-                        if len(text) > 500:
-                            fetched_content = text
-                            print(f"  Got {len(text)} chars via direct opinion fetch")
-
-                # Strategy 3: Search for opinions by cluster (handles mismatched IDs)
-                if not fetched_content and cl_headers:
-                    search_resp = await client.get(
-                        f"https://www.courtlistener.com/api/rest/v4/opinions/",
-                        params={"cluster": cluster_id},
-                        headers=cl_headers,
-                        timeout=30.0,
-                    )
-                    if search_resp.status_code == 200:
-                        results = search_resp.json().get("results", [])
-                        for result in results:
-                            text = extract_text_from_opinion(result)
-                            if len(text) > 500:
-                                fetched_content = text
-                                print(f"  Got {len(text)} chars via opinions search")
-                                break
-
-        except Exception as e:
-            print(f"Error fetching from CourtListener: {e}")
-
-        if not fetched_content:
+        print(f"Fetching opinion from CourtListener for stub case {case_id}...")
+        opinion = await load_opinion_text(
+            case_id, None, read_opinion_from_s3, _fetch_opinion_text_from_cl
+        )
+        if not opinion.text:
             raise HTTPException(
                 status_code=404,
-                detail="Could not fetch opinion text from CourtListener. The full opinion may not be available electronically."
+                detail="Opinion text is unavailable in storage and from CourtListener."
             )
 
         # Save fetched content to database ("graduate" the stub)
@@ -1918,14 +1842,13 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
                 UPDATE cases SET content = $1, metadata = $2, updated_at = NOW()
                 WHERE id = $3
                 """,
-                fetched_content,
+                opinion.text,
                 json.dumps(metadata) if metadata else None,
                 case_id,
             )
-            print(f"Saved {len(fetched_content)} chars of opinion text for case {case_id}")
+            print(f"Saved {len(opinion.text)} chars of opinion text for case {case_id}")
 
-        # Update case_data with the fetched content for summary generation
-        case_data["content"] = fetched_content
+    case_data["content"] = opinion.text
 
     # Parse metadata if it's a JSON string
     if case_data.get("metadata") and isinstance(case_data["metadata"], str):
@@ -1934,98 +1857,18 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
         except json.JSONDecodeError:
             case_data["metadata"] = {}
 
-    # Get case content - try PDF first, then fallback to database content
-    content = ""
-    pdf_url = None
+    content = case_data.get("content", "")
+    print(f"Using {opinion.source} opinion content: {len(content)} characters")
+    if '<' in content and '>' in content:
+        content = re.sub('<.*?>', '', content)
+        content = ' '.join(content.split())
 
-    # Check if we have a PDF URL in metadata
-    if case_data.get("metadata") and isinstance(case_data["metadata"], dict):
-        opinions = case_data["metadata"].get("opinions", [])
-        if opinions:
-            pdf_url = opinions[0].get("download_url")
-
-    # Try to extract text from PDF
-    if pdf_url:
-        try:
-            print(f"Fetching PDF from: {pdf_url}")
-            import io
-            import pdfplumber
-
-            async with httpx.AsyncClient() as client:
-                pdf_response = await client.get(pdf_url, timeout=30.0, follow_redirects=True)
-
-                if pdf_response.status_code == 200:
-                    # Extract text from PDF
-                    pdf_file = io.BytesIO(pdf_response.content)
-                    with pdfplumber.open(pdf_file) as pdf:
-                        pdf_text = ""
-                        # Extract from first 15 pages (usually enough for a case)
-                        for page in pdf.pages[:15]:
-                            pdf_text += page.extract_text() or ""
-
-                        if len(pdf_text) > 500:
-                            content = pdf_text
-                            print(f"✅ Extracted {len(content)} characters from PDF")
-                        else:
-                            print(f"⚠️ PDF text too short ({len(pdf_text)} chars), using database content")
-        except Exception as e:
-            print(f"⚠️ Failed to extract PDF text: {e}")
-
-    # Fallback to database content if PDF extraction failed
-    if not content:
-        content = case_data.get("content", "")
-        print(f"Using database content: {len(content)} characters")
-
-        # Strip HTML tags if present
-        import re
-        if '<' in content and '>' in content:
-            content = re.sub('<.*?>', '', content)
-            content = ' '.join(content.split())
-
-    # Limit to 20,000 characters for API cost management
-    # (GPT-4o-mini is cheap enough to handle more text)
-    if len(content) > 20000:
-        # Take first 18000 and last 2000 to get beginning and conclusion
-        content = content[:18000] + "\n\n[...middle section omitted...]\n\n" + content[-2000:]
-        print(f"Truncated content to 20,000 characters (with middle section omitted)")
-
-    # Prepare prompt for GPT
     case_name = case_data.get("title") or case_data.get("case_name", "Unknown Case")
     court = case_data.get("court_name") or case_data.get("court_id", "Unknown Court")
     date = case_data.get("decision_date") or case_data.get("date_filed")
     date_str = date.isoformat() if date else "Unknown Date"
-
-    prompt = f"""You are a legal research assistant. Analyze this case opinion and provide a comprehensive brief.
-
-**Case Information:**
-- Name: {case_name}
-- Court: {court}
-- Date: {date_str}
-
-**Full Case Opinion:**
-{content}
-
-Please provide a structured legal brief with these sections:
-
-**📋 Facts**
-Summarize the key facts in 4-5 sentences. Include the parties involved, what happened that led to this lawsuit, and the procedural history. Focus on facts that are crucial to understanding the legal issues.
-
-**⚖️ Issue(s)**
-State the legal question(s) the court had to decide. Be specific and frame as questions. If there are multiple issues, number them.
-
-**📚 Holding**
-State the court's decision clearly and completely. What did the court rule on each issue? Include the outcome (affirmed, reversed, remanded, etc.).
-
-**💡 Reasoning**
-Explain the court's rationale in 4-6 sentences. Why did they decide this way? What legal principles, statutes, or precedents did they rely on? Include key quotes or citations if particularly important.
-
-**🎯 Significance**
-Why does this case matter? How might it be used in legal practice? What legal principle does it establish or clarify? (3-4 sentences)
-
-Format your response with clear section headers using the emoji markers shown above. Be thorough and specific, using the full opinion text provided.
-
-Formatting discipline: begin your response with **📋 Facts** directly — no title line, no "# Legal Brief" heading, no preamble, and use the bold emoji headers exactly as shown (not ## markdown headers). The page already displays the case name. In the Significance section, place the case in its doctrinal arc: what rule it displaced and what later cases built on it, by name. Quote the opinion sparingly and exactly; if a quote isn't in the provided text, don't use it.
-"""
+    content_hash, all_passages, selected_passages = build_source_packet(content)
+    prompt = build_structured_prompt(case_name, str(court), date_str, selected_passages)
 
     try:
         # Call Anthropic Messages API with Claude Opus 4.8
@@ -2059,21 +1902,30 @@ Formatting discipline: begin your response with **📋 Facts** directly — no t
         result = response.json()
         print(f"Claude API Response: stop_reason={result.get('stop_reason')}")  # Debug logging
 
-        # Extract text from Claude's response
+        # Extract and validate source-linked JSON from Claude's response.
         content_blocks = result.get("content", [])
-        summary = None
+        response_text = None
 
         for block in content_blocks:
             if block.get("type") == "text":
-                summary = block.get("text")
+                response_text = block.get("text")
                 break
 
-        if not summary:
+        if not response_text:
             print(f"Could not find text in response. Content blocks: {len(content_blocks)}")
             raise HTTPException(
                 status_code=500,
                 detail="Could not extract text from Claude response"
             )
+
+        try:
+            structured_summary = parse_structured_response(response_text)
+        except (json.JSONDecodeError, TypeError) as error:
+            raise HTTPException(status_code=502, detail=f"Claude returned invalid brief JSON: {error}")
+        validation_errors = validate_structured_summary(structured_summary, selected_passages)
+        if validation_errors:
+            raise HTTPException(status_code=502, detail="Invalid source-linked brief: " + "; ".join(validation_errors))
+        summary = structured_summary_to_text(structured_summary)
 
         # Calculate cost
         # Claude Opus 4.8: $5 per 1M input tokens, $25 per 1M output tokens
@@ -2082,44 +1934,82 @@ Formatting discipline: begin your response with **📋 Facts** directly — no t
         output_tokens = usage.get("output_tokens", 0)
         cost = (input_tokens * 5.0 / 1_000_000) + (output_tokens * 25.0 / 1_000_000)
 
-        # Save the summary to database for caching (benefits everyone)
+        generation_metadata = json.dumps({
+            "source": key_source,
+            "schema_version": "v1",
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "generation": "on_demand",
+        })
+
+        # Persist passages, the compatible text rendering, and the structured candidate atomically.
         async with db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO ai_summaries (case_id, summary, model, input_tokens, output_tokens, cost)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (case_id) DO UPDATE
-                SET summary = EXCLUDED.summary,
-                    model = EXCLUDED.model,
-                    input_tokens = EXCLUDED.input_tokens,
-                    output_tokens = EXCLUDED.output_tokens,
-                    cost = EXCLUDED.cost,
-                    created_at = CURRENT_TIMESTAMP
-                """,
-                case_id, summary, "claude-opus-4-8", input_tokens, output_tokens, cost
-            )
+            async with conn.transaction():
+                await conn.executemany(
+                    """INSERT INTO opinion_passages
+                       (case_id, content_hash, passage_id, ordinal, opinion_part, text)
+                       VALUES ($1, $2, $3, $4, $5, $6)
+                       ON CONFLICT (case_id, content_hash, passage_id) DO UPDATE SET
+                           ordinal = EXCLUDED.ordinal,
+                           opinion_part = EXCLUDED.opinion_part,
+                           text = EXCLUDED.text""",
+                    [
+                        (case_id, content_hash, passage["id"], passage["ordinal"],
+                         passage["opinion_part"], passage["text"])
+                        for passage in all_passages
+                    ],
+                )
+                await conn.execute(
+                    """INSERT INTO ai_summaries
+                       (case_id, summary, model, input_tokens, output_tokens, cost,
+                        structured_summary, structured_model, structured_created_at)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $3, CURRENT_TIMESTAMP)
+                       ON CONFLICT (case_id) DO UPDATE SET
+                           summary = EXCLUDED.summary,
+                           model = EXCLUDED.model,
+                           input_tokens = EXCLUDED.input_tokens,
+                           output_tokens = EXCLUDED.output_tokens,
+                           cost = EXCLUDED.cost,
+                           structured_summary = EXCLUDED.structured_summary,
+                           structured_model = EXCLUDED.structured_model,
+                           structured_created_at = CURRENT_TIMESTAMP,
+                           created_at = CURRENT_TIMESTAMP""",
+                    case_id, summary, "claude-opus-4-8", input_tokens, output_tokens, cost,
+                    json.dumps(structured_summary),
+                )
+                await conn.execute(
+                    """INSERT INTO structured_summary_candidates
+                       (case_id, provider, model, summary, content_hash, generation_metadata,
+                        validation_version, review_status, reviewed_at, review_notes, created_at)
+                       VALUES ($1, 'claude', $2, $3::jsonb, $4, $5::jsonb,
+                               'v1', 'approved', NOW(), 'Automated schema and source validation', NOW())
+                       ON CONFLICT (case_id, provider) DO UPDATE SET
+                           model = EXCLUDED.model,
+                           summary = EXCLUDED.summary,
+                           content_hash = EXCLUDED.content_hash,
+                           generation_metadata = EXCLUDED.generation_metadata,
+                           validation_version = EXCLUDED.validation_version,
+                           review_status = EXCLUDED.review_status,
+                           reviewed_at = EXCLUDED.reviewed_at,
+                           review_notes = EXCLUDED.review_notes,
+                           created_at = NOW()""",
+                    case_id, "claude-opus-4-8", json.dumps(structured_summary), content_hash,
+                    generation_metadata,
+                )
 
         print(f"💾 Saved summary for case {case_id} to database")
 
         # Log usage for transparency dashboard
         await log_api_usage("ai_summary", input_tokens, output_tokens, cost, source=key_source)
 
-        return {
-            "summary": summary,
-            "cost": cost,
-            "citing_cases": [dict(r) for r in citing_query],
-            "cited_cases": [dict(r) for r in cited_query],
-            "tokens_used": {
-                "input": input_tokens,
-                "output": output_tokens,
-                "total": input_tokens + output_tokens
-            },
-            "cached": False,
-            "model": "claude-opus-4-8"
-        }
+        response_data = await get_case_summary(case_id, current_user)
+        response_data["cached"] = False
+        return response_data
 
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="AI service timeout")
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error generating summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -5705,7 +5595,8 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
     case_title = case_row["title"] or "Unknown Case"
     case_court = case_row["court_id"] or "Unknown Court"
     case_date = str(case_row["decision_date"]) if case_row["decision_date"] else "Unknown Date"
-    case_text = case_row["content"] or (await read_opinion_from_s3(case_id)) or ""
+    opinion = await load_opinion_text(case_id, case_row["content"], read_opinion_from_s3)
+    case_text = opinion.text or ""
     if len(case_text) > 15000:
         case_text = case_text[:15000] + "\n...[opinion text truncated]"
 
@@ -9902,9 +9793,11 @@ async def _verify_citation_impl(request, citation_text, get_citations, clean_tex
         passage = request.passage.strip()
         opinion_text = None
 
-        # Get opinion text from local DB
-        if found_case and found_case.get("content"):
-            opinion_text = found_case["content"]
+        if found_case:
+            opinion = await load_opinion_text(
+                str(found_case["id"]), found_case.get("content"), read_opinion_from_s3
+            )
+            opinion_text = opinion.text
 
         if opinion_text:
             # Normalize whitespace for matching
