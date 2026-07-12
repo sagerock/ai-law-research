@@ -29,6 +29,7 @@ MIN_OPINION = 2500  # chars; below this it's a procedural order, not an opinion
 BACKEND = os.path.join(os.path.dirname(HERE), "backend")
 sys.path.insert(0, BACKEND)
 from opinion_passages import build_opinion_passages
+from structured_briefs import validate_structured_summary
 
 # Diverse, hand-verified pilot: civil procedure, constitutional law, and jurisdiction;
 # modern/older OCR opinions; majority-only and separate-opinion cases.
@@ -299,50 +300,7 @@ async def cmd_candidate_opinion(cid):
 
 
 def validate_candidate(candidate, passages):
-    errors = []
-    limits = {"facts": 4, "issue": 1, "holding": 2, "rule": 2,
-              "majority_reasoning": 4, "dissent": 4}
-    allowed = set(limits) | {"significance"}
-    if not isinstance(candidate, dict):
-        return ["top level must be an object"]
-    if set(candidate) != allowed:
-        errors.append(f"keys must be exactly {sorted(allowed)}")
-    passage_by_id = {p["passage_id"]: p for p in passages}
-    for section, maximum in limits.items():
-        claims = candidate.get(section)
-        minimum = 0 if section == "dissent" else 1
-        if not isinstance(claims, list) or not minimum <= len(claims) <= maximum:
-            errors.append(f"{section} must contain {minimum}-{maximum} claims")
-            continue
-        for index, claim in enumerate(claims):
-            if not isinstance(claim, dict) or set(claim) != {"text", "sources"}:
-                errors.append(f"{section}[{index}] must contain only text and sources")
-                continue
-            if not isinstance(claim["text"], str) or not claim["text"].strip():
-                errors.append(f"{section}[{index}] has invalid text")
-            sources = claim["sources"]
-            if not isinstance(sources, list) or not sources or len(sources) != len(set(sources)):
-                errors.append(f"{section}[{index}] has missing or duplicate sources")
-                continue
-            unknown = [source for source in sources if source not in passage_by_id]
-            if unknown:
-                errors.append(f"{section}[{index}] has unknown sources: {unknown}")
-                continue
-            parts = {passage_by_id[source]["opinion_part"] for source in sources}
-            if section == "majority_reasoning" and "dissent" in parts:
-                errors.append(f"{section}[{index}] cites dissent")
-            if section == "dissent" and any(part != "dissent" for part in parts):
-                errors.append(f"{section}[{index}] cites non-dissent passage")
-    significance = candidate.get("significance")
-    if not isinstance(significance, str) or not significance.strip() or re.search(r"op-[0-9a-f]", significance):
-        errors.append("significance must be unsourced editorial text")
-    words = len(re.findall(r"\b\w+\b", " ".join(
-        [claim.get("text", "") for section in limits for claim in candidate.get(section, []) if isinstance(claim, dict)]
-        + ([significance] if isinstance(significance, str) else [])
-    )))
-    if not 400 <= words <= 800:
-        errors.append(f"candidate must contain 400-800 words, got {words}")
-    return errors
+    return validate_structured_summary(candidate, passages)
 
 
 async def record_candidate_failure(conn, cid, content_hash, stage, error):

@@ -885,7 +885,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   <Sparkles className="h-5 w-5 mr-2 text-sage-600" />
                   AI Case Brief
                 </h2>
-                {!caseSummary && !localCaseData.is_stub && (
+                {((!caseSummary && !localCaseData.is_stub) || (caseSummary && structuredCandidates.length === 0)) && (
                   <button
                     onClick={generateSummary}
                     disabled={summaryLoading}
@@ -899,12 +899,23 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Summary
+                        {caseSummary ? 'Add Source-Linked Brief' : 'Generate Summary'}
                       </>
                     )}
                   </button>
                 )}
               </div>
+
+              {summaryError === 'pool_empty' && (
+                <p className="mb-4 text-sm text-red-600">
+                  The community AI pool is empty.{' '}
+                  <Link href="/transparency" className="underline">Donate to refill it</Link> or{' '}
+                  <Link href="/byok" className="underline">add your own API key</Link> for unlimited access.
+                </p>
+              )}
+              {summaryError && summaryError !== 'sign_in_required' && summaryError !== 'pool_empty' && (
+                <p className="mb-4 text-sm text-red-600">{summaryError}</p>
+              )}
 
               {caseSummary ? (
                 <div className="space-y-4">
