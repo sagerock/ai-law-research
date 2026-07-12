@@ -12,6 +12,7 @@ these subcommands; the MODEL writes the briefs, this script only moves data.
     sunday_briefs.py candidate-list [N]         next rebuild cases (legacy brief, no structured)
     sunday_briefs.py candidate-opinion <id>     persist + print passage-tagged opinion JSON
     sunday_briefs.py candidate-save <id> <file> <model> <content-hash>
+    sunday_briefs.py triage-list [N]            rejected cases + notes, one retry each (two-strike)
     sunday_briefs.py review-list [N]            pending candidates awaiting semantic review
     sunday_briefs.py review-fetch <id>          candidate claims with cited passage texts
     sunday_briefs.py review-save <id> <file>    apply {"verdict": "approve"|"hold", "notes"}
@@ -409,6 +410,42 @@ async def cmd_candidate_save(cid, path, model, content_hash):
         await conn.close()
 
 
+async def cmd_triage_list(n):
+    """Rejected cases eligible for ONE corrective regeneration (two-strike rule).
+
+    Returns each case with its latest rejection note so the regenerating session
+    addresses the reviewer's specific findings instead of rolling the dice again.
+    A case rejected twice stays out permanently — it needs a human. Re-saving via
+    candidate-save resets the candidate to 'pending', so the corrected brief goes
+    back through the same review gate; triage never bypasses review.
+    """
+    conn = await asyncpg.connect(prod_url())
+    try:
+        rows = await conn.fetch(
+            """SELECT f.case_id, c.title,
+                      COUNT(*) AS attempts,
+                      (ARRAY_AGG(f.error ORDER BY f.created_at DESC))[1] AS latest_note
+               FROM structured_summary_failures f
+               JOIN cases c ON c.id = f.case_id
+               WHERE f.provider = $1 AND f.stage = 'semantic_review'
+                 AND NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
+                                 WHERE k.case_id = f.case_id AND k.provider = $1
+                                   AND k.review_status IN ('approved', 'pending'))
+               GROUP BY f.case_id, c.title
+               HAVING COUNT(*) < 2
+               ORDER BY MAX(f.created_at)
+               LIMIT $2""",
+            SOURCE_PROVIDER, n,
+        )
+        print(json.dumps([
+            {"id": r["case_id"], "title": r["title"], "attempts": r["attempts"],
+             "rejection_note": r["latest_note"]}
+            for r in rows
+        ], ensure_ascii=False, indent=1))
+    finally:
+        await conn.close()
+
+
 async def cmd_review_list(n):
     """Pending structured candidates awaiting semantic review, oldest first."""
     conn = await asyncpg.connect(prod_url())
@@ -532,6 +569,8 @@ def main():
         asyncio.run(cmd_candidate_opinion(sys.argv[2]))
     elif cmd == "candidate-save" and len(sys.argv) == 6:
         asyncio.run(cmd_candidate_save(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
+    elif cmd == "triage-list":
+        asyncio.run(cmd_triage_list(int(sys.argv[2]) if len(sys.argv) > 2 else 10))
     elif cmd == "review-list":
         asyncio.run(cmd_review_list(int(sys.argv[2]) if len(sys.argv) > 2 else 10))
     elif cmd == "review-fetch" and len(sys.argv) == 3:

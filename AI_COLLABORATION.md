@@ -107,6 +107,16 @@ subscription credits, not API dollars. Design decisions and why (2026-07-12):
   regenerated and re-approved by the same pipeline.
 - Held pilot cases (5 of 10) stay held; the pilot's 50% hold rate is the reason the gate
   exists, not a reason to loosen it.
+- Rejected cases get ONE scripted triage pass (`triage-list` + `TRIAGE-BRIEFS.md` +
+  `triage_pass.sh`): the regenerating session receives the reviewer's rejection note and
+  must fix exactly what it names; the corrected candidate re-enters the normal review
+  gate. Two-strike rule: a second rejection removes the case permanently — humans only.
+  Why one retry with feedback rather than unlimited re-rolls: the dominant rejection
+  cause is trained-knowledge bleed (specifics no cited passage states — 9 of the first
+  22 candidates), which note-guided correction fixes cheaply, while repeated blind
+  regeneration would eventually luck a wrong brief past review. The generation runbook
+  now warns against unsourced specifics up front (added mid-run 2026-07-12; watch
+  whether the rejection rate drops before tuning further).
 
 ### Source-Linked Brief Is the Only Brief Shown
 
@@ -182,7 +192,9 @@ scaled run. The review session also caught and fixed the 'held' vs 'rejected'
 status-constraint bug mid-run (committed as 9800bc2). Throughput: ~3 briefs per
 ~22-minute cycle; ~890 remaining.
 Next: monitor the 10-cycle daytime run (log `/home/sage/logs/source-rebuild.log`) and
-tonight's cron output; clear or regenerate rejected candidates as they accumulate.
+tonight's cron output. A 5-cycle triage pass (`/home/sage/logs/triage-pass.log`) is
+queued behind the daytime run and will regenerate the ~15 rejected cases with their
+rejection notes; cases it fails a second time need human attention.
 Decision (Sage, 2026-07-12): Sunday credits focus on the rebuild until the ~890-case
 backlog is done. The 7:03pm cron now runs `source_rebuild_burn.sh 15`; the legacy
 un-briefed-cases batch (`run_sunday_briefs.sh`) is paused, not retired — restore or
