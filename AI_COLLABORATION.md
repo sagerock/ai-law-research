@@ -363,6 +363,9 @@ in `CaseDetailClient.tsx` now goes through UTC-pinned helpers (`formatCaseDate`,
 
 ## Deployment State
 
+- Supreme Court separate-opinion heading parser: commit `c2a8959`; backend deployment
+  `9dec83fc-7fd4-4897-b1f6-3c395d5cb31a` successful on 2026-07-13. The production
+  health check passed with the database connected.
 - Single source-linked brief display and problem reporting: commit `67977a8`; backend
   auto-deploy `9991329f-b88f-4662-a27e-8a615af3e1e4`; frontend auto-deploy
   `59d09313-bc91-444c-84a7-56839dd5ccfa` (all successful, 2026-07-12). No gap.
