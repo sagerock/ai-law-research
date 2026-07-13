@@ -5,7 +5,7 @@ import { BRAND_NAME, CANONICAL_SITE_URL, LEGACY_HOST, SITE_TAGLINE, SITE_URL } f
 describe('site configuration', () => {
   it('uses Tortwell as the canonical brand', () => {
     expect(BRAND_NAME).toBe('Tortwell')
-    expect(SITE_TAGLINE).toBe('Free case briefs and study tools for law students')
+    expect(SITE_TAGLINE).toBe('Free law-school study tools, sourced to the opinion')
     expect(SITE_URL).toBe(CANONICAL_SITE_URL)
   })
 

@@ -2,31 +2,46 @@
 
 @theme inline {
   --color-background: #ffffff;
-  --color-foreground: #1c1917;
+  --color-foreground: #2b2a26;
 
-  --color-cream: #faf9f6;
-  --color-cream-dark: #f0ede7;
+  /* Tortwell brand palette — see AI_COLLABORATION.md "Tortwell visual identity" */
+  --color-cream: #faf8f3;
+  --color-cream-dark: #f3efe6;
 
-  --color-sage-50: #f2f5f0;
-  --color-sage-100: #e0e9dc;
-  --color-sage-200: #c0d4b8;
-  --color-sage-300: #98b58d;
-  --color-sage-400: #74996a;
-  --color-sage-500: #5c8a50;
-  --color-sage-600: #4a7040;
-  --color-sage-700: #385832;
-  --color-sage-800: #263d22;
-  --color-sage-900: #152514;
+  --color-sage-50: #f1f4ec;
+  --color-sage-100: #e7ebe0;
+  --color-sage-200: #ccd4c1;
+  --color-sage-300: #b1bca3;
+  --color-sage-400: #9aa78a;
+  --color-sage-500: #8c9981;
+  --color-sage-600: #6f7d63;
+  --color-sage-700: #58654d;
+  --color-sage-800: #45503d;
+  --color-sage-900: #333c2d;
+
+  /* Honey — signature accent; the casebook-highlighter color, used for source links */
+  --color-honey-100: #f7ecd2;
+  --color-honey-300: #e8c67e;
+  --color-honey-500: #d5a13a;
+  --color-honey-600: #b5822a;
+  --color-honey-700: #8f6620;
+
+  --color-ink: #2b2a26;
 
   --font-sans: var(--font-body);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-instrument);
+  --font-display: var(--font-serif-display);
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+::selection {
+  background: #e8c67e;
+  color: #2b2a26;
 }
 
 /* Animations */

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, DM_Sans } from "next/font/google";
+import { Source_Serif_4, Hanken_Grotesk } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
@@ -7,15 +7,14 @@ import Footer from "@/components/Footer";
 import { BRAND_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const instrumentSerif = Instrument_Serif({
+const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
-  weight: "400",
   style: ["normal", "italic"],
-  variable: "--font-instrument",
+  variable: "--font-serif-display",
   display: "swap",
 });
 
-const dmSans = DM_Sans({
+const hankenGrotesk = Hanken_Grotesk({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
@@ -58,7 +57,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body
-        className={`${instrumentSerif.variable} ${dmSans.variable} ${geistMono.variable} antialiased`}
+        className={`${sourceSerif.variable} ${hankenGrotesk.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           <div className="min-h-screen flex flex-col">

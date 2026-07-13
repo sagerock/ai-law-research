@@ -56,9 +56,43 @@ lighting shop). Tortwell won on: effectively empty SERP, reads as a warm surname
 "torts" wink, and "well" = a shared source everyone draws from, which is the product.
 The name is deliberately not brief-specific because the long-term vision (Sage,
 2026-07-12) is a free platform for law-school study generally, with briefs as the wedge.
-Launch descriptor: "Free case briefs and study tools for law students." The existing visual
-identity remains for the initial migration; changing it simultaneously would add risk without
-helping the domain cutover. The descriptor stays adjacent to the coined name for clarity.
+The visual identity was deliberately left unchanged for the domain cutover (changing both
+at once would have added risk) and landed the next day — see "Tortwell visual identity"
+below. The descriptor stays adjacent to the coined name for clarity.
+
+### Tortwell visual identity (2026-07-13)
+
+Source of truth: Sage's Claude Design project "Tortwell brand identity"
+(claude.ai/design project `837c8c71-e066-4431-913d-49f67f90e922`, file `Tortwell
+Brand.dc.html`). Sage picked the tortoise mascot direction (design badge MARK-B,
+"'Tort'-oise, slow-and-steady studying"), the well/shell roundel (MARK-C) for the
+favicon, and tagline "Free law-school study tools, sourced to the opinion" — chosen
+because "sourced to the opinion" carries the trust story and outlives the brief-only era.
+Implementation decisions (Claude, 2026-07-13):
+
+- Palette swapped in place: `globals.css` keeps the existing `sage-*`/`cream` class
+  names but retunes them to the design's warmer values, so the whole app shifted brands
+  without touching every file. New `honey-*` scale is the signature accent — the
+  casebook-highlighter color. Rule from the design: **honey = source links**; keep that
+  association exclusive so the highlight color keeps meaning "verifiable against the
+  opinion."
+- Fonts: Instrument Serif/DM Sans → Source Serif 4/Hanken Grotesk via `next/font`
+  (body variable name unchanged; display variable renamed `--font-serif-display`).
+  Source Serif has real weights (Instrument had only 400), so `font-display` headings
+  can now use `font-semibold`.
+- Marks live in `components/TortoiseMark.tsx` (`TortoiseMark`, `TortwellRoundel`, with
+  an `onDark` variant). The design bans gavels/scales/columns/bees — the header's old
+  Scale icon is gone; don't reintroduce courthouse clichés.
+- Case page: structured-brief source buttons are now honey "source" tags; the Holding
+  section renders in a honey card; emoji section headers became badge pills.
+- Homepage trust strip and "More than briefs" chips only link to routes that exist;
+  Practice hypos and Flashcards are unlinked "SOON" chips — update them when those ship.
+- Deferred: dark mode (the design specifies tokens — warm near-black `#22201c`, honey
+  `#e8c67e`, sage `#9aa78a` — but the app has no theme infrastructure; add it as its own
+  project, not piecemeal).
+
+Verified: unit tests pass, production build passes, homepage and Twombly case page
+visually checked against the design's screenshots via local dev + Playwright.
 
 ### Opinion Loading
 

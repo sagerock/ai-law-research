@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart, FileSearch } from 'lucide-react'
+import { GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart, FileSearch } from 'lucide-react'
 import { UserMenu } from '@/components/auth/UserMenu'
+import { TortoiseMark } from '@/components/TortoiseMark'
 import { BRAND_NAME, SITE_TAGLINE } from '@/lib/site'
 
 export default function Header() {
@@ -25,11 +26,9 @@ export default function Header() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 bg-sage-700 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-sage-600 transition-colors">
-              <Scale className="h-[18px] w-[18px] text-white" />
-            </div>
+            <TortoiseMark className="w-9 h-[26px] transition-transform group-hover:-translate-y-0.5" />
             <div className="hidden sm:block">
-              <span className="font-display text-xl text-stone-900 leading-none">{BRAND_NAME}</span>
+              <span className="font-display text-xl font-semibold tracking-tight text-ink leading-none">{BRAND_NAME}</span>
               <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">{SITE_TAGLINE}</span>
             </div>
           </Link>

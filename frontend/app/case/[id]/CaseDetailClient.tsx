@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Loader2, Bookmark, FolderPlus, Check, ChevronDown, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Link2, Loader2, Bookmark, FolderPlus, Check, ChevronDown, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 import { parseLegalCitations, extractLegalTextRefs } from '@/lib/legalCitations'
 import { buildCanonicalUrl, buildCitationText } from '@/lib/citationUrls'
@@ -261,17 +261,17 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   }
 
   const renderSourceButtons = (sources: string[], label: string) => (
-    <span className="ml-2 inline-flex items-center gap-1 align-middle">
+    <span className="ml-1.5 inline-flex items-center gap-1 align-middle">
       {sources.map((passageId, sourceIndex) => (
         <button
           key={passageId}
           type="button"
           onClick={() => showOpinionPassage(passageId)}
-          className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-sage-200 bg-sage-50 px-1 text-[10px] font-semibold text-sage-700 hover:border-sage-400 hover:bg-sage-100 focus:outline-none focus:ring-2 focus:ring-sage-500"
+          className="inline-flex items-center whitespace-nowrap rounded-md border border-honey-300 bg-honey-100 px-1.5 text-[11px] font-semibold text-honey-700 hover:bg-honey-300/60 focus:outline-none focus:ring-2 focus:ring-honey-500"
           aria-label={`View opinion source ${sourceIndex + 1} for ${label}`}
           title="Jump to the supporting sentence in the opinion"
         >
-          {sourceIndex + 1}
+          {sources.length > 1 ? `source · ${sourceIndex + 1}` : 'source'}
         </button>
       ))}
     </span>
@@ -865,15 +865,20 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
             {/* AI Summary */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-stone-900 flex items-center">
-                  <Sparkles className="h-5 w-5 mr-2 text-sage-600" />
+                <h2 className="font-display text-xl font-semibold text-ink flex items-center gap-2.5">
+                  <Sparkles className="h-5 w-5 text-sage-600" />
                   AI Case Brief
+                  {activeStructuredCandidate && (
+                    <span className="text-[11px] font-sans font-semibold text-sage-700 bg-sage-100 px-2.5 py-0.5 rounded-full">
+                      Sourced
+                    </span>
+                  )}
                 </h2>
                 {((!caseSummary && !localCaseData.is_stub) || (caseSummary && structuredCandidates.length === 0)) && (
                   <button
                     onClick={generateSummary}
                     disabled={summaryLoading}
-                    className="flex items-center px-3 py-1.5 bg-sage-700 hover:bg-purple-700 text-white rounded-lg text-sm disabled:bg-neutral-400"
+                    className="flex items-center px-3 py-1.5 bg-sage-600 hover:bg-sage-700 text-white rounded-lg text-sm disabled:bg-neutral-400"
                   >
                     {summaryLoading ? (
                       <>
@@ -904,28 +909,35 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
               {caseSummary ? (
                 <div className="space-y-4">
                   {structuredCandidates.length > 0 && (
-                    <div className="rounded-lg border border-sage-200 bg-sage-50 px-3 py-2">
-                      <div>
-                        <p className="text-sm font-medium text-sage-900">Source-linked brief</p>
-                        <p className="text-xs text-sage-700">Every numbered source jumps to supporting opinion language.</p>
-                      </div>
-                    </div>
+                    <p className="flex items-center gap-1.5 text-xs text-stone-500">
+                      <Link2 className="h-3.5 w-3.5 text-honey-600" />
+                      Tap any{' '}
+                      <span className="rounded-sm bg-honey-300 px-1 text-ink">source</span>{' '}
+                      tag to jump to the exact passage in the opinion.
+                    </p>
                   )}
                   {activeStructuredCandidate ? (
-                    <div className="space-y-5">
+                    <div className="space-y-6">
                       {([
-                        ['facts', '📋 Facts'],
-                        ['issue', '⚖️ Issue'],
-                        ['holding', '📚 Holding'],
-                        ['rule', '📖 Rule'],
-                        ['majority_reasoning', '💡 Majority Reasoning'],
-                        ['dissent', '🗣️ Dissent'],
+                        ['facts', 'Facts'],
+                        ['issue', 'Issue'],
+                        ['holding', 'Holding'],
+                        ['rule', 'Rule'],
+                        ['majority_reasoning', 'Reasoning'],
+                        ['dissent', 'Dissent'],
                       ] as const).map(([sectionKey, label]) => (
                         <section key={sectionKey}>
-                          <h4 className="mb-2 text-lg font-bold text-stone-900">{label}</h4>
-                          <div className="space-y-2">
+                          <div className="mb-3 flex items-center gap-2.5">
+                            <span className={`font-display text-xs font-bold uppercase tracking-[0.12em] text-white px-2.5 py-1 rounded-md ${sectionKey === 'holding' ? 'bg-honey-600' : 'bg-sage-600'}`}>
+                              {label}
+                            </span>
+                            <div className="h-px flex-1 bg-stone-200" />
+                          </div>
+                          <div className={sectionKey === 'holding'
+                            ? 'space-y-2 rounded-xl border border-honey-300 bg-honey-100 px-4 py-3.5'
+                            : 'space-y-2'}>
                             {activeStructuredCandidate.summary[sectionKey].map((claim, claimIndex) => (
-                              <p key={claimIndex} className="leading-relaxed text-stone-700">
+                              <p key={claimIndex} className={`leading-relaxed ${sectionKey === 'holding' ? 'font-medium text-ink' : 'text-stone-700'}`}>
                                 {claim.text}
                                 {renderSourceButtons(claim.sources, label)}
                               </p>
@@ -934,7 +946,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         </section>
                       ))}
                       <section>
-                        <h4 className="mb-2 text-lg font-bold text-stone-900">🎯 Significance</h4>
+                        <div className="mb-3 flex items-center gap-2.5">
+                          <span className="font-display text-xs font-bold uppercase tracking-[0.12em] text-sage-700 bg-sage-100 px-2.5 py-1 rounded-md">
+                            Significance
+                          </span>
+                          <div className="h-px flex-1 bg-stone-200" />
+                        </div>
                         <p className="leading-relaxed text-stone-700">{activeStructuredCandidate.summary.significance}</p>
                         <p className="mt-1 text-xs italic text-stone-500">Editorial synthesis; not presented as language from the opinion.</p>
                       </section>
@@ -968,7 +985,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                           if (seg.href) {
                             return (
                               <Link key={`cite-${keyPrefix}${si}`} href={seg.href}
-                                className="text-sage-600 hover:text-sage-800 underline decoration-purple-300 hover:decoration-purple-500 transition-colors">
+                                className="text-sage-700 hover:text-honey-700 underline decoration-sage-300 hover:decoration-honey-500 transition-colors">
                                 {seg.text}
                               </Link>
                             )
@@ -1032,7 +1049,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                                       key={source.passage_id}
                                       type="button"
                                       onClick={() => showOpinionPassage(source.passage_id)}
-                                      className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-sage-200 bg-sage-50 px-1.5 font-semibold text-sage-700 hover:border-sage-400 hover:bg-sage-100 focus:outline-none focus:ring-2 focus:ring-sage-500"
+                                      className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-honey-300 bg-honey-100 px-1.5 font-semibold text-honey-700 hover:bg-honey-300/60 focus:outline-none focus:ring-2 focus:ring-honey-500"
                                       aria-label={`View opinion source ${sourceIndex + 1} for ${headerText}`}
                                       title="Jump to supporting language in the opinion"
                                     >

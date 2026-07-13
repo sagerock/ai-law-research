@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Search, ThumbsUp, TrendingUp, Sparkles, GitFork,
-  FileCheck, Heart, X, ArrowRight, MessageCircle
+  Search, ThumbsUp, TrendingUp, Sparkles, Link2,
+  Heart, BarChart3, X, ArrowRight, MessageCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { API_URL } from '@/lib/api'
 import Header from '@/components/Header'
+import { TortoiseMark } from '@/components/TortoiseMark'
+import { BRAND_NAME, SITE_TAGLINE } from '@/lib/site'
 import { buildCanonicalUrl } from '@/lib/citationUrls'
 
 interface SearchCase {
@@ -102,16 +104,15 @@ export default function HomePage() {
           {/* Heading — hidden during search */}
           {!isSearchActive && (
             <div className="animate-fade-in-up mb-10">
-              <h1 className="font-display text-[2.75rem] sm:text-6xl lg:text-7xl text-stone-900
-                             tracking-tight leading-[1.08] mb-5">
-                Case briefs,<br />
-                <em className="text-sage-700">free forever.</em>
-              </h1>
-              <p className="text-lg sm:text-xl text-stone-500 max-w-md mx-auto leading-relaxed">
-                AI-powered summaries for{' '}
-                {caseCount ? caseCount.toLocaleString() : '...'}+ cases.
-                <br className="hidden sm:block" />
-                No subscription, no paywall.
+              <div className="flex items-end justify-center gap-4 mb-4">
+                <TortoiseMark className="w-14 h-10 sm:w-[68px] sm:h-[49px] mb-1.5" />
+                <h1 className="font-display text-[3.25rem] sm:text-7xl font-semibold text-ink
+                               tracking-tight leading-none">
+                  {BRAND_NAME}
+                </h1>
+              </div>
+              <p className="font-display text-lg sm:text-[21px] text-stone-500 max-w-lg mx-auto leading-relaxed">
+                {SITE_TAGLINE}.
               </p>
             </div>
           )}
@@ -124,7 +125,9 @@ export default function HomePage() {
               type="text"
               value={query}
               onChange={e => handleQueryChange(e.target.value)}
-              placeholder="Search by case name or citation..."
+              placeholder={caseCount
+                ? `Search ${caseCount.toLocaleString()}+ cases — try “Twombly” or a citation…`
+                : 'Search by case name or citation…'}
               autoFocus
               className="w-full pl-12 pr-12 py-4 bg-white border border-stone-200 rounded-2xl
                          text-base text-stone-900 placeholder:text-stone-400
@@ -143,30 +146,114 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Feature pills */}
+          {/* Popular searches */}
           {!isSearchActive && (
-            <div className="flex flex-wrap justify-center gap-2.5 mt-8 animate-fade-in"
+            <div className="flex flex-wrap items-center justify-center gap-2.5 mt-6 animate-fade-in"
                  style={{ animationDelay: '200ms' }}>
+              <span className="text-[13px] text-stone-500">Popular:</span>
               {[
-                { icon: Sparkles, label: 'AI Briefs' },
-                { icon: GitFork, label: 'Citation Network' },
-                { icon: FileCheck, label: 'Brief Checker' },
-                { icon: Heart, label: 'Free & Open' },
-              ].map(({ icon: Icon, label }) => (
-                <span
-                  key={label}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5
-                             bg-sage-50 text-sage-700 rounded-full text-sm font-medium
-                             border border-sage-100"
+                'Palsgraf v. Long Island R.R.',
+                'Bell Atlantic v. Twombly',
+                'Pennoyer v. Neff',
+              ].map(name => (
+                <button
+                  key={name}
+                  onClick={() => handleQueryChange(name)}
+                  className="text-[13px] text-sage-700 bg-sage-100 hover:bg-sage-200
+                             px-3 py-1.5 rounded-full transition-colors"
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </span>
+                  {name}
+                </button>
               ))}
             </div>
           )}
         </div>
       </section>
+
+      {/* Trust strip */}
+      {!isSearchActive && (
+        <section className="px-4 sm:px-6 py-12 bg-white border-y border-stone-200 mt-10">
+          <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-honey-100 flex items-center justify-center mb-3.5">
+                <Link2 className="h-5 w-5 text-honey-600" />
+              </div>
+              <h3 className="font-display text-lg font-semibold text-ink mb-1.5">Sourced to the opinion</h3>
+              <p className="text-sm text-stone-600 leading-relaxed">
+                Every claim in a brief links to the{' '}
+                <mark className="bg-honey-300 text-ink px-1 rounded-sm">exact passage</mark>{' '}
+                in the court&rsquo;s opinion that supports it. Cite it the night before
+                class with confidence.
+              </p>
+            </div>
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-sage-100 flex items-center justify-center mb-3.5">
+                <Heart className="h-5 w-5 text-sage-600" />
+              </div>
+              <h3 className="font-display text-lg font-semibold text-ink mb-1.5">Free forever</h3>
+              <p className="text-sm text-stone-600 leading-relaxed">
+                No paywall, no trial, no card. Read every brief without even making
+                an account. The free alternative that stays free.
+              </p>
+            </div>
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-sage-100 flex items-center justify-center mb-3.5">
+                <BarChart3 className="h-5 w-5 text-sage-600" />
+              </div>
+              <h3 className="font-display text-lg font-semibold text-ink mb-1.5">Costs in the open</h3>
+              <p className="text-sm text-stone-600 leading-relaxed">
+                Runs on donations. We publish exactly what we spend on a public
+                dashboard — and the surplus goes to charity.{' '}
+                <Link href="/transparency" className="font-semibold text-sage-700 hover:text-honey-700 transition-colors">
+                  See the numbers →
+                </Link>
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* More than briefs */}
+      {!isSearchActive && (
+        <section className="px-4 sm:px-6 pt-12 pb-4 text-center">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-sage-700 mb-2">
+              One free well, everything you draw from
+            </div>
+            <h2 className="font-display text-2xl font-semibold text-ink mb-6">More than briefs</h2>
+            <div className="flex flex-wrap justify-center gap-2.5">
+              {([
+                ['Case briefs', '/'],
+                ['Outlines', '/outlines'],
+                ['Study tools', '/study'],
+                ['Textbooks', '/textbooks'],
+                ['Brief check', '/briefcheck'],
+              ] as const).map(([label, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="text-sm font-medium bg-white border border-stone-200 rounded-full
+                             px-4.5 py-2 shadow-sm hover:border-sage-300 hover:text-sage-700 transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
+              {['Practice hypos', 'Flashcards'].map(label => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-2 text-sm font-medium bg-honey-100
+                             border border-honey-300 rounded-full px-4.5 py-2 text-stone-700"
+                >
+                  {label}
+                  <span className="text-[10px] font-bold text-white bg-honey-600 px-1.5 py-0.5 rounded-full">
+                    SOON
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Trending Cases */}
       {!isSearchActive && trendingCases.length > 0 && (
