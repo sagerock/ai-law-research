@@ -1267,7 +1267,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </div>
                   </div>
                   <p className="text-xs text-stone-500 mt-4">
-                    Estimated cost: $0.001 - $0.003 per brief
+                    Estimated cost: $0.10–$0.50 per brief, depending on opinion length and retries
                   </p>
                 </div>
               )}
