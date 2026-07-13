@@ -218,7 +218,10 @@ Cloudflare DNS and Supabase Site URL/redirect allowlists were updated; frontend 
 canonical URL variables now use `https://tortwell.com`; Tortwell branding, metadata, generated
 links, robots, and all six sitemap chunks are live. `lawstudygroup.com` returns a path- and
 query-preserving permanent 308, and `www.tortwell.com` redirects to the apex. Existing visual
-identity was retained. Local verification: 80 backend tests, 6 frontend tests, typecheck, and
+identity was retained. Supabase's sender display name and all six authentication email templates
+(confirmation, recovery, invite, magic link, email change, reauthentication) use Tortwell; no
+`Law Study Group` text remains in hosted mailer settings. Local verification: 80 backend tests,
+6 frontend tests, typecheck, and
 production build passed. Live verification covered branding, canonical case metadata, redirects,
 robots, sitemap chunks, and the auth callback route.
 Next: Sage should smoke-test Google/GitHub sign-in, email confirmation, and password recovery
