@@ -16,9 +16,9 @@ describe('sanitizeLegalHtml', () => {
 
   it('removes unsafe URL schemes', () => {
     const result = sanitizeLegalHtml(
-      '<a href="javascript:alert(1)">bad</a><img src="data:image/svg+xml,evil"><a href="https://lawstudygroup.com">safe</a>',
+      '<a href="javascript:alert(1)">bad</a><img src="data:image/svg+xml,evil"><a href="https://tortwell.com">safe</a>',
     )
-    expect(result).toBe('<a>bad</a><img /><a href="https://lawstudygroup.com">safe</a>')
+    expect(result).toBe('<a>bad</a><img /><a href="https://tortwell.com">safe</a>')
   })
 
   it('styles search highlights without retaining supplied classes', () => {

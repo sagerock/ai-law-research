@@ -7,6 +7,7 @@ import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, C
 import { API_URL } from '@/lib/api'
 import { parseLegalCitations, extractLegalTextRefs } from '@/lib/legalCitations'
 import { buildCanonicalUrl, buildCitationText } from '@/lib/citationUrls'
+import { SITE_URL } from '@/lib/site'
 import Header from '@/components/Header'
 import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
@@ -604,7 +605,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       const reporterCite = (caseData as any).reporter_cite
       const citationLine = buildCitationText(caseName, reporterCite, dateStr)
       const canonicalPath = buildCanonicalUrl(reporterCite, caseName)
-      const fullUrl = `https://lawstudygroup.com${canonicalPath}`
+      const fullUrl = `${SITE_URL}${canonicalPath}`
       navigator.clipboard.writeText(`${citationLine}\n${fullUrl}`)
       setCopiedCitation(true)
       setTimeout(() => setCopiedCitation(false), 2000)

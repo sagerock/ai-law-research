@@ -1,6 +1,6 @@
 # Sunday brief batch — runbook
 
-You are running the weekly Sunday batch: generate AI case briefs for Law Study Group
+You are running the weekly Sunday batch: generate AI case briefs for Tortwell
 using leftover subscription capacity. YOU write each brief; the helper script only
 moves data. Work sequentially, stop at the batch limit, report at the end.
 

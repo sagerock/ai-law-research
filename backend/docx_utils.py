@@ -11,6 +11,7 @@ Provides:
 """
 
 import io
+import os
 import re
 from typing import Optional
 
@@ -440,7 +441,7 @@ def _add_hyperlink(paragraph, url: str, text: str, font_name="Times New Roman", 
 # Regex for case reporter citations in generated text
 _CASE_CITE_RE = re.compile(r'\b(\d{1,4})\s+([A-Z][A-Za-z0-9.\s\']{1,25}?)\s+(\d{1,5})\b')
 
-SITE_URL = "https://lawstudygroup.com"
+SITE_URL = os.getenv("SITE_URL", "https://tortwell.com").rstrip("/")
 
 
 def _find_case_citations(text: str, verified_slugs: Optional[set] = None) -> list[tuple[int, int, str]]:

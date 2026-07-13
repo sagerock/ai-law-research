@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { Calendar, User, FolderOpen, ExternalLink } from 'lucide-react'
 import Header from '@/components/Header'
 import { buildCanonicalUrl } from '@/lib/citationUrls'
+import { BRAND_NAME, SITE_TAGLINE, SITE_URL } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-law-research-production.up.railway.app'
 
 interface SharedCollection {
   id: string
@@ -78,7 +78,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: collection.name,
     description,
     openGraph: {
-      title: `${collection.name} | Law Study Group`,
+      title: `${collection.name} | ${BRAND_NAME}`,
       description,
       type: 'article',
       url: `${SITE_URL}/shared/${id}`,
@@ -262,7 +262,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
       {/* Footer */}
       <footer className="border-t bg-white mt-16">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-stone-500">
-          <p>Law Study Group - Free Case Briefs for Law Students</p>
+          <p>{BRAND_NAME} - {SITE_TAGLINE}</p>
         </div>
       </footer>
     </div>

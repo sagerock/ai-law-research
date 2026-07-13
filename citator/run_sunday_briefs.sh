@@ -1,6 +1,6 @@
 #!/bin/bash
 # Sunday brief batch — headless Claude Code session that generates AI case briefs
-# for Law Study Group out of leftover weekly subscription capacity (reset: Mon 11am).
+# for Tortwell out of leftover weekly subscription capacity (reset: Mon 11am).
 # 300 briefs/night: 15 sessions x 20 (recalibrated 2026-07-06: ~0.02 weekly-pts/brief,
 # so a full night ≈ 6-10% of the weekly pool; Sage's week ends >50% unused regardless).
 # ~3h wall-clock, done by ~10pm Sunday. Scheduled from crontab: Sundays 7:03pm.

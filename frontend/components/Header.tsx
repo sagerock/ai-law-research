@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Scale, GraduationCap, BookOpen, Library, ChevronDown, MessageCircle, Heart, FileSearch } from 'lucide-react'
 import { UserMenu } from '@/components/auth/UserMenu'
+import { BRAND_NAME, SITE_TAGLINE } from '@/lib/site'
 
 export default function Header() {
   const [refDropdownOpen, setRefDropdownOpen] = useState(false)
@@ -28,8 +29,8 @@ export default function Header() {
               <Scale className="h-[18px] w-[18px] text-white" />
             </div>
             <div className="hidden sm:block">
-              <span className="font-display text-xl text-stone-900 leading-none">Law Study Group</span>
-              <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">Free Case Briefs for Law Students</span>
+              <span className="font-display text-xl text-stone-900 leading-none">{BRAND_NAME}</span>
+              <span className="text-[12px] text-stone-500 block mt-0.5 tracking-wide">{SITE_TAGLINE}</span>
             </div>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2">

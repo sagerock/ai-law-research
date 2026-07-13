@@ -1,9 +1,9 @@
 import { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import CaseDetailClient, { CaseDetail } from '../../case/[id]/CaseDetailClient'
+import { BRAND_NAME, SITE_URL } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://lawstudygroup.com'
 
 interface ResolveResult {
   case_id: string
@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // are thin content until "graduated"; keep them out of the index until populated.
     ...(caseData.is_stub ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
-      title: `${caseName} | Law Study Group`,
+      title: `${caseName} | ${BRAND_NAME}`,
       description: `Case brief for ${caseName}`,
       type: 'article',
       url: canonicalUrl,

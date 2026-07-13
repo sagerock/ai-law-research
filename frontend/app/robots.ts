@@ -1,8 +1,8 @@
 import { MetadataRoute } from 'next'
 import { CHUNK } from './sitemap'
+import { SITE_URL } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-law-research-production.up.railway.app'
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   // with generateSitemaps, Next serves chunked files at /sitemap/[id].xml — list them all

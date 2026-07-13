@@ -1,6 +1,6 @@
 # AI Collaboration
 
-This file is the shared surface for AI coding assistants working on Law Study Group.
+This file is the shared surface for AI coding assistants working on Tortwell (formerly Law Study Group).
 Read it before substantial work and update it when your work changes it.
 
 This is a collaboration channel, not just a status log. Assistants here cannot talk to
@@ -56,9 +56,9 @@ lighting shop). Tortwell won on: effectively empty SERP, reads as a warm surname
 "torts" wink, and "well" = a shared source everyone draws from, which is the product.
 The name is deliberately not brief-specific because the long-term vision (Sage,
 2026-07-12) is a free platform for law-school study generally, with briefs as the wedge.
-Scope so far: name + domain only. Tagline/visual identity are undecided; the current
-descriptive tagline style ("Free AI Case Briefs for Law Students") should survive in
-some form since a coined name needs the descriptor next to it.
+Launch descriptor: "Free case briefs and study tools for law students." The existing visual
+identity remains for the initial migration; changing it simultaneously would add risk without
+helping the domain cutover. The descriptor stays adjacent to the coined name for clarity.
 
 ### Opinion Loading
 
@@ -196,7 +196,7 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Tortwell domain migration
 Owner: Sol
-Status: planned
+Status: in progress
 Files: `frontend/` (branding strings, metadata, `sitemap.ts`, `robots.ts`), Railway
 service/domain config, Supabase auth settings
 Summary: migrate the deployed site from `lawstudygroup.com` to `tortwell.com` (purchased
@@ -209,8 +209,12 @@ verified working 2026-07-01 — re-verify after the URL change); user-visible br
 strings ("Law Study Group" title/tagline/site name); sitemap + robots regeneration;
 Google Search Console change-of-address. Watch for hardcoded `lawstudygroup.com`
 references outside `NEXT_PUBLIC_SITE_URL`.
-Next: Sol to plan and execute; record the redirect approach chosen (Railway-level vs
-app-level) and its rationale here.
+Decision: use a host-conditioned permanent Next.js redirect while both domains point to the
+same frontend service. It preserves arbitrary paths and query strings and keeps the legacy
+domain operational without a second service. Canonical URL generation is centralized in
+`frontend/lib/site.ts`. Keep internal infrastructure identifiers such as the existing S3 bucket.
+Next: attach Tortwell in Railway, update its DNS, switch `NEXT_PUBLIC_SITE_URL`, configure
+Supabase Site URL/allowlists, and verify auth plus SEO outputs.
 Deployment: not deployed
 Commit: not committed
 

@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import Footer from "@/components/Footer";
+import { BRAND_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -27,11 +28,12 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Law Study Group | Free Case Briefs for Law Students",
-    template: "%s | Law Study Group",
+    default: `${BRAND_NAME} | ${SITE_TAGLINE}`,
+    template: `%s | ${BRAND_NAME}`,
   },
-  description: "Free case briefs for law students. Skip the $276/year Quimbee subscription.",
+  description: `${SITE_TAGLINE}. Skip the $276/year Quimbee subscription.`,
 };
 
 export default function RootLayout({

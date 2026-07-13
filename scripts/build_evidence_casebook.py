@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create the Evidence Draft Text casebook on Law Study Group and link its cases.
+Create the Evidence Draft Text casebook on Tortwell and link its cases.
 
 - Creates (or reuses) a `casebooks` row.
 - For each resolved case: ensures it exists in `cases` (imports opinion text from

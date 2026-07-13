@@ -278,7 +278,7 @@ export default function CitationVerifier() {
                             className="inline-flex items-center gap-1.5 text-sm text-sage-700 hover:text-sage-600 font-medium"
                           >
                             <ArrowRight className="h-3.5 w-3.5" />
-                            View on Law Study Group
+                            View on Tortwell
                           </a>
                         )}
                         {result.courtlistener_url && (

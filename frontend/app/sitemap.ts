@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
+import { SITE_URL } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://lawstudygroup.com'
 
 // Sitemap protocol caps 50k URLs per file; the case count is past that, so we chunk.
 // Chunks are served at /sitemap/[id].xml and listed in robots.ts.

@@ -291,7 +291,7 @@ def render_html(blocks) -> str:
             f"<style>{CSS}</style></head><body><div class='wrap'>"
             + "\n".join(parts)
             + "<div class='license'>Evidence by Edward K. Cheng — reformatted for the web by "
-              "Law Study Group and licensed under "
+              "Tortwell and licensed under "
               "<a href='https://creativecommons.org/licenses/by-nc-sa/4.0/'>CC BY-NC-SA 4.0</a>.</div>"
             + "</div></body></html>")
 

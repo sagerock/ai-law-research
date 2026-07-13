@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BRAND_NAME, SITE_TAGLINE } from '@/lib/site'
 
 // Footer keeps the practitioner tools reachable without cluttering the case-focused
 // header. Live at their URLs, just de-emphasized here.
@@ -8,9 +9,9 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
           <div className="max-w-xs">
-            <div className="font-display text-lg text-stone-900">Law Study Group</div>
+            <div className="font-display text-lg text-stone-900">{BRAND_NAME}</div>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-              Free AI case briefs and an open-data citator for law students.
+              {SITE_TAGLINE}, with an open-data citator.
             </p>
           </div>
 

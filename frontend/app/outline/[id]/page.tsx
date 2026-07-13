@@ -1,4 +1,5 @@
 import OutlineDetail from './OutlineDetail'
+import { BRAND_NAME } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,16 +9,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   try {
     const res = await fetch(`${API_URL}/api/v1/outlines/${id}`, { next: { revalidate: 60 } })
-    if (!res.ok) return { title: 'Outline | Law Study Group' }
+    if (!res.ok) return { title: `Outline | ${BRAND_NAME}` }
     const outline = await res.json()
     const parts = [outline.title]
     if (outline.subject) parts.push(outline.subject)
     return {
-      title: `${parts.join(' — ')} | Law Study Group`,
+      title: `${parts.join(' — ')} | ${BRAND_NAME}`,
       description: outline.description || `${outline.subject} outline${outline.law_school ? ` from ${outline.law_school}` : ''}`,
     }
   } catch {
-    return { title: 'Outline | Law Study Group' }
+    return { title: `Outline | ${BRAND_NAME}` }
   }
 }
 

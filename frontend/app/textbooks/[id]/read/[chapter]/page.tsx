@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import Header from '@/components/Header'
 import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
+import { BRAND_NAME } from '@/lib/site'
 import '../reader.css'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -35,11 +36,11 @@ async function getToc(id: string): Promise<Toc | null> {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id, chapter } = await params
   const ch = await getChapter(id, chapter)
-  if (!ch) return { title: 'Reader | Law Study Group' }
+  if (!ch) return { title: `Reader | ${BRAND_NAME}` }
   const title = ch.title.replace(/\s+/g, ' ').trim()
   return {
-    title: `${title} | Evidence (Cheng) | Law Study Group`,
-    description: `Read ${title} from Edward K. Cheng's open-source Evidence casebook, free on Law Study Group.`,
+    title: `${title} | Evidence (Cheng) | ${BRAND_NAME}`,
+    description: `Read ${title} from Edward K. Cheng's open-source Evidence casebook, free on ${BRAND_NAME}.`,
   }
 }
 
@@ -154,7 +155,7 @@ export default async function ChapterReader({ params }: PageProps) {
           </div>
 
           <p className="mt-10 pt-6 border-t border-stone-100 text-xs text-stone-400 leading-relaxed">
-            <em>Evidence</em> by Edward K. Cheng, reformatted for the web by Law Study Group and licensed under{' '}
+            <em>Evidence</em> by Edward K. Cheng, reformatted for the web by {BRAND_NAME} and licensed under{' '}
             <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" className="underline hover:text-sage-700"
                target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a>.
           </p>

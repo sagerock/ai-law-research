@@ -8,15 +8,16 @@ Read `AI_COLLABORATION.md` before substantial work. It is the shared handoff fil
 
 ## Project Overview
 
-**Law Study Group** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.6, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
+**Tortwell** - A free alternative to Quimbee for law students. Features AI-powered case briefs via Claude Sonnet 4.6, keyword search with citation ranking, citation network visualization, brief analysis, and personal library with bookmarks and collections.
 
 **Target audience**: Law students who want free case briefs without paying $276/year for Quimbee.
 
 **Branding**:
-- Site name: "Law Study Group"
-- Tagline: "Free AI Case Briefs for Law Students"
-- HTML title: "Law Study Group | Free AI Case Briefs for Law Students"
-- Domain: `lawstudygroup.com`
+- Site name: "Tortwell"
+- Tagline: "Free case briefs and study tools for law students"
+- HTML title: "Tortwell | Free case briefs and study tools for law students"
+- Domain: `tortwell.com`
+- Legacy domain: `lawstudygroup.com` (retain indefinitely with permanent redirects)
 
 ## Production Deployment (Railway)
 
@@ -24,7 +25,7 @@ The app is deployed on Railway with three services:
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| Frontend | `lawstudygroup.com` | Next.js 16 app |
+| Frontend | `tortwell.com` | Next.js 16 app |
 | Backend | `backend-production-8940.up.railway.app` | FastAPI server |
 | Database | Railway PostgreSQL | Cases, citations, user library |
 
@@ -37,7 +38,7 @@ The app is deployed on Railway with three services:
 
 **Frontend service:**
 - `NEXT_PUBLIC_API_URL`: `https://backend-production-8940.up.railway.app`
-- `NEXT_PUBLIC_SITE_URL`: `https://lawstudygroup.com` (for sitemap)
+- `NEXT_PUBLIC_SITE_URL`: `https://tortwell.com` (for sitemap and canonical URLs)
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
 
@@ -211,8 +212,9 @@ UPDATE site_config SET value = '10.00' WHERE key = 'monthly_hosting_cost';
 
 ## SEO
 
-- **Custom domain**: `lawstudygroup.com`
-- **Dynamic page titles**: Case pages show "Erie Railroad v. Tompkins | Law Study Group"
+- **Custom domain**: `tortwell.com`
+- **Legacy redirect domain**: `lawstudygroup.com`
+- **Dynamic page titles**: Case pages show "Erie Railroad v. Tompkins | Tortwell"
 - **Server-side rendering**: Case metadata generated on server for search engine indexing
 - **Sitemap**: `/sitemap.xml` dynamically lists all cases from database (revalidates hourly)
 - **Robots.txt**: `/robots.txt` allows crawling, points to sitemap
@@ -243,7 +245,7 @@ New cases are automatically added to the sitemap when inserted into the database
 - `SUPABASE_JWT_SECRET`: Secret for validating Supabase JWT tokens
 
 **For SEO (production):**
-- `NEXT_PUBLIC_SITE_URL`: `https://lawstudygroup.com` for sitemap generation
+- `NEXT_PUBLIC_SITE_URL`: `https://tortwell.com` for sitemap and canonical URL generation
 
 **Optional (local development):**
 - `OPENAI_API_KEY`: For embeddings (text-embedding-3-small)

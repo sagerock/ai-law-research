@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Import the 17 Evidence exam-prep cases (Summer 2026 table-of-cases) into the
-production Law Study Group database.
+production Tortwell database.
 
 Source data comes from law-hub's already-verified cache (cases.db) — full
 CourtListener opinions + citations fetched via the sub_opinions endpoint — so we

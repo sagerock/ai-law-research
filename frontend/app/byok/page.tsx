@@ -17,10 +17,11 @@ import {
   ChevronRight,
   Heart,
 } from 'lucide-react'
+import { BRAND_NAME } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Bring Your Own Key',
-  description: 'Use your own Anthropic API key for unlimited AI-powered study tools on Law Study Group.',
+  description: `Use your own Anthropic API key for unlimited AI-powered study tools on ${BRAND_NAME}.`,
 }
 
 function StepCard({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
@@ -75,7 +76,7 @@ export default function BYOKPage() {
             className="inline-flex items-center gap-1.5 text-sage-300 hover:text-white text-sm mb-10 transition-colors"
           >
             <ArrowRight className="h-3.5 w-3.5 rotate-180" />
-            Back to Law Study Group
+            Back to {BRAND_NAME}
           </Link>
 
           <div className="max-w-3xl">
@@ -89,7 +90,7 @@ export default function BYOKPage() {
             </h1>
 
             <p className="text-lg text-sage-200 leading-relaxed max-w-2xl mb-8">
-              Law Study Group is free for everyone. But if you want unlimited access to our
+              {BRAND_NAME} is free for everyone. But if you want unlimited access to our
               most powerful AI features, you can use your own Anthropic API key &mdash; no
               subscription, no middleman. You pay Anthropic directly at their cost.
             </p>
@@ -222,7 +223,7 @@ export default function BYOKPage() {
                   Settings &rarr; API Keys
                   <ExternalLink className="h-3 w-3" />
                 </a>{' '}
-                and click <strong>Create Key</strong>. Give it a name like &ldquo;Law Study Group&rdquo; and copy the key.
+                and click <strong>Create Key</strong>. Give it a name like &ldquo;{BRAND_NAME}&rdquo; and copy the key.
                 It starts with <code className="bg-stone-100 px-1.5 py-0.5 rounded text-xs font-mono">sk-ant-</code>.
               </p>
             </StepCard>

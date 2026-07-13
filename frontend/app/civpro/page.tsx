@@ -4,7 +4,7 @@ import CivProTabs from './CivProTabs'
 import { Scale } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: "Civil Procedure Timeline | Sage's Study Group",
+  title: "Civil Procedure Timeline | Tortwell",
   description:
     'Interactive guide to the stages of civil litigation with FRCP rules and landmark cases. Follow a federal civil case from filing through enforcement.',
 }
