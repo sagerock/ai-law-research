@@ -39,6 +39,21 @@ demanding rationale, and every assistant's entries get better.
 
 ## Architecture Decisions
 
+### Paid textbook Q&A boundary (2026-07-13)
+
+Textbook Q&A is a signed-in feature and reserves both the user's daily AI allowance and
+community-pool funds before contacting OpenAI, Qdrant, or Anthropic. Why: the endpoint
+previously allowed anonymous callers to trigger an Opus answer plus query rewriting and
+embeddings, so a public script could create an unbounded bill; checking the pool before a
+call was also racy because concurrent requests could all observe the same positive balance.
+Per-user quota and pool reservations now use PostgreSQL advisory locks. The pool reserves a
+conservative maximum, then refunds the difference after actual provider token usage is known;
+failed requests release the user's quota and reconcile any provider cost already incurred.
+BYOK supplies both Anthropic calls, while the shared pool still covers the small OpenAI
+embedding charge. Retrieval context is capped at 40,000 characters so the maximum reservation
+has a meaningful ceiling. Rejected alternative: an in-memory limiter, which would reset on
+deploy and fail across multiple Railway instances.
+
 ### Rebrand: Law Study Group → Tortwell (2026-07-13)
 
 Sage bought `tortwell.com` on 2026-07-13; the site will rebrand from "Law Study Group"
@@ -237,6 +252,19 @@ with an existing decision, add your case here instead of silently changing the c
   2026-07-12 by Claude while unifying the validators; no evidence gathered yet.)
 
 ## Current Handoffs
+
+### Textbook Q&A billing protection
+Owner: Codex
+Status: ready for review
+Files: `backend/main.py`, `backend/ai_usage.py`, `backend/test_ai_usage.py`,
+`frontend/app/textbooks/[id]/TextbookDetailClient.tsx`
+Summary: require sign-in, validate JWT subjects, atomically reserve daily quota and pool
+funds before paid provider calls, use BYOK where available, reconcile actual token costs,
+and prevent all community-pool debits from overdrawing the ledger.
+Next: review, commit, deploy both backend and frontend, then smoke-test signed-out, free-tier,
+BYOK, pool-empty, and successful textbook questions in production.
+Deployment: not deployed
+Commit: this commit
 
 ### Tortwell domain migration
 Owner: Sol

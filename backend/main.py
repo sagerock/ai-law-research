@@ -21,7 +21,7 @@ import zipfile
 import hashlib
 import hmac
 from jose import jwt, JWTError
-from uuid import UUID
+from uuid import UUID, uuid4
 from citation_utils import parse_citation_slug, slug_to_reporter_cite, case_title_to_slug, build_canonical_slug
 from cryptography.fernet import Fernet, InvalidToken
 from webhook_security import require_kofi_verification_token
@@ -35,6 +35,13 @@ from structured_briefs import (
     parse_structured_response,
     structured_summary_to_text,
     validate_structured_summary,
+)
+from ai_usage import (
+    POOL_EMPTY_DETAIL,
+    release_daily_ai_request,
+    reserve_daily_ai_request,
+    reserve_pool_funds,
+    settle_pool_reservation,
 )
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
@@ -340,8 +347,11 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Optio
             algorithms=["HS256"],
             audience="authenticated"
         )
+        user_id = payload.get("sub")
+        if not isinstance(user_id, str) or not user_id.strip():
+            raise HTTPException(status_code=401, detail="Invalid authentication token")
         return {
-            "id": payload.get("sub"),
+            "id": user_id,
             "email": payload.get("email"),
             "role": payload.get("role")
         }
@@ -389,7 +399,15 @@ class AdminUserUpdate(BaseModel):
 
 
 # Transparency dashboard helper
-async def log_api_usage(usage_type: str, input_tokens: int, output_tokens: int, cost: float, source: str = "site"):
+async def log_api_usage(
+    usage_type: str,
+    input_tokens: int,
+    output_tokens: int,
+    cost: float,
+    source: str = "site",
+    *,
+    debit_pool_funds: bool = True,
+):
     """Log API usage for transparency dashboard tracking"""
     try:
         async with db_pool.acquire() as conn:
@@ -404,7 +422,7 @@ async def log_api_usage(usage_type: str, input_tokens: int, output_tokens: int, 
                     updated_at = CURRENT_TIMESTAMP
             """, usage_type, input_tokens, output_tokens, cost, source)
         # Also debit the community pool for site-funded AI calls
-        if source == "site" and cost > 0:
+        if source == "site" and cost > 0 and debit_pool_funds:
             try:
                 await debit_pool(cost, usage_type, None)
             except Exception as pool_err:
@@ -425,16 +443,13 @@ async def get_pool_balance() -> float:
 
 async def debit_pool(amount: float, description: str, reference_id: str | None) -> float:
     """Debit the pool using advisory lock to prevent overdraw. Returns new balance."""
-    async with db_pool.acquire() as conn:
-        async with conn.transaction():
-            # Serialize debits to prevent overdraw
-            await conn.execute("SELECT pg_advisory_xact_lock(1)")
-            await conn.execute(
-                "INSERT INTO pool_ledger (amount, entry_type, description, reference_id, created_by) VALUES ($1, 'ai_debit', $2, $3, 'system')",
-                -abs(amount), description, reference_id
-            )
-            row = await conn.fetchrow("SELECT COALESCE(SUM(amount), 0) as balance FROM pool_ledger")
-            return float(row["balance"])
+    return await reserve_pool_funds(
+        db_pool,
+        amount,
+        description,
+        reference_id,
+        entry_type="ai_debit",
+    )
 
 
 async def credit_pool(amount: float, entry_type: str, description: str, reference_id: str | None, created_by: str) -> float:
@@ -456,9 +471,6 @@ async def check_pool_available(user_id: str | None) -> bool:
             return True
     balance = await get_pool_balance()
     return balance > 0
-
-
-POOL_EMPTY_DETAIL = "Community AI pool is empty. Donate to refill it!"
 
 
 @app.on_event("startup")
@@ -6406,7 +6418,9 @@ def _norm_case_name(s: Optional[str]) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
 
 
-async def _rewrite_search_queries(client, anthropic_key: str, question: str) -> List[str]:
+async def _rewrite_search_queries(
+    client, anthropic_key: str, question: str
+) -> tuple[List[str], Dict[str, int]]:
     """Expand a student's conversational question into focused retrieval queries.
 
     Returns 1-4 search strings. The original question is always included as a
@@ -6414,6 +6428,7 @@ async def _rewrite_search_queries(client, anthropic_key: str, question: str) -> 
     if the rewrite call fails or returns nothing useful.
     """
     queries: List[str] = []
+    usage = {"input_tokens": 0, "output_tokens": 0}
     try:
         prompt = (
             "You turn a law student's question about an Evidence casebook into focused "
@@ -6435,7 +6450,13 @@ async def _rewrite_search_queries(client, anthropic_key: str, question: str) -> 
                   "messages": [{"role": "user", "content": prompt}]},
         )
         if resp.status_code == 200:
-            text = next((b.get("text", "") for b in resp.json().get("content", [])
+            response_data = resp.json()
+            response_usage = response_data.get("usage", {})
+            usage = {
+                "input_tokens": int(response_usage.get("input_tokens", 0)),
+                "output_tokens": int(response_usage.get("output_tokens", 0)),
+            }
+            text = next((b.get("text", "") for b in response_data.get("content", [])
                          if b.get("type") == "text"), "")
             start, end = text.find("["), text.rfind("]")
             if start != -1 and end != -1:
@@ -6447,11 +6468,20 @@ async def _rewrite_search_queries(client, anthropic_key: str, question: str) -> 
     # Always keep the original question as a fallback query, deduped.
     if question not in queries:
         queries.append(question)
-    return queries
+    return queries, usage
+
+
+TEXTBOOK_QA_SITE_RESERVATION = 0.25
+TEXTBOOK_QA_BYOK_RESERVATION = 0.01
+TEXTBOOK_QA_CONTEXT_CHAR_LIMIT = 40_000
 
 
 @app.post("/api/v1/textbooks/{textbook_id}/ask")
-async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
+async def ask_textbook(
+    textbook_id: int,
+    payload: Dict[str, Any] = Body(...),
+    user: dict = Depends(require_auth),
+):
     """Answer a question about a textbook via RAG over its Qdrant collection."""
     question = (payload.get("question") or "").strip()
     if not question:
@@ -6482,111 +6512,207 @@ async def ask_textbook(textbook_id: int, payload: Dict[str, Any] = Body(...)):
     qdrant_url = os.getenv("QDRANT_URL")
     qdrant_key = os.getenv("QDRANT_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    if not all([qdrant_url, qdrant_key, openai_key, anthropic_key]):
+    if not all([qdrant_url, qdrant_key, openai_key]):
         raise HTTPException(status_code=503, detail="AI Q&A is not configured.")
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        # 1) rewrite the conversational question into focused search queries.
-        # A chatty question ("I'd like to talk about Rules 404 and 405") embeds
-        # toward generic overview passages and misses the specific material, and
-        # a single vector can't represent a multi-topic question well. So expand
-        # into a few targeted queries (one per sub-topic) and search each. The
-        # original question is always kept as a fallback query.
-        queries = await _rewrite_search_queries(client, anthropic_key, question)
+    user_id = str(user["id"])
+    anthropic_key, key_source = await get_anthropic_api_key(user_id)
+    is_byok = key_source == "byok"
+    reservation_amount = TEXTBOOK_QA_BYOK_RESERVATION if is_byok else TEXTBOOK_QA_SITE_RESERVATION
+    reservation_id = f"textbook-qa:{uuid4()}"
+    quota_reserved = False
+    pool_reserved = False
+    embedding_tokens = 0
+    rewrite_usage = {"input_tokens": 0, "output_tokens": 0}
+    answer_usage = {"input_tokens": 0, "output_tokens": 0}
 
-        # 2) embed all queries in one call (OpenAI accepts a list input)
-        emb = await client.post(
-            "https://api.openai.com/v1/embeddings",
-            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
-            json={"model": "text-embedding-3-small", "input": queries},
+    await reserve_daily_ai_request(db_pool, user_id, is_byok=is_byok)
+    quota_reserved = True
+    try:
+        await reserve_pool_funds(
+            db_pool,
+            reservation_amount,
+            "Textbook Q&A provider reservation",
+            reservation_id,
         )
-        if emb.status_code != 200:
-            raise HTTPException(status_code=502, detail="Embedding service error.")
-        vectors = [d["embedding"] for d in sorted(emb.json()["data"], key=lambda d: d["index"])]
+        pool_reserved = True
 
-        # 3) retrieve per query and merge, keeping each passage's best score
-        merged: Dict[Any, Dict[str, Any]] = {}
-        for vector in vectors:
-            qres = await client.post(
-                f"{qdrant_url.rstrip('/')}/collections/{collection}/points/query",
-                headers={"api-key": qdrant_key, "Content-Type": "application/json"},
-                json={"query": vector, "limit": 8, "with_payload": True},
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # 1) Rewrite the conversational question into focused retrieval queries.
+            queries, rewrite_usage = await _rewrite_search_queries(client, anthropic_key, question)
+
+            # 2) Embed all queries in one call (OpenAI accepts a list input).
+            emb = await client.post(
+                "https://api.openai.com/v1/embeddings",
+                headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+                json={"model": "text-embedding-3-small", "input": queries},
             )
-            if qres.status_code != 200:
-                raise HTTPException(status_code=502, detail="Search service error.")
-            for p in qres.json().get("result", {}).get("points", []):
-                existing = merged.get(p["id"])
-                if existing is None or p.get("score", 0) > existing.get("score", 0):
-                    merged[p["id"]] = p
+            if emb.status_code != 200:
+                raise HTTPException(status_code=502, detail="Embedding service error.")
+            embedding_data = emb.json()
+            embedding_tokens = int(embedding_data.get("usage", {}).get("total_tokens", 0))
+            vectors = [d["embedding"] for d in sorted(embedding_data["data"], key=lambda d: d["index"])]
 
-        points = sorted(merged.values(), key=lambda p: p.get("score", 0), reverse=True)[:12]
-        if not points:
-            return {"answer": "I couldn't find anything in this textbook about that.", "sources": []}
+            # 3) Retrieve per query and merge, keeping each passage's best score.
+            merged: Dict[Any, Dict[str, Any]] = {}
+            for vector in vectors:
+                qres = await client.post(
+                    f"{qdrant_url.rstrip('/')}/collections/{collection}/points/query",
+                    headers={"api-key": qdrant_key, "Content-Type": "application/json"},
+                    json={"query": vector, "limit": 8, "with_payload": True},
+                )
+                if qres.status_code != 200:
+                    raise HTTPException(status_code=502, detail="Search service error.")
+                for p in qres.json().get("result", {}).get("points", []):
+                    existing = merged.get(p["id"])
+                    if existing is None or p.get("score", 0) > existing.get("score", 0):
+                        merged[p["id"]] = p
 
-        context_parts, sources, seen = [], [], {}
-        for p in points:  # points are already sorted by score (best first)
-            pl = p.get("payload", {})
-            case_name, chapter, para = pl.get("case"), pl.get("chapter"), pl.get("para")
-            tag = case_name or chapter or "the text"
-            context_parts.append(f"[{tag}]\n{pl.get('text', '')}")
-            key = (case_name, chapter)
-            if key in seen:
-                continue
-            src = {"case": case_name, "chapter": chapter, "_para": para}
-            info = case_lookup.get(_norm_case_name(case_name)) if case_name else None
-            if info:
-                src["case_id"] = info["case_id"]
-                src["title"] = info["title"]
-                src["reporter_cite"] = info["reporter_cite"]
-            seen[key] = src
-            sources.append(src)
-        context = "\n\n---\n\n".join(context_parts)
+            points = sorted(merged.values(), key=lambda p: p.get("score", 0), reverse=True)[:12]
 
-        # Deep-link non-case sources (rules, notes, articles, chapter prose) to the
-        # exact paragraph in the reader. The Qdrant "para" is the docx paragraph index,
-        # which equals casebook_content.para_ordinal; fall back to the nearest preceding
-        # stored paragraph if that exact one wasn't indexed (e.g. an empty paragraph).
-        paras = [s["_para"] for s in sources
-                 if "case_id" not in s and isinstance(s.get("_para"), int)]
-        if paras:
-            async with db_pool.acquire() as conn:
-                locs = await conn.fetch("""
-                    SELECT DISTINCT ON (q.para) q.para AS para, c.chapter_slug, c.anchor
-                    FROM unnest($2::int[]) AS q(para)
-                    JOIN casebook_content c
-                      ON c.casebook_id = $1 AND c.anchor IS NOT NULL
-                     AND c.para_ordinal <= q.para
-                    ORDER BY q.para, c.para_ordinal DESC
-                """, textbook_id, paras)
-            loc_by_para = {r["para"]: (r["chapter_slug"], r["anchor"]) for r in locs}
+            context_parts, sources, seen = [], [], {}
+            context_chars = 0
+            for p in points:  # points are already sorted by score (best first)
+                pl = p.get("payload", {})
+                case_name, chapter, para = pl.get("case"), pl.get("chapter"), pl.get("para")
+                tag = case_name or chapter or "the text"
+                passage = f"[{tag}]\n{pl.get('text', '')}"
+                remaining = TEXTBOOK_QA_CONTEXT_CHAR_LIMIT - context_chars
+                if remaining <= 0:
+                    break
+                passage = passage[:remaining]
+                context_parts.append(passage)
+                context_chars += len(passage)
+                key = (case_name, chapter)
+                if key in seen:
+                    continue
+                src = {"case": case_name, "chapter": chapter, "_para": para}
+                info = case_lookup.get(_norm_case_name(case_name)) if case_name else None
+                if info:
+                    src["case_id"] = info["case_id"]
+                    src["title"] = info["title"]
+                    src["reporter_cite"] = info["reporter_cite"]
+                seen[key] = src
+                sources.append(src)
+            context = "\n\n---\n\n".join(context_parts)
+
+            # Deep-link non-case sources to the exact paragraph in the reader.
+            paras = [s["_para"] for s in sources
+                     if "case_id" not in s and isinstance(s.get("_para"), int)]
+            if paras:
+                async with db_pool.acquire() as conn:
+                    locs = await conn.fetch("""
+                        SELECT DISTINCT ON (q.para) q.para AS para, c.chapter_slug, c.anchor
+                        FROM unnest($2::int[]) AS q(para)
+                        JOIN casebook_content c
+                          ON c.casebook_id = $1 AND c.anchor IS NOT NULL
+                         AND c.para_ordinal <= q.para
+                        ORDER BY q.para, c.para_ordinal DESC
+                    """, textbook_id, paras)
+                loc_by_para = {r["para"]: (r["chapter_slug"], r["anchor"]) for r in locs}
+                for s in sources:
+                    loc = loc_by_para.get(s.get("_para"))
+                    if loc and "case_id" not in s:
+                        s["reader_chapter"], s["reader_anchor"] = loc
             for s in sources:
-                loc = loc_by_para.get(s.get("_para"))
-                if loc and "case_id" not in s:
-                    s["reader_chapter"], s["reader_anchor"] = loc
-        for s in sources:
-            s.pop("_para", None)
+                s.pop("_para", None)
 
-        # 3) answer with Claude, grounded in the retrieved passages
-        prompt = (
-            f"You are a study assistant for the Evidence casebook \"{book['title']}\". "
-            f"Answer the student's question using ONLY the textbook passages below. "
-            f"Write in clear plain prose with short paragraphs — do NOT use Markdown headers, "
-            f"asterisks, or bullet characters. Cite the relevant case or section inline in "
-            f"square brackets, e.g. [Daubert] or [Chapter 5]. If the passages do not answer "
-            f"the question, say so plainly.\n\n"
-            f"QUESTION: {question}\n\nTEXTBOOK PASSAGES:\n{context}"
+            if not points:
+                answer = "I couldn't find anything in this textbook about that."
+            else:
+                prompt = (
+                    f"You are a study assistant for the Evidence casebook \"{book['title']}\". "
+                    f"Answer the student's question using ONLY the textbook passages below. "
+                    f"Write in clear plain prose with short paragraphs — do NOT use Markdown headers, "
+                    f"asterisks, or bullet characters. Cite the relevant case or section inline in "
+                    f"square brackets, e.g. [Daubert] or [Chapter 5]. If the passages do not answer "
+                    f"the question, say so plainly.\n\n"
+                    f"QUESTION: {question}\n\nTEXTBOOK PASSAGES:\n{context}"
+                )
+                ans = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
+                             "Content-Type": "application/json"},
+                    json={"model": "claude-opus-4-8", "max_tokens": 1200,
+                          "messages": [{"role": "user", "content": prompt}]},
+                )
+                if ans.status_code != 200:
+                    raise HTTPException(status_code=502, detail="Answer service error.")
+                answer_data = ans.json()
+                raw_answer_usage = answer_data.get("usage", {})
+                answer_usage = {
+                    "input_tokens": int(raw_answer_usage.get("input_tokens", 0)),
+                    "output_tokens": int(raw_answer_usage.get("output_tokens", 0)),
+                }
+                answer = next((b.get("text") for b in answer_data.get("content", [])
+                               if b.get("type") == "text"), "")
+
+        embedding_cost = embedding_tokens * 0.02 / 1_000_000
+        rewrite_cost = (
+            rewrite_usage["input_tokens"] * 0.25
+            + rewrite_usage["output_tokens"] * 1.25
+        ) / 1_000_000
+        answer_cost = (
+            answer_usage["input_tokens"] * 5.0
+            + answer_usage["output_tokens"] * 25.0
+        ) / 1_000_000
+        anthropic_cost = rewrite_cost + answer_cost
+        actual_site_cost = embedding_cost + (0.0 if is_byok else anthropic_cost)
+
+        await settle_pool_reservation(
+            db_pool,
+            reservation_amount,
+            actual_site_cost,
+            "Textbook Q&A actual provider cost",
+            reservation_id,
         )
-        ans = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
-                     "Content-Type": "application/json"},
-            json={"model": "claude-opus-4-8", "max_tokens": 1200,
-                  "messages": [{"role": "user", "content": prompt}]},
+        pool_reserved = False
+        await log_api_usage(
+            "textbook_qa_embedding",
+            embedding_tokens,
+            0,
+            embedding_cost,
+            source="site",
+            debit_pool_funds=False,
         )
-        if ans.status_code != 200:
-            raise HTTPException(status_code=502, detail="Answer service error.")
-        answer = next((b.get("text") for b in ans.json().get("content", []) if b.get("type") == "text"), "")
+        await log_api_usage(
+            f"textbook_qa_anthropic_{key_source}",
+            rewrite_usage["input_tokens"] + answer_usage["input_tokens"],
+            rewrite_usage["output_tokens"] + answer_usage["output_tokens"],
+            anthropic_cost,
+            source=key_source,
+            debit_pool_funds=False,
+        )
+    except Exception:
+        if pool_reserved:
+            embedding_cost = embedding_tokens * 0.02 / 1_000_000
+            rewrite_cost = (
+                rewrite_usage["input_tokens"] * 0.25
+                + rewrite_usage["output_tokens"] * 1.25
+            ) / 1_000_000
+            answer_cost = (
+                answer_usage["input_tokens"] * 5.0
+                + answer_usage["output_tokens"] * 25.0
+            ) / 1_000_000
+            actual_site_cost = embedding_cost + (0.0 if is_byok else rewrite_cost + answer_cost)
+            try:
+                await settle_pool_reservation(
+                    db_pool,
+                    reservation_amount,
+                    actual_site_cost,
+                    "Textbook Q&A failed request adjustment",
+                    reservation_id,
+                )
+            except Exception as billing_error:
+                # Keep the conservative reservation in place rather than hiding
+                # the original provider error or risking an overdraft.
+                print(f"Failed to settle textbook Q&A reservation {reservation_id}: {billing_error}")
+        if quota_reserved:
+            try:
+                await release_daily_ai_request(db_pool, user_id)
+            except Exception as quota_error:
+                print(f"Failed to release textbook Q&A quota for {user_id}: {quota_error}")
+        raise
 
     return {"answer": answer or "No answer could be generated.", "sources": sources}
 

@@ -60,7 +60,7 @@ interface QASource {
   reader_anchor?: string | null
 }
 
-function AskTextbook({ textbookId }: { textbookId: number }) {
+function AskTextbook({ textbookId, accessToken }: { textbookId: number; accessToken?: string }) {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [sources, setSources] = useState<QASource[]>([])
@@ -76,12 +76,15 @@ function AskTextbook({ textbookId }: { textbookId: number }) {
 
   const ask = async (q: string) => {
     const query = q.trim()
-    if (!query || loading) return
+    if (!query || loading || !accessToken) return
     setLoading(true); setError(null); setAnswer(null); setSources([])
     try {
       const res = await fetch(`${API_URL}/api/v1/textbooks/${textbookId}/ask`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ question: query }),
       })
       const data = await res.json()
@@ -104,6 +107,14 @@ function AskTextbook({ textbookId }: { textbookId: number }) {
       <p className="text-sm text-stone-600 mb-3">
         Ask any question about the material and get an answer grounded in the book&apos;s text, with citations.
       </p>
+      {!accessToken && (
+        <p className="mb-3 rounded-lg border border-honey-300 bg-honey-50 px-3 py-2 text-sm text-stone-700">
+          <Link href="/login" className="font-medium text-sage-700 underline underline-offset-2">
+            Sign in
+          </Link>{' '}
+          to ask the textbook and use the shared AI allowance.
+        </p>
+      )}
       <form
         onSubmit={(e) => { e.preventDefault(); ask(question) }}
         className="flex gap-2"
@@ -118,7 +129,7 @@ function AskTextbook({ textbookId }: { textbookId: number }) {
         />
         <button
           type="submit"
-          disabled={loading || !question.trim()}
+          disabled={loading || !question.trim() || !accessToken}
           className="px-4 py-3 rounded-xl bg-sage-600 text-white font-medium
                      hover:bg-sage-700 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
@@ -332,7 +343,9 @@ export default function TextbookDetailClient({ textbook }: { textbook: TextbookD
           </div>
 
           {/* Ask this textbook (AI Q&A) */}
-          {textbook.supports_qa && <AskTextbook textbookId={textbook.id} />}
+          {textbook.supports_qa && (
+            <AskTextbook textbookId={textbook.id} accessToken={session?.access_token} />
+          )}
 
           {/* Search filter */}
           {textbook.cases.length > 10 && (
