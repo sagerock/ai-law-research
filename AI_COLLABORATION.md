@@ -196,7 +196,7 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Tortwell domain migration
 Owner: Sol
-Status: in progress
+Status: deployed; external SEO submission remains
 Files: `frontend/` (branding strings, metadata, `sitemap.ts`, `robots.ts`), Railway
 service/domain config, Supabase auth settings
 Summary: migrate the deployed site from `lawstudygroup.com` to `tortwell.com` (purchased
@@ -213,10 +213,19 @@ Decision: use a host-conditioned permanent Next.js redirect while both domains p
 same frontend service. It preserves arbitrary paths and query strings and keeps the legacy
 domain operational without a second service. Canonical URL generation is centralized in
 `frontend/lib/site.ts`. Keep internal infrastructure identifiers such as the existing S3 bucket.
-Next: attach Tortwell in Railway, update its DNS, switch `NEXT_PUBLIC_SITE_URL`, configure
-Supabase Site URL/allowlists, and verify auth plus SEO outputs.
-Deployment: not deployed
-Commit: not committed
+Completed: `tortwell.com` and `www.tortwell.com` are attached to Railway with valid TLS;
+Cloudflare DNS and Supabase Site URL/redirect allowlists were updated; frontend and backend
+canonical URL variables now use `https://tortwell.com`; Tortwell branding, metadata, generated
+links, robots, and all six sitemap chunks are live. `lawstudygroup.com` returns a path- and
+query-preserving permanent 308, and `www.tortwell.com` redirects to the apex. Existing visual
+identity was retained. Local verification: 80 backend tests, 6 frontend tests, typecheck, and
+production build passed. Live verification covered branding, canonical case metadata, redirects,
+robots, sitemap chunks, and the auth callback route.
+Next: Sage should smoke-test Google/GitHub sign-in, email confirmation, and password recovery
+with real accounts, then submit the Tortwell sitemap and Search Console change-of-address.
+Deployment: frontend `f00e583f-c19a-4b07-a44f-89d9aa355de9` (successful canonical cutover);
+backend `2bb03141-2583-4d4f-9e54-9655cfc2ad54`.
+Commits: `53b6f34`, `d14a323`, `379b21b`
 
 ### Cheng Evidence textbook coverage
 Owner: Sol (mechanical data), Claude (generation/review worker)
