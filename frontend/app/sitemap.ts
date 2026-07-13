@@ -56,7 +56,7 @@ export default async function sitemap({ id }: { id: Promise<number> }): Promise<
   try {
     const response = await fetch(
       `${API_URL}/api/v1/sitemap/cases?offset=${sitemapId * CHUNK}&limit=${CHUNK}`,
-      { next: { revalidate: 3600 } }
+      { cache: 'no-store' }
     )
 
     if (!response.ok) {
