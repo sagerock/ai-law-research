@@ -87,9 +87,9 @@ Implementation decisions (Claude, 2026-07-13):
   section renders in a honey card; emoji section headers became badge pills.
 - Homepage trust strip and "More than briefs" chips only link to routes that exist;
   Practice hypos and Flashcards are unlinked "SOON" chips — update them when those ship.
-- Deferred: dark mode (the design specifies tokens — warm near-black `#22201c`, honey
-  `#e8c67e`, sage `#9aa78a` — but the app has no theme infrastructure; add it as its own
-  project, not piecemeal).
+- No dark mode: Sage decided (2026-07-13) the site doesn't need one. Don't build it.
+  (If that ever changes, the design specifies the tokens: warm near-black `#22201c`,
+  honey `#e8c67e`, sage `#9aa78a`.)
 
 Verified: unit tests pass, production build passes, homepage and Twombly case page
 visually checked against the design's screenshots via local dev + Playwright.
