@@ -104,9 +104,9 @@ export default function HomePage() {
           {/* Heading — hidden during search */}
           {!isSearchActive && (
             <div className="animate-fade-in-up mb-10">
-              <div className="flex items-end justify-center gap-4 mb-4">
-                <TortoiseMark className="w-14 h-10 sm:w-[68px] sm:h-[49px] mb-1.5" />
-                <h1 className="font-display text-[3.25rem] sm:text-7xl font-semibold text-ink
+              <div className="flex items-end justify-center gap-3 sm:gap-4 mb-4">
+                <TortoiseMark className="w-12 h-9 sm:w-[68px] sm:h-[49px] mb-1" />
+                <h1 className="font-display text-5xl sm:text-7xl font-semibold text-ink
                                tracking-tight leading-none">
                   {BRAND_NAME}
                 </h1>
@@ -126,7 +126,7 @@ export default function HomePage() {
               value={query}
               onChange={e => handleQueryChange(e.target.value)}
               placeholder={caseCount
-                ? `Search ${caseCount.toLocaleString()}+ cases — try “Twombly” or a citation…`
+                ? `Search ${caseCount.toLocaleString()}+ cases…`
                 : 'Search by case name or citation…'}
               autoFocus
               className="w-full pl-12 pr-12 py-4 bg-white border border-stone-200 rounded-2xl
@@ -160,6 +160,7 @@ export default function HomePage() {
                   key={name}
                   onClick={() => handleQueryChange(name)}
                   className="text-[13px] text-sage-700 bg-sage-100 hover:bg-sage-200
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500
                              px-3 py-1.5 rounded-full transition-colors"
                 >
                   {name}

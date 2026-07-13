@@ -33,10 +33,11 @@ export default function Header() {
             </div>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2">
+            {/* The tortoise logo already links home, so the Cases link is desktop-only */}
             <Link
               href="/"
-              className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
-                         rounded-lg transition-all flex items-center gap-1.5"
+              className="px-2 sm:px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+                         rounded-lg transition-all hidden sm:flex items-center gap-1.5"
             >
               <FileSearch className="h-4 w-4" />
               <span className="hidden sm:inline">Cases</span>
@@ -44,7 +45,7 @@ export default function Header() {
 
             <Link
               href="/study"
-              className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+              className="px-2 sm:px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
                          rounded-lg transition-all flex items-center gap-1.5"
             >
               <GraduationCap className="h-4 w-4" />
@@ -53,7 +54,7 @@ export default function Header() {
 
             <Link
               href="/textbooks"
-              className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+              className="px-2 sm:px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
                          rounded-lg transition-all flex items-center gap-1.5"
             >
               <Library className="h-4 w-4" />
@@ -63,7 +64,7 @@ export default function Header() {
             <div className="relative" ref={refDropdownRef}>
               <button
                 onClick={() => setRefDropdownOpen(!refDropdownOpen)}
-                className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+                className="px-2 sm:px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
                                      rounded-lg transition-all flex items-center gap-1.5"
               >
                 <BookOpen className="h-4 w-4" />
@@ -99,7 +100,7 @@ export default function Header() {
 
             <Link
               href="/transparency"
-              className="px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
+              className="px-2 sm:px-3 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100
                          rounded-lg transition-all flex items-center gap-1.5"
             >
               <Heart className="h-4 w-4" />
@@ -110,7 +111,7 @@ export default function Header() {
               href="https://discord.gg/AcGcKMmMZX"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2.5 py-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100
+              className="hidden sm:block px-2.5 py-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100
                          rounded-lg transition-all"
               title="Discord"
             >

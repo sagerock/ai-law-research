@@ -94,6 +94,16 @@ Implementation decisions (Claude, 2026-07-13):
 Verified: unit tests pass, production build passes, homepage and Twombly case page
 visually checked against the design's screenshots via local dev + Playwright.
 
+Mobile QA pass (Claude, 2026-07-13, after the initial ship): fixed header overflow at
+phone widths (the nav was 428px wide at a 390px viewport, clipping Sign In — predated
+the rebrand; Discord icon and the Cases link are now desktop-only, since the tortoise
+logo already links home), shortened the search placeholder to fit (the "try Twombly"
+example lives in the Popular chips), scaled the hero for 320px screens, un-flexed the
+source-tag hint so it wraps as a sentence, and added `prefers-reduced-motion` support
+plus focus-visible rings on the new chips. Verified zero horizontal overflow at 320
+and 390px on both pages. Dev-environment note: Turbopack HMR does not detect file
+changes on /mnt/d (WSL2 DrvFs) — restart the dev server to see frontend edits.
+
 ### Opinion Loading
 
 Production opinion consumers use the shared loader in `backend/opinion_loader.py`.

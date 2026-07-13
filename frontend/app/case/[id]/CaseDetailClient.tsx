@@ -909,11 +909,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
               {caseSummary ? (
                 <div className="space-y-4">
                   {structuredCandidates.length > 0 && (
-                    <p className="flex items-center gap-1.5 text-xs text-stone-500">
-                      <Link2 className="h-3.5 w-3.5 text-honey-600" />
-                      Tap any{' '}
-                      <span className="rounded-sm bg-honey-300 px-1 text-ink">source</span>{' '}
-                      tag to jump to the exact passage in the opinion.
+                    <p className="text-xs leading-relaxed text-stone-500">
+                      <Link2 className="mr-1.5 inline h-3.5 w-3.5 align-[-3px] text-honey-600" />
+                      Tap any <span className="rounded-sm bg-honey-300 px-1 text-ink">source</span> tag
+                      to jump to the exact passage in the opinion.
                     </p>
                   )}
                   {activeStructuredCandidate ? (
