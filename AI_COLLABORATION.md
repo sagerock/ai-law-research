@@ -39,6 +39,27 @@ demanding rationale, and every assistant's entries get better.
 
 ## Architecture Decisions
 
+### Rebrand: Law Study Group → Tortwell (2026-07-13)
+
+Sage bought `tortwell.com` on 2026-07-13; the site will rebrand from "Law Study Group"
+to **Tortwell**. Why: the primary growth channel is word-of-mouth between law students,
+and that loop requires that someone who hears the name once can google their way back.
+"Law study group" is a generic head term whose SERP is permanently owned by Barbri, the
+ABA, FindLaw, and law-school libguides — the site does not appear in the top 10 for its
+own name. Considered and rejected: "AI Law Study Group" (collides with the fast-growing
+wave of AI-and-law student organizations, and "AI law" misparses as the law of AI);
+~90 coined candidates screened for .com availability, empty SERP, and trademark
+adjacency, with finalists **Gunnerly** (rejected — "gunner" is the outline-hoarding
+archetype, tonally opposed to a free sharing platform, and outsiders hear "gun") and
+**Braxby** (rejected — SERP already tenanted by a BoJack Horseman character and a UK
+lighting shop). Tortwell won on: effectively empty SERP, reads as a warm surname with a
+"torts" wink, and "well" = a shared source everyone draws from, which is the product.
+The name is deliberately not brief-specific because the long-term vision (Sage,
+2026-07-12) is a free platform for law-school study generally, with briefs as the wedge.
+Scope so far: name + domain only. Tagline/visual identity are undecided; the current
+descriptive tagline style ("Free AI Case Briefs for Law Students") should survive in
+some form since a coined name needs the descriptor next to it.
+
 ### Opinion Loading
 
 Production opinion consumers use the shared loader in `backend/opinion_loader.py`.
@@ -172,6 +193,26 @@ with an existing decision, add your case here instead of silently changing the c
   2026-07-12 by Claude while unifying the validators; no evidence gathered yet.)
 
 ## Current Handoffs
+
+### Tortwell domain migration
+Owner: Sol
+Status: planned
+Files: `frontend/` (branding strings, metadata, `sitemap.ts`, `robots.ts`), Railway
+service/domain config, Supabase auth settings
+Summary: migrate the deployed site from `lawstudygroup.com` to `tortwell.com` (purchased
+2026-07-13; see the Rebrand decision above for rationale). Sage explicitly assigned this
+to Sol. Known surface area, not a prescription: Railway custom domain + DNS for the
+frontend service; permanent 301s from `lawstudygroup.com` (keep the old domain
+registered indefinitely — it holds the existing case-page rankings and any inbound
+links); `NEXT_PUBLIC_SITE_URL`; Supabase auth redirect/site URLs (Google OAuth was
+verified working 2026-07-01 — re-verify after the URL change); user-visible branding
+strings ("Law Study Group" title/tagline/site name); sitemap + robots regeneration;
+Google Search Console change-of-address. Watch for hardcoded `lawstudygroup.com`
+references outside `NEXT_PUBLIC_SITE_URL`.
+Next: Sol to plan and execute; record the redirect approach chosen (Railway-level vs
+app-level) and its rationale here.
+Deployment: not deployed
+Commit: not committed
 
 ### Cheng Evidence textbook coverage
 Owner: Sol (mechanical data), Claude (generation/review worker)
