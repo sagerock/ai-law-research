@@ -5,6 +5,58 @@ import re
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
 
 
+def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, int]:
+    """Return an opinion part and number of marker blocks consumed.
+
+    CourtListener's hand-curated opinions use bracketed markers such as
+    ``[Dissent by Andrews]``. Official U.S. Reports text instead introduces a
+    separate writing with prose such as ``Justice Kagan, ... dissenting.``;
+    those introductions are often wrapped across two lines. Running page
+    headers (for example, ``Kagan, J., dissenting``) are deliberately ignored
+    because they can appear above the final text of the preceding opinion.
+    """
+    block = blocks[index]
+    marker = re.fullmatch(r"\[(?:(Dissent|Concurrence)\s+by|by)\s+[^]]+\]", block, re.I)
+    if marker:
+        return (marker.group(1) or "majority").lower(), 1
+
+    if re.fullmatch(r"per\s+curiam\.?", block, re.I):
+        return "majority", 1
+
+    if not re.match(r"^(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b", block, re.I):
+        return None, 0
+
+    # Opinion introductions in reporter text commonly wrap after one or two
+    # short lines. Requiring a sentence-ending period avoids treating a partial
+    # first line as a marker and leaving its continuation as opinion text.
+    for consumed in range(1, min(3, len(blocks) - index) + 1):
+        candidate = normalize_opinion_text(" ".join(blocks[index:index + consumed]))
+        if not candidate.endswith("."):
+            continue
+        if re.fullmatch(
+            r"(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b.*,\s*dissenting"
+            r"(?:\s+from\b[^.]*)?\.",
+            candidate,
+            re.I,
+        ):
+            return "dissent", consumed
+        if re.fullmatch(
+            r"(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b.*,\s*concurring\b[^.]*\.",
+            candidate,
+            re.I,
+        ):
+            return "concurrence", consumed
+        if re.fullmatch(
+            r"(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b.*"
+            r"(?:delivered\s+(?:the|an)\s+opinion\s+of\s+the\s+Court|"
+            r"announced\s+the\s+judgment\s+of\s+the\s+Court)[^.]*\.",
+            candidate,
+            re.I,
+        ):
+            return "majority", consumed
+    return None, 0
+
+
 def normalize_opinion_text(text: str) -> str:
     text = text.translate(str.maketrans({"“": '"', "”": '"', "‘": "'", "’": "'", "—": "-"}))
     return re.sub(r"\s+", " ", text.replace("&amp;", "&")).strip()
@@ -26,15 +78,17 @@ def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[s
     content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
     opinion_part = "opinion"
     sentences: list[tuple[str, str]] = []
-    for block in text.splitlines():
-        block = block.strip()
-        if not block:
+    blocks = [block.strip() for block in text.splitlines() if block.strip()]
+    index = 0
+    while index < len(blocks):
+        marker_part, consumed = detect_opinion_marker(blocks, index)
+        if marker_part:
+            opinion_part = marker_part
+            index += consumed
             continue
-        marker = re.fullmatch(r"\[(?:(Dissent|Concurrence)\s+by|by)\s+[^]]+\]", block, re.I)
-        if marker:
-            opinion_part = (marker.group(1) or "majority").lower()
-            continue
+        block = blocks[index]
         sentences.extend((opinion_part, sentence) for sentence in split_sentences(block))
+        index += 1
 
     passages = []
     passage_id_counts: dict[str, int] = {}

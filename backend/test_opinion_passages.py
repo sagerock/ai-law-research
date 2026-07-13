@@ -29,3 +29,50 @@ def test_labels_concurrence_generically():
         "[by Smith]\nMajority sentence.\n[Concurrence by Jones]\nSeparate sentence."
     )
     assert [p["opinion_part"] for p in passages] == ["majority", "concurrence"]
+
+
+def test_labels_wrapped_supreme_court_opinion_introductions():
+    _, passages = build_opinion_passages(
+        """Syllabus sentence.
+Justice Thomas delivered the opinion of the Court.
+Majority sentence.
+Opinion of Barrett, J.
+Majority conclusion.
+Justice Barrett, concurring in part and concurring in
+the judgment.
+Concurrence sentence.
+Kagan, J., dissenting
+Concurrence conclusion.
+Justice Kagan, with whom Justice Sotomayor and
+Justice Jackson join, dissenting.
+First dissent sentence.
+Justice Jackson, dissenting.
+Second dissent sentence."""
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("opinion", "Syllabus sentence."),
+        ("majority", "Majority sentence."),
+        ("majority", "Opinion of Barrett, J."),
+        ("majority", "Majority conclusion."),
+        ("concurrence", "Concurrence sentence."),
+        ("concurrence", "Kagan, J., dissenting"),
+        ("concurrence", "Concurrence conclusion."),
+        ("dissent", "First dissent sentence."),
+        ("dissent", "Second dissent sentence."),
+    ]
+
+
+def test_dissent_reference_inside_opinion_does_not_change_part():
+    _, passages = build_opinion_passages(
+        "[by Smith]\nThe court cited an earlier view.\n(White, J., dissenting).\nThe majority continued."
+    )
+    assert {p["opinion_part"] for p in passages} == {"majority"}
+
+
+def test_recognizes_title_only_chief_justice_marker():
+    _, passages = build_opinion_passages(
+        "The Chief Justice, dissenting.\nSeparate sentence."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("dissent", "Separate sentence.")
+    ]
