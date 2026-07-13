@@ -29,9 +29,10 @@ export async function generateSitemaps(): Promise<{ id: number }[]> {
   }
 }
 
-export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
+export default async function sitemap({ id }: { id: Promise<number> }): Promise<MetadataRoute.Sitemap> {
+  const sitemapId = await id
   // static pages ride along in the first chunk
-  const staticPages: MetadataRoute.Sitemap = id === 0 ? [
+  const staticPages: MetadataRoute.Sitemap = sitemapId === 0 ? [
     {
       url: SITE_URL,
       lastModified: new Date(),
@@ -54,12 +55,12 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   try {
     const response = await fetch(
-      `${API_URL}/api/v1/sitemap/cases?offset=${id * CHUNK}&limit=${CHUNK}`,
+      `${API_URL}/api/v1/sitemap/cases?offset=${sitemapId * CHUNK}&limit=${CHUNK}`,
       { next: { revalidate: 3600 } }
     )
 
     if (!response.ok) {
-      console.error('Failed to fetch cases for sitemap chunk', id)
+      console.error('Failed to fetch cases for sitemap chunk', sitemapId)
       return staticPages
     }
 
@@ -75,7 +76,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
     return [...staticPages, ...casePages]
   } catch (error) {
-    console.error('Error generating sitemap chunk', id, error)
+    console.error('Error generating sitemap chunk', sitemapId, error)
     return staticPages
   }
 }
