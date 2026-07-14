@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import TextbookDetailClient from './TextbookDetailClient'
-import { BRAND_NAME } from '@/lib/site'
+import { BRAND_NAME, SOCIAL_IMAGE } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -62,6 +62,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${data.title}${editionStr} | ${BRAND_NAME}`,
       description: `${data.cases.length} case briefs from this casebook`,
       type: 'article',
+      images: [SOCIAL_IMAGE],
     },
   }
 }

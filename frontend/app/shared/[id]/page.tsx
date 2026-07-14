@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Calendar, User, FolderOpen, ExternalLink } from 'lucide-react'
 import Header from '@/components/Header'
 import { buildCanonicalUrl } from '@/lib/citationUrls'
-import { BRAND_NAME, SITE_TAGLINE, SITE_URL } from '@/lib/site'
+import { BRAND_NAME, SITE_TAGLINE, SITE_URL, SOCIAL_IMAGE } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -82,6 +82,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       type: 'article',
       url: `${SITE_URL}/shared/${id}`,
+      images: [SOCIAL_IMAGE],
     },
   }
 }

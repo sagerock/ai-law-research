@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import StatuteDetailClient from './StatuteDetailClient'
+import { SOCIAL_IMAGE } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -39,6 +40,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${title} | Federal Statutes`,
       description: `Read the full text of ${title}`,
       type: 'article',
+      images: [SOCIAL_IMAGE],
     },
   }
 }

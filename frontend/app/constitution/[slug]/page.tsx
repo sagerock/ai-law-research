@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ConstitutionDetailClient from './ConstitutionDetailClient'
+import { SOCIAL_IMAGE } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -35,6 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${data.title} | U.S. Constitution`,
       description: `Read the full text of ${data.title}`,
       type: 'article',
+      images: [SOCIAL_IMAGE],
     },
   }
 }

@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import CaseDetailClient, { CaseDetail } from '../../case/[id]/CaseDetailClient'
-import { BRAND_NAME, SITE_URL } from '@/lib/site'
+import { BRAND_NAME, SITE_URL, SOCIAL_IMAGE } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -67,6 +67,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: `Case brief for ${caseName}`,
       type: 'article',
       url: canonicalUrl,
+      images: [SOCIAL_IMAGE],
     },
   }
 }

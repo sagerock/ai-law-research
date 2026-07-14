@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import RuleDetailClient from './RuleDetailClient'
+import { SOCIAL_IMAGE } from '@/lib/site'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -52,6 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${title} | ${abbr}`,
       description: `Read the full text of ${abbr} ${title}`,
       type: 'article',
+      images: [SOCIAL_IMAGE],
     },
   }
 }
