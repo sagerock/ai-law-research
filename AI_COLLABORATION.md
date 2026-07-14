@@ -270,9 +270,9 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Per-page social share images (dynamic OG cards)
 Owner: Sol
-Status: planned
-Files: `frontend/app/cases/[...slug]/` (new `opengraph-image.tsx`), `frontend/lib/site.ts`,
-possibly a shared card component under `frontend/lib/` or `frontend/components/`
+Status: ready for review
+Files: `frontend/app/api/og/cases/[id]/route.tsx`, `frontend/app/cases/[...slug]/page.tsx`,
+`frontend/lib/case-data.ts`, `frontend/app/fonts/SourceSerif4-*.ttf`
 Summary: generate a unique social share card per case page — case name as the hero, court +
 year beneath, on the Tortwell turtle-card layout — so a shared case link previews as that case
 rather than the generic brand card. Sage requested this 2026-07-14 after the site-wide default
@@ -303,11 +303,18 @@ Context Sol needs:
   follow-ups — year must not render off-by-one), Tortwell wordmark + tagline as footer.
 - Deliberately out of scope for v1 (banked ideas, don't build yet): citator treatment badge
   on the card (needs a DB hit from the image route), per-subject accent tinting.
-Next: implement the case-page card, verify locally (hit `/cases/<slug>/opengraph-image`
-directly and check a real crawler render via the Meta Sharing Debugger after deploy), then
-extend to `/shared/{id}` collections if it goes well.
+Implementation (Sol, 2026-07-14): Next 16/Turbopack rejects metadata routes beneath a
+catch-all segment because `opengraph-image` would illegally follow `[...slug]`. The card therefore
+lives at the cached `/api/og/cases/{case_id}` endpoint, and case metadata explicitly points both
+Open Graph and Twitter at it. This preserves dynamic generation without changing canonical URLs or
+adding a second case lookup in the image request. The endpoint uses shipped Source Serif 4 files,
+the inline tortoise mark, UTC-safe years, and deterministic truncation for extreme captions.
+Verified with a production build, direct PNG request, generated metadata inspection, and both a
+normal caption and a 6,188-character caption.
+Next: deploy, check a live case with the Meta Sharing Debugger, then extend to `/shared/{id}`
+collections if it goes well.
 Deployment: not deployed
-Commit: not committed
+Commit: this commit
 
 ### Bruton source-linked brief generation
 Owner: Sol

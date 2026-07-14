@@ -1,41 +1,11 @@
 import { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
-import CaseDetailClient, { CaseDetail } from '../../case/[id]/CaseDetailClient'
-import { BRAND_NAME, SITE_URL, SOCIAL_IMAGE } from '@/lib/site'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-interface ResolveResult {
-  case_id: string
-  canonical_slug: string
-}
+import CaseDetailClient from '../../case/[id]/CaseDetailClient'
+import { BRAND_NAME, SITE_URL } from '@/lib/site'
+import { caseYear, getCase, resolveSlug } from '@/lib/case-data'
 
 interface PageProps {
   params: Promise<{ slug: string[] }>
-}
-
-async function resolveSlug(slug: string): Promise<ResolveResult | null> {
-  try {
-    const response = await fetch(`${API_URL}/api/v1/cases/resolve/${slug}`, {
-      next: { revalidate: 86400 } // Cache resolve for 24h — citations are immutable
-    })
-    if (!response.ok) return null
-    return response.json()
-  } catch {
-    return null
-  }
-}
-
-async function getCase(id: string): Promise<CaseDetail | null> {
-  try {
-    const response = await fetch(`${API_URL}/api/v1/cases/${id}`, {
-      next: { revalidate: 3600 }
-    })
-    if (!response.ok) return null
-    return response.json()
-  } catch {
-    return null
-  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -50,8 +20,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const caseName = caseData.title || caseData.case_name || 'Unknown Case'
   const court = caseData.court_name || ''
   const dateStr = caseData.decision_date || caseData.date_filed
-  const year = dateStr ? new Date(dateStr).getFullYear() : ''
+  const year = caseYear(dateStr)
   const canonicalUrl = `${SITE_URL}/cases/${resolved.canonical_slug}`
+  const socialImage = {
+    url: `${SITE_URL}/api/og/cases/${encodeURIComponent(resolved.case_id)}`,
+    width: 1200,
+    height: 630,
+    alt: `${caseName} case brief | ${BRAND_NAME}`,
+  }
 
   return {
     title: caseName,
@@ -67,7 +43,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: `Case brief for ${caseName}`,
       type: 'article',
       url: canonicalUrl,
-      images: [SOCIAL_IMAGE],
+      images: [socialImage],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${caseName} | ${BRAND_NAME}`,
+      description: `Case brief for ${caseName}`,
+      images: [socialImage.url],
     },
   }
 }
