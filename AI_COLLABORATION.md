@@ -360,6 +360,33 @@ Deployment: backend and frontend canonical release deployed successfully; sitema
 this commit
 Commit: this commit
 
+Version 2 — the jurisdictional half (Claude, 2026-07-14): Sage observed the shipped
+outline was effectively his Civ Pro II course (the litigation process); the missing half
+was Civ Pro I (Fed Juris). Four doctrine sections now lead the outline — Subject Matter
+Jurisdiction, Personal Jurisdiction, Venue/Transfer/FNC, and Erie — authored from Sage's
+own Notion course outlines (his "OUTLINE for X - COMPLETE" pages, the Civ Pro Triage
+exam-flow doc, and the professor's four-column Erie chart), fetched via the new Notion MCP
+connection. Design: new sections carry `kind: 'doctrine'` and ids 12-15, placed FIRST in
+the sections array — process stages keep ids 1-11 so their `stage-NN` section_keys (and
+live votes/comments) are untouched, and `timelineData.ts` filters doctrine sections out of
+the /civpro chronological timeline. 45 doctrine case references were resolved to on-site
+case IDs against the production search API; five search top-hits were lower-court
+decisions with reversed captions (e.g. the 2d Cir. York) and were corrected to the SCOTUS
+opinions by checking court + date — do the same when resolving future case links.
+Three cases were added beyond Sage's notes as standard attributions of rules his notes
+state anonymously (Gibbs for "common nucleus," Kroger for §1367(b), Van Dusen for
+§1404's old-forum-law rule) — Sage should verify against his casebook. Not in the DB
+(render unlinked): Price v. CTB, Atlantic Marine, SCOTUS St. Paul Mercury.
+Verified: typecheck, production build, 5/5 importer tests (one new: doctrine sections
+link their case canon), version 2 imported to production (15 sections / 130 sources),
+live page and timeline checked.
+Follow-ups: trim Pre-Filing's now-redundant one-line §1331/§1332/venue entries; consider
+importing Atlantic Marine and the SCOTUS St. Paul Mercury; Erie's modern refinements
+(Gasperini, Semtek, Shady Grove) are absent because Sage's course notes don't cover them —
+add only with a real source to cite.
+Deployment: production import complete 2026-07-14; frontend auto-deploy from `10bf926`
+Commit: `10bf926`
+
 ### Practice Hypos feature — design parked, do not build yet
 Owner: unassigned (design notes by Claude, from the law-school Evidence workspace)
 Status: planned — **PARKED by Sage 2026-07-14; do not start until he says go**
