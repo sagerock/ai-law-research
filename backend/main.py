@@ -31,6 +31,7 @@ from search_utils import case_title_terms
 from structured_briefs import (
     build_source_packet,
     build_structured_prompt,
+    has_majority_source_material,
     repair_unknown_sources,
     parse_structured_response,
     structured_summary_to_text,
@@ -1767,17 +1768,34 @@ async def _fetch_opinion_text_from_cl(cluster_id: str) -> Optional[str]:
     fetched = None
     try:
         async with httpx.AsyncClient() as client:
-            # Strategy 1: cluster -> sub_opinions -> opinion text
+            # Strategy 1: cluster -> sub-opinions -> complete opinion text.
+            # Prefer CourtListener's combined record; otherwise preserve every
+            # separate writing instead of returning only the first one.
             if cl_headers:
                 r = await client.get(f"{base}/clusters/{cluster_id}/", headers=cl_headers, timeout=30.0)
                 if r.status_code == 200:
+                    opinion_parts = []
                     for opinion_url in r.json().get("sub_opinions", []):
                         oid = opinion_url.rstrip("/").split("/")[-1]
                         orr = await client.get(f"{base}/opinions/{oid}/", headers=cl_headers, timeout=30.0)
                         if orr.status_code == 200:
-                            t = extract(orr.json())
-                            if len(t) > 500:
-                                fetched = t; break
+                            opinion_data = orr.json()
+                            t = extract(opinion_data)
+                            if len(t) <= 500:
+                                continue
+                            opinion_type = opinion_data.get("type")
+                            if opinion_type == "010combined":
+                                fetched = t
+                                break
+                            author = opinion_data.get("author_str") or "Unknown"
+                            marker = {
+                                "020lead": f"[by {author}]",
+                                "030concurrence": f"[Concurrence by {author}]",
+                                "040dissent": f"[Dissent by {author}]",
+                            }.get(opinion_type)
+                            opinion_parts.append(f"{marker}\n{t}" if marker else t)
+                    if not fetched and opinion_parts:
+                        fetched = "\n".join(opinion_parts)
             # Strategy 2: opinion directly by cluster id
             if not fetched:
                 orr = await client.get(f"{base}/opinions/{cluster_id}/", headers=cl_headers, timeout=30.0)
@@ -1973,6 +1991,18 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
     date = case_data.get("decision_date") or case_data.get("date_filed")
     date_str = date.isoformat() if date else "Unknown Date"
     content_hash, all_passages, selected_passages = build_source_packet(content)
+    if not has_majority_source_material(selected_passages) and is_courtlistener_id(case_id):
+        refreshed_content = await _fetch_opinion_text_from_cl(case_id)
+        if refreshed_content:
+            content = refreshed_content
+            case_data["content"] = content
+            content_hash, all_passages, selected_passages = build_source_packet(content)
+            print(f"Replaced incomplete opinion source for case {case_id} from CourtListener")
+    if not has_majority_source_material(selected_passages):
+        raise HTTPException(
+            status_code=503,
+            detail="The complete majority opinion is unavailable. Please try again later.",
+        )
     prompt = build_structured_prompt(case_name, str(court), date_str, selected_passages)
 
     try:

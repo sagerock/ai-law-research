@@ -387,6 +387,26 @@ add only with a real source to cite.
 Deployment: production import complete 2026-07-14; frontend auto-deploy from `10bf926`
 Commit: `10bf926`
 
+### Source-linked brief opinion-source repairs
+Owner: Sol
+Status: shipped
+Files: `backend/main.py`, `backend/opinion_passages.py`, `backend/structured_briefs.py`,
+`backend/test_opinion_passages.py`, `backend/test_structured_briefs.py`
+Summary: two production generation failures exposed different source-shape defects. Mattox
+v. United States (156 U.S. 237, case 94091) stores flattened reporter text whose old-style
+`Mr. Justice Shiras dissenting` heading lacked the comma and block boundary expected by the
+passage parser; inline single-sentence heading detection now labels its 140 dissent passages
+without weakening source validation. Giles v. California (554 U.S. 353, case 145781) had a
+truncated dissent-only S3 object; before spending an AI call, generation now detects packets
+with no majority material and refreshes numeric cases from CourtListener. The fetcher prefers
+CourtListener's combined record and otherwise joins every sub-opinion with explicit part
+markers rather than returning only the first writing. Giles was verified locally against the
+live CourtListener record: 118,226 characters with majority, concurrence, and dissent in the
+selected packet. The strict validator remains unchanged. Verification: 96 backend/citator
+tests pass.
+Deployment: backend auto-deploy from this commit
+Commit: this commit
+
 ### Practice Hypos feature — design parked, do not build yet
 Owner: unassigned (design notes by Claude, from the law-school Evidence workspace)
 Status: planned — **PARKED by Sage 2026-07-14; do not start until he says go**

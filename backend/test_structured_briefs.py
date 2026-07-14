@@ -3,6 +3,7 @@ import unittest
 
 from structured_briefs import (
     build_source_packet,
+    has_majority_source_material,
     parse_structured_response,
     repair_unknown_sources,
     structured_summary_to_text,
@@ -77,6 +78,14 @@ class StructuredBriefTests(unittest.TestCase):
         self.assertEqual(first_passages, second_passages)
         self.assertEqual(selected, first_passages)
         self.assertTrue(all(passage["id"].startswith("op-") for passage in selected))
+
+    def test_requires_majority_source_material(self):
+        self.assertFalse(has_majority_source_material([
+            {"opinion_part": "concurrence"},
+            {"opinion_part": "dissent"},
+        ]))
+        self.assertTrue(has_majority_source_material([{"opinion_part": "opinion"}]))
+        self.assertTrue(has_majority_source_material([{"opinion_part": "majority"}]))
 
     def test_text_rendering_preserves_legacy_fallback(self):
         text = structured_summary_to_text(valid_summary())

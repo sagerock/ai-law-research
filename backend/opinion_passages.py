@@ -53,9 +53,19 @@ def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, in
         candidate = normalize_opinion_text(" ".join(blocks[index:index + consumed]))
         if not candidate.endswith("."):
             continue
+        boundary_check = candidate
+        for abbreviation in ABBREVIATIONS:
+            boundary_check = re.sub(
+                re.escape(abbreviation),
+                abbreviation.replace(".", "<DOT>"),
+                boundary_check,
+                flags=re.I,
+            )
+        if len(re.findall(r"[.!?](?:\s+|$)", boundary_check)) != 1:
+            continue
         if re.fullmatch(
-            rf"{JUSTICE_PREFIX}.*,\s*dissenting"
-            r"(?:\s+from\b[^.]*)?\.",
+            rf"{JUSTICE_PREFIX}.*(?:,\s*|\s+)dissenting"
+            r"(?:\s+from\b[^.]*)?(?:,\s*with whom concurred\b.*)?\.",
             candidate,
             re.I,
         ):
@@ -108,7 +118,14 @@ def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[s
             index += consumed
             continue
         block = blocks[index]
-        sentences.extend((opinion_part, sentence) for sentence in split_sentences(block))
+        for sentence in split_sentences(block):
+            # Some plain-text opinions flatten separate-writing headings into
+            # the surrounding paragraph instead of preserving line breaks.
+            marker_part, _ = detect_opinion_marker([sentence], 0)
+            if marker_part:
+                opinion_part = marker_part
+                continue
+            sentences.append((opinion_part, sentence))
         index += 1
 
     passages = []

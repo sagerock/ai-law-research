@@ -14,6 +14,14 @@ SECTION_LIMITS = {
 }
 
 
+def has_majority_source_material(passages: list[dict]) -> bool:
+    """Return whether a packet can support the required majority sections."""
+    return any(
+        passage.get("opinion_part") in {"opinion", "majority"}
+        for passage in passages
+    )
+
+
 def validate_structured_summary(candidate: dict, passages: list[dict]) -> list[str]:
     errors = []
     allowed = set(SECTION_LIMITS) | {"significance"}

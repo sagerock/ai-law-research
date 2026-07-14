@@ -95,3 +95,16 @@ def test_labels_old_us_reports_headings_in_html():
         ("dissent", "Dissent sentence."),
         ("opinion", "Neutral footnote."),
     ]
+
+
+def test_labels_inline_old_us_reports_dissent_heading():
+    _, passages = build_opinion_passages(
+        "Justice Brown delivered the opinion of the Court. "
+        "Majority conclusion. "
+        "Mr. Justice Shiras dissenting, with whom concurred Mr. Justice Gray and Mr. Justice White. "
+        "Dissent sentence."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority conclusion."),
+        ("dissent", "Dissent sentence."),
+    ]
