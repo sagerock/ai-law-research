@@ -29,8 +29,8 @@ export async function generateSitemaps(): Promise<{ id: number }[]> {
   }
 }
 
-export default async function sitemap({ id }: { id: Promise<number> }): Promise<MetadataRoute.Sitemap> {
-  const sitemapId = await id
+export default async function sitemap({ id }: { id: Promise<string> }): Promise<MetadataRoute.Sitemap> {
+  const sitemapId = Number(await id)
   // static pages ride along in the first chunk
   const staticPages: MetadataRoute.Sitemap = sitemapId === 0 ? [
     {

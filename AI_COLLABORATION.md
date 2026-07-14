@@ -331,7 +331,7 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Canonical outlines v1 (Civ Pro)
 Owner: Sol
-Status: in progress (production schema/content prepared; app deploy pending)
+Status: shipped
 Files: `migrations/038_canonical_outlines.sql`, `scripts/import_canonical_outline.py`,
 `scripts/privatize_outline_uploads.py`, `backend/main.py`,
 `frontend/content/outlines/civil-procedure.json`, `frontend/app/outlines/[slug]/`,
@@ -349,9 +349,15 @@ build, importer dry run (11 sections / 69 sources), and a two-pass code review a
 Production preparation (2026-07-14): migration 038 applied successfully; both legacy
 outlines are private, database-backed files with zero remote public URLs to revoke; Civ Pro
 version 1 imported with 11 active sections and 69 sources.
-Next: push and monitor backend/frontend auto-deploys, then smoke-test anonymous SSR/source
-links and signed-in voting, comments, private upload/download, and AI study.
-Deployment: app services not yet deployed
+Production smoke test: backend health and canonical API pass with 11 sections / 69 sources;
+anonymous SSR, study landing, source links, public comment reads, and auth rejection for
+anonymous voting pass. Chunked sitemap routing passes; this commit fixes an existing strict
+number comparison that omitted static pages from chunk 0 under Next.js 16 string route IDs.
+Next: optional signed-in manual smoke test for voting, comments, private upload/download,
+and AI study; these authenticated flows are covered by local automated checks but were not
+exercised against a real production user session.
+Deployment: backend and frontend canonical release deployed successfully; sitemap fix in
+this commit
 Commit: this commit
 
 ### Practice Hypos feature — design parked, do not build yet
