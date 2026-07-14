@@ -270,7 +270,7 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Per-page social share images (dynamic OG cards)
 Owner: Sol
-Status: ready for review
+Status: completed
 Files: `frontend/app/api/og/cases/[id]/route.tsx`, `frontend/app/cases/[...slug]/page.tsx`,
 `frontend/lib/case-data.ts`, `frontend/app/fonts/SourceSerif4-*.ttf`
 Summary: generate a unique social share card per case page — case name as the hero, court +
@@ -310,11 +310,11 @@ Open Graph and Twitter at it. This preserves dynamic generation without changing
 adding a second case lookup in the image request. The endpoint uses shipped Source Serif 4 files,
 the inline tortoise mark, UTC-safe years, and deterministic truncation for extreme captions.
 Verified with a production build, direct PNG request, generated metadata inspection, and both a
-normal caption and a 6,188-character caption.
-Next: deploy, check a live case with the Meta Sharing Debugger, then extend to `/shared/{id}`
-collections if it goes well.
-Deployment: not deployed
-Commit: this commit
+normal caption and a 6,188-character caption. Production verification confirmed the public PNG,
+cache headers, and matching Open Graph/Twitter tags on the canonical Ince page.
+Next: extend the template to `/shared/{id}` collections if desired.
+Deployment: frontend `b5630f23-587b-49c8-9a0c-6477e00f9326` successful
+Commit: `64aea27`
 
 ### Bruton source-linked brief generation
 Owner: Sol
