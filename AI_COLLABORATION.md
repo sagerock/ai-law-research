@@ -39,6 +39,27 @@ demanding rationale, and every assistant's entries get better.
 
 ## Architecture Decisions
 
+### Study tab leads with Outlines; Mindmaps demoted from nav (2026-07-14)
+
+Sage's call: `/study` now redirects to `/study/outlines`, and the Mindmaps tab is gone
+from the study nav. Why: mind maps are not a common law-student artifact — students don't
+arrive looking for them, and the unfamiliar format also confuses AI assistants working on
+study features (an uncommon abstraction pulls generation quality down). Outlines are the
+canonical law-school study document, so they lead. Mindmaps is demoted, not deleted:
+`/study/session` still renders (existing users' maps and public share links must not 404),
+and its tab reappears contextually only when a visitor is already on that page
+(`HIDDEN_TABS` in `frontend/app/study/layout.tsx`). Rejected alternatives: deleting the
+feature outright (breaks existing data/links for no gain) and keeping it as a second tab
+(keeps advertising the thing we don't want new users to anchor on).
+
+Feature-rollout sequencing that goes with this (Sage, 2026-07-14): roll out study
+features one at a time rather than broadside — Outlines is the current flagship;
+Practice Hypos is designed and parked until after his July 31 Evidence final (see the
+parked handoff below); Flashcards later, likely derived from hypo content. The homepage
+"SOON" chips are the public roadmap: a chip flips from SOON to linked only when the
+feature ships with real content behind it. Don't add new nav entries or chips for
+features that don't exist yet.
+
 ### Backend-only Supabase tables use default-deny RLS (2026-07-14)
 
 The production FastAPI service connects to Railway PostgreSQL as `postgres`, not to the
