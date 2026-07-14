@@ -119,25 +119,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true
     let timeoutId: NodeJS.Timeout
 
-    // Helper to apply session state with version check
-    const applySession = async (newSession: Session | null, version: number) => {
+    // Apply auth state synchronously so onAuthStateChange can release the
+    // Supabase auth lock before any profile query uses the client again.
+    const applySession = (newSession: Session | null, version: number) => {
       if (!mounted || version < authVersionRef.current) return
 
       currentTokenRef.current = newSession?.access_token ?? null
       setSession(newSession)
       setUser(newSession?.user ?? null)
+      setIsLoading(false)
 
       if (newSession?.user) {
-        // Set loading false immediately — don't block on profile fetch
-        setIsLoading(false)
-        const profileData = await fetchProfile(newSession.user.id, newSession.user.email)
-        // Check version again after async fetch — a newer event may have arrived
-        if (mounted && version >= authVersionRef.current) {
-          setProfile(profileData)
-        }
+        setTimeout(async () => {
+          const profileData = await fetchProfile(newSession.user.id, newSession.user.email)
+          // Check version again after async fetch — a newer event may have arrived
+          if (mounted && version >= authVersionRef.current) {
+            setProfile(profileData)
+          }
+        }, 0)
       } else {
         setProfile(null)
-        setIsLoading(false)
       }
     }
 
@@ -156,8 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // initializes. Middleware keeps the token fresh server-side, so this
     // resolves from cookies without a network refresh.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
         if (!mounted) return
+        clearTimeout(timeoutId)
 
         // Bump version — this ensures any in-flight initAuth or older
         // event handler won't overwrite this newer state
@@ -165,18 +167,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Handle sign out
         if (event === 'SIGNED_OUT') {
-          await applySession(null, version)
+          applySession(null, version)
           return
         }
 
         // Handle token refresh failure — only clear if no fresh sign-in
         // arrived in the meantime
         if (event === 'TOKEN_REFRESHED' && !newSession) {
-          await applySession(null, version)
+          applySession(null, version)
           return
         }
 
-        await applySession(newSession, version)
+        applySession(newSession, version)
       }
     )
 

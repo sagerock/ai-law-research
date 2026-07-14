@@ -253,6 +253,32 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Multi-window auth deadlock
+Owner: Sol
+Status: completed; deployment pending
+Files: `frontend/lib/auth-context.tsx`
+Summary: the auth-state callback awaited `fetchProfile`, which makes another Supabase API call
+while `onAuthStateChange` still holds the client auth lock. Supabase documents that pattern as a
+deadlock: subsequent calls or tabs can hang, matching the gray profile placeholder reported when
+opening cases side by side. Session/UI state now applies synchronously and profile loading is
+deferred with `setTimeout(..., 0)` so the callback releases the lock first. The existing version
+guard still prevents stale profile responses from winning.
+Next: monitor the frontend auto-deploy, then smoke-test two authenticated windows/tabs.
+Deployment: pending auto-deploy
+Commit: this commit
+
+### Albert v. McKay & Co. import
+Owner: Sol
+Status: completed
+Files: `scripts/import_albert_mckay.py`
+Summary: imported CourtListener cluster `3307250` into production with the complete opinion,
+California Supreme Court association, docket `S. F. No. 7111.`, official citation
+`174 Cal. 451`, and parallel citations. The idempotent script prefers CourtListener over the
+user-supplied CaseMine mirror and decodes source HTML entities before storage.
+Next: none; production search, case API, citation-slug resolver, and canonical page were verified.
+Deployment: n/a (offline data operation)
+Commit: `38d9ba2`
+
 ### Textbook Q&A billing protection
 Owner: Codex
 Status: ready for review
