@@ -32,3 +32,9 @@
 5962941	1533 chars, auto-skipped 2026-07-06
 3636031	Lawrence v. Fox: corpus text for this cluster is a 1999 NC workers-comp case, not the 1859 opinion (CL data flaw)
 3302988	Harrington v. Taylor: corpus text is a CA asset-marshaling case, not the 1945 NC case (CL data flaw)
+247166	1906 chars, auto-skipped (candidate) 2026-07-12
+145853	Melendez-Diaz v. Massachusetts: stored opinion text is Kennedy dissent only (457 passages), no majority opinion text present — CL data flaw
+145781	Giles v. California: stored opinion text is Breyer dissent only (501 passages), no majority opinion text present — CL data flaw, same pattern as 145853
+220342	J. McIntyre Machinery v. Nicastro: stored opinion text is Ginsburg dissent only (467 passages), no plurality/concurrence text present — CL data flaw, same pattern as 145853
+6630967	not Kirksey v. Kirksey (1845) - stored opinion is an 1868 Alabama handwriting-authentication case (Byrd, J.), famous-name mismatch — CL data flaw
+3252402	Webb v. McGowin: stored opinion is the Alabama Supreme Court's terse certiorari-denial opinion (Foster, J., 50 passages), not the Court of Appeals merits opinion (Bricken, P.J.) with the case's facts — no facts to source a brief from, CL data flaw
