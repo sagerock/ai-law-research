@@ -387,17 +387,32 @@ Follow-ups: trim Pre-Filing's now-redundant one-line §1331/§1332/venue entries
 importing Atlantic Marine and the SCOTUS St. Paul Mercury; Erie's modern refinements
 (Gasperini, Semtek, Shady Grove) are absent because Sage's course notes don't cover them —
 add only with a real source to cite.
-Next content cycle (banked 2026-07-14, don't start without Sage): upgrade the Joinder &
-Parties section — currently the outline's thinnest (one concept, three cases) — using
-Sage's 172-page compiled slide document (`/mnt/d/Downloads/CONTENT FROM SLIDES.pdf`,
-extracted text in the session scratchpad) covering Rule 19 three-step analysis, Rule 24
-intervention of right vs. permissive, Rule 22 vs. statutory interpleader (§§1335/1397/2361),
-class actions, and the Mullane notice framework for Filing & Service. IMPORTANT: that
-document is compiled FROM the professor's slides — use it to verify coverage and as a
-topic checklist, but author the public outline text in original words (same
-professor-materials copyright caution as the outlines-pivot decision above).
-Deployment: production import complete 2026-07-14; frontend auto-deploy from `10bf926`
-Commit: `10bf926`
+Version 3 — Joinder upgrade (Claude, 2026-07-14, same day): the outline's thinnest
+section (one concept, three cases) is now a full complex-joinder treatment — the
+three-questions framework, compulsory/permissive counterclaims with their different SMJ
+paths, crossclaims + Rule 18's open-door, Rule 19 three-step, Rule 24 intervention,
+Rule 22 vs. statutory interpleader, and the two §1367(b) take-aways. Sage's 172-page
+compiled slide document (`/mnt/d/Downloads/CONTENT FROM SLIDES.pdf`) served as the
+coverage checklist; all prose is original (professor-materials copyright caution — the
+doctrine isn't copyrightable, the professor's expression is; keep this discipline for
+future cycles). Temple v. Synthes was added as the named attribution for the
+joint-tortfeasor rule the slides state anonymously — on the casebook-check list with
+Kroger and Van Dusen. King v. Blanton now links via its `manual-king-v-blanton` case ID.
+Version 3 imported to production (15 sections / 134 sources) and verified live.
+Still banked from the slide doc: the Mullane notice framework for Filing & Service.
+
+Multi-course roadmap (Sage, 2026-07-14): the same authoring pipeline extends to
+**Criminal Law and Torts** (his 1L fall notes) and **Evidence** (in progress now; his
+final is July 31) — explicitly NOT tonight; wait for Sage to start each. The pipeline
+that worked for Civ Pro: pull Sage's own Notion course notes (Law School Hub →
+semester → course; look for his "OUTLINE for X - COMPLETE" pages) via the Notion MCP →
+distill faithfully → resolve case names against the production search API (beware
+lower-court reversed-caption top hits — verify court + date) → author sections in the
+canonical JSON → validate via importer tests → Sage approves the production import
+per-run.
+Deployment: v2 and v3 production imports complete 2026-07-14; frontend auto-deploys
+from `main`
+Commits: `10bf926` (v2), `8aa8f0a` (v3)
 
 ### Source-linked brief opinion-source repairs
 Owner: Sol
