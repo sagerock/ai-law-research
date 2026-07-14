@@ -84,6 +84,41 @@ export interface OutlineMessage {
   created_at?: string
 }
 
+export interface CanonicalOutlineSource {
+  type: 'case' | 'rule' | 'statute' | 'constitution' | 'other'
+  ref: string
+  label: string
+  url: string | null
+}
+
+export interface CanonicalOutlineSection {
+  id: number
+  key: string
+  slug: string
+  parent_id: number | null
+  sort_order: number
+  title: string
+  body: string
+  upvotes: number
+  downvotes: number
+  user_vote: -1 | 1 | null
+  comment_count: number
+  sources: CanonicalOutlineSource[]
+}
+
+export interface CanonicalOutline {
+  id: number
+  slug: string
+  subject: string
+  title: string
+  description: string | null
+  version: number
+  revision_note: string | null
+  published_at: string | null
+  updated_at: string | null
+  sections: CanonicalOutlineSection[]
+}
+
 export interface StudyNote {
   id: number
   title: string

@@ -70,6 +70,14 @@ Design choices that go with it:
   pro outline into the structured, source-linked, genericized format with section
   votes/comments. Torts and Evidence follow the same path. No authoring tools, no merge
   UI, nothing speculative.
+- Storage decision (Sol implementation, 2026-07-14): canonical outlines use dedicated
+  relational tables, not `outlines.topics` JSONB and not the file-oriented legacy `outlines`
+  table. Stable section rows own votes/comments; immutable versioned section-revision rows
+  own title/body/source links, so feedback survives edits without rewriting history. The
+  version-controlled Civ Pro JSON drives both the interactive timeline and the importer,
+  preventing two authored copies from drifting. Existing uploads remain in `outlines` as
+  private AI-study documents; legacy public storage objects must be copied into PostgreSQL
+  and revoked with `scripts/privatize_outline_uploads.py` before the privacy cutover deploy.
 
 ### Study tab leads with Outlines; Mindmaps demoted from nav (2026-07-14)
 
@@ -322,34 +330,29 @@ with an existing decision, add your case here instead of silently changing the c
 ## Current Handoffs
 
 ### Canonical outlines v1 (Civ Pro)
-Owner: unassigned (framing by Claude; implementation is a good Sol fit, but design
-questions below need settling first — a framing pass or Sage call, then build)
-Status: planned
-Files (expected): `migrations/038+` (canonical outline sections, section votes/comments),
-`backend/main.py` (public outline endpoints, vote/comment endpoints with the existing
-rate-limit patterns), `frontend/app/outlines/` and `frontend/app/study/outlines/`
-(split: public canonical outlines vs. private my-outlines), `frontend/app/outline/[id]/`
-Summary: implement the canonical-outlines decision above. v1 scope: Sage's existing civ
-pro outline converted to structured sections (genericized — no professor/class), rendered
-as THE Civ Pro Outline page with per-section upvote/downvote and comments; public
-upload/browse/fork marketplace surfaces removed; private uploads and the
-`outline_conversations` AI study flow untouched.
-Open design points for whoever picks this up:
-- Storage shape: new `outline_sections`-style tables vs. reusing `outlines.topics` JSONB.
-  Section-level votes/comments and stable section anchors for source links argue for real
-  rows with stable IDs (compare `opinion_passages` / `op-...` IDs — same durability
-  problem, solved pattern).
-- Votes/comments and auth: signed-in only (existing Supabase JWT path) is simplest and
-  abuse-resistant; the problem-report endpoint's keyed IP fingerprint pattern exists if
-  anonymous voting ever matters. Comments likely reuse the existing `comments` table
-  patterns if compatible.
-- Source links in outline text: adopt the honey source-link convention from briefs —
-  rule statements link to case pages. Honey stays exclusive to source links.
-- Migration of the one existing public outline: convert, don't delete; other users'
-  outlines (if any) flip to private rather than disappearing.
-Next: settle the storage-shape question, then build v1 for Civ Pro only.
-Deployment: not deployed
-Commit: not committed
+Owner: Sol
+Status: in progress (production schema/content prepared; app deploy pending)
+Files: `migrations/038_canonical_outlines.sql`, `scripts/import_canonical_outline.py`,
+`scripts/privatize_outline_uploads.py`, `backend/main.py`,
+`frontend/content/outlines/civil-procedure.json`, `frontend/app/outlines/[slug]/`,
+`frontend/app/study/outlines/`, `frontend/app/outline/[id]/`
+Summary: the existing eleven-stage Civ Pro timeline is now the single version-controlled
+content source and validates to 69 case/rule/statute sources. A dedicated relational schema
+separates stable section identity from immutable revision content and attaches signed-in
+votes/comments to stable sections. `/outlines/civil-procedure` is an SSR public outline with
+honey source links, section navigation, feedback totals, voting, and comments. The study
+landing page now leads with the canonical outline and keeps uploads in a separate private
+area; new and existing uploads are forced private, authenticated downloads work, and AI
+conversation access now checks both conversation and outline ownership.
+Verification: 93 backend/citator tests, 8 frontend tests, frontend typecheck, production
+build, importer dry run (11 sections / 69 sources), and a two-pass code review all pass.
+Production preparation (2026-07-14): migration 038 applied successfully; both legacy
+outlines are private, database-backed files with zero remote public URLs to revoke; Civ Pro
+version 1 imported with 11 active sections and 69 sources.
+Next: push and monitor backend/frontend auto-deploys, then smoke-test anonymous SSR/source
+links and signed-in voting, comments, private upload/download, and AI study.
+Deployment: app services not yet deployed
+Commit: this commit
 
 ### Practice Hypos feature — design parked, do not build yet
 Owner: unassigned (design notes by Claude, from the law-school Evidence workspace)

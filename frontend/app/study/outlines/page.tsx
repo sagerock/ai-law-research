@@ -1,669 +1,246 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ArrowRight, BookOpen, FileText, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { createClient } from '@/lib/supabase'
 import { API_URL } from '@/lib/api'
-import { Outline } from '@/types'
-// Header is provided by study layout
-import {
-  FileText,
-  Upload,
-  Loader2,
-  Download,
-  Trash2,
-  X,
-  Plus,
-  Filter,
-  GitFork,
-} from 'lucide-react'
+import { createClient } from '@/lib/supabase'
+import type { Outline } from '@/types'
 
 const SUBJECT_OPTIONS = [
-  'Constitutional Law',
-  'Contracts',
-  'Civil Procedure',
-  'Criminal Law',
-  'Criminal Procedure',
-  'Evidence',
-  'Property',
-  'Torts',
-  'Administrative Law',
-  'Business Associations',
-  'Family Law',
-  'Immigration Law',
-  'Intellectual Property',
-  'International Law',
-  'Labor Law',
-  'Legal Writing',
-  'Professional Responsibility',
-  'Remedies',
-  'Securities Regulation',
-  'Tax Law',
-  'Trusts & Estates',
+  'Constitutional Law', 'Contracts', 'Civil Procedure', 'Criminal Law',
+  'Criminal Procedure', 'Evidence', 'Property', 'Torts',
+  'Administrative Law', 'Business Associations', 'Family Law',
+  'Immigration Law', 'Intellectual Property', 'International Law',
+  'Labor Law', 'Legal Writing', 'Professional Responsibility', 'Remedies',
+  'Securities Regulation', 'Tax Law', 'Trusts & Estates',
 ]
-
-interface SubjectCount {
-  subject: string
-  count: number
-}
 
 export default function OutlinesPage() {
   const { user, session, isLoading: authLoading } = useAuth()
   const pathname = usePathname()
-  const [mounted, setMounted] = useState(false)
-
-  // Browse state
-  const [outlines, setOutlines] = useState<Outline[]>([])
   const [myOutlines, setMyOutlines] = useState<Outline[]>([])
-  const [subjects, setSubjects] = useState<SubjectCount[]>([])
-  const [subjectFilter, setSubjectFilter] = useState('')
   const [isLoading, setIsLoading] = useState(true)
-
-  // Upload modal state
-  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadSubject, setUploadSubject] = useState('')
-  const [uploadProfessor, setUploadProfessor] = useState('')
-  const [uploadLawSchool, setUploadLawSchool] = useState('')
-  const [uploadSemester, setUploadSemester] = useState('')
   const [uploadDescription, setUploadDescription] = useState('')
-  const [uploadVisibility, setUploadVisibility] = useState<'private' | 'unlisted' | 'public'>('private')
-  const [uploadShowAuthor, setUploadShowAuthor] = useState(false)
-  const [uploadShowSchool, setUploadShowSchool] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [dragActive, setDragActive] = useState(false)
-
-  // Delete state
+  const [isUploading, setIsUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  const getAuthHeaders = (): Record<string, string> => {
-    if (!session?.access_token) return {}
-    return {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json'
-    }
-  }
-
-  const fetchOutlines = useCallback(async (subject?: string) => {
-    try {
-      const params = new URLSearchParams()
-      if (subject) params.set('subject', subject)
-      const res = await fetch(`${API_URL}/api/v1/outlines?${params}`)
-      const data = await res.json()
-      setOutlines(data.outlines || [])
-    } catch (err) {
-      console.error('Failed to fetch outlines:', err)
-    }
-  }, [])
-
-  const fetchSubjects = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/v1/outlines/subjects`)
-      const data = await res.json()
-      setSubjects(data.subjects || [])
-    } catch (err) {
-      console.error('Failed to fetch subjects:', err)
-    }
-  }, [])
-
-  const fetchMyOutlines = useCallback(async () => {
-    if (!session?.access_token) return
-    try {
-      const res = await fetch(`${API_URL}/api/v1/outlines/mine`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      })
-      const data = await res.json()
-      setMyOutlines(data.outlines || [])
-    } catch (err) {
-      console.error('Failed to fetch my outlines:', err)
-    }
-  }, [session?.access_token])
-
   useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
-
-    const loadData = async () => {
-      setIsLoading(true)
-      await Promise.all([
-        fetchOutlines(),
-        fetchSubjects(),
-        ...(session?.access_token ? [fetchMyOutlines()] : [])
-      ])
+    if (authLoading) return
+    if (!session?.access_token) {
+      setMyOutlines([])
       setIsLoading(false)
-    }
-
-    loadData()
-  }, [mounted, session?.access_token, fetchOutlines, fetchSubjects, fetchMyOutlines])
-
-  // Filter change
-  useEffect(() => {
-    if (mounted) {
-      fetchOutlines(subjectFilter || undefined)
-    }
-  }, [subjectFilter, mounted, fetchOutlines])
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
-    } else if (e.type === 'dragleave') {
-      setDragActive(false)
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0])
-    }
-  }
-
-  const handleFileSelect = (file: File) => {
-    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-    const validExts = ['.pdf', '.docx']
-    const isValid = validTypes.includes(file.type) || validExts.some(ext => file.name.toLowerCase().endsWith(ext))
-
-    if (!isValid) {
-      setUploadError('Please upload a PDF or DOCX file')
       return
     }
+    let cancelled = false
+    setIsLoading(true)
+    fetch(`${API_URL}/api/v1/outlines/mine`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    }).then(async response => {
+      if (!response.ok) throw new Error('Failed to load outlines')
+      const data = await response.json()
+      if (!cancelled) setMyOutlines(data.outlines || [])
+    }).catch(() => {
+      if (!cancelled) setMyOutlines([])
+    }).finally(() => {
+      if (!cancelled) setIsLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [authLoading, session?.access_token])
 
+  const resetUpload = () => {
+    setUploadFile(null)
+    setUploadTitle('')
+    setUploadSubject('')
+    setUploadDescription('')
+    setUploadError(null)
+  }
+
+  const selectFile = (file: File) => {
+    const valid = ['pdf', 'docx', 'txt'].includes(file.name.split('.').pop()?.toLowerCase() || '')
+    if (!valid) {
+      setUploadError('Please upload a PDF, DOCX, or TXT file')
+      return
+    }
     if (file.size > 10 * 1024 * 1024) {
       setUploadError('File size must be under 10MB')
       return
     }
-
     setUploadFile(file)
     setUploadError(null)
-
-    // Auto-fill title from filename if empty
-    if (!uploadTitle) {
-      const name = file.name.replace(/\.(pdf|docx)$/i, '').replace(/[_-]/g, ' ')
-      setUploadTitle(name)
-    }
+    if (!uploadTitle) setUploadTitle(file.name.replace(/\.(pdf|docx|txt)$/i, '').replace(/[_-]/g, ' '))
   }
 
-  const handleUpload = async () => {
-    if (!uploadFile || !uploadTitle.trim() || !uploadSubject.trim() || !user || !session?.access_token) return
-
+  const upload = async () => {
+    if (!uploadFile || !uploadTitle.trim() || !uploadSubject || !session?.access_token) return
     setIsUploading(true)
     setUploadError(null)
-
     try {
-      // Upload file directly to backend (multipart form)
-      const formData = new FormData()
-      formData.append('file', uploadFile)
-      formData.append('title', uploadTitle.trim())
-      formData.append('subject', uploadSubject.trim())
-      formData.append('visibility', uploadVisibility)
-      if (uploadProfessor.trim()) formData.append('professor', uploadProfessor.trim())
-      if (uploadLawSchool.trim()) formData.append('law_school', uploadLawSchool.trim())
-      if (uploadSemester.trim()) formData.append('semester', uploadSemester.trim())
-      if (uploadDescription.trim()) formData.append('description', uploadDescription.trim())
-      formData.append('show_author', String(uploadShowAuthor))
-      formData.append('show_school', String(uploadShowSchool))
-
-      const res = await fetch(`${API_URL}/api/v1/outlines/upload`, {
+      const form = new FormData()
+      form.append('file', uploadFile)
+      form.append('title', uploadTitle.trim())
+      form.append('subject', uploadSubject)
+      form.append('description', uploadDescription.trim())
+      form.append('visibility', 'private')
+      const response = await fetch(`${API_URL}/api/v1/outlines/upload`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-        body: formData,
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: form,
       })
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.detail || 'Failed to upload outline')
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.detail || 'Upload failed')
       }
-
-      // Success - close modal & refresh
-      setShowUploadModal(false)
-      resetUploadForm()
-      await Promise.all([fetchOutlines(subjectFilter || undefined), fetchSubjects(), fetchMyOutlines()])
-    } catch (err: any) {
-      setUploadError(err.message || 'Upload failed')
+      const created = await response.json()
+      setMyOutlines(current => [{
+        ...created,
+        description: uploadDescription.trim() || null,
+        filename: uploadFile.name,
+        file_url: '',
+        file_size: uploadFile.size,
+        file_type: uploadFile.name.split('.').pop() || null,
+        professor: null,
+        law_school: null,
+        semester: null,
+        year: null,
+        fork_count: 0,
+        forked_from: null,
+      }, ...current])
+      setShowUpload(false)
+      resetUpload()
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Upload failed')
     } finally {
       setIsUploading(false)
     }
   }
 
-  const resetUploadForm = () => {
-    setUploadTitle('')
-    setUploadSubject('')
-    setUploadProfessor('')
-    setUploadLawSchool('')
-    setUploadSemester('')
-    setUploadDescription('')
-    setUploadVisibility('private')
-    setUploadShowAuthor(false)
-    setUploadShowSchool(false)
-    setUploadFile(null)
-    setUploadError(null)
-  }
-
-  const handleDelete = async (outlineId: number, fileUrl: string) => {
+  const remove = async (outline: Outline) => {
     if (!session?.access_token) return
-    setDeletingId(outlineId)
-
+    setDeletingId(outline.id)
     try {
-      // Delete from backend
-      const res = await fetch(`${API_URL}/api/v1/outlines/${outlineId}`, {
+      const response = await fetch(`${API_URL}/api/v1/outlines/${outline.id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       })
-      if (!res.ok) throw new Error('Delete failed')
-
-      // Try to delete from Supabase Storage
-      const supabase = createClient()
-      if (supabase && fileUrl) {
-        // Extract path from URL: .../object/public/outlines/{path}
-        const match = fileUrl.match(/\/outlines\/(.+)$/)
-        if (match) {
-          await supabase.storage.from('outlines').remove([match[1]])
-        }
+      if (!response.ok) return
+      if (outline.file_url) {
+        const storagePath = outline.file_url.match(/\/outlines\/(.+)$/)?.[1]
+        const supabase = createClient()
+        if (storagePath && supabase) await supabase.storage.from('outlines').remove([storagePath])
       }
-
-      // Refresh
-      await Promise.all([fetchOutlines(subjectFilter || undefined), fetchSubjects(), fetchMyOutlines()])
-    } catch (err) {
-      console.error('Delete failed:', err)
+      setMyOutlines(current => current.filter(item => item.id !== outline.id))
     } finally {
       setDeletingId(null)
     }
   }
 
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return ''
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-
-  if (!mounted || isLoading) {
-    return (
-      <div className="bg-cream min-h-[60vh]">
-        <div className="flex items-center justify-center py-32">
-          <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="bg-cream min-h-[60vh]">
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-stone-900">Community Outlines</h2>
-            <p className="text-stone-600 mt-1">Share and download law school outlines from fellow students</p>
-          </div>
-          {user && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center px-5 py-2.5 bg-sage-700 text-white rounded-lg font-medium hover:bg-sage-600 transition"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Upload Outline
-            </button>
-          )}
-          {!user && !authLoading && (
-            <Link
-              href={`/login?returnTo=${encodeURIComponent(pathname)}`}
-              className="inline-flex items-center px-5 py-2.5 bg-sage-700 text-white rounded-lg font-medium hover:bg-sage-600 transition"
-            >
-              Sign in to upload
-            </Link>
-          )}
-        </div>
+    <main className="min-h-[70vh] bg-cream">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+        <header className="mb-8">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-sage-700">Study tools</p>
+          <h1 className="font-display text-4xl font-semibold text-stone-900 sm:text-5xl">Outlines</h1>
+          <p className="mt-3 max-w-2xl text-stone-600">Start with Tortwell&apos;s source-linked canonical outlines, or privately upload your own outline to study against it with AI.</p>
+        </header>
 
-        {/* Subject Filter */}
-        {subjects.length > 0 && (
-          <div className="flex items-center gap-3 mb-6 flex-wrap">
-            <Filter className="h-4 w-4 text-stone-500" />
-            <button
-              onClick={() => setSubjectFilter('')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
-                !subjectFilter ? 'bg-sage-700 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-              }`}
-            >
-              All ({subjects.reduce((sum, s) => sum + s.count, 0)})
-            </button>
-            {subjects.map(s => (
-              <button
-                key={s.subject}
-                onClick={() => setSubjectFilter(s.subject === subjectFilter ? '' : s.subject)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
-                  subjectFilter === s.subject ? 'bg-sage-700 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                {s.subject} ({s.count})
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Outlines Grid */}
-        {outlines.length === 0 ? (
-          <div className="text-center py-20">
-            <FileText className="h-16 w-16 text-stone-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-stone-700 mb-2">No outlines yet</h3>
-            <p className="text-stone-500">
-              {user ? 'Be the first to upload an outline!' : 'Sign in to upload the first outline.'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-            {outlines.map(outline => (
-              <div key={outline.id} className="bg-white rounded-lg border hover:shadow-md transition p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-stone-900 line-clamp-2">{outline.title}</h3>
-                  <span className="ml-2 flex-shrink-0 px-2 py-0.5 bg-sage-50 text-sage-700 text-xs font-medium rounded-full">
-                    {outline.file_type?.toUpperCase() || 'PDF'}
-                  </span>
-                </div>
-
-                <span className="inline-block px-2.5 py-1 bg-sage-50 text-sage-700 text-xs font-medium rounded-full mb-3">
-                  {outline.subject}
-                </span>
-
-                {outline.description && (
-                  <p className="text-sm text-stone-600 line-clamp-2 mb-3">{outline.description}</p>
-                )}
-
-                <div className="space-y-1 text-sm text-stone-500 mb-4">
-                  {outline.professor && <div>Prof. {outline.professor}</div>}
-                  {outline.law_school && <div>{outline.law_school}</div>}
-                  {outline.semester && <div>{outline.semester}</div>}
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-stone-400 pt-3 border-t">
-                  <div className="flex items-center gap-3">
-                    <span>{outline.username || outline.full_name || 'Anonymous'}</span>
-                    <span>{outline.created_at ? formatDate(outline.created_at) : ''}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {outline.file_size && <span>{formatFileSize(outline.file_size)}</span>}
-                    <span className="flex items-center">
-                      <Download className="h-3 w-3 mr-1" />
-                      {outline.download_count}
-                    </span>
-                    {outline.fork_count > 0 && (
-                      <span className="flex items-center">
-                        <GitFork className="h-3 w-3 mr-1" />
-                        {outline.fork_count}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <Link
-                  href={`/outline/${outline.id}`}
-                  className="mt-3 w-full inline-flex items-center justify-center px-4 py-2 bg-sage-50 text-sage-700 rounded-lg text-sm font-medium hover:bg-sage-100 transition"
-                >
-                  View Outline
-                </Link>
+        <section className="mb-12 overflow-hidden rounded-3xl border border-sage-200 bg-white shadow-sm">
+          <div className="grid md:grid-cols-[1fr_280px]">
+            <div className="p-7 sm:p-9">
+              <span className="inline-flex rounded-full bg-sage-100 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-sage-700">Canonical outline</span>
+              <h2 className="mt-5 font-display text-3xl font-semibold text-stone-900 sm:text-4xl">The Civil Procedure Outline</h2>
+              <p className="mt-3 max-w-2xl leading-7 text-stone-600">Eleven structured stages covering the federal civil litigation process, with direct links to the governing rules and cases.</p>
+              <div className="mt-6 flex flex-wrap gap-4 text-sm text-stone-500">
+                <span>11 sections</span><span>69 sources</span><span>Community feedback by section</span>
               </div>
-            ))}
+              <Link href="/outlines/civil-procedure" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-sage-700 px-5 py-3 font-semibold text-white hover:bg-sage-600">
+                Open the outline <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="flex min-h-52 items-center justify-center bg-sage-50 p-8">
+              <div className="flex h-36 w-36 items-center justify-center rounded-full border border-sage-200 bg-white shadow-sm">
+                <BookOpen className="h-16 w-16 text-sage-600" strokeWidth={1.4} />
+              </div>
+            </div>
           </div>
-        )}
+        </section>
 
-        {/* My Outlines Section */}
-        {user && myOutlines.length > 0 && (
-          <div className="mt-12">
-            <h3 className="text-xl font-bold text-stone-900 mb-4">My Outlines</h3>
+        <section>
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-2xl font-semibold text-stone-900">My private outlines</h2>
+              <p className="mt-1 text-sm text-stone-500">Your uploads are private and never enter the public outline.</p>
+            </div>
+            {user && <button onClick={() => setShowUpload(true)} className="inline-flex items-center gap-2 rounded-lg bg-sage-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sage-600"><Plus className="h-4 w-4" /> Upload</button>}
+          </div>
+
+          {authLoading || isLoading ? (
+            <div className="rounded-2xl border border-stone-200 bg-white py-14"><Loader2 className="mx-auto h-6 w-6 animate-spin text-stone-400" /></div>
+          ) : !user ? (
+            <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center">
+              <FileText className="mx-auto mb-3 h-10 w-10 text-stone-300" />
+              <p className="text-stone-600">Sign in to upload a private outline and use the AI study modes.</p>
+              <Link href={`/login?returnTo=${encodeURIComponent(pathname)}`} className="mt-4 inline-flex rounded-lg bg-sage-700 px-4 py-2 text-sm font-semibold text-white">Sign in</Link>
+            </div>
+          ) : myOutlines.length === 0 ? (
+            <button onClick={() => setShowUpload(true)} className="w-full rounded-2xl border-2 border-dashed border-stone-200 bg-white p-10 text-center hover:border-sage-300 hover:bg-sage-50/50">
+              <Upload className="mx-auto mb-3 h-9 w-9 text-sage-500" />
+              <span className="block font-semibold text-stone-800">Upload your first private outline</span>
+              <span className="mt-1 block text-sm text-stone-500">PDF, DOCX, or TXT up to 10MB</span>
+            </button>
+          ) : (
             <div className="space-y-3">
               {myOutlines.map(outline => (
-                <div key={outline.id} className="bg-white rounded-lg border p-4 flex items-center justify-between">
-                  <Link href={`/outline/${outline.id}`} className="flex items-center gap-4 min-w-0 flex-1 hover:opacity-80 transition">
-                    <FileText className="h-8 w-8 text-sage-500 flex-shrink-0" />
+                <div key={outline.id} className="flex items-center gap-4 rounded-xl border border-stone-200 bg-white p-4">
+                  <Link href={`/outline/${outline.id}`} className="flex min-w-0 flex-1 items-center gap-4 hover:opacity-80">
+                    <FileText className="h-8 w-8 shrink-0 text-sage-500" />
                     <div className="min-w-0">
-                      <div className="font-medium text-stone-900 truncate">{outline.title}</div>
-                      <div className="text-sm text-stone-500 flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 bg-sage-50 text-sage-700 text-xs rounded-full">
-                          {outline.subject}
-                        </span>
-                        {outline.visibility === 'private' && (
-                          <span className="px-2 py-0.5 bg-stone-100 text-stone-600 text-xs rounded-full">Private</span>
-                        )}
-                        {outline.visibility === 'unlisted' && (
-                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">Unlisted</span>
-                        )}
-                        {outline.visibility === 'public' && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Public</span>
-                        )}
-                        <span>{outline.download_count} downloads</span>
-                        {outline.created_at && <span>{formatDate(outline.created_at)}</span>}
-                      </div>
+                      <p className="truncate font-semibold text-stone-900">{outline.title}</p>
+                      <p className="mt-1 text-sm text-stone-500">{outline.subject} · Private</p>
                     </div>
                   </Link>
-                  <button
-                    onClick={() => handleDelete(outline.id, outline.file_url)}
-                    disabled={deletingId === outline.id}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition flex-shrink-0"
-                    title="Delete outline"
-                  >
-                    {deletingId === outline.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
+                  <button onClick={() => remove(outline)} disabled={deletingId === outline.id} className="rounded-lg p-2 text-stone-400 hover:bg-red-50 hover:text-red-600" aria-label="Delete outline">
+                    {deletingId === outline.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   </button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </section>
+      </div>
 
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-stone-900">Upload Outline</h3>
-              <button
-                onClick={() => { setShowUploadModal(false); resetUploadForm() }}
-                className="p-1 hover:bg-stone-100 rounded-lg transition"
-              >
-                <X className="h-5 w-5 text-stone-500" />
-              </button>
+      {showUpload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div><h2 className="text-xl font-bold text-stone-900">Upload a private outline</h2><p className="mt-1 text-sm text-stone-500">Only you can view and study this file.</p></div>
+              <button onClick={() => { setShowUpload(false); resetUpload() }} className="rounded-lg p-1.5 hover:bg-stone-100"><X className="h-5 w-5" /></button>
             </div>
-
             <div className="space-y-4">
-              {/* File Drop Zone */}
-              <div
-                className={`relative border-2 border-dashed rounded-lg p-6 text-center transition ${
-                  dragActive ? 'border-sage-300 bg-sage-50' : uploadFile ? 'border-green-300 bg-green-50' : 'border-stone-200'
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <input
-                  type="file"
-                  id="outline-file"
-                  className="hidden"
-                  accept=".pdf,.docx"
-                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-                />
-                {uploadFile ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FileText className="h-5 w-5 text-green-600 mr-3" />
-                      <div className="text-left">
-                        <div className="font-medium text-stone-700">{uploadFile.name}</div>
-                        <div className="text-sm text-stone-500">{formatFileSize(uploadFile.size)}</div>
-                      </div>
-                    </div>
-                    <button onClick={() => setUploadFile(null)} className="text-red-500 hover:text-red-600 text-sm">
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <label htmlFor="outline-file" className="cursor-pointer">
-                    <Upload className="h-10 w-10 text-stone-400 mx-auto mb-2" />
-                    <p className="font-medium text-stone-700">Drop your outline here or click to browse</p>
-                    <p className="text-sm text-stone-500 mt-1">PDF or DOCX, max 10MB</p>
-                  </label>
-                )}
-              </div>
-
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Title *</label>
-                <input
-                  type="text"
-                  value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
-                  placeholder="e.g. Con Law Final Outline"
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none"
-                />
-              </div>
-
-              {/* Subject */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Subject *</label>
-                <select
-                  value={uploadSubject}
-                  onChange={(e) => setUploadSubject(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none bg-white"
-                >
-                  <option value="">Select a subject...</option>
-                  {SUBJECT_OPTIONS.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Professor & Law School */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">Professor</label>
-                  <input
-                    type="text"
-                    value={uploadProfessor}
-                    onChange={(e) => setUploadProfessor(e.target.value)}
-                    placeholder="Professor name"
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">Law School</label>
-                  <input
-                    type="text"
-                    value={uploadLawSchool}
-                    onChange={(e) => setUploadLawSchool(e.target.value)}
-                    placeholder="e.g. Harvard Law"
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Semester */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Semester</label>
-                <input
-                  type="text"
-                  value={uploadSemester}
-                  onChange={(e) => setUploadSemester(e.target.value)}
-                  placeholder="e.g. Fall 2025"
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
-                <textarea
-                  value={uploadDescription}
-                  onChange={(e) => setUploadDescription(e.target.value)}
-                  placeholder="Brief description of your outline..."
-                  rows={2}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none resize-none"
-                />
-              </div>
-
-              {/* Visibility */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Visibility</label>
-                <select
-                  value={uploadVisibility}
-                  onChange={(e) => setUploadVisibility(e.target.value as 'private' | 'unlisted' | 'public')}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none bg-white"
-                >
-                  <option value="private">Private — only you can see it</option>
-                  <option value="unlisted">Unlisted — anyone with the link</option>
-                  <option value="public">Public — visible to everyone</option>
-                </select>
-              </div>
-
-              {/* Privacy toggles */}
-              {uploadVisibility !== 'private' && (
-                <div className="space-y-2 p-3 bg-stone-50 rounded-lg">
-                  <p className="text-xs font-medium text-stone-600 mb-2">What to show publicly:</p>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={uploadShowAuthor}
-                      onChange={(e) => setUploadShowAuthor(e.target.checked)}
-                      className="h-4 w-4 text-sage-600 rounded"
-                    />
-                    <span className="text-sm text-stone-700">Show my name</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={uploadShowSchool}
-                      onChange={(e) => setUploadShowSchool(e.target.checked)}
-                      className="h-4 w-4 text-sage-600 rounded"
-                    />
-                    <span className="text-sm text-stone-700">Show my law school</span>
-                  </label>
-                </div>
-              )}
-
-              {/* Error */}
-              {uploadError && (
-                <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg">{uploadError}</div>
-              )}
-
-              {/* Submit */}
-              <button
-                onClick={handleUpload}
-                disabled={isUploading || !uploadFile || !uploadTitle.trim() || !uploadSubject.trim()}
-                className="w-full py-2.5 bg-sage-700 text-white rounded-lg font-medium hover:bg-sage-600 disabled:bg-stone-300 disabled:cursor-not-allowed transition flex items-center justify-center"
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-5 w-5 mr-2" />
-                    Upload Outline
-                  </>
-                )}
+              <label className="block cursor-pointer rounded-xl border-2 border-dashed border-stone-200 p-6 text-center hover:border-sage-300">
+                <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={event => event.target.files?.[0] && selectFile(event.target.files[0])} />
+                <Upload className="mx-auto mb-2 h-8 w-8 text-stone-400" />
+                <span className="block font-medium text-stone-700">{uploadFile?.name || 'Choose a PDF, DOCX, or TXT file'}</span>
+                <span className="mt-1 block text-xs text-stone-500">Maximum 10MB</span>
+              </label>
+              <div><label className="mb-1 block text-sm font-medium text-stone-700">Title</label><input value={uploadTitle} onChange={event => setUploadTitle(event.target.value)} className="w-full rounded-lg border px-3 py-2 outline-none focus:border-sage-500 focus:ring-2 focus:ring-sage-100" /></div>
+              <div><label className="mb-1 block text-sm font-medium text-stone-700">Subject</label><select value={uploadSubject} onChange={event => setUploadSubject(event.target.value)} className="w-full rounded-lg border bg-white px-3 py-2 outline-none focus:border-sage-500"><option value="">Select a subject...</option>{SUBJECT_OPTIONS.map(subject => <option key={subject}>{subject}</option>)}</select></div>
+              <div><label className="mb-1 block text-sm font-medium text-stone-700">Description <span className="font-normal text-stone-400">optional</span></label><textarea value={uploadDescription} onChange={event => setUploadDescription(event.target.value)} rows={2} className="w-full resize-none rounded-lg border px-3 py-2 outline-none focus:border-sage-500" /></div>
+              {uploadError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{uploadError}</p>}
+              <button onClick={upload} disabled={isUploading || !uploadFile || !uploadTitle.trim() || !uploadSubject} className="flex w-full items-center justify-center gap-2 rounded-lg bg-sage-700 py-2.5 font-semibold text-white hover:bg-sage-600 disabled:bg-stone-300">
+                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />} Upload privately
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }

@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Link from 'next/link'
 import { Map, ListOrdered, FileText, Download } from 'lucide-react'
 import CivProTimeline from './CivProTimeline'
 import OutlineView from './OutlineView'
-import { flowOutline, fullOutline } from './outlineData'
+import { flowOutline } from './outlineData'
 
-type Tab = 'timeline' | 'flow' | 'full'
+type Tab = 'timeline' | 'flow'
 
 const tabs: { id: Tab; label: string; icon: typeof Map; description: string }[] = [
   { id: 'timeline', label: 'Timeline', icon: Map, description: 'Interactive stages with rules and concepts' },
   { id: 'flow', label: 'Flow Outline', icon: ListOrdered, description: 'One-page procedural flow' },
-  { id: 'full', label: 'Full Outline', icon: FileText, description: 'Complete topic-by-topic outline' },
 ]
 
 export default function CivProTabs() {
@@ -44,6 +44,14 @@ export default function CivProTabs() {
             </button>
           )
         })}
+        <Link
+          href="/outlines/civil-procedure"
+          className="flex items-center gap-2 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-700 -mb-px"
+        >
+          <FileText className="h-4 w-4" />
+          <span className="hidden sm:inline">Full Outline</span>
+          <span className="sm:hidden">Full</span>
+        </Link>
         <div className="ml-auto -mb-px border-b-2 border-transparent">
           <a
             href="/civil-litigation-flowchart.pdf"
@@ -75,25 +83,6 @@ export default function CivProTabs() {
           </div>
           <div id="outline-content">
             <OutlineView markdown={flowOutline} />
-          </div>
-        </div>
-      )}
-      {active === 'full' && (
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-stone-500 text-sm max-w-xl">
-              Complete outline organized by topic with all rules, standards, and distinctions from the mindmap.
-            </p>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-stone-100 shrink-0 ml-4 print:hidden"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Save as PDF</span>
-            </button>
-          </div>
-          <div id="outline-content">
-            <OutlineView markdown={fullOutline} />
           </div>
         </div>
       )}

@@ -11,7 +11,6 @@ import Header from '@/components/Header'
 import {
   FileText,
   Download,
-  GitFork,
   Edit3,
   Trash2,
   Loader2,
@@ -44,11 +43,9 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
   // Edit mode
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
-  const [editVisibility, setEditVisibility] = useState<'private' | 'unlisted' | 'public'>('private')
-  const [editShowAuthor, setEditShowAuthor] = useState(false)
-  const [editShowSchool, setEditShowSchool] = useState(false)
   const [editDescription, setEditDescription] = useState('')
   const [saving, setSaving] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   // Study session
   const [activeMode, setActiveMode] = useState<'multiple_choice' | 'short_answer' | 'practice_essay' | 'ask' | null>(null)
@@ -68,9 +65,6 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
 
   // Past sessions
   const [pastSessions, setPastSessions] = useState<OutlineConversation[]>([])
-
-  // Fork state
-  const [forking, setForking] = useState(false)
 
   // Delete confirmation
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -101,10 +95,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         const data = await res.json()
         setOutline(data)
         setEditTitle(data.title)
-        setEditVisibility(data.visibility)
         setEditDescription(data.description || '')
-        setEditShowAuthor(data.show_author || false)
-        setEditShowSchool(data.show_school || false)
       } catch {
         setError('Failed to load outline.')
       } finally {
@@ -148,15 +139,12 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         headers: getHeaders(),
         body: JSON.stringify({
           title: editTitle.trim(),
-          visibility: editVisibility,
           description: editDescription.trim() || null,
-          show_author: editShowAuthor,
-          show_school: editShowSchool,
         }),
       })
       if (!res.ok) throw new Error('Save failed')
       const updated = await res.json()
-      setOutline(updated)
+      setOutline(current => current ? { ...current, ...updated } : updated)
       setEditing(false)
     } catch {
       // Could show an error toast here
@@ -174,26 +162,32 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
         headers: getHeaders(),
       })
       if (!res.ok) throw new Error('Delete failed')
-      router.push('/outlines')
+      router.push('/study/outlines')
     } catch {
       setDeleting(false)
       setConfirmDelete(false)
     }
   }
 
-  const handleFork = async () => {
+  const handleDownload = async () => {
     if (!outline || !session?.access_token) return
-    setForking(true)
+    setDownloading(true)
     try {
-      const res = await fetch(`${API_URL}/api/v1/outlines/${outline.id}/fork`, {
-        method: 'POST',
-        headers: getHeaders(),
+      const response = await fetch(`${API_URL}/api/v1/outlines/${outline.id}/download`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
       })
-      if (!res.ok) throw new Error('Fork failed')
-      const forked = await res.json()
-      router.push(`/outline/${forked.id}`)
-    } catch {
-      setForking(false)
+      if (!response.ok) throw new Error('Download failed')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = outline.filename || outline.title
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -414,41 +408,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none resize-none text-stone-700"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Visibility</label>
-                <select
-                  value={editVisibility}
-                  onChange={e => setEditVisibility(e.target.value as 'private' | 'unlisted' | 'public')}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sage-200 focus:border-sage-500 outline-none bg-white"
-                >
-                  <option value="private">Private — only you can see it</option>
-                  <option value="unlisted">Unlisted — anyone with the link</option>
-                  <option value="public">Public — visible to everyone</option>
-                </select>
-              </div>
-              {editVisibility !== 'private' && (
-                <div className="space-y-2 p-3 bg-stone-50 rounded-lg">
-                  <p className="text-xs font-medium text-stone-600 mb-2">What to show publicly:</p>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editShowAuthor}
-                      onChange={(e) => setEditShowAuthor(e.target.checked)}
-                      className="h-4 w-4 text-sage-600 rounded"
-                    />
-                    <span className="text-sm text-stone-700">Show my name</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editShowSchool}
-                      onChange={(e) => setEditShowSchool(e.target.checked)}
-                      className="h-4 w-4 text-sage-600 rounded"
-                    />
-                    <span className="text-sm text-stone-700">Show my law school</span>
-                  </label>
-                </div>
-              )}
+              <p className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-600">Private — only you can view and study this outline.</p>
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleSaveEdit}
@@ -462,7 +422,6 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                   onClick={() => {
                     setEditing(false)
                     setEditTitle(outline.title)
-                    setEditVisibility(outline.visibility)
                     setEditDescription(outline.description || '')
                   }}
                   className="inline-flex items-center px-4 py-2 text-stone-600 border rounded-lg text-sm font-medium hover:bg-stone-50 transition"
@@ -482,27 +441,7 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
                     <span className="px-2.5 py-1 bg-sage-50 text-sage-700 text-xs font-medium rounded-full">
                       {outline.subject}
                     </span>
-                    {outline.visibility === 'private' && (
-                      <span className="px-2.5 py-1 bg-stone-100 text-stone-600 text-xs font-medium rounded-full">
-                        Private
-                      </span>
-                    )}
-                    {outline.visibility === 'unlisted' && (
-                      <span className="px-2.5 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
-                        Unlisted
-                      </span>
-                    )}
-                    {outline.visibility === 'public' && (
-                      <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                        Public
-                      </span>
-                    )}
-                    {outline.fork_count > 0 && (
-                      <span className="flex items-center text-xs text-stone-500">
-                        <GitFork className="h-3.5 w-3.5 mr-1" />
-                        {outline.fork_count} {outline.fork_count === 1 ? 'fork' : 'forks'}
-                      </span>
-                    )}
+                    <span className="px-2.5 py-1 bg-stone-100 text-stone-600 text-xs font-medium rounded-full">Private</span>
                   </div>
                 </div>
 
@@ -569,27 +508,14 @@ export default function OutlineDetail({ outlineId }: OutlineDetailProps) {
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-3">
-                <a
-                  href={`${API_URL}/api/v1/outlines/${outline.id}/download`}
-                  className="inline-flex items-center px-4 py-2 bg-sage-700 text-white rounded-lg text-sm font-medium hover:bg-sage-600 transition"
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="inline-flex items-center px-4 py-2 bg-sage-700 text-white rounded-lg text-sm font-medium hover:bg-sage-600 transition disabled:bg-stone-300"
                 >
-                  <Download className="h-4 w-4 mr-2" />
+                  {downloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                   Download
-                </a>
-                {!isOwner && isLoggedIn && (
-                  <button
-                    onClick={handleFork}
-                    disabled={forking}
-                    className="inline-flex items-center px-4 py-2 border border-stone-200 text-stone-700 rounded-lg text-sm font-medium hover:bg-stone-50 transition disabled:opacity-50"
-                  >
-                    {forking ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <GitFork className="h-4 w-4 mr-2" />
-                    )}
-                    Fork to My Library
-                  </button>
-                )}
+                </button>
               </div>
             </>
           )}

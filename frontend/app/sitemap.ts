@@ -51,6 +51,12 @@ export default async function sitemap({ id }: { id: Promise<number> }): Promise<
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    {
+      url: `${SITE_URL}/outlines/civil-procedure`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ] : []
 
   try {

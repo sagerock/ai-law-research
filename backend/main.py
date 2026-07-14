@@ -234,6 +234,10 @@ class CommentVote(BaseModel):
     vote_type: int  # 1, -1, or 0 to remove
 
 
+class CanonicalOutlineVote(BaseModel):
+    vote_type: int  # 1, -1, or 0 to remove
+
+
 class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     username: Optional[str] = None
@@ -3851,7 +3855,360 @@ async def vote_comment(comment_id: int, data: CommentVote, user: dict = Depends(
 
 
 # ============================================================================
-# Outlines (community outline sharing)
+# Canonical public outlines
+# ============================================================================
+
+def canonical_source_url(target_type: str, target_ref: str) -> Optional[str]:
+    if target_type == "case":
+        return f"/case/{target_ref}"
+    if target_type == "rule":
+        return f"/rules/{target_ref}"
+    return None
+
+
+@app.get("/api/v1/canonical-outlines")
+async def list_canonical_outlines():
+    """List published canonical subject outlines."""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT o.id, o.slug, o.subject, o.title, o.description, o.current_version,
+                   o.updated_at,
+                   COUNT(s.id) FILTER (WHERE s.is_active = TRUE) AS section_count
+            FROM canonical_outlines o
+            LEFT JOIN canonical_outline_sections s ON s.outline_id = o.id
+            WHERE o.is_published = TRUE
+            GROUP BY o.id
+            ORDER BY o.subject
+        """)
+    return {
+        "outlines": [
+            {
+                "id": row["id"],
+                "slug": row["slug"],
+                "subject": row["subject"],
+                "title": row["title"],
+                "description": row["description"],
+                "version": row["current_version"],
+                "section_count": row["section_count"],
+                "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.get("/api/v1/canonical-outlines/{slug}")
+async def get_canonical_outline(slug: str, user: Optional[dict] = Depends(get_current_user)):
+    """Return the current published revision and stable section feedback totals."""
+    user_id = user["id"] if user else None
+    async with db_pool.acquire() as conn:
+        outline = await conn.fetchrow("""
+            SELECT o.id, o.slug, o.subject, o.title, o.description, o.current_version,
+                   o.updated_at, r.id AS revision_id, r.revision_note, r.published_at
+            FROM canonical_outlines o
+            JOIN canonical_outline_revisions r
+              ON r.outline_id = o.id AND r.version = o.current_version
+            WHERE o.slug = $1 AND o.is_published = TRUE
+        """, slug)
+        if not outline:
+            raise HTTPException(status_code=404, detail="Canonical outline not found")
+
+        sections = await conn.fetch("""
+            SELECT s.id, s.section_key, s.slug, s.parent_section_id, s.sort_order,
+                   sr.id AS section_revision_id, sr.title, sr.body,
+                   (SELECT COUNT(*) FROM canonical_outline_section_votes v
+                    WHERE v.section_id = s.id AND v.vote_type = 1) AS upvotes,
+                   (SELECT COUNT(*) FROM canonical_outline_section_votes v
+                    WHERE v.section_id = s.id AND v.vote_type = -1) AS downvotes,
+                   (SELECT v.vote_type FROM canonical_outline_section_votes v
+                    WHERE v.section_id = s.id AND v.user_id = $2) AS user_vote,
+                   (SELECT COUNT(*) FROM canonical_outline_section_comments c
+                    WHERE c.section_id = s.id AND c.resolved_at IS NULL) AS comment_count
+            FROM canonical_outline_sections s
+            JOIN canonical_outline_section_revisions sr
+              ON sr.section_id = s.id AND sr.revision_id = $1
+            WHERE s.outline_id = $3 AND s.is_active = TRUE
+            ORDER BY s.sort_order, s.id
+        """, outline["revision_id"], user_id, outline["id"])
+
+        revision_ids = [row["section_revision_id"] for row in sections]
+        sources = []
+        if revision_ids:
+            sources = await conn.fetch("""
+                SELECT section_revision_id, target_type, target_ref, label
+                FROM canonical_outline_section_sources
+                WHERE section_revision_id = ANY($1::bigint[])
+                ORDER BY section_revision_id, sort_order, id
+            """, revision_ids)
+
+    sources_by_revision: dict[int, list[dict]] = {}
+    for source in sources:
+        sources_by_revision.setdefault(source["section_revision_id"], []).append({
+            "type": source["target_type"],
+            "ref": source["target_ref"],
+            "label": source["label"],
+            "url": canonical_source_url(source["target_type"], source["target_ref"]),
+        })
+
+    return {
+        "id": outline["id"],
+        "slug": outline["slug"],
+        "subject": outline["subject"],
+        "title": outline["title"],
+        "description": outline["description"],
+        "version": outline["current_version"],
+        "revision_note": outline["revision_note"],
+        "published_at": outline["published_at"].isoformat() if outline["published_at"] else None,
+        "updated_at": outline["updated_at"].isoformat() if outline["updated_at"] else None,
+        "sections": [
+            {
+                "id": row["id"],
+                "key": row["section_key"],
+                "slug": row["slug"],
+                "parent_id": row["parent_section_id"],
+                "sort_order": row["sort_order"],
+                "title": row["title"],
+                "body": row["body"],
+                "upvotes": row["upvotes"],
+                "downvotes": row["downvotes"],
+                "user_vote": row["user_vote"],
+                "comment_count": row["comment_count"],
+                "sources": sources_by_revision.get(row["section_revision_id"], []),
+            }
+            for row in sections
+        ],
+    }
+
+
+async def require_published_canonical_section(conn, section_id: int):
+    section = await conn.fetchrow("""
+        SELECT s.id
+        FROM canonical_outline_sections s
+        JOIN canonical_outlines o ON o.id = s.outline_id
+        WHERE s.id = $1 AND s.is_active = TRUE AND o.is_published = TRUE
+    """, section_id)
+    if not section:
+        raise HTTPException(status_code=404, detail="Outline section not found")
+    return section
+
+
+@app.put("/api/v1/canonical-outline-sections/{section_id}/vote")
+async def vote_canonical_outline_section(
+    section_id: int,
+    data: CanonicalOutlineVote,
+    user: dict = Depends(require_auth),
+):
+    """Set or remove the signed-in user's vote on a stable outline section."""
+    if data.vote_type not in (-1, 0, 1):
+        raise HTTPException(status_code=400, detail="vote_type must be -1, 0, or 1")
+
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            await require_published_canonical_section(conn, section_id)
+            if data.vote_type == 0:
+                await conn.execute(
+                    "DELETE FROM canonical_outline_section_votes WHERE section_id = $1 AND user_id = $2",
+                    section_id, user["id"],
+                )
+            else:
+                await conn.execute("""
+                    INSERT INTO canonical_outline_section_votes
+                        (section_id, user_id, vote_type, updated_at)
+                    VALUES ($1, $2, $3, NOW())
+                    ON CONFLICT (section_id, user_id) DO UPDATE SET
+                        vote_type = EXCLUDED.vote_type,
+                        updated_at = NOW()
+                """, section_id, user["id"], data.vote_type)
+            totals = await conn.fetchrow("""
+                SELECT COUNT(*) FILTER (WHERE vote_type = 1) AS upvotes,
+                       COUNT(*) FILTER (WHERE vote_type = -1) AS downvotes
+                FROM canonical_outline_section_votes
+                WHERE section_id = $1
+            """, section_id)
+
+    return {
+        "section_id": section_id,
+        "upvotes": totals["upvotes"],
+        "downvotes": totals["downvotes"],
+        "user_vote": data.vote_type or None,
+    }
+
+
+@app.get("/api/v1/canonical-outline-sections/{section_id}/comments")
+async def get_canonical_outline_comments(
+    section_id: int,
+    limit: int = 50,
+    offset: int = 0,
+    user: Optional[dict] = Depends(get_current_user),
+):
+    """List feedback for one stable outline section."""
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    async with db_pool.acquire() as conn:
+        await require_published_canonical_section(conn, section_id)
+        rows = await conn.fetch("""
+            SELECT c.id, c.section_id, c.user_id, c.author_name, c.content, c.is_edited,
+                   c.resolved_at, c.created_at, c.updated_at,
+                   p.username, p.full_name, p.avatar_url
+            FROM canonical_outline_section_comments c
+            LEFT JOIN profiles p ON p.id = c.user_id
+            WHERE c.section_id = $1
+            ORDER BY (c.resolved_at IS NOT NULL), c.created_at
+            LIMIT $2 OFFSET $3
+        """, section_id, limit, offset)
+        total = await conn.fetchval(
+            "SELECT COUNT(*) FROM canonical_outline_section_comments WHERE section_id = $1",
+            section_id,
+        )
+
+    return {
+        "comments": [
+            {
+                "id": row["id"],
+                "section_id": row["section_id"],
+                "content": row["content"],
+                "is_edited": row["is_edited"],
+                "is_resolved": row["resolved_at"] is not None,
+                "created_at": row["created_at"].isoformat(),
+                "updated_at": row["updated_at"].isoformat(),
+                "is_owner": bool(user and row["user_id"] == user["id"]),
+                "user": {
+                    "username": row["author_name"] or row["username"],
+                    "display_name": row["author_name"] or row["full_name"],
+                    "avatar_url": row["avatar_url"],
+                    "profile_username": row["username"],
+                },
+            }
+            for row in rows
+        ],
+        "count": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@app.post("/api/v1/canonical-outline-sections/{section_id}/comments")
+async def create_canonical_outline_comment(
+    section_id: int,
+    data: CommentCreate,
+    user: dict = Depends(require_auth),
+):
+    """Add signed-in feedback to a canonical outline section."""
+    content = data.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+    if len(content) > 5000:
+        raise HTTPException(status_code=400, detail="Comment must be 5,000 characters or fewer")
+
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            await require_published_canonical_section(conn, section_id)
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", user["id"])
+            recent_comments = await conn.fetchval("""
+                SELECT COUNT(*) FROM canonical_outline_section_comments
+                WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour'
+            """, user["id"])
+            if recent_comments >= 20:
+                raise HTTPException(status_code=429, detail="Too many comments; try again later")
+            profile = await conn.fetchrow(
+                "SELECT username, full_name, avatar_url FROM profiles WHERE id = $1", user["id"]
+            )
+            author_name = (profile["full_name"] or profile["username"]) if profile else None
+            author_name = author_name or "Student"
+            row = await conn.fetchrow("""
+                INSERT INTO canonical_outline_section_comments
+                    (section_id, user_id, author_name, content)
+                VALUES ($1, $2, $3, $4)
+                RETURNING id, section_id, user_id, author_name, content, is_edited,
+                          resolved_at, created_at, updated_at
+            """, section_id, user["id"], author_name, content)
+
+    return {
+        "id": row["id"],
+        "section_id": row["section_id"],
+        "content": row["content"],
+        "is_edited": row["is_edited"],
+        "is_resolved": False,
+        "created_at": row["created_at"].isoformat(),
+        "updated_at": row["updated_at"].isoformat(),
+        "is_owner": True,
+        "user": {
+            "username": row["author_name"],
+            "display_name": row["author_name"],
+            "avatar_url": profile["avatar_url"] if profile else None,
+            "profile_username": profile["username"] if profile else None,
+        },
+    }
+
+
+@app.put("/api/v1/canonical-outline-comments/{comment_id}")
+async def update_canonical_outline_comment(
+    comment_id: int,
+    data: CommentUpdate,
+    user: dict = Depends(require_auth),
+):
+    content = data.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+    if len(content) > 5000:
+        raise HTTPException(status_code=400, detail="Comment must be 5,000 characters or fewer")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            UPDATE canonical_outline_section_comments
+            SET content = $1, is_edited = TRUE, updated_at = NOW()
+            WHERE id = $2 AND user_id = $3
+            RETURNING id, content, is_edited, updated_at
+        """, content, comment_id, user["id"])
+        if not row:
+            exists = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM canonical_outline_section_comments WHERE id = $1)",
+                comment_id,
+            )
+            if exists:
+                raise HTTPException(status_code=403, detail="You can only edit your own comments")
+            raise HTTPException(status_code=404, detail="Comment not found")
+    return {
+        "id": row["id"],
+        "content": row["content"],
+        "is_edited": row["is_edited"],
+        "updated_at": row["updated_at"].isoformat(),
+    }
+
+
+@app.delete("/api/v1/canonical-outline-comments/{comment_id}")
+async def delete_canonical_outline_comment(comment_id: int, user: dict = Depends(require_auth)):
+    async with db_pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM canonical_outline_section_comments WHERE id = $1 AND user_id = $2",
+            comment_id, user["id"],
+        )
+        if result == "DELETE 0":
+            exists = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM canonical_outline_section_comments WHERE id = $1)",
+                comment_id,
+            )
+            if exists:
+                raise HTTPException(status_code=403, detail="You can only delete your own comments")
+            raise HTTPException(status_code=404, detail="Comment not found")
+    return {"status": "deleted"}
+
+
+@app.put("/api/v1/canonical-outline-comments/{comment_id}/resolve")
+async def resolve_canonical_outline_comment(comment_id: int, admin: dict = Depends(require_admin)):
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            UPDATE canonical_outline_section_comments
+            SET resolved_at = COALESCE(resolved_at, NOW()), resolved_by = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, resolved_at
+        """, admin["id"], comment_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Comment not found")
+    return {"id": row["id"], "is_resolved": True, "resolved_at": row["resolved_at"].isoformat()}
+
+
+# Legacy private outline uploads and AI study sessions
 # ============================================================================
 
 @app.get("/api/v1/outlines")
@@ -3979,12 +4336,9 @@ async def list_my_outlines(user: dict = Depends(require_auth)):
 
 @app.post("/api/v1/outlines")
 async def create_outline(outline: OutlineCreate, user: dict = Depends(require_auth)):
-    """Create a new outline (metadata only; file already uploaded to Supabase Storage)"""
-    valid_visibilities = {"private", "unlisted", "public"}
-    if outline.visibility not in valid_visibilities:
-        raise HTTPException(status_code=400, detail=f"visibility must be one of: {', '.join(sorted(valid_visibilities))}")
-
-    is_public = outline.visibility == "public"
+    """Create a private outline (metadata only; file already uploaded to storage)."""
+    visibility = "private"
+    is_public = False
     await validate_remote_url(outline.file_url)
 
     async with db_pool.acquire() as conn:
@@ -3997,7 +4351,7 @@ async def create_outline(outline: OutlineCreate, user: dict = Depends(require_au
                       filename, file_url, file_size, file_type, visibility, download_count, created_at
         """, user["id"], outline.title, outline.subject, outline.professor, outline.law_school,
             outline.semester, outline.year, outline.description, outline.filename, outline.file_url,
-            outline.file_size, outline.file_type, outline.visibility, is_public)
+            outline.file_size, outline.file_type, visibility, is_public)
 
         outline_id = row["id"]
 
@@ -4050,10 +4404,8 @@ async def upload_outline(
     show_school: bool = Form(False),
     user: dict = Depends(require_auth),
 ):
-    """Upload an outline file, extract text, store in DB"""
-    valid_visibilities = {"private", "unlisted", "public"}
-    if visibility not in valid_visibilities:
-        raise HTTPException(status_code=400, detail="visibility must be private, unlisted, or public")
+    """Upload a private outline file, extract text, and store it for AI study."""
+    visibility = "private"
 
     filename = file.filename or "untitled"
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -4070,7 +4422,7 @@ async def upload_outline(
         raise HTTPException(status_code=400, detail="Could not safely parse document")
 
     content_type = file.content_type or "application/octet-stream"
-    is_public = visibility == "public"
+    is_public = False
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
@@ -4218,9 +4570,8 @@ async def delete_outline(outline_id: int, user: dict = Depends(require_auth)):
 @app.put("/api/v1/outlines/{outline_id}")
 async def update_outline(outline_id: int, update: OutlineUpdate, user: dict = Depends(require_auth)):
     """Update own outline metadata"""
-    valid_visibilities = {"private", "unlisted", "public"}
-    if update.visibility is not None and update.visibility not in valid_visibilities:
-        raise HTTPException(status_code=400, detail=f"visibility must be one of: {', '.join(sorted(valid_visibilities))}")
+    if update.visibility not in (None, "private"):
+        raise HTTPException(status_code=400, detail="Uploaded outlines are private")
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -4238,19 +4589,13 @@ async def update_outline(outline_id: int, update: OutlineUpdate, user: dict = De
         params: list = []
         param_idx = 1
 
-        updatable_fields = ["title", "subject", "professor", "law_school", "semester", "year", "description", "visibility", "show_author", "show_school"]
+        updatable_fields = ["title", "subject", "professor", "law_school", "semester", "year", "description", "show_author", "show_school"]
         for field in updatable_fields:
             value = getattr(update, field)
             if value is not None:
                 set_clauses.append(f"{field} = ${param_idx}")
                 params.append(value)
                 param_idx += 1
-
-        # Keep is_public in sync with visibility
-        if update.visibility is not None:
-            set_clauses.append(f"is_public = ${param_idx}")
-            params.append(update.visibility == "public")
-            param_idx += 1
 
         if len(set_clauses) == 1:
             # Nothing to update beyond updated_at; still valid
@@ -4763,26 +5108,19 @@ async def outline_study_message(outline_id: int, conv_id: int, body: OutlineStud
             default_model = "claude-haiku-4-5-20251001"
         model = model_override or default_model
 
-        # Verify conversation exists, belongs to this outline and this user
+        # Verify both the conversation and its now-private outline belong to this user.
         conv = await conn.fetchrow("""
-            SELECT id, outline_id, user_id, mode FROM outline_conversations
-            WHERE id = $1
-        """, conv_id)
+            SELECT c.id, c.outline_id, c.user_id, c.mode, o.subject, o.content
+            FROM outline_conversations c
+            JOIN outlines o ON o.id = c.outline_id
+            WHERE c.id = $1 AND c.outline_id = $2 AND c.user_id = $3 AND o.user_id = $3
+        """, conv_id, outline_id, user_id)
 
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        if conv["outline_id"] != outline_id:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        if conv["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not your conversation")
 
-        # Get outline for system prompt rebuild
-        outline = await conn.fetchrow("""
-            SELECT subject, content FROM outlines WHERE id = $1
-        """, outline_id)
-
-        subject = (outline["subject"] if outline else None) or "Law"
-        outline_text = (outline["content"] if outline else "") or ""
+        subject = conv["subject"] or "Law"
+        outline_text = conv["content"] or ""
         if len(outline_text) > 60000:
             outline_text = outline_text[:60000] + "\n...[outline truncated]"
 
@@ -4891,6 +5229,7 @@ async def list_outline_conversations(outline_id: int, user: dict = Depends(requi
             SELECT c.id, c.mode, c.created_at, c.updated_at,
                    COUNT(m.id) AS message_count
             FROM outline_conversations c
+            JOIN outlines o ON o.id = c.outline_id AND o.user_id = $2
             LEFT JOIN outline_conversation_messages m ON m.conversation_id = c.id
             WHERE c.outline_id = $1 AND c.user_id = $2
             GROUP BY c.id, c.mode, c.created_at, c.updated_at
@@ -4916,16 +5255,14 @@ async def get_outline_conversation(outline_id: int, conv_id: int, user: dict = D
 
     async with db_pool.acquire() as conn:
         conv = await conn.fetchrow("""
-            SELECT id, outline_id, user_id, mode, created_at, updated_at
-            FROM outline_conversations WHERE id = $1
-        """, conv_id)
+            SELECT c.id, c.outline_id, c.user_id, c.mode, c.created_at, c.updated_at
+            FROM outline_conversations c
+            JOIN outlines o ON o.id = c.outline_id
+            WHERE c.id = $1 AND c.outline_id = $2 AND c.user_id = $3 AND o.user_id = $3
+        """, conv_id, outline_id, user_id)
 
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        if conv["outline_id"] != outline_id:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        if conv["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not your conversation")
 
         messages = await conn.fetch("""
             SELECT id, role, content, model, input_tokens, output_tokens, cost, created_at
