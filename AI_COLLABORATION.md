@@ -375,8 +375,11 @@ decisions with reversed captions (e.g. the 2d Cir. York) and were corrected to t
 opinions by checking court + date — do the same when resolving future case links.
 Three cases were added beyond Sage's notes as standard attributions of rules his notes
 state anonymously (Gibbs for "common nucleus," Kroger for §1367(b), Van Dusen for
-§1404's old-forum-law rule) — Sage should verify against his casebook. Not in the DB
-(render unlinked): Price v. CTB, Atlantic Marine, SCOTUS St. Paul Mercury.
+§1404's old-forum-law rule). Gibbs is since VERIFIED against Sage's compiled course
+slides ("the Gibbs Standard (SCNOF Test)"); the slides also confirm St. Paul Mercury as
+the named AIC legal-certainty test. Kroger and Van Dusen remain unverified — check the
+casebook. Not in the DB (render unlinked): Price v. CTB, Atlantic Marine, SCOTUS
+St. Paul Mercury.
 Verified: typecheck, production build, 5/5 importer tests (one new: doctrine sections
 link their case canon), version 2 imported to production (15 sections / 130 sources),
 live page and timeline checked.
@@ -384,6 +387,15 @@ Follow-ups: trim Pre-Filing's now-redundant one-line §1331/§1332/venue entries
 importing Atlantic Marine and the SCOTUS St. Paul Mercury; Erie's modern refinements
 (Gasperini, Semtek, Shady Grove) are absent because Sage's course notes don't cover them —
 add only with a real source to cite.
+Next content cycle (banked 2026-07-14, don't start without Sage): upgrade the Joinder &
+Parties section — currently the outline's thinnest (one concept, three cases) — using
+Sage's 172-page compiled slide document (`/mnt/d/Downloads/CONTENT FROM SLIDES.pdf`,
+extracted text in the session scratchpad) covering Rule 19 three-step analysis, Rule 24
+intervention of right vs. permissive, Rule 22 vs. statutory interpleader (§§1335/1397/2361),
+class actions, and the Mullane notice framework for Filing & Service. IMPORTANT: that
+document is compiled FROM the professor's slides — use it to verify coverage and as a
+topic checklist, but author the public outline text in original words (same
+professor-materials copyright caution as the outlines-pivot decision above).
 Deployment: production import complete 2026-07-14; frontend auto-deploy from `10bf926`
 Commit: `10bf926`
 
