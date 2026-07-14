@@ -1963,9 +1963,6 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
 
     content = case_data.get("content", "")
     print(f"Using {opinion.source} opinion content: {len(content)} characters")
-    if '<' in content and '>' in content:
-        content = re.sub('<.*?>', '', content)
-        content = ' '.join(content.split())
 
     case_name = case_data.get("title") or case_data.get("case_name", "Unknown Case")
     court = case_data.get("court_name") or case_data.get("court_id", "Unknown Court")

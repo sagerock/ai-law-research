@@ -1,8 +1,25 @@
 import hashlib
+import html
 import re
 
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
+JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
+
+
+def prepare_opinion_text(text: str) -> str:
+    """Convert stored opinion HTML to text without losing block boundaries."""
+    if "<" not in text or ">" not in text:
+        return html.unescape(text)
+    value = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", text)
+    value = re.sub(
+        r"(?i)</?(?:p|div|h[1-6]|blockquote|li|br|section|article|table|tr)[^>]*>",
+        "\n",
+        value,
+    )
+    value = re.sub(r"<[^>]+>", " ", value)
+    lines = [normalize_opinion_text(line) for line in html.unescape(value).splitlines()]
+    return "\n".join(line for line in lines if line)
 
 
 def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, int]:
@@ -23,7 +40,10 @@ def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, in
     if re.fullmatch(r"per\s+curiam\.?", block, re.I):
         return "majority", 1
 
-    if not re.match(r"^(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b", block, re.I):
+    if re.fullmatch(r"(?:notes|footnotes)", block, re.I):
+        return "opinion", 1
+
+    if not re.match(rf"^{JUSTICE_PREFIX}", block, re.I):
         return None, 0
 
     # Opinion introductions in reporter text commonly wrap after one or two
@@ -34,20 +54,20 @@ def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, in
         if not candidate.endswith("."):
             continue
         if re.fullmatch(
-            r"(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b.*,\s*dissenting"
+            rf"{JUSTICE_PREFIX}.*,\s*dissenting"
             r"(?:\s+from\b[^.]*)?\.",
             candidate,
             re.I,
         ):
             return "dissent", consumed
         if re.fullmatch(
-            r"(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b.*,\s*concurring\b[^.]*\.",
+            rf"{JUSTICE_PREFIX}.*,\s*concurring\b[^.]*\.",
             candidate,
             re.I,
         ):
             return "concurrence", consumed
         if re.fullmatch(
-            r"(?:The\s+)?(?:(?:Chief|Associate)\s+)?Justice\b.*"
+            rf"{JUSTICE_PREFIX}.*"
             r"(?:delivered\s+(?:the|an)\s+opinion\s+of\s+the\s+Court|"
             r"announced\s+the\s+judgment\s+of\s+the\s+Court)[^.]*\.",
             candidate,
@@ -74,11 +94,12 @@ def split_sentences(text: str) -> list[str]:
 
 
 def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[str, list[dict]]:
-    normalized = normalize_opinion_text(text)
+    prepared = prepare_opinion_text(text)
+    normalized = normalize_opinion_text(prepared)
     content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
     opinion_part = "opinion"
     sentences: list[tuple[str, str]] = []
-    blocks = [block.strip() for block in text.splitlines() if block.strip()]
+    blocks = [block.strip() for block in prepared.splitlines() if block.strip()]
     index = 0
     while index < len(blocks):
         marker_part, consumed = detect_opinion_marker(blocks, index)

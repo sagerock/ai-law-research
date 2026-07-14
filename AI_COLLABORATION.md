@@ -253,9 +253,24 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
-### Multi-window auth deadlock
+### Bruton source-linked brief generation
 Owner: Sol
 Status: completed; deployment pending
+Files: `backend/main.py`, `backend/opinion_passages.py`, `backend/test_opinion_passages.py`
+Summary: generation for Bruton (`107684`, `391 U.S. 123`) failed because the endpoint flattened
+stored HTML into one line before passage parsing, erasing separate-opinion boundaries; the marker
+parser also did not recognize old U.S. Reports headings such as `MR. JUSTICE WHITE, dissenting.`.
+HTML-to-text conversion now preserves block boundaries inside the shared passage builder, old-style
+Justice headings are recognized, and `NOTES` resets classification to neutral opinion text. On the
+actual Bruton HTML the parser now finds 192 majority, 23 concurrence, 113 dissent, and 40 neutral
+passages. Validation remains strict; no source rules were loosened.
+Next: monitor the backend auto-deploy, then retry Bruton summary generation.
+Deployment: pending auto-deploy
+Commit: this commit
+
+### Multi-window auth deadlock
+Owner: Sol
+Status: completed
 Files: `frontend/lib/auth-context.tsx`
 Summary: the auth-state callback awaited `fetchProfile`, which makes another Supabase API call
 while `onAuthStateChange` still holds the client auth lock. Supabase documents that pattern as a
@@ -263,9 +278,9 @@ deadlock: subsequent calls or tabs can hang, matching the gray profile placehold
 opening cases side by side. Session/UI state now applies synchronously and profile loading is
 deferred with `setTimeout(..., 0)` so the callback releases the lock first. The existing version
 guard still prevents stale profile responses from winning.
-Next: monitor the frontend auto-deploy, then smoke-test two authenticated windows/tabs.
-Deployment: pending auto-deploy
-Commit: this commit
+Next: none; Sage confirmed the multi-window behavior works in production.
+Deployment: frontend `d4395222-10ae-4375-8e5f-b60713008ca0` successful
+Commit: `a6b98df`
 
 ### Albert v. McKay & Co. import
 Owner: Sol

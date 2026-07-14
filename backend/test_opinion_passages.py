@@ -76,3 +76,22 @@ def test_recognizes_title_only_chief_justice_marker():
     assert [(p["opinion_part"], p["text"]) for p in passages] == [
         ("dissent", "Separate sentence.")
     ]
+
+
+def test_labels_old_us_reports_headings_in_html():
+    _, passages = build_opinion_passages(
+        """<p>MR. JUSTICE BRENNAN delivered the opinion of the Court.</p>
+<p>Majority sentence.</p>
+<p>MR. JUSTICE STEWART, concurring.</p>
+<p>Concurrence sentence.</p>
+<p>MR. JUSTICE WHITE, dissenting.</p>
+<p>Dissent sentence.</p>
+<h2>NOTES</h2>
+<p>Neutral footnote.</p>"""
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority sentence."),
+        ("concurrence", "Concurrence sentence."),
+        ("dissent", "Dissent sentence."),
+        ("opinion", "Neutral footnote."),
+    ]
