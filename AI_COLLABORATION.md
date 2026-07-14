@@ -268,6 +268,55 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Practice Hypos feature — design parked, do not build yet
+Owner: unassigned (design notes by Claude, from the law-school Evidence workspace)
+Status: planned — **PARKED by Sage 2026-07-14; do not start until he says go**
+Files: none yet (nothing built; no stubs exist beyond the homepage SOON chips)
+Summary: turn the homepage "Practice hypos — SOON" chip into a real feature. Sage decided
+the shape on 2026-07-14; he is mid-Evidence-semester (final July 31) and explicitly not
+ready to build. Recording the design so whoever picks this up starts from decisions, not
+research.
+Decisions made (with Sage, 2026-07-14):
+- **Content = original hypos, casebook-inspired.** Fresh fact patterns testing the same
+  doctrine — NOT republished casebook problems. (Cheng's Evidence casebook is CC BY-NC-SA
+  4.0, so republishing would be legal with attribution + ShareAlike, but Sage chose clean
+  original IP. Fact patterns must not be recognizable derivatives — different actors,
+  settings, evidentiary postures.)
+- **Workflow: study there, publish here.** Sage's private Socratic problem-working stays in
+  `/mnt/d/dev/law-school/summer-2026/evidence/`; polished originals flow into this repo.
+  Authoring loop: after he works a topic privately, draft 2–3 original hypos → he answers
+  them cold (doubles as exam prep) → reconcile → commit.
+- **Scope: Evidence pilot first** (8–12 hypos across relevance/403, character, impeachment,
+  hearsay, 801(d), 804/forfeiture), then Torts / Civ Pro / Crim Law from his prior-semester
+  notes.
+- **V1 experience = self-test, no accounts, no per-user cost:** fact pattern → call of the
+  question → optional scratch textarea (client-side only) → "Reveal model answer" (full
+  IRAC + takeaway + FRE rules cited) → possibly a client-side "did you spot these issues?"
+  checklist (open question: include in v1 or ship bare reveal first). Model answer in a
+  native `<details>`-style reveal so it stays in the DOM for SEO.
+- **Phase 2 (later): AI-graded free-text answers** by cloning the Study Session engine
+  (`migrations/018_study_sessions.sql`, `/api/v1/study/*` in `backend/main.py`,
+  `frontend/components/study/QuizCard.tsx` + SSE grading flow). Per-answer API cost means
+  it needs auth + quotas (reuse the textbook Q&A metering patterns). Flashcards chip can
+  derive from the same content later.
+Sketch of the v1 build (follow house patterns):
+- Content: `content/hypos/evidence/*.md` with frontmatter (slug, subject, topic, title,
+  rules[], difficulty, related_cases, status) + sections Facts / Question / Model Answer
+  (IRAC) / Takeaway.
+- `migrations/038_hypos.sql` (or next number): `hypos` table mirroring that frontmatter.
+- `scripts/import_hypos.py`: idempotent upsert, `build_evidence_casebook.py` conventions.
+- Backend: public `GET /api/v1/hypos?subject=` + `GET /api/v1/hypos/{slug}` (free SEO
+  content, no auth).
+- Frontend: `frontend/app/hypos/page.tsx` (index by subject→topic) +
+  `frontend/app/hypos/[slug]/page.tsx` (SSR, `generateMetadata`); flip the SOON chip in
+  `frontend/app/page.tsx` (~lines 242–253) to a linked chip; sitemap + optional Header nav.
+  Visual identity rules apply (sage/cream, honey = source links only, no dark mode).
+Next: nothing — wait for Sage. When he greenlights, the fuller planning notes (timing
+around his July 31 exam, verification steps) are in
+`/home/sage/.claude/plans/so-i-d-like-to-staged-creek.md`.
+Deployment: not deployed
+Commit: not committed
+
 ### Per-page social share images (dynamic OG cards)
 Owner: Sol
 Status: completed
