@@ -3,7 +3,7 @@
   "subject": "Civil Procedure",
   "title": "The Civil Procedure Outline",
   "description": "A community-improved, source-linked guide to the federal civil litigation process.",
-  "version": 2,
+  "version": 3,
   "sections": [
     {
       "id": 12,
@@ -844,58 +844,89 @@
       "id": 4,
       "title": "Joinder & Parties",
       "subtitle": "Adding claims, parties, and third-party defendants",
+      "isWide": true,
       "rules": [
         {
           "rule": "Rule 13(a)",
           "slug": "rule-13",
-          "description": "Compulsory counterclaims — must assert or waived (same transaction/occurrence)",
-          "timing": "Must be raised in the answer or it is WAIVED permanently. Even if first case settled (not adjudicated), may still bar later lawsuit (King v. Blanton — equitable waiver)."
+          "description": "Compulsory counterclaims — arises from the same transaction or occurrence as the opposing party's claim and needs no party beyond the court's reach",
+          "timing": "Must be raised in the answer or it is WAIVED permanently. Even if the first case settled (not adjudicated), a later lawsuit may still be barred (King v. Blanton — equitable waiver). Supplemental jurisdiction is automatic — same transaction means common nucleus."
         },
         {
           "rule": "Rule 13(b)",
           "slug": "rule-13",
-          "description": "Permissive counterclaims — may assert any unrelated claim"
+          "description": "Permissive counterclaims — any claim that isn't compulsory, related or not. Needs its own independent basis for subject matter jurisdiction"
+        },
+        {
+          "rule": "Rule 13(g)-(h)",
+          "slug": "rule-13",
+          "description": "Crossclaims against a co-party — same transaction/occurrence or property at issue; always permissive, never waived. 13(h) adds new parties to a counterclaim or crossclaim via Rules 19 or 20"
         },
         {
           "rule": "Rule 14",
           "slug": "rule-14",
-          "description": "Third-party practice (impleader)"
+          "description": "Impleader — a defending party brings in someone who is or may be liable to THEM for all or part of the judgment (contribution/indemnity pass-through). See the §1367 five-step in the Subject Matter Jurisdiction section",
+          "timing": "Within 14 days of the answer as of right; afterward, by leave of court weighing timeliness, complication, delay, and prejudice."
         },
         {
           "rule": "Rule 18",
           "slug": "rule-18",
-          "description": "Joinder of claims — permissive joinder of claims"
+          "description": "Joinder of claims — extremely broad: a party with any valid claim, counterclaim, crossclaim, or third-party claim may pile on as many claims as it has against that opponent, related or not. The limit is never Rule 18 — it's subject matter jurisdiction"
         },
         {
           "rule": "Rule 19",
           "slug": "rule-19",
-          "description": "Required joinder of parties"
+          "description": "Required joinder — when the case can't fairly proceed without an absentee; typically raised by a Rule 12(b)(7) motion to dismiss for failure to join a required party"
         },
         {
           "rule": "Rule 20",
           "slug": "rule-20",
-          "description": "Permissive joinder of parties"
+          "description": "Permissive party joinder — multiple plaintiffs or defendants if the claims arise from the same transaction, occurrence, or series AND share at least one common question of law or fact. Defendants may move to sever (20(b)); courts may order separate trials (Rule 42(b))"
         },
         {
           "rule": "Rule 22",
           "slug": "rule-22",
-          "description": "Interpleader"
+          "description": "Interpleader — a stakeholder facing multiple claimants to one fund forces them all into a single suit to avoid double liability. Rule 22 requires normal SMJ, PJ, and venue; statutory interpleader (28 USC §§1335, 1397, 2361) is far easier to satisfy"
         },
         {
           "rule": "Rule 23",
           "slug": "rule-23",
-          "description": "Class actions"
+          "description": "Class actions — representative litigation binding absent members; requires numerosity, commonality, typicality, and adequate representation"
         },
         {
           "rule": "Rule 24",
           "slug": "rule-24",
-          "description": "Intervention"
+          "description": "Intervention — an absentee forces their way IN: of right under 24(a)(2) when their interest would be impaired and no existing party adequately represents it; permissive under 24(b) on a common question, if it won't unduly delay or prejudice the original parties"
         }
       ],
       "concepts": [
         {
-          "name": "Compulsory vs. Permissive Counterclaims",
-          "description": "Compulsory (13(a)): arises from same transaction/occurrence — must assert or waived forever. Permissive (13(b)): any unrelated claim — may assert now or bring separately later. Counterclaim relief can exceed or differ from plaintiff's requested relief (13(c))."
+          "name": "Every joinder problem asks three questions",
+          "description": "(1) Does a Federal Rule authorize the joinder — 18 (claims), 20 (parties), 13 (counter/crossclaims), 14 (impleader), 19 (required parties), 24 (intervention), 22 (interpleader), 23 (class actions)? (2) Is there subject matter jurisdiction over the joined claim — independent (diversity or federal question) or supplemental under §1367(a), watching the §1367(b) trap? (3) Even if joinder is proper, should the court sever or order separate trials (Rules 42(b), 20(b), 14(a)(4))?"
+        },
+        {
+          "name": "Compulsory vs. permissive counterclaims",
+          "description": "Compulsory (13(a)): arises from the same transaction/occurrence — assert it or lose it forever, and supplemental jurisdiction rides along automatically. Permissive (13(b)): any unrelated claim — bring it now or later, but it needs its own independent SMJ. Counterclaim relief can exceed or differ from the plaintiff's demand (13(c)). Exceptions to compulsion: the claim is already pending elsewhere, or the opposing party sued by attachment without personal jurisdiction."
+        },
+        {
+          "name": "Crossclaims — permissive, but the door opens once",
+          "description": "A crossclaim against a co-party must arise from the same transaction/occurrence (or property at issue) — but is never required; a co-party can always sue separately. Once one crossclaim satisfies 13(g), Rule 18 lets that party add even unrelated claims against the same co-party. Crossclaims are defendants' claims, so §1367(b) doesn't block their supplemental jurisdiction."
+        },
+        {
+          "name": "Rule 19 — the three-step analysis",
+          "description": "Step 1, required? A person is required if the court can't accord complete relief without them (protects plaintiff), OR their absence impairs their own claimed interest (protects absentee), OR existing parties risk double or inconsistent obligations (protects defendant). Step 2, feasible? Joinder must survive personal jurisdiction, subject matter jurisdiction, and venue — if feasible, the court MUST join them. Step 3, if not feasible (classically, joining the absentee destroys diversity): the Rule 19(b) equity-and-good-conscience factors — prejudice, ability to lessen it, adequacy of judgment without the absentee, and whether the plaintiff has another remedy — decide between proceeding without them and dismissal. Joint tortfeasors are NOT required parties: the plaintiff may sue one and skip the other (Temple v. Synthes)."
+        },
+        {
+          "name": "Intervention — Rule 24",
+          "description": "Intervention of right (24(a)(2)) requires a timely motion, an interest in the subject matter, impairment of that interest if the case proceeds without the movant, and inadequate representation by existing parties — a test that deliberately mirrors Rule 19(a)'s impairment prong. Permissive intervention (24(b)) needs only a common question of law or fact, filtered through delay and prejudice. The policy tension: efficiency and protecting absentees vs. keeping litigation manageable and letting parties control their own suit (Michaels Stores v. Castle Ridge Plaza works through both routes)."
+        },
+        {
+          "name": "Rule 22 vs. statutory interpleader",
+          "description": "Rule interpleader plays by normal rules: complete diversity or federal question, ordinary personal jurisdiction, §1391 venue — the Rule cannot expand jurisdiction. Statutory interpleader (§§1335, 1397, 2361) gives the stakeholder superpowers: minimal diversity between any two claimants plus a $500 stake deposited with the court, NATIONWIDE service of process, venue wherever any claimant resides, and the power to enjoin competing suits in other courts."
+        },
+        {
+          "name": "Joinder meets §1367(b) — the two take-aways",
+          "description": "In diversity-only cases, supplemental jurisdiction is taken away from (1) original plaintiffs' claims against parties joined under Rules 14, 19, 20, or 24, and (2) claims by plaintiffs newly joined under Rules 19 or 24 — whenever the claim would break complete diversity or the amount in controversy. Defendants are almost never blocked: impleader claims, counterclaims, and crossclaims ride §1367(a) freely. And if the anchor includes a federal question, §1367(b) never applies at all. Full five-step analysis in the Subject Matter Jurisdiction section."
         }
       ],
       "keyCases": [
@@ -905,13 +936,29 @@
           "caseId": "103379"
         },
         {
+          "name": "Temple v. Synthes Corp. (1990)",
+          "holding": "Joint tortfeasors are permissive, not required, parties — the plaintiff may sue one without the other",
+          "caseId": "112500"
+        },
+        {
+          "name": "Torrington Co. v. Yost (D.S.C. 1991)",
+          "holding": "Required-party analysis runs separately for each absentee, with the §1367(b) overlay checked per claim",
+          "caseId": "9039843"
+        },
+        {
+          "name": "Michaels Stores, Inc. v. Castle Ridge Plaza (D.N.J. 1998)",
+          "holding": "Analyzes both intervention of right and permissive intervention for a non-party lessee",
+          "caseId": "2347906"
+        },
+        {
           "name": "Wal-Mart Stores, Inc. v. Dukes (2011)",
           "holding": "Class must share common questions that generate common answers — individualized inquiries defeat commonality",
           "caseId": "78615"
         },
         {
-          "name": "King v. Blanton",
-          "holding": "Equitable waiver of compulsory counterclaims — even if first case settled (not adjudicated), may still bar later lawsuit"
+          "name": "King v. Blanton (N.C. App. 2012)",
+          "holding": "Equitable waiver of compulsory counterclaims — even if first case settled (not adjudicated), may still bar later lawsuit",
+          "caseId": "manual-king-v-blanton"
         }
       ]
     },
@@ -1497,5 +1544,5 @@
       ]
     }
   ],
-  "revision_note": "Add the jurisdictional half: SMJ, personal jurisdiction, venue/transfer/FNC, and Erie doctrine sections, authored from Sage's Civ Pro I outlines"
+  "revision_note": "Upgrade Joinder & Parties: Rule 19 three-step, Rule 24 intervention, rule vs. statutory interpleader, crossclaims, and the joinder/§1367(b) interplay"
 }
