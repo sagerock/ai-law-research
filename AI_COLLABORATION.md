@@ -255,7 +255,7 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Bruton source-linked brief generation
 Owner: Sol
-Status: completed; deployment pending
+Status: completed
 Files: `backend/main.py`, `backend/opinion_passages.py`, `backend/test_opinion_passages.py`
 Summary: generation for Bruton (`107684`, `391 U.S. 123`) failed because the endpoint flattened
 stored HTML into one line before passage parsing, erasing separate-opinion boundaries; the marker
@@ -264,9 +264,10 @@ HTML-to-text conversion now preserves block boundaries inside the shared passage
 Justice headings are recognized, and `NOTES` resets classification to neutral opinion text. On the
 actual Bruton HTML the parser now finds 192 majority, 23 concurrence, 113 dissent, and 40 neutral
 passages. Validation remains strict; no source rules were loosened.
-Next: monitor the backend auto-deploy, then retry Bruton summary generation.
-Deployment: pending auto-deploy
-Commit: this commit
+Next: retry Bruton summary generation in production; the paid AI call was not triggered during
+deployment verification.
+Deployment: backend `8354b3e1-7a46-473d-be60-1d196d382f60` successful
+Commit: `6c6fd1a`
 
 ### Multi-window auth deadlock
 Owner: Sol
