@@ -5,6 +5,7 @@ import re
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
+PASSAGE_FORMAT_VERSION = "2"
 
 
 def prepare_opinion_text(text: str) -> str:
@@ -106,7 +107,12 @@ def split_sentences(text: str) -> list[str]:
 def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[str, list[dict]]:
     prepared = prepare_opinion_text(text)
     normalized = normalize_opinion_text(prepared)
-    content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    # This identifies the derived passage set, not only the source text. Bump
+    # the format version whenever parsing changes can alter IDs or ordinals so
+    # existing candidates retain their original, internally consistent set.
+    content_hash = hashlib.sha256(
+        f"{PASSAGE_FORMAT_VERSION}\0{normalized}".encode("utf-8")
+    ).hexdigest()
     opinion_part = "opinion"
     sentences: list[tuple[str, str]] = []
     blocks = [block.strip() for block in prepared.splitlines() if block.strip()]

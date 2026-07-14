@@ -429,10 +429,14 @@ with no majority material and refreshes numeric cases from CourtListener. The fe
 CourtListener's combined record and otherwise joins every sub-opinion with explicit part
 markers rather than returning only the first writing. Giles was verified locally against the
 live CourtListener record: 118,226 characters with majority, concurrence, and dissent in the
-selected packet. The strict validator remains unchanged. Verification: 96 backend/citator
-tests pass.
-Deployment: backend auto-deploy from this commit
-Commit: this commit
+selected packet. A Mattox retry then exposed historical passage rows sharing its text hash but
+using the pre-fix IDs/ordinals. Passage content hashes are now namespaced by parser format
+version, so parser changes create a new internally consistent set without deleting rows used
+by older candidates. The strict validator remains unchanged. Verification: 97 backend/citator
+tests pass; Mattox derives 359 v2 rows and its production v2 namespace is empty before retry.
+Deployment: source repair deployed from `69b30c3`; passage-format fix auto-deploys from this
+commit
+Commits: `69b30c3`, this commit
 
 ### Practice Hypos feature — design parked, do not build yet
 Owner: unassigned (design notes by Claude, from the law-school Evidence workspace)

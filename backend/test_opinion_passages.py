@@ -1,4 +1,6 @@
-from opinion_passages import build_opinion_passages
+import hashlib
+
+from opinion_passages import PASSAGE_FORMAT_VERSION, build_opinion_passages
 
 
 def test_passage_ids_survive_insertions_before_unchanged_text():
@@ -13,6 +15,15 @@ def test_content_hash_changes_when_opinion_changes():
     first_hash, _ = build_opinion_passages("One sentence. Two sentence. Three sentence.")
     second_hash, _ = build_opinion_passages("One sentence. Different sentence. Three sentence.")
     assert first_hash != second_hash
+
+
+def test_content_hash_is_namespaced_by_passage_format():
+    text = "One sentence."
+    content_hash, _ = build_opinion_passages(text)
+    assert content_hash == hashlib.sha256(
+        f"{PASSAGE_FORMAT_VERSION}\0{text}".encode("utf-8")
+    ).hexdigest()
+    assert content_hash != hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def test_labels_majority_and_dissent():
