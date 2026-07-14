@@ -268,6 +268,47 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Per-page social share images (dynamic OG cards)
+Owner: Sol
+Status: planned
+Files: `frontend/app/cases/[...slug]/` (new `opengraph-image.tsx`), `frontend/lib/site.ts`,
+possibly a shared card component under `frontend/lib/` or `frontend/components/`
+Summary: generate a unique social share card per case page — case name as the hero, court +
+year beneath, on the Tortwell turtle-card layout — so a shared case link previews as that case
+rather than the generic brand card. Sage requested this 2026-07-14 after the site-wide default
+shipped. Recommended approach (Claude): Next's built-in `ImageResponse` from `next/og` via a
+route-level `opengraph-image.tsx` — renders JSX to PNG on request, cached, zero pre-generation,
+scales to every case automatically. Rejected alternative: pre-generating static PNGs in batch
+(storage + regeneration pipeline + repo/S3 bloat for a worse result). Start with case pages
+only; statutes/rules/textbooks/`/shared/{id}` collections extend the same template later —
+collections are the most share-shaped page, so they're the natural second target.
+Context Sol needs:
+- A site-wide default already ships (commit `b34bc5b`, 2026-07-14): `frontend/public/
+  tortwell-social-featured.png` (1200×627) wired as `openGraph`/`twitter` images via the
+  shared `SOCIAL_IMAGE` constant in `frontend/lib/site.ts`. It stays as the fallback for
+  pages without their own card.
+- Next.js metadata gotcha (hit while shipping the default): child segments REPLACE the parent
+  `openGraph` object, they don't deep-merge. That's why six pages re-include `SOCIAL_IMAGE`
+  today. A route-level `opengraph-image.tsx` takes precedence over the static images entry
+  for that route — verify the case page's `generateMetadata` doesn't fight it (drop its
+  `images: [SOCIAL_IMAGE]` line if the file route wins, keep behavior deterministic).
+- Design constraints (see "Tortwell visual identity" above): cream background, sage-green
+  turtle, Source Serif 4 for the wordmark/case name. `ImageResponse` cannot load webfonts —
+  ship the font as a file (`next/font` already pulls Source Serif 4; the OG route needs its
+  own ArrayBuffer load) and the turtle as inline SVG (mark lives in
+  `components/TortoiseMark.tsx`). Honey stays reserved for source links — don't use it as
+  the card accent. Match the reference card: `frontend/public/tortwell-social-featured.png`.
+- Card copy: case name (truncate gracefully — captions can be very long), court + year if
+  known (use structured fields; beware the UTC date pitfall recorded under Current Handoffs
+  follow-ups — year must not render off-by-one), Tortwell wordmark + tagline as footer.
+- Deliberately out of scope for v1 (banked ideas, don't build yet): citator treatment badge
+  on the card (needs a DB hit from the image route), per-subject accent tinting.
+Next: implement the case-page card, verify locally (hit `/cases/<slug>/opengraph-image`
+directly and check a real crawler render via the Meta Sharing Debugger after deploy), then
+extend to `/shared/{id}` collections if it goes well.
+Deployment: not deployed
+Commit: not committed
+
 ### Bruton source-linked brief generation
 Owner: Sol
 Status: completed
