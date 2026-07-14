@@ -39,6 +39,38 @@ demanding rationale, and every assistant's entries get better.
 
 ## Architecture Decisions
 
+### Outlines pivot: canonical per-subject outlines, not an upload marketplace (2026-07-14)
+
+Sage's decision: the public outlines feature becomes ONE canonical, living outline per
+subject ("The Civ Pro Outline") that the community improves through votes and comments —
+not a bank of user-uploaded files. Class/professor/semester metadata comes off the public
+outline: a professor-specific outline serves one classroom for one semester; a subject
+outline serves every 1L indefinitely, and dropping course attribution also avoids the
+professor-materials copyright gray zone that upload banks carry. Why the pivot: an upload
+marketplace with near-zero users is empty (cold start), while a curated outline is full on
+day one because Sage authors it; contribution by voting/commenting is far lower friction
+than contribution by authoring; outline banks with hundreds of unrated stale files already
+exist and are exactly what "one free well, everything you draw from" positions against.
+The strategic payoff is structure: a structured outline (sections, not a PDF blob) can
+source-link rule statements to the site's own case briefs — honey source-link pattern,
+same trust story as briefs ("the outline that cites its sources") — and one authoritative
+page per subject is the right SEO shape for head terms like "civ pro outline."
+
+Design choices that go with it:
+- Votes and comments attach at the SECTION level, not the outline level. Whole-outline
+  votes carry no actionable signal; "this hearsay section confused me" does, and
+  section-level feedback is the input a later AI-assisted revision pass consumes.
+- Community input is input, not edits. Sage (AI-assisted) merges feedback into versioned
+  revisions; comments get marked resolved. No public edit/merge UI.
+- PRIVATE uploads stay (Sage, 2026-07-14): "upload your own outline and study against it"
+  (`outline_conversations` AI quiz flow) is a different feature from public browsing and
+  keeps working. Only the public marketplace surface (public browse/upload/fork of user
+  files) is removed.
+- Rollout follows the one-feature-at-a-time rule above: v1 = convert Sage's existing civ
+  pro outline into the structured, source-linked, genericized format with section
+  votes/comments. Torts and Evidence follow the same path. No authoring tools, no merge
+  UI, nothing speculative.
+
 ### Study tab leads with Outlines; Mindmaps demoted from nav (2026-07-14)
 
 Sage's call: `/study` now redirects to `/study/outlines`, and the Mindmaps tab is gone
@@ -288,6 +320,36 @@ with an existing decision, add your case here instead of silently changing the c
   2026-07-12 by Claude while unifying the validators; no evidence gathered yet.)
 
 ## Current Handoffs
+
+### Canonical outlines v1 (Civ Pro)
+Owner: unassigned (framing by Claude; implementation is a good Sol fit, but design
+questions below need settling first — a framing pass or Sage call, then build)
+Status: planned
+Files (expected): `migrations/038+` (canonical outline sections, section votes/comments),
+`backend/main.py` (public outline endpoints, vote/comment endpoints with the existing
+rate-limit patterns), `frontend/app/outlines/` and `frontend/app/study/outlines/`
+(split: public canonical outlines vs. private my-outlines), `frontend/app/outline/[id]/`
+Summary: implement the canonical-outlines decision above. v1 scope: Sage's existing civ
+pro outline converted to structured sections (genericized — no professor/class), rendered
+as THE Civ Pro Outline page with per-section upvote/downvote and comments; public
+upload/browse/fork marketplace surfaces removed; private uploads and the
+`outline_conversations` AI study flow untouched.
+Open design points for whoever picks this up:
+- Storage shape: new `outline_sections`-style tables vs. reusing `outlines.topics` JSONB.
+  Section-level votes/comments and stable section anchors for source links argue for real
+  rows with stable IDs (compare `opinion_passages` / `op-...` IDs — same durability
+  problem, solved pattern).
+- Votes/comments and auth: signed-in only (existing Supabase JWT path) is simplest and
+  abuse-resistant; the problem-report endpoint's keyed IP fingerprint pattern exists if
+  anonymous voting ever matters. Comments likely reuse the existing `comments` table
+  patterns if compatible.
+- Source links in outline text: adopt the honey source-link convention from briefs —
+  rule statements link to case pages. Honey stays exclusive to source links.
+- Migration of the one existing public outline: convert, don't delete; other users'
+  outlines (if any) flip to private rather than disappearing.
+Next: settle the storage-shape question, then build v1 for Civ Pro only.
+Deployment: not deployed
+Commit: not committed
 
 ### Practice Hypos feature — design parked, do not build yet
 Owner: unassigned (design notes by Claude, from the law-school Evidence workspace)
