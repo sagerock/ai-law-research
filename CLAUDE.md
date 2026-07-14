@@ -67,6 +67,14 @@ make test-setup                # One-time: create .venv with production's Python
 make test-local                # Run backend and citator unit tests
 ```
 
+When invoking these Linux commands from Windows or a Windows-hosted Codex session, name the
+Ubuntu distribution explicitly. The machine's default WSL distribution may be
+`docker-desktop-data`, which cannot run the project environment:
+
+```powershell
+wsl.exe -d Ubuntu bash -lc "cd /mnt/d/dev/ai-law-research && make test-local"
+```
+
 ### Frontend (Next.js 16 with React 19)
 ```bash
 cd frontend
