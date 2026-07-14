@@ -28,6 +28,9 @@ export interface Stage {
   id: number
   title: string
   subtitle: string
+  // 'doctrine' sections (PJ, SMJ, Erie, venue) belong to the outline but not
+  // to the chronological litigation timeline; undefined means process stage.
+  kind?: string
   rules: Rule[]
   branches?: Branch[]
   keyCases?: KeyCase[]
@@ -36,4 +39,6 @@ export interface Stage {
   discoveryTools?: { name: string; description: string }[]
 }
 
-export const stages = outline.sections as Stage[]
+export const stages = (outline.sections as Stage[]).filter(
+  (s) => s.kind !== 'doctrine'
+)

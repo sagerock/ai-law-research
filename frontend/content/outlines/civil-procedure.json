@@ -3,8 +3,527 @@
   "subject": "Civil Procedure",
   "title": "The Civil Procedure Outline",
   "description": "A community-improved, source-linked guide to the federal civil litigation process.",
-  "version": 1,
+  "version": 2,
   "sections": [
+    {
+      "id": 12,
+      "title": "Subject Matter Jurisdiction",
+      "subtitle": "Whether a federal court can hear this type of case",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "U.S. Const. art. III, § 2",
+          "slug": null,
+          "description": "The constitutional ceiling — federal judicial power extends to cases \"arising under\" federal law and controversies \"between Citizens of different States.\" Federal courts are courts of limited jurisdiction: they need BOTH Article III authority AND a statutory grant"
+        },
+        {
+          "rule": "28 USC §1331",
+          "slug": null,
+          "description": "Federal question jurisdiction — \"all civil actions arising under the Constitution, laws, or treaties of the United States.\" No amount-in-controversy requirement"
+        },
+        {
+          "rule": "28 USC §1332",
+          "slug": null,
+          "description": "Diversity jurisdiction — complete diversity (no plaintiff shares a state with any defendant) plus amount in controversy EXCEEDING $75,000 (exactly $75,000 fails)",
+          "timing": "Citizenship is measured when the complaint is filed. The statute demands complete diversity even though Article III would tolerate minimal diversity — always analyze both levels."
+        },
+        {
+          "rule": "28 USC §1367",
+          "slug": null,
+          "description": "Supplemental jurisdiction — with one anchor claim inside federal jurisdiction, the court has power over all related claims forming the same case or controversy. (a) = POWER, (b) = PLAINTIFF RESTRICTION in diversity cases, (c) = DISCRETION to decline, (d) = tolling protects the statute of limitations"
+        },
+        {
+          "rule": "28 USC §1338",
+          "slug": null,
+          "description": "IP jurisdiction — patents, plant variety, and copyright are EXCLUSIVELY federal (state courts must dismiss); trademark is concurrent (either court system)"
+        },
+        {
+          "rule": "28 USC §§1441-1447",
+          "slug": null,
+          "description": "Removal and remand — defendants (never plaintiffs) may remove a case that could have been filed in federal court, to the district embracing the state court",
+          "timing": "30 days from receipt of the pleading that shows removability; all properly joined and served defendants must consent; diversity removals face a one-year cap (bad-faith exception) and the forum-defendant rule. Remand for procedural defects must be sought within 30 days; remand for lack of SMJ has no deadline."
+        },
+        {
+          "rule": "Rule 12(b)(1)",
+          "slug": "rule-12",
+          "description": "Motion to dismiss for lack of SMJ — but under 12(h)(3), SMJ can NEVER be waived: \"If the court determines at any time that it lacks subject-matter jurisdiction, the court must dismiss the action\"",
+          "timing": "Raisable at any time, by any party, or by the court itself — even on appeal. The sharpest contrast with personal jurisdiction and venue, which are waived if not raised in the first response."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Complete diversity (the Strawbridge rule)",
+          "description": "No plaintiff may share state citizenship with any defendant, measured at filing. Individuals: U.S. citizenship + domicile (residence with intent to remain indefinitely). Corporations: dual citizens of the state(s) of incorporation AND the principal place of business — the \"nerve center\" where high-level decisions are made (Hertz). LLCs and partnerships: citizens of EVERY member's state. Trap: a U.S. citizen domiciled abroad is \"stateless\" and destroys diversity entirely."
+        },
+        {
+          "name": "Amount in controversy",
+          "description": "Must EXCEED $75,000, exclusive of interest and costs. The plaintiff's good-faith pleading controls unless it is a legal certainty the claim is for less. Aggregation: one plaintiff vs. one defendant may stack even unrelated claims; multiple parties generally may not, except common undivided interests and the Exxon Mobil §1367 tag-along."
+        },
+        {
+          "name": "Judicial exceptions to diversity",
+          "description": "Federal courts refuse divorce, alimony, and child-custody cases (domestic relations exception) and will not probate wills or administer estates — even with perfect diversity. But the exceptions are narrow: a tort suit between spouses or a dispute over estate assets that doesn't probate the will can proceed."
+        },
+        {
+          "name": "The well-pleaded complaint rule",
+          "description": "Federal question jurisdiction is judged from the face of the plaintiff's properly pleaded claim — anticipated federal defenses don't count, even when everyone knows the federal issue will decide the case (Mottley: the railroad's federal-statute defense was the whole fight, and there was still no jurisdiction). Contrast Article III's much broader \"federal ingredient\" test (Osborn), which the statute does not extend to."
+        },
+        {
+          "name": "Holmes creation test + the Grable exception",
+          "description": "A case \"arises under\" the law that creates the cause of action — that answers the vast majority. For state-law claims with an embedded federal issue, Grable requires all four: the federal issue is (1) necessarily raised, (2) actually disputed, (3) substantial to the federal system, and (4) hearing it won't disturb the congressional federal-state balance. Grable (IRS notice procedures) qualified; Gunn (patent malpractice) did not."
+        },
+        {
+          "name": "Supplemental jurisdiction — the five-step analysis",
+          "description": "(1) Is joinder proper under the Rules? (2) Does at least one claim have original jurisdiction — the anchor? (3) Does each remaining claim share a common nucleus of operative fact with the anchor (§1367(a))? (4) In diversity-only cases, do the Four Gatekeepers of §1367(b) take it away — anchor solely diversity + claim BY a plaintiff + against a party joined under Rule 14/19/20/24 + inconsistent with §1332? All four met → dismissed. (5) Even with power, §1367(c) discretion — most commonly when all federal claims have been dismissed."
+        },
+        {
+          "name": "The Original Plaintiff Takeaway",
+          "description": "§1367(b) restricts only PLAINTIFFS in diversity cases: a plaintiff cannot use supplemental jurisdiction to sue a non-diverse third-party defendant, because they could have brought everyone into state court from the start. Defendants face no such restriction — impleader claims, counterclaims, and fourth-party claims by defending parties ride along under §1367(a) even without diversity or amount in controversy."
+        },
+        {
+          "name": "Removal mechanics and traps",
+          "description": "Only defendants remove, by notice (not motion), to the district embracing the state court. The forum-defendant rule bars diversity removal when any properly joined AND served defendant is a forum citizen — which some courts let defendants dodge by \"snap removal\" before service. Fraudulent joinder lets courts ignore a defendant joined with no possible claim against them, but the removing party's burden is very high. Orders remanding for lack of SMJ are unreviewable on appeal (§1447(d))."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Osborn v. Bank of the United States (1824)",
+          "holding": "Article III's \"arising under\" reaches any case with a federal ingredient — far broader than the §1331 statute",
+          "caseId": "85451"
+        },
+        {
+          "name": "Strawbridge v. Curtiss (1806)",
+          "holding": "The complete diversity rule: no plaintiff may share a state with any defendant",
+          "caseId": "84812"
+        },
+        {
+          "name": "Louisville & Nashville Railroad v. Mottley (1908)",
+          "holding": "Well-pleaded complaint rule — an anticipated federal defense does not create federal question jurisdiction",
+          "caseId": "96889"
+        },
+        {
+          "name": "United Mine Workers v. Gibbs (1966)",
+          "holding": "Claims sharing a common nucleus of operative fact form one constitutional case — the test §1367(a) codifies",
+          "caseId": "107200"
+        },
+        {
+          "name": "Gordon v. Steele (W.D. Pa. 1974)",
+          "holding": "Domicile factors for diversity — residence plus intent to remain indefinitely",
+          "caseId": "1468484"
+        },
+        {
+          "name": "Owen Equipment & Erection Co. v. Kroger (1978)",
+          "holding": "A diversity plaintiff cannot reach a non-diverse third-party defendant — the rule behind §1367(b)",
+          "caseId": "109904"
+        },
+        {
+          "name": "Grable & Sons Metal Products, Inc. v. Darue Engineering (2005)",
+          "holding": "Four-part test for embedded federal issues in state-law claims",
+          "caseId": "140872"
+        },
+        {
+          "name": "Exxon Mobil Corp. v. Allapattah Services, Inc. (2005)",
+          "holding": "§1367 lets additional plaintiffs' claims tag along even below the amount in controversy",
+          "caseId": "799986"
+        },
+        {
+          "name": "Hertz Corp. v. Friend (2010)",
+          "holding": "A corporation's principal place of business is its \"nerve center\" — where high-level decisions are made",
+          "caseId": "1735"
+        },
+        {
+          "name": "Gunn v. Minton (2013)",
+          "holding": "Patent-malpractice claims fail Grable's substantiality prong — no federal jurisdiction",
+          "caseId": "820904"
+        },
+        {
+          "name": "Price v. CTB, Inc. (M.D. Ala. 2001)",
+          "holding": "Rule 14 impleader is proper only to pass through all or part of the defendant's own liability"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Personal Jurisdiction",
+      "subtitle": "Whether this court has power over this defendant",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "14th Amendment Due Process",
+          "slug": null,
+          "description": "Constitutional limit — exercising jurisdiction must satisfy \"traditional notions of fair play and substantial justice\" (International Shoe)"
+        },
+        {
+          "rule": "State long-arm statutes",
+          "slug": null,
+          "description": "The state's authorization to reach out-of-state defendants — no statute, no PJ, even if constitutional. Two types: constitutional-limits statutes (27 states, incl. California — statute and due process merge into one question) and enumerated-act statutes (listed acts like transacting business or committing a tort in-state; check the statute separately, then due process)",
+          "timing": "Analyze the statute FIRST. An enumerated-act statute can be narrower than the Constitution: one sale into the state might satisfy due process yet fail a \"regularly does or solicits business\" element — then the case is dismissed even though jurisdiction would be constitutional."
+        },
+        {
+          "rule": "Rule 4(k)",
+          "slug": "rule-4",
+          "description": "Federal courts borrow the forum state's long-arm statute — federal-court PJ is coextensive with the state court next door. 4(k)(1)(B): 100-mile bulge for parties joined under Rules 14/19. 4(k)(2): federal-claim fallback when no single state has jurisdiction"
+        },
+        {
+          "rule": "Rule 12(b)(2)",
+          "slug": "rule-12",
+          "description": "The vehicle for challenging PJ — motion to dismiss for lack of personal jurisdiction",
+          "timing": "Must be raised in your FIRST response (pre-answer motion or answer) or it is waived forever — Rule 12(h)(1). PJ waives together with venue, process, and service-of-process defenses (12(b)(2)-(5)). Subject matter jurisdiction, by contrast, is never waived."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The two-step framework",
+          "description": "Every PJ analysis asks two questions in order: (1) does the forum's long-arm statute authorize jurisdiction? (2) does exercising it satisfy 14th Amendment due process? In constitutional-limits states the questions merge; in enumerated-act states they are genuinely separate steps — and the statute can fail where the Constitution would allow."
+        },
+        {
+          "name": "Three categories of PJ",
+          "description": "Specific PJ: the court can hear THIS case because the claim arises from or relates to the defendant's forum contacts. General PJ: the court can hear ANY claim against a defendant \"essentially at home\" in the forum. Traditional bases bypass minimum-contacts analysis entirely: consent, tag service while present in the state, and in rem/quasi-in-rem (which, after Shaffer, still require minimum contacts)."
+        },
+        {
+          "name": "Step 1 — Purposeful availment (contacts)",
+          "description": "The defendant must have deliberately created a connection with the forum — the constitutional floor. Counts: conducting business there, targeting ads at residents, ongoing contracts with residents, regularly shipping products in, interactive websites aimed at the state, intentional torts aimed at the state. Doesn't count: the plaintiff's unilateral acts bringing the product there, random or fortuitous contacts, passive websites, or the defendant merely knowing the plaintiff lives there. Key question: did the defendant reach out to the forum, or did the forum reach out to the defendant?"
+        },
+        {
+          "name": "Stream of commerce — argue all three",
+          "description": "For products that travel a supply chain into the forum, there is NO majority rule (Asahi, McIntyre). Brennan's pure stream: regular, anticipated flow plus awareness is enough. O'Connor's stream-plus: foreseeability alone fails — need plus factors showing intent to serve the forum market (forum advertising, forum-specific design, service channels, a forum distributor). Stevens's middle ground: case-by-case on volume, value, and hazard. On an exam, apply all three and argue which should govern: regular flow of many products favors Brennan; an isolated untargeted sale favors O'Connor; ambiguous facts favor Stevens."
+        },
+        {
+          "name": "Calder effects test (intentional torts)",
+          "description": "For out-of-state intentional torts causing in-forum harm: (1) intentional conduct, (2) expressly aimed at the forum state, (3) causing harm the defendant knew would be suffered there. Express aiming means targeting the forum itself — not mere foreseeability, and not just knowing the plaintiff lives there (Walden). For internet posts, untargeted social media is not express aiming (Burdick); look for forum-heavy followings, state-specific hashtags, or ads targeted at forum residents."
+        },
+        {
+          "name": "Step 2 — Relatedness (nexus)",
+          "description": "The claim must connect to the defendant's forum contacts. Two routes: \"arise from\" (traditional but-for causation) or \"relate to\" (Ford's broader route — the defendant systematically serves the forum market for the very product that caused the harm, even if this particular unit was sold elsewhere). The limit: each plaintiff needs their own connection between claim and forum (Bristol-Myers — 592 non-resident mass-tort plaintiffs dismissed)."
+        },
+        {
+          "name": "Step 3 — Fairness (rarely decisive)",
+          "description": "Five factors from World-Wide Volkswagen and Asahi: burden on the defendant, the forum state's interest, the plaintiff's interest in relief, the interstate system's efficiency, and shared substantive policies. Once contacts and relatedness exist there is a strong presumption of reasonableness — the defendant needs a \"compelling case\" of unfairness. Asahi is the only Supreme Court case where fairness defeated jurisdiction: foreign defendant vs. foreign plaintiff, minimal forum interest, extreme burden."
+        },
+        {
+          "name": "General PJ — \"essentially at home\"",
+          "description": "Post-Goodyear/Daimler, general jurisdiction is narrow: for corporations, the state of incorporation and principal place of business (plus the rare Perkins-style exceptional case, where a Philippine mining company ran its whole wartime operation from Ohio); for individuals, domicile. Substantial in-state business — even 10% of global sales (Daimler) — no longer creates general jurisdiction. The pre-2011 \"continuous and systematic contacts\" era is over."
+        },
+        {
+          "name": "The waiver trap — PVPS",
+          "description": "Personal jurisdiction, Venue, Process, Service (12(b)(2)-(5)) must ALL be raised in the first Rule 12 motion or the answer, whichever comes first — omit one and it is gone. A motion raising only 12(b)(6) on day 15 forfeits a 12(b)(2) motion on day 30. The alternative — defaulting and collaterally attacking the judgment where it's enforced — is almost never worth it: if you're wrong about PJ, the default stands and you never defended the merits."
+        },
+        {
+          "name": "The doctrinal arc (memory aid)",
+          "description": "Expansion, then contraction. Shoe (1945) creates minimum contacts → McGee says one related contact can suffice → Hanson demands purposeful availment → World-Wide Volkswagen says foreseeability isn't enough → Keeton, Calder, and Burger King expand through the '80s → then Nicastro, Goodyear/Daimler, and Walden tighten everything from 2011 on. Ford (2021) is the one modern case that broadened rather than narrowed."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Pennoyer v. Neff (1878)",
+          "holding": "The territorial baseline: jurisdiction required physical presence, consent, or in-state property",
+          "caseId": "89656"
+        },
+        {
+          "name": "International Shoe Co. v. Washington (1945)",
+          "holding": "Replaced strict territoriality with minimum contacts + fair play and substantial justice",
+          "caseId": "104200"
+        },
+        {
+          "name": "Perkins v. Benguet Consolidated Mining Co. (1952)",
+          "holding": "Exceptional general PJ where the company's entire operations temporarily ran from the forum",
+          "caseId": "104972"
+        },
+        {
+          "name": "McGee v. International Life Insurance Co. (1957)",
+          "holding": "A single contract can support specific PJ when the claim arises from it and jurisdiction is fair",
+          "caseId": "105595"
+        },
+        {
+          "name": "Hanson v. Denckla (1958)",
+          "holding": "Purposeful availment required — the plaintiff's unilateral acts cannot create the defendant's contact",
+          "caseId": "105728"
+        },
+        {
+          "name": "Shaffer v. Heitner (1977)",
+          "holding": "All assertions of jurisdiction — including in rem and quasi-in-rem — must satisfy minimum contacts",
+          "caseId": "109721"
+        },
+        {
+          "name": "World-Wide Volkswagen Corp. v. Woodson (1980)",
+          "holding": "Foreseeability that a product might reach the forum is not a contact; the defendant must target the forum",
+          "caseId": "110170"
+        },
+        {
+          "name": "Keeton v. Hustler Magazine, Inc. (1984)",
+          "holding": "Regular in-forum circulation is purposeful availment even where the plaintiff has no forum ties",
+          "caseId": "111116"
+        },
+        {
+          "name": "Calder v. Jones (1984)",
+          "holding": "Effects test: intentional conduct expressly aimed at the forum, causing harm known to be felt there",
+          "caseId": "111117"
+        },
+        {
+          "name": "Burger King Corp. v. Rudzewicz (1985)",
+          "holding": "A long-term contract with continuing forum obligations is purposeful availment without physical presence",
+          "caseId": "111429"
+        },
+        {
+          "name": "Asahi Metal Industry Co. v. Superior Court (1987)",
+          "holding": "Fractured on stream of commerce; the one case where fairness alone defeated jurisdiction",
+          "caseId": "111824"
+        },
+        {
+          "name": "Burnham v. Superior Court (1990)",
+          "holding": "Tag jurisdiction survives: personal service while physically present in the forum remains valid",
+          "caseId": "112436"
+        },
+        {
+          "name": "Goodyear Dunlop Tires Operations, S.A. v. Brown (2011)",
+          "holding": "General PJ narrowed to where the corporation is \"essentially at home\"",
+          "caseId": "219732"
+        },
+        {
+          "name": "J. McIntyre Machinery, Ltd. v. Nicastro (2011)",
+          "holding": "Targeting the U.S. market as a whole did not target New Jersey; still no majority stream-of-commerce rule",
+          "caseId": "219733"
+        },
+        {
+          "name": "Daimler AG v. Bauman (2014)",
+          "holding": "\"At home\" means incorporation or principal place of business — substantial in-state sales are not enough",
+          "caseId": "2649076"
+        },
+        {
+          "name": "Walden v. Fiore (2014)",
+          "holding": "The defendant's own conduct must connect to the forum; the plaintiff's residence alone is not a contact",
+          "caseId": "2654532"
+        },
+        {
+          "name": "Burdick v. Superior Court (Cal. App. 2015)",
+          "holding": "An untargeted social media post is not expressly aimed at the forum under Calder",
+          "caseId": "2770126"
+        },
+        {
+          "name": "Bristol-Myers Squibb Co. v. Superior Court (2017)",
+          "holding": "Each plaintiff's claim must relate to the defendant's forum contacts — no piggybacking in mass torts",
+          "caseId": "2294163"
+        },
+        {
+          "name": "Ford Motor Co. v. Montana Eighth Judicial District Court (2021)",
+          "holding": "\"Relate to\" needs no strict causation where the defendant systematically serves the forum market for that product",
+          "caseId": "4867543"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Venue, Transfer & Forum Non Conveniens",
+      "subtitle": "Which federal district — and when the case belongs somewhere else entirely",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "28 USC §1391(b)(1)",
+          "slug": null,
+          "description": "Residence venue — any district where any defendant resides, IF all defendants reside in the same state. The plaintiff's residence is irrelevant"
+        },
+        {
+          "rule": "28 USC §1391(b)(2)",
+          "slug": null,
+          "description": "Events venue — any district where a substantial part of the events or omissions giving rise to the claim occurred (or where property at issue sits). Multiple districts can qualify"
+        },
+        {
+          "rule": "28 USC §1391(b)(3)",
+          "slug": null,
+          "description": "Fallback ONLY — if no district qualifies under (b)(1) or (b)(2) (typically events abroad), any district where any defendant is subject to personal jurisdiction"
+        },
+        {
+          "rule": "28 USC §1391(c)-(d)",
+          "slug": null,
+          "description": "Residence defined — individuals reside in their district of domicile; a corporation resides in every district where it would be subject to personal jurisdiction if that district were a state (general AND specific PJ both count, analyzed district by district); foreign defendants with no U.S. PJ may be sued in any district"
+        },
+        {
+          "rule": "28 USC §1406(a)",
+          "slug": null,
+          "description": "The CURE statute — when venue is improper: dismiss, or \"in the interest of justice\" transfer to any district where the case could have been brought. Courts almost always transfer. The NEW forum's law applies"
+        },
+        {
+          "rule": "28 USC §1404(a)",
+          "slug": null,
+          "description": "The CONVENIENCE statute — when venue is proper but another district is better: transfer (never dismiss) to a district where the case might have been brought, or to which all parties consent. The ORIGINAL forum's law follows the case"
+        },
+        {
+          "rule": "Rule 12(b)(3)",
+          "slug": "rule-12",
+          "description": "Improper-venue defense",
+          "timing": "Must be raised in the first response (motion or answer) or it is waived — venue travels with the PVPS waive-together group, unlike SMJ."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The three-circle check",
+          "description": "A forum works only where subject matter jurisdiction, personal jurisdiction, AND venue all overlap. Venue is purely statutory (no constitutional dimension), analyzed at the district level rather than the state level, and aims at convenience rather than the defendant's liberty."
+        },
+        {
+          "name": "The venue dance — (b)(1), (b)(2), (b)(3) in order",
+          "description": "Always analyze all three subsections in order. (b)(1) needs one state containing a residence for every defendant — defendants in different states kill it. (b)(2) asks where the story happened. (b)(3) is reachable only when both fail. Corporate defendants make (b)(1) rich: a company \"resides\" everywhere it has general PJ (incorporation, principal place of business) plus every district where specific PJ exists for this case."
+        },
+        {
+          "name": "\"Substantial part\" — the circuit split",
+          "description": "Broad approach (First Circuit, Uffner): any event in the \"entire historical predicate\" counts — the yacht sinking in Puerto Rico made venue proper there even though the dispute was contract interpretation. Narrow approach (Eighth Circuit): the in-forum conduct must be the defendant's, related to the claim, AND actually in dispute — filtering out background facts. On ambiguous facts, argue both."
+        },
+        {
+          "name": "§1406 vs. §1404 — fix what's wrong vs. find what's better",
+          "description": "Venue improper → §1406: transfer nearly always beats dismissal (saves filing fees, service, and the statute of limitations), and the transferee forum's law applies — the plaintiff gets a fresh start in the first place they got it right. Venue proper but inconvenient → §1404: a discretionary balancing of private factors (plaintiff's choice — strong presumption, especially at home; witnesses, with non-party witnesses and subpoena power weighted most; access to proof) and public factors (which court knows the governing law, docket congestion, local interest in local controversies). Crucially, §1404 transfer keeps the ORIGINAL forum's law — a change of courtroom, not a change of law."
+        },
+        {
+          "name": "Forum selection clauses",
+          "description": "Advance agreement on where disputes will be litigated waives personal jurisdiction and venue objections (never SMJ) and gets great weight from courts (Stewart Organization v. Ricoh; Carnival Cruise Lines v. Shute — enforcing even a cruise-ticket clause). Under §1404(a), the clause supplies the \"all parties have consented\" route."
+        },
+        {
+          "name": "Forum non conveniens — dismissal, not transfer",
+          "description": "When the better forum is outside the current court system (a foreign country, or another state's courts), transfer is impossible — FNC lets the court dismiss so the plaintiff can refile there. Requirements: an adequate alternative forum (defendant amenable to process, meaningful remedy available) and private/public factors clearly favoring it. Courts often grant conditionally — the defendant must waive limitations defenses and consent to jurisdiction in the alternative forum. Review is only for abuse of discretion."
+        },
+        {
+          "name": "The Piper Aircraft rules",
+          "description": "An unfavorable change in law gets little weight — dismissal is proper even if the foreign forum's law is worse for the plaintiff, unless the alternative amounts to \"no remedy at all\" (Rasoulzadeh: no dismissal where refiling in Iran risked the plaintiffs' lives). Deference varies: a domestic plaintiff's home-forum choice gets a strong presumption; a foreign plaintiff's gets much less — which is why foreign-accident suits against U.S. manufacturers (Piper, Gonzalez v. Chrysler) are the doctrine's home turf."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Gulf Oil Corp. v. Gilbert (1947)",
+          "holding": "The private and public interest factors that govern both FNC and §1404 transfer analysis",
+          "caseId": "104393"
+        },
+        {
+          "name": "Van Dusen v. Barrack (1964)",
+          "holding": "After a §1404(a) transfer, the transferor forum's state law follows the case",
+          "caseId": "106788"
+        },
+        {
+          "name": "Piper Aircraft Co. v. Reyno (1981)",
+          "holding": "FNC dismissal is proper even when the foreign forum's law is less favorable, absent \"no remedy at all\"",
+          "caseId": "110586"
+        },
+        {
+          "name": "Rasoulzadeh v. Associated Press (S.D.N.Y. 1983)",
+          "holding": "No FNC dismissal where the alternative forum is inadequate — here, refiling in Iran endangered the plaintiffs",
+          "caseId": "1866935"
+        },
+        {
+          "name": "Carnival Cruise Lines, Inc. v. Shute (1991)",
+          "holding": "Forum selection clauses are enforceable and get great weight, even in form contracts",
+          "caseId": "112577"
+        },
+        {
+          "name": "Uffner v. La Reunion Francaise (1st Cir. 2001)",
+          "holding": "Broad \"substantial part\" venue: any event in the claim's historical predicate counts, so venue can be proper in multiple districts",
+          "caseId": "199329"
+        },
+        {
+          "name": "Gonzalez v. Chrysler Corp. (5th Cir. 2002)",
+          "holding": "FNC dismissal of a Mexican accident suit — Mexico was the more convenient forum despite lower recovery",
+          "caseId": "28432"
+        },
+        {
+          "name": "MacMunn v. Eli Lilly Co. (D.D.C. 2008)",
+          "holding": "Modern application of the private and public interest transfer factors",
+          "caseId": "2580870"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "The Erie Doctrine",
+      "subtitle": "Which law applies in federal court — state or federal",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Rules of Decision Act (28 USC §1652)",
+          "slug": null,
+          "description": "\"The laws of the several states, except where the Constitution or Acts of Congress otherwise require or provide, shall be regarded as rules of decision in civil actions in the courts of the United States, in cases where they apply.\" Erie's statutory foundation — and Hanna's key insight is that it governs only judge-made federal law, not statutes or Federal Rules"
+        },
+        {
+          "rule": "Rules Enabling Act (28 USC §2072)",
+          "slug": null,
+          "description": "(a) The Supreme Court may prescribe general rules of practice and procedure; (b) such rules \"shall not abridge, enlarge or modify any substantive right\"; (c) conflicting laws are superseded. The source of the Federal Rules' strength: the Supreme Court has NEVER found a Federal Rule to violate §2072(b)"
+        },
+        {
+          "rule": "Supremacy Clause (art. VI, ¶2)",
+          "slug": null,
+          "description": "Validly created federal law controls over conflicting state law — why federal statutes and Federal Rules win almost automatically, while mere federal judicial practices must earn their keep under Erie/York/Byrd"
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Threshold — is this an Erie problem at all?",
+          "description": "Three requirements: (1) a federal court exercising diversity or supplemental jurisdiction (not federal question), (2) a conflict between federal procedure and state law, (3) an issue in the gray area that could be seen as substance OR procedure. Substance is easy — state law always governs in diversity (duty of care, damages, defenses). The doctrine exists for the gray zone."
+        },
+        {
+          "name": "The four-column chart — source of the federal law decides the test",
+          "description": "Column 1, U.S. Constitution: always wins (Supremacy Clause) — e.g., the Seventh Amendment jury right. Column 2, federal statute: wins if \"rationally capable of being classified as procedural\" — an extremely low bar; procedural statutes virtually always control. Column 3, Federal Rule: wins if rationally procedural AND a rule of practice and procedure under §2072(a) AND any effect on substantive rights is merely incidental — Federal Rules have never lost at the Supreme Court (Rule 3's filing-commences rule beat a state service-commences rule in Hanna). Column 4, federal common law or judicial practice: the only column where state law has a real chance — apply the Twin Aims and Byrd tests. Federal law gets progressively weaker from Column 1 to Column 4."
+        },
+        {
+          "name": "Whose state law? Erie guesses and certification",
+          "description": "A federal court applies the choice-of-law rules of the state where it sits (Klaxon) to pick which state's substantive law governs. When that state's law is unclear, the court predicts what the state supreme court would do TODAY — it is not bound by intermediate appellate decisions and may even depart from aged state supreme court precedent it believes would be overruled. Alternatively it can certify the question to the state supreme court, though delay and expense make that rare."
+        },
+        {
+          "name": "York — the outcome-determinative era",
+          "description": "Guaranty Trust v. York (state statute of limitations vs. federal laches) asked whether the choice \"significantly affects the result of the litigation\" — if yes, state law. The test proved to be \"an unchecked engine of destruction for the federal rules\": nearly everything affects outcomes, so federal courts became \"ventriloquist dummies required to mouth state law.\""
+        },
+        {
+          "name": "Byrd — three tiers with balancing",
+          "description": "Tier 1: does the state law define or create state rights and obligations (truly substantive)? → state law. Tier 2: is the procedure so \"bound up\" with the state-created right that the right can't be had without it? → state law (if the state says nothing about its importance, presume NOT bound up). Tier 3: for mere \"form and mode,\" balance how outcome-determinative the choice is against the strength of the federal interest — in Byrd itself, the federal practice of jury fact-finding won because it operates \"under the influence, if not the command, of the Seventh Amendment.\" A federal interest must approach constitutional magnitude to overcome an outcome-determinative conflict."
+        },
+        {
+          "name": "Hanna — the modern two-track system",
+          "description": "Track 1: a federal statute or Federal Rule on point gets the easy Supremacy Clause analysis (Columns 2-3) — no balancing, no outcome test. Track 2: a bare federal judicial practice faces the Twin Aims: would applying federal law (1) encourage forum shopping, or (2) produce inequitable administration of the laws — a substantive litigation advantage for one side? Either yes → state law. York, Byrd, and Hanna all remain good law; Hanna just sorted them into the right lanes."
+        },
+        {
+          "name": "Why Erie exists — Swift and the taxicab",
+          "description": "Under Swift v. Tyson (1842), federal courts ignored state common law in favor of a \"general common law\" — a supposedly transcendental body of law courts would eventually converge on. Instead it produced parallel legal systems, forum shopping, and citizenship discrimination — perfected in Black & White Taxicab (1928), where a Kentucky company reincorporated in Tennessee solely to manufacture diversity and enforce a monopoly contract Kentucky courts would have voided. Holmes's dissent supplied the answer Erie adopted: law \"does not exist without some definite authority behind it,\" and that authority is the state — legislature and courts alike."
+        },
+        {
+          "name": "Erie itself",
+          "description": "Harry Tompkins lost his right arm to a passing Erie Railroad train while walking a well-worn footpath in Pennsylvania. Pennsylvania law called him a trespasser (willful/wanton duty only — he loses); federal general common law required reasonable care (he wins). His lawyers sued in federal court in New York and won $30,000. The Supreme Court took the case to bury Swift: the First Congress meant state common law to count, Swift's goals had failed, and — Brandeis's constitutional holding — \"There is no federal general common law.\" Tompkins, on remand, lost everything. Reed's concurrence preserved the other half of the system: federal courts still make their own procedure."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Swift v. Tyson (1842)",
+          "holding": "Federal courts need not follow state \"general common law\" — the doctrine Erie overruled",
+          "caseId": "86188"
+        },
+        {
+          "name": "Black & White Taxicab Co. v. Brown & Yellow Taxicab Co. (1928)",
+          "holding": "Swift's mischief perfected: reincorporating solely to manufacture diversity and escape state law",
+          "caseId": "101265"
+        },
+        {
+          "name": "Erie Railroad Co. v. Tompkins (1938)",
+          "holding": "\"There is no federal general common law\" — federal courts in diversity apply state substantive law, including state court decisions",
+          "caseId": "103012"
+        },
+        {
+          "name": "Klaxon Co. v. Stentor Electric Manufacturing Co. (1941)",
+          "holding": "Federal courts apply the choice-of-law rules of the state where they sit",
+          "caseId": "103542"
+        },
+        {
+          "name": "Guaranty Trust Co. v. York (1945)",
+          "holding": "Outcome-determinative test: if the choice of law significantly affects the result, apply state law",
+          "caseId": "104182"
+        },
+        {
+          "name": "Byrd v. Blue Ridge Rural Electric Cooperative (1958)",
+          "holding": "Three-tier analysis — strong federal interests can overcome outcome-determinative state procedure",
+          "caseId": "105689"
+        },
+        {
+          "name": "Hanna v. Plumer (1965)",
+          "holding": "Federal Rules valid under the REA control automatically; bare judicial practices face the Twin Aims of Erie",
+          "caseId": "107024"
+        }
+      ]
+    },
     {
       "id": 1,
       "title": "Pre-Filing",
@@ -977,5 +1496,6 @@
         }
       ]
     }
-  ]
+  ],
+  "revision_note": "Add the jurisdictional half: SMJ, personal jurisdiction, venue/transfer/FNC, and Erie doctrine sections, authored from Sage's Civ Pro I outlines"
 }
