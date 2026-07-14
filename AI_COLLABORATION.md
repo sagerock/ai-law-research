@@ -39,6 +39,21 @@ demanding rationale, and every assistant's entries get better.
 
 ## Architecture Decisions
 
+### Backend-only Supabase tables use default-deny RLS (2026-07-14)
+
+The production FastAPI service connects to Railway PostgreSQL as `postgres`, not to the
+Supabase database; that role owns the corresponding Railway tables and has `BYPASSRLS`.
+The `legal-researcher` Supabase project retained copies of eleven feature tables where both
+`anon` and `authenticated` had unrestricted CRUD grants with RLS disabled. Migration
+`037_backend_only_tables_rls.sql` was applied to Supabase: RLS is enabled without policies and
+all direct grants to those API roles are revoked. Why default-deny rather than ownership or
+public-read policies: checked-in browser code does not query these tables through Supabase;
+private and intentionally public access is narrowed by FastAPI endpoints instead. The migration
+conditionally revokes Supabase roles so it remains portable to Railway. Verified after applying:
+the Supabase security advisor reports no errors, all eleven privilege checks are false for both
+API roles, and production health, transparency, pool status, MSJ library, and public mindmap
+endpoints remain healthy.
+
 ### Paid textbook Q&A boundary (2026-07-13)
 
 Textbook Q&A is a signed-in feature and reserves both the user's daily AI allowance and
@@ -369,7 +384,10 @@ Commit: `f020d18`
 Resolved (Sol, 2026-07-12): local backend testing now uses a project `.venv` pinned to
 production's Python 3.11 via `uv`. Run `make test-setup` once and `make test-local` thereafter.
 `pytest.ini` limits discovery to unit suites in `backend/` and `citator/`, excluding live/network
-scripts under `scripts/`. Initial verification passed all 80 tests.
+scripts under `scripts/`. Initial verification passed all 80 tests. From Windows-hosted tools,
+do not invoke bare `wsl.exe`: the default distribution can be `docker-desktop-data`. Use
+`wsl.exe -d Ubuntu bash -lc "cd /mnt/d/dev/ai-law-research && make test-local"` (and the same
+explicit `-d Ubuntu` form for other project commands). Verified 89 tests passing on 2026-07-13.
 
 ### Crawford citation coverage
 Owner: Sol
