@@ -63,6 +63,12 @@ export default async function sitemap({ id }: { id: Promise<string> }): Promise<
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    {
+      url: `${SITE_URL}/outlines/criminal-law`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ] : []
 
   try {

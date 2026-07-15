@@ -1,0 +1,814 @@
+{
+  "slug": "criminal-law",
+  "subject": "Criminal Law",
+  "title": "The Criminal Law Outline",
+  "description": "A community-improved, source-linked guide to criminal law — the elements of crime, homicide, defenses, and inchoate offenses.",
+  "version": 1,
+  "sections": [
+    {
+      "id": 1,
+      "title": "Theories of Punishment",
+      "subtitle": "Why we punish — the two lenses behind every doctrine",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Utilitarian Theory (Forward-Looking)",
+          "slug": null,
+          "description": "Punishment is justified only if it produces more good than harm. Four purposes: general deterrence (others see the punishment and are discouraged), specific deterrence (this offender fears being punished again), incapacitation (removal from society), and rehabilitation (internal reform). Specific deterrence and rehabilitation look similar but run on different engines — fear versus transformation."
+        },
+        {
+          "rule": "Retributive Theory (Backward-Looking)",
+          "slug": null,
+          "description": "You broke the rules, so you deserve punishment — desert, not consequences. Two flavors: assaultive retribution (society strikes back — public vengeance) and protective retribution (punishment as the offender's path back to reconciliation with society)."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Keep Them Analytically Separate",
+          "description": "Real systems blend both theories, but exam analysis requires identifying which justification is doing the work in each scenario — deterrence arguments are utilitarian; desert arguments are retributive."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "The Queen v. Dudley and Stephens (Q.B. 1884)",
+          "holding": "Shipwrecked sailors who killed and ate the cabin boy were guilty of murder — necessity is not a defense to the deliberate killing of an innocent person. The sentence of death was commuted to six months.",
+          "caseId": "manual-dudley-stephens"
+        },
+        {
+          "name": "United States v. Smith",
+          "holding": "A wire-fraud sentencing illustrating how judges blend utilitarian and retributive reasoning through the 18 U.S.C. § 3553(a) factors."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Actus Reus: The Voluntary Act & Omissions",
+      "subtitle": "The physical element — a willed act, or a failure to act where the law imposes a duty",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Voluntary Act Requirement",
+          "slug": null,
+          "description": "Every crime requires a voluntary act that causes social harm. \"Voluntary\" means a willed muscular contraction — not a synonym for intentional. No actus reus for unconscious acts, sleepwalking, reflexes, spasms, convulsions, hypnosis, or being physically moved by someone else (especially police)."
+        },
+        {
+          "rule": "Omissions — the General Rule and Five Duties",
+          "slug": null,
+          "description": "There is no criminal duty to act to prevent harm to another, even at no risk to yourself. Five exceptions create a duty: (1) statutory duty (mandatory reporting); (2) status relationship (parent-child, spouse); (3) contractual duty (lifeguard, doctor, caretaker); (4) voluntary assumption of care that secludes the victim from other help; (5) creation of the risk, even innocently — at minimum, call for help."
+        },
+        {
+          "rule": "Social Harm — Three Kinds of Elements",
+          "slug": null,
+          "description": "Result crimes punish an outcome (death, injury, destruction); conduct crimes punish risky behavior itself (DUI, attempt); attendant circumstances are the statutory conditions that make it criminal (age, victim status, location). Every result crime contains a conduct crime, and attendant circumstances always live in the statute's text."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Act or Omission? The Line Matters",
+          "description": "Acts require no special duty; omissions do. The classic ambiguity — withdrawing life support — is treated as an omission (letting die), not an act (killing), which is why a physician without a duty to continue treatment commits no crime."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Martin v. State (Ala. Ct. App. 1944)",
+          "holding": "Police dragged a drunk man from his home to the highway, then charged him with public drunkenness — reversed: the state cannot manufacture criminal liability by forcing someone into the prohibited situation; no voluntary act, no crime."
+        },
+        {
+          "name": "State v. Utter (Wash. Ct. App. 1971)",
+          "holding": "Volition is the minimum mental element of the actus reus — \"the word 'act' technically means a 'voluntary act'\"; a conditioned combat response could negate it.",
+          "caseId": "1158912"
+        },
+        {
+          "name": "People v. Beardsley (Mich. 1907)",
+          "holding": "The landmark omission case — no legal duty to aid someone absent a status or contractual relationship, however morally reprehensible the failure.",
+          "caseId": "7991086"
+        },
+        {
+          "name": "Barber v. Superior Court (Cal. App. 1983)",
+          "holding": "Withdrawing life support is an omission (letting die), not an act (killing) — so physicians with no duty to continue futile treatment committed no crime.",
+          "caseId": "2106032"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Causation",
+      "subtitle": "Actual cause, proximate cause, and the intervening-cause doctrines",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Actual Cause — the But-For Test",
+          "slug": null,
+          "description": "But for the defendant's voluntary act, would the harm have occurred? Three complications: acceleration (multiple actors each hasten death — both are actual causes); concurrent sufficient causes (two independent, simultaneous, each alone lethal — but-for fails, but ordinary principles of justice hold both liable); and obstructed causation (a second actor intervenes and causes the harm first — the first actor's chain is cut, though other charges may stand)."
+        },
+        {
+          "rule": "Acceleration vs. Aggravation",
+          "slug": null,
+          "description": "Contribution is not causation. Aggravation makes the victim suffer more but die at the same time — NOT causation. Acceleration makes death come sooner — causation. To cause death legally, the act must change the TIMING of death."
+        },
+        {
+          "rule": "Proximate Cause — the Six Intervening-Cause Doctrines",
+          "slug": null,
+          "description": "Even a but-for cause must be a fair, foreseeable cause. (1) Responsive intervening causes (medical treatment) generally do NOT break the chain; (2) coincidental ones (wrong place, wrong time) generally DO; (3) a de minimis contribution may break it; (4) intended consequences NEVER break it; (5) the victim reaching apparent safety and leaving it breaks it; (6) a third party's free, deliberate, informed intervention breaks it; a later omission rarely does."
+        },
+        {
+          "rule": "The Medical Malpractice Rule",
+          "slug": null,
+          "description": "Medical treatment is the classic responsive intervening cause — it is entirely foreseeable that victims seek treatment and that doctors sometimes err. Ordinary negligent malpractice does not supersede; grossly reckless or extraordinarily incompetent treatment might."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Oxendine v. State (Del. 1987)",
+          "holding": "A father's beating of his already-injured son could not be proved to have accelerated death — aggravating the victim's suffering is not causing death; the state must prove acceleration.",
+          "caseId": "2258105"
+        },
+        {
+          "name": "Velazquez v. State (Fla. App. 1990)",
+          "holding": "After the agreed drag race ended, the deceased spontaneously raced back alone at 123 mph — his free, deliberate, informed act broke the causal chain."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Mens Rea",
+      "subtitle": "The guilty mind — common law terms, specific intent, and the MPC's four states",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Common Law Mens Rea Terms",
+          "slug": null,
+          "description": "Intentionally (subjective): desire to cause the harm OR knowledge it is virtually certain. Knowingly (subjective): aware of the conduct and circumstances. Willfully: three competing meanings — intentional, evil-motive, or violation of a known legal duty. Recklessly (subjective): conscious disregard of a substantial, unjustified risk. Negligently (objective): a GROSS deviation from the standard of care — a higher bar than civil negligence, and the only objective standard."
+        },
+        {
+          "rule": "General vs. Specific Intent",
+          "slug": null,
+          "description": "The distinction the MPC abandoned but common law analysis still needs. The most exam-relevant test: a specific-intent crime contains a special mental element above and beyond the actus reus — an intent to do a further act (possession WITH INTENT to sell), a special motive (contact with intent to humiliate), or awareness of an attendant circumstance (buyer known to be underage). General intent means the mental state relates solely to the act itself. Why it matters: unreasonable mistakes of fact and voluntary intoxication can negate specific intent but never general intent."
+        },
+        {
+          "rule": "MPC § 2.02 — the Four Culpability States",
+          "slug": null,
+          "description": "Applied to EACH material element (conduct, result, attendant circumstances) separately. Purposely: conscious object. Knowingly: aware (practically certain, for results). Recklessly: consciously disregards a substantial and unjustifiable risk — subjective awareness plus objective gross deviation. Negligently: should have been aware — purely objective. Special rules: when a statute is silent, purpose, knowledge, or recklessness suffices — negligence is never a default (§ 2.02(3)); willful blindness — awareness of a high probability equals knowledge unless the actor actually believes the fact does not exist (§ 2.02(7))."
+        },
+        {
+          "rule": "Transferred Intent",
+          "slug": null,
+          "description": "Intent to harm A transfers when the SAME harm lands on B: shoot at A, hit B — intent transfers. It does not apply to mistaken identity (you hit whom you aimed at), to a bullet that passes through the intended victim into another (intent is used up — recklessness for the second), across different social harms (property intent doesn't transfer to a person), or where the statute names a specific victim."
+        },
+        {
+          "rule": "Concurrence",
+          "slug": null,
+          "description": "Mens rea and actus reus must exist at the same time (temporal concurrence), and the mens rea must actually motivate the act (motivational concurrence). Intent formed after the act generally fails; a delay between act and harm is a causation problem, not a concurrence problem."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The Reckless/Negligent Line",
+          "description": "Reckless = consciously disregards a risk (aware). Negligent = should have been aware (not aware). This single distinction is the line between depraved-heart murder and involuntary manslaughter."
+        },
+        {
+          "name": "Why the MPC Wins on Clarity",
+          "description": "The bomb-on-a-plane hypo: a wife bombs a plane to kill her husband. Common law \"intent\" is ambiguous for the other passengers; the MPC answers cleanly — she purposely killed her husband (conscious object) and knowingly killed the passengers (practical certainty)."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Regina v. Cunningham (Eng. 1957)",
+          "holding": "Tearing a gas meter off the wall to steal coins endangered a neighbor — \"malicious\" requires the elemental mental state for the charged crime, not general wickedness; the shift from culpability to elemental mens rea.",
+          "caseId": "manual-cunningham"
+        },
+        {
+          "name": "People v. Conley (Ill. App. 1989)",
+          "holding": "A wine-bottle attack at a party — proof of intent is eased by the ordinary presumption that one intends the natural and probable consequences of one's actions.",
+          "caseId": "2097961"
+        },
+        {
+          "name": "State v. Bridgeforth",
+          "holding": "The working definition of specific intent: a special mental element above and beyond any mental state required with respect to the actus reus."
+        },
+        {
+          "name": "State v. Rose (R.I. 1973)",
+          "holding": "Driver struck a pedestrian without fault, then dragged the body 610 feet — reversed, because the state could not prove death occurred during the culpable phase; concurrence requires that the culpable conduct cause the death."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Strict Liability",
+      "subtitle": "Crimes without mens rea — and why the law disfavors them",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Framework",
+          "slug": null,
+          "description": "Strict liability dispenses with mens rea for one or more elements. Malum in se crimes (murder, rape, theft) presumptively require mens rea; malum prohibitum offenses (speeding, underage drinking) are often strict liability. Public-welfare-offense markers: not derived from common law, a single violation can injure many, the standard is reasonable, the penalty is minor, and conviction carries little stigma."
+        },
+        {
+          "rule": "MPC §§ 2.02, 2.05",
+          "slug": null,
+          "description": "The MPC requires mens rea for all \"crimes\" and confines strict liability to \"violations\" — offenses punishable by fine only, never imprisonment."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Morissette v. United States (U.S. 1952)",
+          "holding": "A scrap scavenger on a bombing range — for crimes with common-law origins and serious penalties, courts presume a mens rea requirement even when the statute is silent.",
+          "caseId": "104952"
+        },
+        {
+          "name": "Staples v. United States (U.S. 1994)",
+          "holding": "An unregistered automatic weapon — strict liability is disfavored; harsh penalties signal that Congress intended a mens rea requirement.",
+          "caseId": "1087954"
+        },
+        {
+          "name": "Garnett v. State (Md. 1993)",
+          "holding": "Statutory rape is strict liability as to the victim's age — an honest, even reasonable, belief the victim was older is no defense, and that is constitutional.",
+          "caseId": "2401066"
+        },
+        {
+          "name": "State v. Nations (Mo. App. 1984)",
+          "holding": "An underage dancer and a club owner who suspected but did not know — \"knowingly\" requires actual awareness under the MPC's precise definition, not mere suspicion.",
+          "caseId": "1484165"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Mistake of Fact & Mistake of Law",
+      "subtitle": "Failure-of-proof defenses and the narrow escape hatches",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Mistake of Fact — Common Law",
+          "slug": null,
+          "description": "Not a true affirmative defense but a failure of proof: the mistake shows the required mens rea never formed. Specific-intent crimes: ANY honest mistake — even an unreasonable one — is a defense. General-intent crimes: only reasonable mistakes. Two doctrines cut the defense off: the moral wrong doctrine (if the facts as you believed them still made your conduct immoral, no defense) and the legal wrong doctrine (if the believed facts still made it a crime, you are guilty of the GREATER offense actually committed)."
+        },
+        {
+          "rule": "Mistake of Fact — MPC § 2.04",
+          "slug": null,
+          "description": "A mistake is a defense whenever it negates the required mens rea for any element (§ 2.04(1)). The lesser-crime rule (§ 2.04(2)) flips the common law: a defendant who thought he was committing a lesser offense is convicted only of the LESSER offense — punishment matches the actual mental state."
+        },
+        {
+          "rule": "Mistake of Law",
+          "slug": null,
+          "description": "Ignorance of the law is no excuse — even when reasonable, and even for officials who misread statutes in good faith. Three exceptions: (1) reasonable reliance on an official interpretation (an appellate decision or attorney general opinion — NOT a police officer, private attorney, or your own reading); (2) fair notice — the statute was never published or reasonably available; (3) failure of proof — the statute itself makes knowledge of the law an element."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "People v. Navarro (Cal. App. Dep't Super. Ct. 1979)",
+          "holding": "Taking wooden beams in the honest belief they were abandoned — theft is a specific-intent crime, so even an unreasonable honest belief negated the intent to steal.",
+          "caseId": "7427669"
+        },
+        {
+          "name": "Regina v. Prince",
+          "holding": "Taking an underage girl believing her to be older — under the moral wrong doctrine, conduct immoral on the facts as believed gets no mistake defense."
+        },
+        {
+          "name": "People v. Marrero (N.Y. 1987)",
+          "holding": "A federal corrections officer's reasonable, good-faith misreading of the peace-officer exemption was no defense — personal misinterpretation of a statute never qualifies for the reliance exception.",
+          "caseId": "5688649"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Criminal Homicide: Murder & Its Degrees",
+      "subtitle": "Malice aforethought and the Pennsylvania model",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Malice Aforethought Gate",
+          "slug": null,
+          "description": "Murder requires malice aforethought — a misleading name that requires neither malice nor forethought, but one of four mental states: (1) intent to kill; (2) intent to inflict grievous bodily injury; (3) extreme recklessness (depraved heart); (4) intent to commit a dangerous felony. If none is present, it is not murder — drop to involuntary manslaughter or no liability."
+        },
+        {
+          "rule": "The Homicide Hierarchy (Pennsylvania Model)",
+          "slug": null,
+          "description": "First-degree murder: killing by a specified manner (poison, lying in wait), a willful-deliberate-premeditated killing, or felony murder with an enumerated felony (arson, rape, robbery, burglary). Second-degree murder is the catch-all: intentional but unpremeditated killings, GBI-intent killings, depraved-heart killings, and felony murder on non-enumerated felonies. Below murder: voluntary manslaughter (murder with mitigation) and involuntary manslaughter (reckless or grossly negligent killing, and misdemeanor-manslaughter)."
+        },
+        {
+          "rule": "Premeditation and Deliberation",
+          "slug": null,
+          "description": "Premeditation: the defendant thought about the killing beforehand. Deliberation: the decision was made with a cool mind capable of reflection. Jurisdictions split on whether premeditation can form in an instant or requires meaningful reflection — on ambiguous facts, argue both."
+        },
+        {
+          "rule": "Depraved Heart vs. Involuntary Manslaughter",
+          "slug": null,
+          "description": "The critical line is the DEGREE of risk and the actor's INDIFFERENCE: extreme, unjustifiable risk plus callous indifference to human life (the \"abandoned and malignant heart\") is second-degree murder; a substantial risk carelessly disregarded is involuntary manslaughter. MPC equivalents: recklessness with extreme indifference to the value of human life (§ 210.2(1)(b)) versus ordinary recklessness or negligence (§§ 210.3(1)(a), 210.4)."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The Midgett/Forrest Paradox",
+          "description": "Premeditation-deliberation measures cognitive process, not moral culpability. Midgett — months of brutal child abuse, extremely culpable — was only second-degree murder (habitual drunken rage, no plan to kill). Forrest — a mercy killing of a dying father, arguably low culpability — was first-degree (brought the gun, four separately-cocked shots, statements of intent). The formula rewards planning, not evil."
+        },
+        {
+          "name": "Where Life Begins and Ends",
+          "description": "The born-alive rule: a \"human being\" begins at live birth — courts will not expand the statute (separation of powers); legislatures respond by amendment. Life ends at brain death under the modern rule, so removing a brain-dead victim from life support does not break the killer's causal chain."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Keeler v. Superior Court (Cal. 1970)",
+          "holding": "Killing a viable fetus was not killing a \"human being\" under the born-alive rule — courts cannot judicially expand a criminal statute; the legislature later amended § 187 to cover fetuses.",
+          "caseId": "2608038"
+        },
+        {
+          "name": "People v. Eulo (N.Y. 1984)",
+          "holding": "Brain death is legal death — removing a brain-dead victim from life support does not relieve the shooter of causation, because the victim was already legally dead.",
+          "caseId": "5687392"
+        },
+        {
+          "name": "State v. Guthrie (W. Va. 1995)",
+          "holding": "Premeditation must be more than instantaneous — there must be time sufficient for the defendant to be fully conscious of what he intended, or the first/second-degree line collapses."
+        },
+        {
+          "name": "Midgett v. State (Ark. 1987)",
+          "holding": "A father's months of drunken beatings that killed his son showed intent to abuse, not a premeditated design to kill — reduced to second-degree murder; Arkansas later amended its code for child-victim killings.",
+          "caseId": "2443578"
+        },
+        {
+          "name": "State v. Forrest (N.C. 1987)",
+          "holding": "A son's hospital-bed mercy killing of his terminally ill father was first-degree murder — the brought gun, the statements, and four deliberate shots were abundant premeditation and deliberation.",
+          "caseId": "1239832"
+        },
+        {
+          "name": "People v. Knoller (Cal. 2007)",
+          "holding": "The dog-mauling case — depraved-heart murder requires conscious disregard of a danger to human LIFE: more than knowing you might injure, less than knowing death is highly probable.",
+          "caseId": "2622181"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Voluntary Manslaughter",
+      "subtitle": "Mitigation by provocation — three frameworks, run on the same facts",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Four Required Elements (All Frameworks)",
+          "slug": null,
+          "description": "(1) An actual state of passion at the moment of the killing; (2) adequate provocation; (3) no cooling-off period; (4) causation — the provocation must actually have caused this killing. Venting at a bystander is murder, not manslaughter."
+        },
+        {
+          "rule": "Common Law — Five Rigid Categories",
+          "slug": null,
+          "description": "Sudden heat of passion from one of exactly five provocations: aggravated assault or battery; mutual combat; a serious crime against a close relative; illegal arrest; or a husband observing his wife's adultery. Mere words are NEVER enough, learning (rather than observing) never qualifies, the provocation must come from the victim, and cooling off destroys the defense. The narrowest framework."
+        },
+        {
+          "rule": "Modern Approach — the Reasonable Person",
+          "slug": null,
+          "description": "The categories are gone: the jury asks whether a reasonable person would have been provoked, case by case. Mere words are still insufficient in the majority (a minority accepts purely informational words), the provocation must still come from the victim, and cooling off still bars mitigation. The middle ground."
+        },
+        {
+          "rule": "MPC § 210.3 — Extreme Mental or Emotional Disturbance",
+          "slug": null,
+          "description": "No provocation categories, no requirement the trigger come from the decedent, no mere-words limitation, no observation requirement, no suddenness, and no cooling-off rule — the disturbance can build cumulatively. Reasonableness is judged from the viewpoint of a person in the actor's situation — partially subjective. The broadest framework, but the disturbance must still be objectively comprehensible."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Same Facts, Different Results",
+          "description": "The exam pattern: a killing after being TOLD of a spouse's adultery fails at common law (words; learning not observing), maybe passes the modern approach, and likely qualifies under EMED. A killing three days later fails both traditional frameworks on cooling-off but may survive EMED. A killing provoked by the victim's friend fails everywhere except the MPC. Run all three and show the divergence."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Girouard v. State (Md. 1991)",
+          "holding": "Words alone — however taunting — are not adequate provocation under the modern reasonable-person standard; mitigation is reserved for provocations that would inflame a reasonable person.",
+          "caseId": "2076674"
+        },
+        {
+          "name": "People v. Casassa (N.Y. 1980)",
+          "holding": "An obsessive suitor's murderous response to rejection was \"too peculiar to him\" — EMED mitigation requires a disturbance a reasonable person could comprehend, not merely one sincerely felt.",
+          "caseId": "5684052"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "The Felony-Murder Rule",
+      "subtitle": "Strict liability for homicide — and the four limitations that cabin it",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Rule",
+          "slug": null,
+          "description": "A death resulting from conduct during the commission or attempted commission of a felony is murder. The prosecution proves only: intent to commit the underlying felony, a death during its commission or attempt, and a causal connection between felony and death. No intent to kill, no premeditation. Enumerated felonies (the Big Four: arson, rape, robbery, burglary) make it first-degree; non-enumerated but inherently dangerous felonies make it second-degree. The accepted rationale is narrow — encouraging felons to be CAREFUL during dangerous felonies — and the MPC calls the whole rule \"indefensible in principle.\""
+        },
+        {
+          "rule": "Limitation 1 — Inherently Dangerous Felony",
+          "slug": null,
+          "description": "Only felonies inherently dangerous to life can serve as predicates. Two tests: the abstract approach (minority, defendant-friendly) asks whether the crime's ELEMENTS could ever be satisfied without endangering life; the facts-of-the-case approach (majority, prosecution-friendly) asks whether the defendant's ACTUAL conduct created a foreseeable risk of death. Apply both and show the divergence."
+        },
+        {
+          "rule": "Limitation 2 — the Merger Doctrine",
+          "slug": null,
+          "description": "The predicate felony must be INDEPENDENT of the homicide. If the felonious conduct is itself the assault that kills, the felony merges and cannot support felony murder — otherwise every fatal assault would become murder and the homicide grading scheme would collapse. Exception: a felony the legislature has explicitly listed as a predicate never merges."
+        },
+        {
+          "rule": "Limitation 3 — Res Gestae",
+          "slug": null,
+          "description": "The killing must fall within the felony's time, distance, and causal boundaries: the window opens at attempt (beyond mere preparation) and closes when the felon reaches temporary safety — flight is part of the felony. An afterthought felony doesn't count, and both but-for and proximate causation must connect felony to death."
+        },
+        {
+          "rule": "Limitation 4 — Killing by a Non-Felon",
+          "slug": null,
+          "description": "When the fatal shot comes from a police officer, victim, or bystander: the agency approach (majority) allows felony murder only for killings by a felon or co-felon — lawful acts of others cannot be imputed; the proximate-cause approach (minority) holds the felon liable for any foreseeable death from the chain of events. Apply both."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The Heart-Attack Hypo",
+          "description": "The causal-connection floor: a bank teller two windows down who dies of a pre-existing heart condition during a robbery is not felony murder — a death merely coinciding with a felony lacks the causal link."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "People v. Fuller (Cal. App. 1978)",
+          "holding": "Equating an accidental death during petty theft with premeditated murder \"destroys the symmetry of the law\" — the classic statement of the rule's disproportionality."
+        },
+        {
+          "name": "People v. Henderson",
+          "holding": "False imprisonment is not inherently dangerous under the abstract test — it could be committed by fraud or deceit, and it is irrelevant that this defendant used a gun."
+        },
+        {
+          "name": "Eubanks v. State",
+          "holding": "Possession with intent to distribute — arguably harmless in the abstract — was inherently dangerous on the facts (heroin spilled within reach of a cognitively impaired person); the facts-of-the-case test in action."
+        },
+        {
+          "name": "People v. Smith (Cal. 1984)",
+          "holding": "Felony child abuse taking the form of a direct fatal assault merges with the homicide — it cannot serve as the felony-murder predicate."
+        },
+        {
+          "name": "People v. Chun (Cal. 2009)",
+          "holding": "When the underlying felony is assaultive in nature — judged by its elements — it merges with the homicide.",
+          "caseId": "2506956"
+        },
+        {
+          "name": "Fisher v. State (Md. 2001)",
+          "holding": "Child abuse causing death is an inherently dangerous felony supporting second-degree felony murder; with Evans, the two-step framework — common law elevates to murder, statutes sort the degree."
+        },
+        {
+          "name": "State v. Sophophone (Kan. 2001)",
+          "holding": "A co-felon shot by police during flight — Kansas adopted the agency approach and reversed the felony-murder conviction; killings the felon does not commit or control cannot be imputed.",
+          "caseId": "2524852"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Defenses: Justification vs. Excuse",
+      "subtitle": "The taxonomy that organizes everything that follows",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Five Categories of Defense",
+          "slug": null,
+          "description": "(1) Failure of proof — the prosecution cannot prove an element (mistake negating mens rea); (2) justification — the ACT was right or tolerable (self-defense, necessity); (3) excuse — the act was wrong but the ACTOR is not blameworthy (insanity, duress); (4) offense modifications — elements met but no real harm (abandonment); (5) nonexculpatory public policy (statutes of limitations, immunities)."
+        },
+        {
+          "rule": "Why Justification vs. Excuse Matters",
+          "slug": null,
+          "description": "Five practical stakes: the moral message (what society condones vs. what it forgives); doctrinal consistency; accomplice liability — a justified principal's accomplice is also acquitted, while an excused principal's accomplice is still guilty (hand a gun to an insane killer and you are guilty of murder); retroactivity; and burden of proof — the prosecution typically must disprove justifications, while defendants must prove excuses."
+        },
+        {
+          "rule": "The Theories of Excuse",
+          "slug": null,
+          "description": "Why excuse anyone? Deterrence (the undeterrable can't be deterred — Bentham), causation (conduct caused by factors beyond control — proves too much), character (the act doesn't reveal bad character — unworkable), and the most accepted: FREE CHOICE — the actor lacked the capacity or fair opportunity to understand the facts, appreciate the norm violation, or conform conduct to law. Two paths in: internal disability (insanity) and external pressure (duress)."
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Self-Defense",
+      "subtitle": "Justified deadly force — five elements, proportionality, and the battered-woman cases",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Rule and Its Five Elements",
+          "slug": null,
+          "description": "A non-aggressor is justified in using deadly force if she reasonably believes it necessary to repel the imminent use of unlawful deadly force. Elements: (1) not the aggressor; (2) reasonable belief — objective, though informed by the defendant's circumstances; (3) necessity — no lesser option suffices; (4) imminence — the threat is about to happen NOW; (5) the threatened force is unlawful and deadly."
+        },
+        {
+          "rule": "The Four Proportionality Rules",
+          "slug": null,
+          "description": "(1) Non-deadly force may repel non-deadly force. (2) Deadly force may NEVER repel non-deadly force — even when deadly force is the only way. (3) Non-deadly force may repel deadly force, and is the only force justified if it would suffice. (4) Deadly force may repel deadly force only when necessary. Deadly force means force likely or intended to cause death or serious bodily injury — a shove into traffic qualifies."
+        },
+        {
+          "rule": "Aggressor Rules",
+          "slug": null,
+          "description": "An aggressor — one whose unlawful act was reasonably calculated to produce an affray with injurious consequences — loses the right of self-defense. A NON-DEADLY aggressor met with deadly force regains it automatically (majority) or only by retreating when safely possible (minority). A DEADLY aggressor regains it only by abandoning the deadly design and communicating that abandonment."
+        },
+        {
+          "rule": "Battered Woman Syndrome",
+          "slug": null,
+          "description": "BWS is enhanced self-defense, not diminished capacity. Confrontational killings (during an attack) usually earn the instruction; non-confrontational killings (sleeping abuser) almost always fail on imminence; hired killings never qualify. The syndrome's evidentiary work: expert testimony explains why leaving was not an option, bolsters credibility, grounds the reasonableness of the belief in the pattern of abuse, and can recharacterize a seemingly non-confrontational moment as confrontational — pre-violence cues (private signals only the victim recognizes) can start the confrontation before a blow lands."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "People v. Goetz (N.Y. 1986)",
+          "holding": "The subway-shooting case — New York's standard is objective reasonableness: the defendant's experiences and circumstances inform, but do not replace, what a reasonable person in the situation would believe.",
+          "caseId": "5688368"
+        },
+        {
+          "name": "United States v. Peterson (D.C. Cir. 1973)",
+          "holding": "Self-defense cannot rest on a \"self-generated necessity to kill\" — one who provokes the confrontation forfeits both self-defense and the castle doctrine."
+        },
+        {
+          "name": "State v. Wanrow (Wash. 1977)",
+          "holding": "A 5'4\" woman on crutches facing a large intoxicated intruder — the jury must consider all facts and circumstances known to the defendant, including physical characteristics; the male-pronoun instruction was reversible error.",
+          "caseId": "1455776"
+        },
+        {
+          "name": "State v. Norman (N.C. 1989)",
+          "holding": "After 25 years of severe abuse, killing the sleeping abuser did not warrant a self-defense instruction — imminence is strict, and relaxing it would license \"opportune homicide.\" The prevailing (and much-criticized) rule for non-confrontational BWS killings."
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Retreat, Defense of Others, Habitation & Property",
+      "subtitle": "The remaining justifications — each with its own trigger and limits",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Retreat and Stand Your Ground",
+          "slug": null,
+          "description": "Majority: no duty to retreat before using force in self-defense, so long as you are somewhere you may lawfully be. Ohio joined in 2021 — ORC § 2901.09 abolishes the duty to retreat and forbids the trier of fact from even considering the possibility of retreat. Minority: retreat is required when it can be accomplished in complete safety. The castle doctrine — no duty to retreat from your dwelling (extending to curtilage, offices, and vehicles) — matters only in retreat jurisdictions, applies to internal (domestic) threats, and is forfeited by the one who provoked the confrontation."
+        },
+        {
+          "rule": "Defense of Others",
+          "slug": null,
+          "description": "The rejected common-law alter ego rule made the intervenor stand in the shoes of the person defended — a reasonable mistake meant liability, because the defense tracked objective reality. The MPC § 3.05 majority rule is based on reasonable appearances: force is justified if (a) the actor could use it in self-defense in that situation, (b) on the circumstances as the actor believes them the third party would be justified, and (c) the actor believes intervention necessary. Analyze it as fully derivative of self-defense — and don't blend the defenses."
+        },
+        {
+          "rule": "Defense of Habitation",
+          "slug": null,
+          "description": "An older doctrine protecting the THRESHOLD, not the person — it triggers earlier than self-defense and requires no personal jeopardy. Three approaches: the broad early rule (deadly force against any imminent unlawful entry), the middle rule (entry plus intent to injure an occupant or commit a felony — read as dangerous felonies), and the narrow rule (forcible felonies only). Spring guns and traps are judged on OBJECTIVE REALITY, not reasonable appearances — set one at your peril."
+        },
+        {
+          "rule": "Defense of Property",
+          "slug": null,
+          "description": "Never deadly force — life is more sacred than property. Non-deadly force may prevent imminent unlawful dispossession; once dispossessed, no force at all except fresh pursuit (see it happen, chase immediately, non-deadly only). The defense protects lawful POSSESSION, not title — a mechanic with a lien may resist even the owner; an owner may not forcibly resist a lawful repossession."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "State v. Abbott (N.J. 1961)",
+          "holding": "The anti-retreat rationale in its classic form — the law should not denounce as criminal what accords with the behavior of reasonable people, nor demand what \"smacks of cowardice.\""
+        },
+        {
+          "name": "State v. Boyett (N.M. 2008)",
+          "holding": "Habitation failed where the visitor had stepped back from the door — the defense guards against attempted forced entry at the threshold, not against anyone who once approached it.",
+          "caseId": "2517123"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Necessity — Choice of Evils",
+      "subtitle": "Justification by the lesser evil — applied very strictly",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Elements",
+          "slug": null,
+          "description": "Three-element core: (1) the act prevents a significant evil; (2) no adequate alternative exists; (3) the harm caused is not disproportionate to the harm avoided. The fuller four-element version adds a clear and imminent danger and a reasonable expectation of effectiveness, and many courts require that the defendant not be at fault in creating the emergency."
+        },
+        {
+          "rule": "Common Law vs. MPC § 3.02",
+          "slug": null,
+          "description": "Common law: objective — would a reasonable person in the defendant's situation, knowing what the defendant knew, have believed the necessity existed? Threats must come from natural forces. MPC: subjective belief that the conduct was necessary, from ANY source of threat — but the evil avoided must actually be GREATER (not equal), the balancing is objective at trial, the legislature can preempt the choice, and a defendant reckless or negligent in creating the situation can still be convicted of recklessness or negligence crimes (§ 3.02(2))."
+        },
+        {
+          "rule": "Necessity and Murder",
+          "slug": null,
+          "description": "At common law, necessity does not justify the deliberate killing of an innocent person — though the holding is likely narrower than \"never\": the objections were the unfair selection, the lack of consent, and the uncertainty. The MPC disagrees outright: a net saving of lives establishes justification. Civil disobedience: courts nearly always deny necessity for indirect protest — there are legal alternatives — though the Washington Supreme Court recently rejected that as an absolute rule."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Nelson v. State (Alaska 1979)",
+          "holding": "Taking government equipment to free a truck stuck in a marsh — conviction affirmed: no significant evil, adequate alternatives, disproportionate harm. But an honest, reasonable, mistaken belief in the elements would have sufficed."
+        },
+        {
+          "name": "The Queen v. Dudley and Stephens (Q.B. 1884)",
+          "holding": "Necessity does not justify killing an innocent — Lord Coleridge: who chooses whose life is worth more, and by what measure? The weakest was chosen by those who profited from the choice.",
+          "caseId": "manual-dudley-stephens"
+        },
+        {
+          "name": "In re Winship (U.S. 1970)",
+          "holding": "The state bears the burden on every element — so where necessity negates an element (like intent to deprive), due process puts the burden of disproof on the prosecution.",
+          "caseId": "108111"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Duress",
+      "subtitle": "The excuse of overborne will",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Common Law Elements",
+          "slug": null,
+          "description": "(1) Another person threatened to kill or grievously injure the defendant or a third party unless she committed the offense; (2) she reasonably believed the threat was genuine; (3) the threat was present, imminent, and impending; (4) there was no reasonable escape except compliance; (5) she was not at fault in exposing herself to the threat. Critical limit: duress excuses any offense EXCEPT murder."
+        },
+        {
+          "rule": "MPC § 2.09",
+          "slug": null,
+          "description": "No imminence requirement — the question is whether a person of reasonable firmness in the actor's situation would have been unable to resist. \"Situation\" includes stark, tangible factors (size, strength, age, health) but not temperament. Reasonably mistaken belief in the threat: full defense. Reckless mistake: liability for recklessness crimes. And no murder exception."
+        },
+        {
+          "rule": "Duress vs. Necessity",
+          "slug": null,
+          "description": "Duress: human threats; free will OVERCOME; an excuse. Necessity: natural forces (at common law); free will properly EXERCISED toward the lesser evil; a justification. Duress does not negate mens rea — the coerced bank robber still intends the robbery; coercion supplies the reason for the intent, not its absence. That is exactly why it is an excuse."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "United States v. Contento-Pachon (9th Cir. 1984)",
+          "holding": "A Bogota taxi driver swallowed 129 cocaine balloons under death threats to his family — reversed: immediacy, well-grounded fear, and inescapability were jury questions; the real issue is whether the jury hears the duress evidence at all. Necessity was properly excluded — the coercion was human and he was not acting for the general welfare.",
+          "caseId": "428603"
+        },
+        {
+          "name": "State v. B.H.",
+          "holding": "Battered-woman-syndrome evidence maps onto duress: the pattern of abuse can establish a constant implicit threat (immediacy), make the fear well-grounded without words, and explain why escape was not a real option."
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Insanity & Competency",
+      "subtitle": "Legal insanity at the time of the act — and fitness to stand trial now",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Competency vs. Insanity",
+          "slug": null,
+          "description": "Competency is procedural and about NOW: can the defendant consult with counsel with a reasonable degree of rational understanding, and does she have a rational and factual understanding of the proceedings? Anyone can raise it; the judge decides. Insanity is substantive and about THE TIME OF THE CRIME. Incompetency suspends proceedings — commitment is limited to the reasonable time needed to determine whether competency can be restored, measured by competency rather than the underlying charge; if restoration is improbable, the state must shift to civil commitment (mentally ill AND dangerous, by clear and convincing evidence) or release."
+        },
+        {
+          "rule": "The Five Insanity Tests",
+          "slug": null,
+          "description": "The pendulum, with each test's target: (1) M'Naghten (1843) — defect of reason from disease of the mind such that D didn't know the NATURE AND QUALITY of the act, or didn't know it was WRONG. Cognition only. (2) Irresistible impulse — M'Naghten plus a volitional prong: free agency destroyed, power to choose lost. Cognition + volition. (3) Durham (1954) — the act was the PRODUCT of mental disease. Pure causation; the broadest; nearly extinct. (4) MPC § 4.01 (1962) — lacks SUBSTANTIAL CAPACITY either to APPRECIATE the criminality [wrongfulness] of the conduct or to CONFORM conduct to law. Cognition + volition, graded rather than all-or-nothing, with \"appreciate\" richer than \"know.\" Repeated antisocial conduct alone doesn't count (§ 4.01(2)). (5) Federal IDRA (1984, post-Hinckley) — SEVERE disease rendering D UNABLE to appreciate the nature and quality or wrongfulness of the act; volitional prong stripped; defendant's burden, by clear and convincing evidence. Cognition only."
+        },
+        {
+          "rule": "Pleading, Burden & Disposition",
+          "slug": null,
+          "description": "NGRI requires advance notice; courts may commit for a 60-90-day evaluation; most states now put the burden on the defendant (a post-Hinckley shift the Constitution permits). Some states add a bifurcated trial (merits first, sanity second) and a few offer Guilty But Mentally Ill. NGRI is no acquittal in effect: automatic civil commitment typically follows, must end when the acquittee is no longer mentally ill — yet in practice often outlasts the maximum criminal sentence. In federal court, experts may testify to diagnosis but not the ultimate legal conclusion (FRE 704(b)) — a direct response to the dueling experts at the Hinckley trial."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Why Excuse the Insane",
+          "description": "None of punishment's purposes is served: prison does not rehabilitate mental illness, the insane are by definition undeterrable, and retribution against someone who lacks the power to reason \"degenerates into a sadistic form of revenge.\" Guilt is a moral judgment that presupposes a free agent choosing between right and wrong."
+        },
+        {
+          "name": "Cognition vs. Volition — the Exam Question",
+          "description": "Tag each test: M'Naghten and the federal IDRA test are cognition-only; irresistible impulse and the MPC test add volition; Durham asks only causation. Hinckley won on the VOLITIONAL prong — he knew the shooting was wrong but couldn't control the fixation — which is precisely why Congress stripped that prong in 1984."
+        },
+        {
+          "name": "Belief vs. Delusion",
+          "description": "The defense asks whether the mental machinery is broken, not whether the beliefs are abhorrent: an idiosyncratic psychotic delusion may excuse; a coherent extremist ideology does not; \"God told me\" divides into intact religious motivation (no defense) and psychotic delusion in religious clothing (Andrea Yates, NGRI on retrial)."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "M'Naghten's Case (H.L. 1843)",
+          "holding": "The original cognitive test — a defect of reason from disease of the mind leaving the accused not knowing the nature and quality of the act, or that it was wrong."
+        },
+        {
+          "name": "Dusky v. United States (U.S. 1960)",
+          "holding": "The competency standard: sufficient present ability to consult with one's lawyer with a reasonable degree of rational understanding, and a rational as well as factual understanding of the proceedings."
+        },
+        {
+          "name": "Medina v. California (U.S. 1992)",
+          "holding": "A state may presume competency and require the defendant to prove incompetency by a preponderance.",
+          "caseId": "112775"
+        },
+        {
+          "name": "Cooper v. Oklahoma (U.S. 1996)",
+          "holding": "But requiring clear and convincing proof of incompetency violates due process — the preponderance floor is the ceiling.",
+          "caseId": "118018"
+        },
+        {
+          "name": "Jackson v. Indiana (U.S. 1972)",
+          "holding": "An incompetent defendant cannot be held indefinitely — commitment is limited to the reasonable period needed to assess whether competency will be restored; otherwise, civil commitment or release.",
+          "caseId": "108556"
+        },
+        {
+          "name": "Sell v. United States (U.S. 2003)",
+          "holding": "Forced antipsychotic medication solely to restore trial competency is permitted only rarely — treatment must be medically appropriate, unlikely to compromise trial fairness, and necessary to an important governmental interest.",
+          "caseId": "130152"
+        },
+        {
+          "name": "Leland v. Oregon (U.S. 1952)",
+          "holding": "Insanity is an affirmative defense — the legislature may constitutionally place the burden of proving it on the defendant.",
+          "caseId": "105024"
+        },
+        {
+          "name": "Foucha v. Louisiana (U.S. 1992)",
+          "holding": "An NGRI acquittee must be released once no longer mentally ill — dangerousness alone cannot justify continued commitment.",
+          "caseId": "112731"
+        },
+        {
+          "name": "Durham v. United States (D.C. Cir. 1954)",
+          "holding": "The product test — excused if the act was the product of mental disease or defect. Freed the experts and swallowed the jury; nearly every jurisdiction has abandoned it.",
+          "caseId": "234593"
+        },
+        {
+          "name": "United States v. Freeman (2d Cir. 1966)",
+          "holding": "Judge Kaufman's classic account of why the insane are excused: rehabilitation, deterrence, and retribution all fail when the defendant lacks the power to reason."
+        },
+        {
+          "name": "United States v. Lyons (5th Cir. 1984)",
+          "holding": "The volitional-prong debate crystallized: the majority (with the APA) — the line between an irresistible impulse and an impulse not resisted is \"no sharper than that between twilight and dusk\"; the dissent — a purely cognitive test guarantees unjust punishment of those who truly cannot conform."
+        },
+        {
+          "name": "State v. Johnson (R.I. 1979)",
+          "holding": "The tour-of-the-tests case — traces the historical evolution from M'Naghten through irresistible impulse and Durham to the MPC standard."
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Inchoate Offenses: Attempt & Conspiracy",
+      "subtitle": "Punishing crime before completion",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Why Punish Inchoate Conduct",
+          "slug": null,
+          "description": "Three functions: a lawful basis for police to intervene BEFORE completion; the actor's demonstrated dangerous disposition; and equality of treatment — when only luck separates failure from success, exculpating the failure \"would shock the common sense of justice.\" The counterweight: broad inchoate liability invites punishing equivocal behavior viewed through \"an unfriendly eye.\""
+        },
+        {
+          "rule": "Attempt — Structure and Grading",
+          "slug": null,
+          "description": "Incomplete attempts (the actor desists or is stopped) versus complete attempts (does everything planned and fails — the misfire). Traditional grading punishes attempt below the completed crime, commonly half the maximum; MPC § 5.05 grades attempt at parity with the target offense, except that attempting a capital crime or first-degree felony is a second-degree felony. Underneath sits the luck problem: identical intent and conduct, punishment turned on whether the gun fired."
+        },
+        {
+          "rule": "Conspiracy — Definition and Elements",
+          "slug": null,
+          "description": "A partnership in criminal purposes: an agreement, express or implied, between two or more persons to commit a criminal act or to accomplish a legal act by unlawful means. The gist is the AGREEMENT itself — complete at common law without any overt act (most modern statutes and the MPC add an overt-act requirement). Twofold specific intent: intent to combine, and intent to accomplish the objective. No merger at common law — conspiracy and the completed crime are separately punishable; the MPC merges them when the conspiracy went no further than the completed offense (§ 1.07(1))."
+        },
+        {
+          "rule": "The Pinkerton Doctrine",
+          "slug": null,
+          "description": "While the partnership in crime continues, partners act for each other: a conspirator is liable for co-conspirators' substantive crimes committed (1) in furtherance of the conspiracy, (2) within its scope, and (3) reasonably foreseeable as a natural consequence of the agreement. The dissent's warning — vicarious criminal guilt as broad as civil partnership liability — became the MPC's position: it rejects Pinkerton outright, lest the law \"lose all sense of just proportion.\""
+        },
+        {
+          "rule": "The Inchoate Spectrum and Conspiracy's Procedural Power",
+          "slug": null,
+          "description": "Solicitation is complete on the request; conspiracy on the agreement; attempt requires a direct movement toward commission — each a higher threshold. Conspiracy's procedural advantages for prosecutors: the co-conspirator hearsay exception, joint trials with their spillover prejudice, and venue wherever any overt act occurred."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "McQuirter v. State (Ala. 1953)",
+          "holding": "A conviction for \"attempt to commit an assault with intent to rape\" on wholly equivocal facts — the standing warning about what broad inchoate liability plus prejudice can do.",
+          "caseId": "1801433"
+        },
+        {
+          "name": "People v. Carter (Mich. 1982)",
+          "holding": "Conspiracy defined: a partnership in criminal purposes whose gist is the unlawful agreement itself, requiring the twofold specific intent to combine and to accomplish the objective."
+        },
+        {
+          "name": "Callanan v. United States (U.S. 1961)",
+          "holding": "The classic case for conspiracy's special danger — concerted action raises the odds of success, deepens commitment to crime, and makes more elaborate wrongs possible.",
+          "caseId": "106152"
+        },
+        {
+          "name": "Pinkerton v. United States (U.S. 1946)",
+          "holding": "Co-conspirator liability for substantive offenses in furtherance of, within the scope of, and reasonably foreseeable from the conspiracy — over a dissent warning against vicarious criminal guilt.",
+          "caseId": "104316"
+        },
+        {
+          "name": "Krulewitch v. United States (U.S. 1949)",
+          "holding": "The order-of-proof problem — in theory the conspiracy is proved before co-conspirator hearsay comes in; in practice defendants face \"a hodgepodge of acts and statements by others.\"",
+          "caseId": "104646"
+        }
+      ]
+    }
+  ],
+  "revision_note": "Initial canonical Criminal Law outline: 16 sections authored from Sage's Spring 2026 course notes (master outline + final-weeks notes), with 62 key cases (39 linked to case pages). Accomplice liability omitted — no notes exist for the final week."
+}
