@@ -360,7 +360,20 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### The Torts Outline (canonical outline #2) + Civ Pro v6
 Owner: Claude
-Status: shipped 2026-07-15
+Status: shipped 2026-07-15; **v2 live same day** — Sage compiled his professor's complete
+slide deck into a PDF (pulled from his MacBook via `scp macbook:...`) and asked for a
+coverage check. Per the standing bright line the deck was used as a topic checklist ONLY —
+no slide expression in the outline. Result: 14 of ~16 course units were already covered;
+v2 (commit 063e017) adds a new Immunities section (id 17, after Defenses — from Sage's
+Oct 29 notes + Reading Assignment 16: Freehe, Zellmer, Abernathy, Laird v. Nelms
+(unlinked), Deuser, Lorman, Riss, DeLong), plus notes-sourced gap fills
+(proximate-cause policy limits, seatbelt non-use, joint enterprise/bailments/negligent
+entrustment, premises details, damages valuation, warning-defect satellites) and two
+concepts written from general black-letter doctrine because his notes lack them
+(professional malpractice standard, informed consent — flagged to Sage for possible
+removal). v2 imported to production with Sage's explicit per-run authorization; live
+totals 17 sections / 95 sources, 118 key cases / 95 linked. Gap report retained at the
+session scratchpad (torts-gap-report.md).
 Files: `frontend/content/outlines/torts.json`, `frontend/content/outlines/civil-procedure.json`,
 `frontend/app/study/outlines/page.tsx`, `frontend/app/sitemap.ts`
 Summary: Civ Pro reached v6 (Filing & Service and Appeal enriched from Sage's Notion notes;
