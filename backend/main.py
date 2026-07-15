@@ -5255,10 +5255,16 @@ Continue the practice essay study session. Generate fact patterns only from outl
         usage_data = resp_data.get("usage", {})
         input_tokens = usage_data.get("input_tokens", 0)
         output_tokens = usage_data.get("output_tokens", 0)
+        cache_read_tokens = usage_data.get("cache_read_input_tokens") or 0
+        cache_write_tokens = usage_data.get("cache_creation_input_tokens") or 0
+        # Cache telemetry: cache_read > 0 means the prompt cache is working;
+        # all-zero cache fields on repeat turns means a silent no-op
+        print(f"[cache] outline_chat input={input_tokens} output={output_tokens} "
+              f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
         cost = anthropic_call_cost(
             input_tokens, output_tokens,
-            cache_read_tokens=usage_data.get("cache_read_input_tokens") or 0,
-            cache_write_tokens=usage_data.get("cache_creation_input_tokens") or 0,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
             model=model,
         )
 
@@ -5947,6 +5953,8 @@ Guidelines:
             model=model,
         )
         usage_type = "study_chat_haiku" if "haiku" in model else "study_chat_sonnet"
+        print(f"[cache] study_chat input={input_tokens} output={output_tokens} "
+              f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
         # Save assistant message, update usage
         try:
@@ -6275,6 +6283,8 @@ Guidelines:
             model=model,
         )
         usage_type = "case_ask_haiku" if "haiku" in model else "case_ask_sonnet"
+        print(f"[cache] case_ask input={input_tokens} output={output_tokens} "
+              f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
         # Final done event — always send before DB operations so frontend never hangs
         remaining = None
@@ -9357,6 +9367,8 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
             cache_read_tokens=cache_read_tokens,
             cache_write_tokens=cache_write_tokens,
         )
+        print(f"[cache] msj_chat input={input_tokens} output={output_tokens} "
+              f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
 
@@ -10088,6 +10100,8 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
             cache_read_tokens=cache_read_tokens,
             cache_write_tokens=cache_write_tokens,
         )
+        print(f"[cache] affidavit_chat input={input_tokens} output={output_tokens} "
+              f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
 
