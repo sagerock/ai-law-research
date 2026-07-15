@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, startTransition } from 'react'
+import { useEffect, useRef, useState, startTransition } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, Loader2, MessageCircle, Send, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react'
 import OutlineMarkdown from '@/components/outlines/OutlineMarkdown'
@@ -32,6 +32,55 @@ export default function CanonicalOutlineClient({ initialOutline }: { initialOutl
   const [loadingComments, setLoadingComments] = useState<number | null>(null)
   const [savingComment, setSavingComment] = useState<number | null>(null)
   const [voting, setVoting] = useState<number | null>(null)
+  const [activeSlug, setActiveSlug] = useState<string | null>(null)
+  const navRef = useRef<HTMLElement | null>(null)
+
+  // Scroll-spy: the active section is the last one whose top has crossed a
+  // marker 25% down the viewport (falling back to the first section at the top
+  // of the page).
+  useEffect(() => {
+    const sections = outline.sections
+      .map(section => document.getElementById(section.slug))
+      .filter((el): el is HTMLElement => el !== null)
+    if (sections.length === 0) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const marker = window.innerHeight * 0.25
+      let current = sections[0].id
+      for (const el of sections) {
+        if (el.getBoundingClientRect().top <= marker) current = el.id
+        else break
+      }
+      setActiveSlug(current)
+    }
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [outline.sections])
+
+  // Keep the active link visible inside the (internally scrolling) nav.
+  useEffect(() => {
+    if (!activeSlug || !navRef.current) return
+    const link = navRef.current.querySelector<HTMLElement>(`a[href="#${activeSlug}"]`)
+    if (!link) return
+    const nav = navRef.current
+    const linkTop = link.getBoundingClientRect().top - nav.getBoundingClientRect().top + nav.scrollTop
+    const linkBottom = linkTop + link.offsetHeight
+    if (linkTop < nav.scrollTop) {
+      nav.scrollTop = linkTop - 8
+    } else if (linkBottom > nav.scrollTop + nav.clientHeight) {
+      nav.scrollTop = linkBottom - nav.clientHeight + 8
+    }
+  }, [activeSlug])
 
   useEffect(() => {
     if (!session?.access_token) return
@@ -155,13 +204,17 @@ export default function CanonicalOutlineClient({ initialOutline }: { initialOutl
 
         <div className="grid gap-10 lg:grid-cols-[250px_minmax(0,1fr)]">
           <aside className="hidden lg:block">
-            <nav className="sticky top-24 rounded-2xl border border-sage-200 bg-white p-4" aria-label="Outline sections">
+            <nav ref={navRef} className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto overscroll-contain rounded-2xl border border-sage-200 bg-white p-4" aria-label="Outline sections">
               <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">On this page</p>
               <ol className="space-y-1">
                 {outline.sections.map((section, index) => (
                   <li key={section.id}>
-                    <a href={`#${section.slug}`} className="flex gap-2 rounded-lg px-2 py-2 text-sm text-stone-600 hover:bg-sage-50 hover:text-sage-800">
-                      <span className="text-stone-400">{index + 1}.</span>{section.title}
+                    <a
+                      href={`#${section.slug}`}
+                      aria-current={activeSlug === section.slug ? 'location' : undefined}
+                      className={`flex gap-2 rounded-lg px-2 py-2 text-sm ${activeSlug === section.slug ? 'bg-sage-100 font-medium text-sage-900' : 'text-stone-600 hover:bg-sage-50 hover:text-sage-800'}`}
+                    >
+                      <span className={activeSlug === section.slug ? 'text-sage-600' : 'text-stone-400'}>{index + 1}.</span>{section.title}
                     </a>
                   </li>
                 ))}
