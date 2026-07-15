@@ -415,9 +415,16 @@ nonmutual preclusion. Semtek's inclusion also closes part of the flagged Erie-mo
 gap. Live-verified after import (note: `/outlines/[slug]` has `revalidate: 300` — the
 page can serve stale content for up to 5 minutes after an import; poll before declaring
 a publish broken). Version 4 = 15 sections / 146 sources. Commit: `6700be0`.
-Still available in the CP2 outline for future cycles: trial-phase depth (Dairy Queen,
-Pennsylvania RR v. Chamberlain), post-trial (Trivedi, Rule 606(b) juror misconduct),
-fuller appeal treatment.
+Version 5 — Trial & Post-Trial enrichment (Claude, 2026-07-14, same night, commit
+`5e3089a`): surgical rather than rewrite — these sections were already solid. Added
+jury-control mechanisms (Rule 51 / Rule 49 verdict-form consistency options, with the
+cross-link to issue preclusion's general-verdict problem), the JMOL evidence-viewing
+rules, Trivedi v. Cooper (50(a)-waiver trap; remittitur with intertwined liability and
+damages — links via manual id `lexis-trivedi-v-cooper-1996`), Wilson v. Vermont
+Castings (internal vs. extraneous juror conduct under 606(b)), and the Piesco
+credibility principle; linked the previously unlinked Dairy Queen, J.F. Edwards, Davey,
+and Neely. Outline-wide: 83/103 key cases linked. Remaining from the CP2 outline:
+a fuller Appeal treatment (currently 2 cases) — the last thin spot.
 
 Multi-course roadmap (Sage, 2026-07-14): the same authoring pipeline extends to
 **Criminal Law and Torts** (his 1L fall notes) and **Evidence** (in progress now; his
