@@ -220,22 +220,36 @@ async def cmd_candidate_list(n):
     at semantic review. Queue priority mirrors the legacy batch — landmarks first
     (most-visited pages), curated 1L cases next, everything else by citation count.
     Cases held at semantic review stay excluded until a human clears the failure row.
+
+    Cases linked from a published canonical outline (tortwell.com/outlines/*) rank
+    just below the priority casebook and are admitted even without a legacy brief —
+    the outlines send readers straight to these pages, so they convert first
+    (Sage, 2026-07-15).
     """
+    outline_case_sql = """SELECT 1
+                     FROM canonical_outline_section_sources src
+                     JOIN canonical_outline_section_revisions sr ON sr.id = src.section_revision_id
+                     JOIN canonical_outline_revisions rev ON rev.id = sr.revision_id
+                     JOIN canonical_outlines o ON o.id = rev.outline_id
+                          AND o.current_version = rev.version AND o.is_published
+                     WHERE src.target_type = 'case' AND src.target_ref = c.id"""
     conn = await asyncpg.connect(prod_url())
     try:
         rows = await conn.fetch(
-            """SELECT c.id AS case_id, c.title, c.decision_date,
+            f"""SELECT c.id AS case_id, c.title, c.decision_date,
                       (SELECT COUNT(*) FROM citations t
                        WHERE t.target_case_id = c.id) AS cites,
                       EXISTS (SELECT 1 FROM casebook_cases cc
                               WHERE cc.case_id = c.id AND cc.casebook_id = $2) AS priority_casebook,
+                      EXISTS ({outline_case_sql}) AS outline_case,
                       (SELECT cc.sort_order FROM casebook_cases cc
                        WHERE cc.case_id = c.id AND cc.casebook_id = $2
                        LIMIT 1) AS priority_order
                FROM cases c
                WHERE (EXISTS (SELECT 1 FROM ai_summaries s WHERE s.case_id = c.id)
                       OR EXISTS (SELECT 1 FROM casebook_cases cc
-                                 WHERE cc.case_id = c.id AND cc.casebook_id = $2))
+                                 WHERE cc.case_id = c.id AND cc.casebook_id = $2)
+                      OR EXISTS ({outline_case_sql}))
                  AND NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
                                   WHERE k.case_id = c.id AND k.provider = $1)
                   AND NOT EXISTS (SELECT 1 FROM structured_summary_failures f
@@ -251,11 +265,13 @@ async def cmd_candidate_list(n):
             cid = row["case_id"]
             if row["priority_casebook"]:
                 return (0, row["priority_order"] or 999999)
+            if row["outline_case"]:
+                return (1, -row["cites"])
             if cid in landmark_rank:
-                return (1, landmark_rank[cid])
+                return (2, landmark_rank[cid])
             if cid in curated_rank:
-                return (2, curated_rank[cid])
-            return (3, -row["cites"])
+                return (3, curated_rank[cid])
+            return (4, -row["cites"])
 
         queue = [
             {
