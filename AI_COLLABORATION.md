@@ -401,6 +401,24 @@ Kroger and Van Dusen. King v. Blanton now links via its `manual-king-v-blanton` 
 Version 3 imported to production (15 sections / 134 sources) and verified live.
 Still banked from the slide doc: the Mullane notice framework for Filing & Service.
 
+Version 4 — Preclusion upgrade (Claude, 2026-07-14, same night): the outline's only
+case-less section now carries its full canon (10/10 linked: Hansberry, Carter v. Hinkle,
+Blonder-Tongue, Parklane, Frier, Martin v. Wilks, River Park, Semtek, Taylor v. Sturgell,
+Lucky Brand) — authored from Sage's OWN 240-page Civ Pro II outline
+(`/mnt/d/Downloads/MAIN OUTLINE CIV PRO II.pdf`; his authored work, so publishable-grade
+source, unlike the professor-slide compilation). Adds choice-of-preclusion-law
+(Art. IV/§1738/Semtek), the seven-step claim checklist, §24(2)'s six transactional
+factors vs. same-evidence/primary-rights, counterclaim preclusion as rule preclusion,
+Taylor's six exceptions, issue-preclusion elements (burden-of-proof transfer rule,
+general-verdict problem, essential-as-factual-dicta), and Blonder-Tongue/Parklane
+nonmutual preclusion. Semtek's inclusion also closes part of the flagged Erie-modern
+gap. Live-verified after import (note: `/outlines/[slug]` has `revalidate: 300` — the
+page can serve stale content for up to 5 minutes after an import; poll before declaring
+a publish broken). Version 4 = 15 sections / 146 sources. Commit: `6700be0`.
+Still available in the CP2 outline for future cycles: trial-phase depth (Dairy Queen,
+Pennsylvania RR v. Chamberlain), post-trial (Trivedi, Rule 606(b) juror misconduct),
+fuller appeal treatment.
+
 Multi-course roadmap (Sage, 2026-07-14): the same authoring pipeline extends to
 **Criminal Law and Torts** (his 1L fall notes) and **Evidence** (in progress now; his
 final is July 31) — explicitly NOT tonight; wait for Sage to start each. The pipeline
