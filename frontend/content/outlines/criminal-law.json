@@ -487,6 +487,11 @@
           "rule": "The Theories of Excuse",
           "slug": null,
           "description": "Why excuse anyone? Deterrence (the undeterrable can't be deterred — Bentham), causation (conduct caused by factors beyond control — proves too much), character (the act doesn't reveal bad character — unworkable), and the most accepted: FREE CHOICE — the actor lacked the capacity or fair opportunity to understand the facts, appreciate the norm violation, or conform conduct to law. Two paths in: internal disability (insanity) and external pressure (duress)."
+        },
+        {
+          "rule": "Entrapment",
+          "slug": null,
+          "description": "A policy defense against government overreach. Subjective test (majority/federal): was THIS defendant predisposed to commit the crime before the government's inducement? The defendant raises it by a preponderance; the government then must prove predisposition beyond a reasonable doubt. Objective test (minority/MPC): would the government's conduct have induced a law-abiding person to commit the crime? — the focus is the police, not the defendant."
         }
       ]
     },
@@ -674,7 +679,7 @@
         {
           "rule": "Pleading, Burden & Disposition",
           "slug": null,
-          "description": "NGRI requires advance notice; courts may commit for a 60-90-day evaluation; most states now put the burden on the defendant (a post-Hinckley shift the Constitution permits). Some states add a bifurcated trial (merits first, sanity second) and a few offer Guilty But Mentally Ill. NGRI is no acquittal in effect: automatic civil commitment typically follows, must end when the acquittee is no longer mentally ill — yet in practice often outlasts the maximum criminal sentence. In federal court, experts may testify to diagnosis but not the ultimate legal conclusion (FRE 704(b)) — a direct response to the dueling experts at the Hinckley trial."
+          "description": "NGRI requires advance notice; courts may commit for a 60-90-day evaluation; most states now put the burden on the defendant (a post-Hinckley shift the Constitution permits). Some states add a bifurcated trial (merits first, sanity second), a few offer Guilty But Mentally Ill, and four states have abolished the insanity defense outright. NGRI is no acquittal in effect: automatic civil commitment typically follows, must end when the acquittee is no longer mentally ill — yet in practice often outlasts the maximum criminal sentence. In federal court, experts may testify to diagnosis but not the ultimate legal conclusion (FRE 704(b)) — a direct response to the dueling experts at the Hinckley trial."
         }
       ],
       "concepts": [
@@ -751,8 +756,8 @@
     },
     {
       "id": 16,
-      "title": "Inchoate Offenses: Attempt & Conspiracy",
-      "subtitle": "Punishing crime before completion",
+      "title": "Attempt",
+      "subtitle": "Punishing the try — mens rea, the act tests, and impossibility",
       "kind": "doctrine",
       "isWide": true,
       "rules": [
@@ -762,14 +767,64 @@
           "description": "Three functions: a lawful basis for police to intervene BEFORE completion; the actor's demonstrated dangerous disposition; and equality of treatment — when only luck separates failure from success, exculpating the failure \"would shock the common sense of justice.\" The counterweight: broad inchoate liability invites punishing equivocal behavior viewed through \"an unfriendly eye.\""
         },
         {
-          "rule": "Attempt — Structure and Grading",
+          "rule": "Mens Rea of Attempt",
           "slug": null,
-          "description": "Incomplete attempts (the actor desists or is stopped) versus complete attempts (does everything planned and fails — the misfire). Traditional grading punishes attempt below the completed crime, commonly half the maximum; MPC § 5.05 grades attempt at parity with the target offense, except that attempting a capital crime or first-degree felony is a second-degree felony. Underneath sits the luck problem: identical intent and conduct, punishment turned on whether the gun fired."
+          "description": "Attempt is always a SPECIFIC-INTENT crime: the actor must intend to commit the target offense, whatever the target's own mens rea. Incomplete attempts (the actor desists or is stopped) contrast with complete attempts (does everything planned and fails — the misfire)."
         },
         {
-          "rule": "Conspiracy — Definition and Elements",
+          "rule": "Actus Reus — the Line Between Preparation and Attempt",
           "slug": null,
-          "description": "A partnership in criminal purposes: an agreement, express or implied, between two or more persons to commit a criminal act or to accomplish a legal act by unlawful means. The gist is the AGREEMENT itself — complete at common law without any overt act (most modern statutes and the MPC add an overt-act requirement). Twofold specific intent: intent to combine, and intent to accomplish the objective. No merger at common law — conspiracy and the completed crime are separately punishable; the MPC merges them when the conspiracy went no further than the completed offense (§ 1.07(1))."
+          "description": "The common law tests, from latest-triggering to earliest: last act (all steps completed); physical proximity (close in time and space to the final act); dangerous proximity (dangerously near completion — the traditional favorite); unequivocality/res ipsa loquitur (the conduct alone unambiguously manifests criminal purpose); probable desistance (past the point a normal citizen would turn back). The MPC § 5.01 substantial step test triggers earliest: an act strongly corroborative of criminal purpose suffices, with enumerated examples — lying in wait, luring the victim, reconnoitering the scene, unlawful entry, possessing specially designed materials."
+        },
+        {
+          "rule": "Impossibility",
+          "slug": null,
+          "description": "Factual impossibility — the crime couldn't succeed because of facts unknown to the actor (empty pocket, unloaded gun) — is NEVER a defense. Inherent factual impossibility — the means were absurdly incapable of success — may be. Pure legal impossibility — the intended act simply isn't a crime — is ALWAYS a defense: intending to violate a law that doesn't exist criminalizes nothing."
+        },
+        {
+          "rule": "Grading (MPC § 5.05)",
+          "slug": null,
+          "description": "Traditional grading punishes attempt below the completed crime, commonly half the maximum. The MPC grades attempt at parity with the target offense — except that attempting a capital crime or first-degree felony is a second-degree felony. Underneath sits the luck problem: identical intent and conduct, punishment turned on whether the gun fired."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Rex v. Scofield (Eng. 1784)",
+          "holding": "The first common-law recognition of attempt as a crime — the completion of a crime is not required for criminality."
+        },
+        {
+          "name": "McQuirter v. State (Ala. 1953)",
+          "holding": "A conviction for \"attempt to commit an assault with intent to rape\" on wholly equivocal facts — the standing warning about what broad inchoate liability plus prejudice can do.",
+          "caseId": "1801433"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Conspiracy",
+      "subtitle": "The prosecutor's darling — agreement as crime",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Definition and Elements",
+          "slug": null,
+          "description": "A partnership in criminal purposes: an agreement, express or implied, between two or more persons to commit a criminal act or to accomplish a legal act by unlawful means. The gist is the AGREEMENT itself. Twofold specific intent: intent to combine, and intent to accomplish the objective. No merger at common law — conspiracy and the completed crime are separately punishable; the MPC merges them when the conspiracy went no further than the completed offense (§ 1.07(1))."
+        },
+        {
+          "rule": "The Overt-Act Matrix",
+          "slug": null,
+          "description": "Pure common law: no overt act required — the agreement completes the crime. Modern majority (including 18 U.S.C. § 371): some overt act by any conspirator, however preliminary. MPC § 5.03(5): an overt act is required except for first- and second-degree felonies, where the agreement alone suffices."
+        },
+        {
+          "rule": "Bilateral vs. Unilateral; Wharton's Rule",
+          "slug": null,
+          "description": "Common law conspiracy is BILATERAL — two genuinely agreeing parties, so agreeing with an undercover officer is no conspiracy; the MPC's UNILATERAL approach asks only whether THIS defendant agreed. Wharton's Rule: no conspiracy where the substantive offense itself requires two participants (dueling, adultery, bribery) — with exceptions for a third party joining and for the participant the statute doesn't punish."
+        },
+        {
+          "rule": "Withdrawal and Renunciation",
+          "slug": null,
+          "description": "At common law, withdrawal never erases the completed conspiracy — timely communicated withdrawal only cuts off liability for co-conspirators' FUTURE crimes (and Pinkerton liability going forward). The MPC § 5.03(6) goes further: true renunciation — thwarting the conspiracy's success under circumstances showing a complete and voluntary abandonment of criminal purpose — is an affirmative defense to the conspiracy itself."
         },
         {
           "rule": "The Pinkerton Doctrine",
@@ -777,17 +832,12 @@
           "description": "While the partnership in crime continues, partners act for each other: a conspirator is liable for co-conspirators' substantive crimes committed (1) in furtherance of the conspiracy, (2) within its scope, and (3) reasonably foreseeable as a natural consequence of the agreement. The dissent's warning — vicarious criminal guilt as broad as civil partnership liability — became the MPC's position: it rejects Pinkerton outright, lest the law \"lose all sense of just proportion.\""
         },
         {
-          "rule": "The Inchoate Spectrum and Conspiracy's Procedural Power",
+          "rule": "Structures and Procedural Power",
           "slug": null,
-          "description": "Solicitation is complete on the request; conspiracy on the agreement; attempt requires a direct movement toward commission — each a higher threshold. Conspiracy's procedural advantages for prosecutors: the co-conspirator hearsay exception, joint trials with their spillover prejudice, and venue wherever any overt act occurred."
+          "description": "Wheel conspiracies (a hub dealing with spokes — one conspiracy only if the spokes know of and depend on each other) versus chain conspiracies (links in a distribution line — one conspiracy because each link knows others must exist). The inchoate spectrum: solicitation is complete on the request, conspiracy on the agreement, attempt only on a direct movement toward commission. Conspiracy's procedural advantages: the co-conspirator hearsay exception, joint trials with their spillover prejudice, and venue wherever any overt act occurred."
         }
       ],
       "keyCases": [
-        {
-          "name": "McQuirter v. State (Ala. 1953)",
-          "holding": "A conviction for \"attempt to commit an assault with intent to rape\" on wholly equivocal facts — the standing warning about what broad inchoate liability plus prejudice can do.",
-          "caseId": "1801433"
-        },
         {
           "name": "People v. Carter (Mich. 1982)",
           "holding": "Conspiracy defined: a partnership in criminal purposes whose gist is the unlawful agreement itself, requiring the twofold specific intent to combine and to accomplish the objective."
@@ -799,16 +849,86 @@
         },
         {
           "name": "Pinkerton v. United States (U.S. 1946)",
-          "holding": "Co-conspirator liability for substantive offenses in furtherance of, within the scope of, and reasonably foreseeable from the conspiracy — over a dissent warning against vicarious criminal guilt.",
+          "holding": "Co-conspirator liability for substantive offenses in furtherance of, within the scope of, and reasonably foreseeable from the conspiracy — Daniel was liable for crimes Walter committed while Daniel sat in prison; the dissent warned against vicarious criminal guilt.",
           "caseId": "104316"
         },
         {
           "name": "Krulewitch v. United States (U.S. 1949)",
-          "holding": "The order-of-proof problem — in theory the conspiracy is proved before co-conspirator hearsay comes in; in practice defendants face \"a hodgepodge of acts and statements by others.\"",
+          "holding": "Justice Jackson: conspiracy \"almost defies definition\" — and the order-of-proof problem means defendants in practice face \"a hodgepodge of acts and statements by others.\"",
           "caseId": "104646"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Accomplice Liability",
+      "subtitle": "Liability for the conduct of another — dual intent and derivative guilt",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Dual-Intent Requirement",
+          "slug": null,
+          "description": "An accomplice must (1) intend to assist the principal AND (2) intend that the principal commit the substantive offense. Mere knowledge that one's aid will help a crime is generally NOT enough — the purposive standard: the accomplice must \"wish to bring about\" the crime and seek by his action to make it succeed. Knowledge can support an inference of purpose when the supplier has a STAKE IN THE VENTURE: inflated prices, no legitimate use for the goods, or grossly disproportionate volume — and for serious felonies, knowledge alone may suffice where it would not for a misdemeanor."
+        },
+        {
+          "rule": "The Actus Reus of Aiding",
+          "slug": null,
+          "description": "Any aid or encouragement suffices, however trivial — but MERE PRESENCE at the scene, without prearrangement or encouragement, is never enough. Psychological encouragement counts (cheering on an assault makes you an accomplice to it); an omission counts only where the bystander had a legal duty to act. An equivocal statement (\"I guess you could consider us lookouts\") does not by itself establish the shared criminal intent."
+        },
+        {
+          "rule": "Derivative Liability and Degrees",
+          "slug": null,
+          "description": "Accomplice liability derives from the principal's crime — the accessory follows the nature of the principal. An accessory cannot be convicted of a HIGHER degree than the principal in the first degree; but a principal in the second degree can — the one who incites with premeditation while the hotheaded killer acts in passion. The old common-law pigeonholes (principal first/second degree, accessory before/after the fact) survive mainly as terminology; accessory after the fact is now a separate, lesser offense (obstruction), not accomplice liability."
+        },
+        {
+          "rule": "Natural and Probable Consequences",
+          "slug": null,
+          "description": "In many jurisdictions an accomplice is liable not only for the crime aided but for any other offense that was a natural and probable (foreseeable) consequence of it. The MPC rejects this — under § 2.06 the accomplice is liable only for crimes he intended to promote or facilitate."
+        },
+        {
+          "rule": "MPC § 2.06 — Including Abandonment",
+          "slug": null,
+          "description": "Liability for another's conduct when one acts with the purpose of promoting or facilitating the offense and solicits, aids, agrees, or attempts to aid. Unique to the MPC (§ 2.06(6)(c)): an accomplice can ABANDON — terminating complicity before the crime and either depriving the aid of effectiveness or giving timely warning to the police. The common law recognizes no accomplice abandonment. Note the split: one can be a conspirator without being an accomplice, and vice versa — the agreement and the aid are different acts."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "State v. Hoselton (W. Va. 1988)",
+          "holding": "The ambiguous-lookout case — an equivocal statement without evidence of shared criminal intent cannot support accomplice liability; conviction reversed.",
+          "caseId": "1349308"
+        },
+        {
+          "name": "State v. Ward (Md. 1978)",
+          "holding": "The accessory follows the nature of his principal — an accessory cannot be convicted of a higher degree of the crime than the principal in the first degree."
+        },
+        {
+          "name": "United States v. Peoni (2d Cir. 1938)",
+          "holding": "Learned Hand's purposive standard — the accomplice must in some sense \"wish to bring about\" the crime and seek by his action to make it succeed; knowledge is not enough.",
+          "caseId": "1485475"
+        },
+        {
+          "name": "Backun v. United States (4th Cir. 1940)",
+          "holding": "The counter-view — selling goods to a man known to be planning murder is complicity; knowledge plus assistance can suffice for serious crimes.",
+          "caseId": "1498899"
+        },
+        {
+          "name": "People v. Lauria (Cal. App. 1967)",
+          "holding": "The answering-service case — knowledge that prostitutes used his service was not intent to further a misdemeanor; intent may be inferred from a stake in the venture: inflated rates, no legitimate use, or grossly disproportionate volume.",
+          "caseId": "2214552"
+        },
+        {
+          "name": "United States v. Falcone (U.S. 1940)",
+          "holding": "Sellers of sugar, yeast, and cans to moonshiners were not conspirators — supplying innocuous goods with knowledge of their use is not agreement.",
+          "caseId": "103400"
+        },
+        {
+          "name": "Direct Sales Co. v. United States (U.S. 1943)",
+          "holding": "Morphine sold at 300 times normal volume crossed the line — restricted goods in reckless quantities show a stake in the venture and intent to further it.",
+          "caseId": "103872"
         }
       ]
     }
   ],
-  "revision_note": "Initial canonical Criminal Law outline: 16 sections authored from Sage's Spring 2026 course notes (master outline + final-weeks notes), with 62 key cases (39 linked to case pages). Accomplice liability omitted — no notes exist for the final week."
+  "revision_note": "Initial canonical Criminal Law outline: 18 sections authored from Sage's Spring 2026 course notes (Notion master outline and weekly notes, plus Weeks 13-14 of his compiled MAIN OUTLINE document, which supplied attempt's act tests and impossibility, conspiracy's full doctrine, entrapment, and the accomplice liability unit), with 70 key cases (45 linked to case pages)."
 }
