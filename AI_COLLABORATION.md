@@ -79,6 +79,35 @@ Design choices that go with it:
   private AI-study documents; legacy public storage objects must be copied into PostgreSQL
   and revoked with `scripts/privatize_outline_uploads.py` before the privacy cutover deploy.
 
+### Casebook full text requires a license; case lists don't (2026-07-14)
+
+**The bright line: never load a casebook's full text (reader chapters or Q&A retrieval
+corpus) unless its license permits it.** Today exactly one casebook has full text —
+Cheng's Evidence Draft v38, which is CC BY-NC-SA 4.0 (and where Sage has a direct author
+relationship; see the Cheng outreach). Its license lives in `casebooks.metadata.license`
+(set via `scripts/set_casebook_license.py`), is exposed by the textbook detail API, and
+renders as an attribution + license link on the textbook page; the reader chapters carry
+their own attribution footer. Any future full-text book must follow the same pattern:
+license verified first, metadata set, attribution rendered.
+
+Why the case *lists* (570 casebooks, ~41k case mappings) are a different, defensible
+category (Claude analysis, 2026-07-14; Sage — a law student — reviewed the frame): the
+opinions are public domain (government edicts), the briefs are Tortwell's own work, and
+book metadata is unprotectable fact. The gray area is compilation doctrine — a
+casebook's selection/arrangement of cases is protectable (Feist), and the lists
+reproduce the selection. Mitigations that keep it defensible and should be preserved:
+(1) pages serve a FLAT case list — do not publicly reproduce chapter-by-chapter
+structure or chapter headings for unlicensed books (arrangement stays untaken);
+(2) zero expressive text from any book — no note questions, excerpts, or commentary;
+(3) the fair-use posture is a finding aid pointing to Tortwell's own briefs of
+public-domain cases (Google Books/HathiTrust index line), with no market substitution;
+(4) the model is industry practice — casebook-aligned study aids are Quimbee's core
+product (Sage's inspiration for the feature: https://www.quimbee.com/casebooks/).
+Realistic worst case for a list is a publisher takedown request → remove that book's
+list. Keep the Textbooks nav link: 502 books with mapped cases, the site's most
+student-shaped entry point (decision: Sage, 2026-07-14, after considering removal over
+maintenance worries — the catalog is reference data, not content that rots).
+
 ### Study tab leads with Outlines; Mindmaps demoted from nav (2026-07-14)
 
 Sage's call: `/study` now redirects to `/study/outlines`, and the Mindmaps tab is gone
