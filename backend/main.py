@@ -5185,6 +5185,18 @@ Continue the practice essay study session. Generate fact patterns only from outl
 
         api_messages = [{"role": h["role"], "content": h["content"]} for h in history]
 
+        # Prompt caching: the system prompt (with the full outline) is stable
+        # per conversation, and the full history is resent every turn. Cache
+        # the system block and mark the newest turn so the next one reads the
+        # whole prior prefix at ~10% of input price.
+        if api_messages:
+            last = api_messages[-1]
+            last["content"] = [{
+                "type": "text",
+                "text": last["content"],
+                "cache_control": {"type": "ephemeral"},
+            }]
+
         # Call Claude API
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -5197,7 +5209,11 @@ Continue the practice essay study session. Generate fact patterns only from outl
                 json={
                     "model": model,
                     "max_tokens": 2000,
-                    "system": system_prompt,
+                    "system": [{
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": {"type": "ephemeral"},
+                    }],
                     "messages": api_messages,
                 },
                 timeout=60.0,
@@ -5796,8 +5812,21 @@ Guidelines:
 
     if notes_context:
         system_prompt += f"\n\nThe student has shared these study notes for reference:{notes_context}"
+
+    # Prompt caching: the preamble + notes (up to 120KB) are stable for the
+    # whole conversation, so they live in a cached block. The FTS case briefs
+    # change with every question, so they go in a separate block AFTER the
+    # cache breakpoint — otherwise they'd invalidate the cache each turn.
+    system_blocks = [{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": {"type": "ephemeral"},
+    }]
     if briefs_context:
-        system_prompt += f"\n\nRelevant case briefs from our database:{briefs_context}"
+        system_blocks.append({
+            "type": "text",
+            "text": f"Relevant case briefs from our database:{briefs_context}",
+        })
 
     # Build messages for API (skip last entry which is the user msg we just added)
     api_messages = []
@@ -5824,7 +5853,7 @@ Guidelines:
                     json={
                         "model": model,
                         "max_tokens": 4096,
-                        "system": system_prompt,
+                        "system": system_blocks,
                         "messages": api_messages,
                         "stream": True,
                     },
@@ -6164,7 +6193,14 @@ Guidelines:
             async with client.messages.stream(
                 model=model,
                 max_tokens=4096,
-                system=system_prompt,
+                # The system prompt (brief + opinion text + citation network) is
+                # stable for the whole conversation about this case — cache it so
+                # every follow-up turn reads it at ~10% of input price.
+                system=[{
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }],
                 messages=api_messages,
             ) as stream:
                 async for text in stream.text_stream:
@@ -9244,7 +9280,14 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
             async with client.messages.stream(
                 model="claude-sonnet-4-6",
                 max_tokens=4096,
-                system=system_prompt,
+                # The system prompt (case info + extracted documents + library
+                # docs) is stable across the conversation — cache it so every
+                # follow-up turn reads it at ~10% of input price.
+                system=[{
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }],
                 messages=messages,
             ) as stream:
                 async for text in stream.text_stream:
@@ -9962,7 +10005,14 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
             async with client.messages.stream(
                 model="claude-sonnet-4-6",
                 max_tokens=4096,
-                system=system_prompt,
+                # The system prompt (case info + extracted documents + library
+                # docs) is stable across the conversation — cache it so every
+                # follow-up turn reads it at ~10% of input price.
+                system=[{
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }],
                 messages=messages,
             ) as stream:
                 async for text in stream.text_stream:
