@@ -3,7 +3,7 @@
   "subject": "Civil Procedure",
   "title": "The Civil Procedure Outline",
   "description": "A community-improved, source-linked guide to the federal civil litigation process.",
-  "version": 5,
+  "version": 6,
   "sections": [
     {
       "id": 12,
@@ -620,30 +620,76 @@
         {
           "rule": "Rule 3",
           "slug": "rule-3",
-          "description": "Commencement of action — filing the complaint"
+          "description": "Commencement of action — a civil action is commenced by filing the complaint with the court"
         },
         {
-          "rule": "Rule 4",
+          "rule": "Rule 4(a), 4(c)",
           "slug": "rule-4",
-          "description": "Summons — issuance and service of process",
-          "timing": "Must serve within 90 days of filing complaint (Rule 4(m)). If not served in time, court must dismiss without prejudice OR order service within a specified time if plaintiff shows good cause."
+          "description": "What is served and by whom. \"Process\" = summons + complaint, served together — serving only one is insufficient process. The summons must name the court and parties, be directed to the defendant, give the plaintiff's attorney's name and address, state the 21-day time to respond, warn of default, and carry the clerk's signature and court seal. Server must be any non-party at least 18 years old — the plaintiff can never serve."
+        },
+        {
+          "rule": "Rule 4(d)",
+          "slug": "rule-4",
+          "description": "Waiver of service — plaintiff mails two copies of the waiver form, the complaint, and a prepaid return method, giving at least 30 days to return it. Carrot: defendant who waives gets 60 days to respond (90 if outside the U.S.) instead of 21. Stick: a defendant who refuses without good cause pays the costs of formal service. Waiver waives ONLY service — personal jurisdiction, venue, and SMJ objections all survive."
+        },
+        {
+          "rule": "Rule 4(e)",
+          "slug": "rule-4",
+          "description": "Serving individuals — four methods: (1) personal delivery, anywhere; (2) abode service — at the defendant's dwelling or usual place of abode, with someone of suitable age and discretion who resides there (ALL three elements required); (3) delivery to an agent authorized by appointment or by law; (4) any method allowed by the law of the state where the court sits or where service is made."
+        },
+        {
+          "rule": "Rule 4(h)",
+          "slug": "rule-4",
+          "description": "Serving corporations, partnerships, and associations — deliver to an officer, a managing agent, or a general agent specifically authorized to receive service (or an agent appointed by law or by the entity), or use state-law methods. No location requirement for officers and managing agents — serving the president anywhere is valid; serving a receptionist is not."
+        },
+        {
+          "rule": "Rule 4(m)",
+          "slug": "rule-4",
+          "description": "Time limit for service",
+          "timing": "Must serve within 90 days of filing the complaint. If not served in time, the court must dismiss without prejudice OR order service within a specified time; if the plaintiff shows good cause, the court MUST extend."
         },
         {
           "rule": "Rule 4(k)",
           "slug": "rule-4",
-          "description": "Territorial limits of effective service"
+          "description": "Territorial limits of effective service — serving a summons establishes personal jurisdiction over a defendant subject to the jurisdiction of a state court where the district court sits"
         },
         {
           "rule": "Rule 5",
           "slug": "rule-5",
-          "description": "Service and filing of pleadings and papers"
+          "description": "Service of pleadings and papers AFTER the complaint — Rule 4 formality applies only to the initial summons and complaint; everything later may be served by simpler means (first-class mail, electronic filing in most federal courts)"
         }
       ],
       "keyCases": [
         {
           "name": "Mullane v. Central Hanover Bank & Trust Co. (1950)",
-          "holding": "Notice must be reasonably calculated to inform interested parties — due process standard for service",
+          "holding": "Due process requires notice \"reasonably calculated, under all the circumstances, to apprise interested parties of the pendency of the action and afford them an opportunity to present their objections\" — the constitutional floor beneath Rule 4.",
           "caseId": "104786"
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The Two-Layer Requirement",
+          "description": "Service must satisfy BOTH the Due Process Clause (notice \"reasonably calculated, under all the circumstances\" to apprise the defendant — Mullane) AND the technical requirements of Rule 4. Following Rule 4 usually satisfies due process, but unusual circumstances can make Rule 4-compliant service constitutionally inadequate — and actual notice does not cure a Rule 4 violation."
+        },
+        {
+          "name": "The Abode-Service Trap",
+          "description": "All three elements must be met: (1) at the defendant's dwelling or usual place of abode (not a hotel, not the workplace); (2) with someone of suitable age and discretion; (3) who RESIDES there (a spouse who lives there works; a visiting friend or non-live-in housekeeper does not). Missing any one element makes service invalid."
+        },
+        {
+          "name": "12(b)(4) vs. 12(b)(5)",
+          "description": "12(b)(4) (insufficient process) attacks the documents themselves — only one document served, or a defective summons. 12(b)(5) (insufficient service of process) attacks the METHOD — wrong location, wrong person, or the plaintiff served personally; it is the most common challenge. Both are waivable defenses under Rule 12(g)-(h): raise them in the first response or lose them forever."
+        },
+        {
+          "name": "Waiver and the Statute of Limitations",
+          "description": "Do not request waiver when the limitations period is about to expire. Some states stop the clock only on actual service, not filing — and a mailed waiver request is not service. If the statute is about to run, serve formally."
+        },
+        {
+          "name": "Service by Publication",
+          "description": "A last resort only — valid where the defendant cannot be found, no other method works, and state or federal law authorizes it. Due process does not require the impossible; most challenges turn on whether publication really was the last resort."
+        },
+        {
+          "name": "Notice/Service Mismatches",
+          "description": "Actual notice but defective service: the constitution is satisfied but Rule 4 is not — defendant files 12(b)(5), and the court usually allows re-service rather than dismissing. Proper service but no actual notice: a resulting default judgment can be attacked under Rule 60 if the defendant could not have known of the suit."
         }
       ]
     },
@@ -1453,51 +1499,97 @@
         {
           "rule": "28 USC §1291",
           "slug": null,
-          "description": "Final judgment rule — only final decisions (resolving all claims of all parties) are appealable",
+          "description": "Final judgment rule — courts of appeals have jurisdiction over \"final decisions\" of the district courts. A final decision \"ends the litigation on the merits and leaves nothing for the court to do but execute the judgment\" (Catlin v. United States).",
           "timing": "Applies ONLY to \"final decisions\" — must resolve ALL claims of ALL parties. Partial summary judgment on liability alone is NOT final and NOT appealable (Liberty Mutual v. Wetzel). If any claim or party remains unresolved, no appeal under §1291."
         },
         {
-          "rule": "28 USC §1292",
+          "rule": "28 USC §1292(a)(1)",
           "slug": null,
-          "description": "Interlocutory appeals — immediate appeal of certain non-final orders (injunctions, etc.)",
-          "timing": "Available for: orders granting/refusing/modifying injunctions. Permissive interlocutory appeal: district court certifies controlling question of law + appellate court agrees to hear it. Collateral order doctrine (Cohen v. Beneficial Industrial Loan): must be (1) conclusive, (2) separate from merits, (3) effectively unreviewable later."
+          "description": "Interlocutory appeal as of right for orders granting, continuing, modifying, refusing, or dissolving injunctions — an erroneous injunction compels conduct immediately, so the harm can't wait for final judgment. Generally does NOT cover TROs (too short-lived)."
         },
         {
-          "rule": "Rule 54",
+          "rule": "28 USC §1292(b)",
+          "slug": null,
+          "description": "Discretionary interlocutory appeal with two gatekeepers: the district court must certify that the order involves (1) a controlling question of law, (2) with substantial ground for difference of opinion, (3) whose immediate appeal may materially advance the ultimate termination of the litigation — and the court of appeals must then agree to take it. Both must say yes, which makes it rare.",
+          "timing": "Application to the court of appeals within 10 days of the district court's certification."
+        },
+        {
+          "rule": "Rule 54(b)",
           "slug": "rule-54",
-          "description": "Judgment; costs — defines \"final judgment\""
+          "description": "Partial final judgment — in a case with multiple claims or multiple parties, the district court may direct entry of final judgment on fewer than all claims/parties if it completely disposes of at least one claim (or one party) and expressly determines there is \"no just reason for delay.\" Without certification, a partial ruling stays interlocutory and revisable.",
+          "timing": "Once certified, the 30-day appeal clock starts running on that judgment."
         },
         {
           "rule": "Fed. R. App. P. 4",
           "slug": null,
-          "description": "Notice of appeal — strict 30-day deadline after entry of judgment",
-          "timing": "STRICT 30-day deadline — jurisdictional, cannot be waived or extended (with very narrow exceptions). Clock starts from entry of judgment. Missing this deadline = no appeal, period."
+          "description": "Notice of appeal — filed in the DISTRICT court within 30 days after entry of judgment (60 days if the United States is a party). Appeals are governed by the Federal Rules of Appellate Procedure, not the FRCP.",
+          "timing": "STRICT 30-day deadline (60 if the U.S. is a party) — jurisdictional, cannot be waived. Clock starts from entry of judgment. Missing this deadline = no appeal, period."
         }
       ],
       "concepts": [
         {
-          "name": "Exceptions to Finality",
-          "description": "Interlocutory appeals (§1292): orders involving injunctions. Collateral Order Doctrine (Cohen): must be (1) conclusive (fully resolves the disputed question), (2) resolves important question completely separate from merits, (3) effectively unreviewable on appeal from final judgment. Writ of Mandamus: extraordinary remedy for clear abuse of discretion. Permissive Interlocutory Appeal: district court certifies controlling question of law."
+          "name": "Why the Final Judgment Rule Exists",
+          "description": "One appeal per case: the rule prevents piecemeal appeals that disrupt trial proceedings, respects the trial judge's management of the case, and recognizes that many interlocutory errors become moot by final judgment. The tradeoff is finality vs. accuracy — we tolerate some error to end litigation. The exceptions exist for the orders whose harm can't be undone later."
+        },
+        {
+          "name": "The Four Exceptions to Finality, Compared",
+          "description": "Collateral order doctrine: judge-made gloss on §1291, court of appeals decides, construed narrowly. Rule 54(b): district court certifies partial final judgment in multi-claim/multi-party cases. §1292(a)(1): appeal as of right for injunction orders. §1292(b): discretionary, and BOTH the district court and the court of appeals must agree — reserved for controlling legal questions. Writ of mandamus sits outside all four as an extraordinary remedy for clear abuse."
+        },
+        {
+          "name": "The Collateral Order Doctrine's Dispositive Prong: Urgency",
+          "description": "The Cohen test — conclusive, completely separate from the merits, effectively unreviewable later — is driven by the third prong. Ask: if we wait until final judgment, is the right IRRETRIEVABLY lost? Immunity from suit (Mitchell v. Forsyth) and denial of intervention as of right qualify — once trial happens or the case ends without you, the right is gone. Denials of 12(b)(6), jurisdictional rulings, discovery orders, and counsel disqualification all fail — a later appeal or a refund can fix them. \"If the claim is effectively reviewable on appeal from final judgment, it is not an immediately appealable collateral order\" (Van Cauwenberghe v. Biard)."
+        },
+        {
+          "name": "Preserving Error — the Three Ps",
+          "description": "An appellate court will reach an issue only if it was PRESERVED (timely objection below, Rule 46 — with a rare plain-error escape hatch), PRESENTED (properly raised in the appellate briefs, not waived), and PREJUDICIAL (affected substantial rights — harmless error is not reversible, Rule 61). A claim abandoned at trial cannot be resurrected on appeal (MacArthur)."
         },
         {
           "name": "Standards of Appellate Review",
-          "description": "Legal conclusions: de novo (fresh look). Factual findings: clear error (deferential). Jury verdicts: substantial evidence. Discretionary rulings: abuse of discretion. The standard determines how much deference the appellate court gives the trial court."
+          "description": "Legal conclusions (including summary judgment rulings): de novo — fresh look. Factual findings: clear error (Rule 52(a)(6)) — deferential. Jury verdicts: substantial evidence. Discretionary rulings (evidentiary calls, discovery orders, injunctions): abuse of discretion. The standard determines how much deference the trial court gets — and often decides the appeal."
         },
         {
-          "name": "Appellate Court Options",
-          "description": "Affirm, reverse, remand (send back for further proceedings), or modify the judgment."
+          "name": "Mechanics and Outcomes",
+          "description": "Notice of appeal filed in the district court → record assembled (pleadings, transcripts, exhibits) → briefs (appellant's opening, appellee's response, appellant's reply) → oral argument if granted, before a three-judge panel → decision. Appellate courts review the record only — no new evidence or witnesses — and may affirm, reverse, vacate, remand, or modify."
         }
       ],
       "keyCases": [
+        {
+          "name": "Catlin v. United States (1945)",
+          "holding": "Defined the §1291 \"final decision\": one that ends the litigation on the merits and leaves nothing for the court to do but execute the judgment."
+        },
         {
           "name": "Liberty Mutual Insurance Co. v. Wetzel (1976)",
           "holding": "Partial summary judgment on liability alone is not a final decision appealable under §1291.",
           "caseId": "109403"
         },
         {
-          "name": "Cohen v. Beneficial Industrial Loan Corp.",
-          "holding": "Established the collateral order doctrine — narrow exception allowing appeal of orders that are conclusive, separate from the merits, and effectively unreviewable later.",
+          "name": "Cohen v. Beneficial Industrial Loan Corp. (1949)",
+          "holding": "Established the collateral order doctrine — narrow exception allowing immediate appeal of orders that are conclusive, separate from the merits, and effectively unreviewable later.",
           "caseId": "104695"
+        },
+        {
+          "name": "Mitchell v. Forsyth (1985)",
+          "holding": "Denial of qualified immunity is immediately appealable as a collateral order — immunity from suit is destroyed the moment trial proceeds, so waiting for final judgment loses the right forever.",
+          "caseId": "111481"
+        },
+        {
+          "name": "Van Cauwenberghe v. Biard (1988)",
+          "holding": "If a claim is effectively reviewable on appeal from final judgment, it is not an immediately appealable collateral order — the urgency prong is dispositive.",
+          "caseId": "112092"
+        },
+        {
+          "name": "In re Recticel Foam Corp. (1st Cir. 1988)",
+          "holding": "Discovery and case-management orders are not collateral orders — they are intertwined with the case and fixable on later appeal; mere expense and delay don't satisfy the urgency requirement.",
+          "caseId": "513181"
+        },
+        {
+          "name": "Richardson-Merrell Inc. v. Koller (1985)",
+          "holding": "Disqualification of counsel in a civil case is not immediately appealable under the collateral order doctrine."
+        },
+        {
+          "name": "MacArthur v. University of Texas Health Center at Tyler (5th Cir. 1995)",
+          "holding": "A claim pleaded but abandoned at trial — no jury instructions, no interrogatory, no argument — cannot be resurrected on appeal; there is nothing for the appellate court to review.",
+          "caseId": "687292"
         }
       ]
     },
@@ -1638,5 +1730,5 @@
       ]
     }
   ],
-  "revision_note": "Enrich Trial and Post-Trial sections: jury-control mechanisms, JMOL evidence rules, Trivedi/Wilson/Piesco lessons, and case links for Dairy Queen, J.F. Edwards, Davey, and Neely"
+  "revision_note": "v6 cleanup: enrich Filing & Service (Rule 4 service methods, waiver mechanics, abode-service elements, 12(b)(4)/(5) distinction, publication and notice mismatches) and Appeal (Catlin finality definition, the four exceptions compared, the urgency prong, the three Ps of error preservation, FRAP 4 deadlines). Links Mitchell v. Forsyth, Van Cauwenberghe, In re Recticel Foam, and MacArthur."
 }
