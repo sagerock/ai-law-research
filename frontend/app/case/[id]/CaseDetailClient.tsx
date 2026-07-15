@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, Calendar, FileText, TrendingUp, Scale, ExternalLink, Copy, CheckCircle, Sparkles, AlertCircle, BookOpen, Gavel, Link2, Loader2, Bookmark, FolderPlus, Check, ChevronDown, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 import { parseLegalCitations, extractLegalTextRefs } from '@/lib/legalCitations'
@@ -13,6 +14,7 @@ import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
 import CaseAskAI from '@/components/CaseAskAI'
 import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
+import { getCaseArt } from '@/lib/caseArt'
 
 export interface CaseDetail {
   id: string
@@ -151,6 +153,7 @@ interface UserCollection {
 }
 
 export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientProps) {
+  const caseArt = getCaseArt(caseId)
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -804,6 +807,23 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                 </a>
               </div>
             </div>
+
+            {/* Case Illustration */}
+            {caseArt && (
+              <figure className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                <Image
+                  src={caseArt.file}
+                  alt={caseArt.alt}
+                  width={caseArt.width}
+                  height={caseArt.height}
+                  className="w-full h-auto"
+                  priority
+                />
+                <figcaption className="border-t px-4 py-2.5 text-xs text-stone-500">
+                  AI-generated illustration of the facts
+                </figcaption>
+              </figure>
+            )}
 
             {/* Stub Case Banner */}
             {localCaseData.is_stub && !caseSummary && (
