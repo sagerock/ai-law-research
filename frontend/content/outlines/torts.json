@@ -3,7 +3,7 @@
   "subject": "Torts",
   "title": "The Torts Outline",
   "description": "A community-improved, source-linked guide to tort law — intentional torts, negligence, strict liability, and products liability.",
-  "version": 1,
+  "version": 2,
   "sections": [
     {
       "id": 1,
@@ -209,7 +209,7 @@
         {
           "rule": "Consent",
           "slug": null,
-          "description": "Actual, apparent, or presumed (implied in emergencies). Vitiated by fraud, coercion, or incapacity, and exceeding the scope of consent forfeits the privilege."
+          "description": "Actual, apparent, or presumed (implied in emergencies). Vitiated by fraud, coercion, or incapacity, and exceeding the scope of consent forfeits the privilege. In medical settings: performing a procedure with NO valid consent at all is battery, while consent obtained without adequate disclosure of risks is the separate negligence claim of informed consent. Fraud vitiates consent only when it goes to the essential character of the contact, not to collateral matters."
         },
         {
           "rule": "Self-Defense and Defense of Others",
@@ -310,6 +310,14 @@
         {
           "name": "Judge-Made Rules of Conduct Rise and Fall",
           "description": "Holmes tried to fix the standard of care as a matter of law (stop, look, and listen at every crossing); Cardozo walked it back seven years later — standards of behavior are ordinarily for the jury, framed case by case."
+        },
+        {
+          "name": "The Professional Standard & Malpractice",
+          "description": "Professionals — physicians, lawyers, architects, accountants — are held to the skill and knowledge of a reasonably competent member of the profession, not an average one and not their personal best. The standard ordinarily must be established by expert testimony; a novice is held to the full professional standard; and it applies even to gratuitous services. Medical malpractice is the one corner of negligence law where custom is close to conclusive: what competent physicians customarily do effectively defines the standard (contrast T.J. Hooper), with the old strict locality rule giving way to a national standard for board-certified specialists."
+        },
+        {
+          "name": "Informed Consent",
+          "description": "A physician must disclose the material risks of a procedure before the patient consents. The claim requires: a duty to disclose the risk, nondisclosure, causation — the patient (or in some states a reasonable patient) would have refused had the risk been disclosed — and the undisclosed risk materializing into injury. Jurisdictions split between the reasonable-physician standard (what doctors customarily disclose) and the patient-centered material-risk standard. Defenses include emergency, the patient's existing knowledge, and therapeutic privilege."
         }
       ],
       "keyCases": [
@@ -651,6 +659,12 @@
           "holding": "Cardozo: \"Danger invites rescue. The cry of distress is the summons to relief.\" The wrongdoer is accountable to the rescuer as if the rescue had been foreseen.",
           "caseId": "3607799"
         }
+      ],
+      "concepts": [
+        {
+          "name": "Policy Limits — Even Foreseeable Harm Stops Somewhere",
+          "description": "Courts sometimes deny liability for plainly foreseeable harm as a matter of policy: social hosts who serve an intoxicated adult guest are generally not liable (unlike commercial sellers), DES liability stops with the first generation of injured children, and injuries surfacing decades after a negligent act may simply be too remote in time. The rationale is the same line-drawing instinct behind the whole doctrine — liability cannot be limitless."
+        }
       ]
     },
     {
@@ -719,6 +733,88 @@
           "holding": "The discovery rule — a malpractice claim accrues when the patient discovers or reasonably should have discovered the injury, not when the negligence occurred.",
           "caseId": "1715073"
         }
+      ],
+      "concepts": [
+        {
+          "name": "Seatbelt and Helmet Non-Use",
+          "description": "Failing to buckle up doesn't cause the accident — it enlarges the harm — and jurisdictions split on what to do with that: many (including Ohio) fold it into the comparative-fault allocation, some exclude the evidence entirely, and some cap the reduction at a fixed percentage. Distinct from the post-injury duty to mitigate."
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Immunities",
+      "subtitle": "Who cannot be sued — family, charitable, and governmental shields",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Immunity vs. Privilege",
+          "slug": null,
+          "description": "An immunity does not deny that a tort occurred — it shields the defendant from liability under all circumstances within its limits, based on who the defendant is rather than what they did. Privileges, by contrast, justify particular conduct."
+        },
+        {
+          "rule": "Family Immunities",
+          "slug": null,
+          "description": "Interspousal immunity is largely abrogated — 48 states had abandoned it by 2002. Parent-child immunity is only partially retained: negligent parental supervision remains immune (including for those standing in loco parentis, though a stepparent is not automatically among them), while suits proceed for intentional torts, claims aimed at insurance recovery, and negligence outside the parental role — the classic example is driving."
+        },
+        {
+          "rule": "Charitable Immunity",
+          "slug": null,
+          "description": "Largely abrogated — modern charities are substantial enterprises that can insure like anyone else. Volunteer-worker protections sometimes survive by statute."
+        },
+        {
+          "rule": "Sovereign Immunity & the FTCA",
+          "slug": null,
+          "description": "The Federal Tort Claims Act (1946) waives federal immunity for employee negligence — the suit runs against the government, not the employee. No waiver for most intentional torts (with a law-enforcement carve-out) and no strict liability under the Act. The discretionary-function exception preserves immunity for policy-level choices — the question is whether the employee was making policy or merely carrying it out. The Feres doctrine bars claims by service members for service-related injuries. Procedure: administrative claim first, bench trial only, no punitive damages.",
+          "timing": "An FTCA claimant must present an administrative claim to the agency before filing suit."
+        },
+        {
+          "rule": "Municipal Immunity & the Public Duty Doctrine",
+          "slug": null,
+          "description": "Municipal liability tracks two distinctions: governmental vs. proprietary functions, and discretionary (immune) vs. ministerial (not) acts — designing the sewer system is discretionary; failing to repair it is ministerial. The public duty doctrine adds that a duty owed to everyone is a duty owed to no one in particular: no liability for failing to protect an individual absent a special relationship, such as express assurance of help that the plaintiff relied on."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Freehe v. Freehe (Wash. 1972)",
+          "holding": "Abolished interspousal immunity — a spouse may sue a spouse in tort; the doctrine's unity-of-person rationale no longer holds.",
+          "caseId": "2616799"
+        },
+        {
+          "name": "Zellmer v. Zellmer (Wash. 2008)",
+          "holding": "Parental immunity persists for negligent supervision — including for a stepparent standing in loco parentis, a status that is a question of fact rather than automatic.",
+          "caseId": "4913804"
+        },
+        {
+          "name": "Abernathy v. Sisters of St. Mary's (Mo. 1969)",
+          "holding": "Abolished charitable immunity — a nonprofit hospital answers for negligence like any other enterprise.",
+          "caseId": "1716218"
+        },
+        {
+          "name": "Laird v. Nelms (U.S. 1972)",
+          "holding": "No strict liability under the FTCA — sonic-boom damage without negligence is not actionable; the Act waives immunity only for negligent or wrongful acts."
+        },
+        {
+          "name": "Deuser v. Vecera (8th Cir. 1998)",
+          "holding": "The discretionary-function exception — park rangers' choice to release an arrestee rather than book him implemented policy judgment, so the FTCA suit was barred.",
+          "caseId": "3020234"
+        },
+        {
+          "name": "Lorman v. City of Rutland (Vt. 2018)",
+          "holding": "Municipal immunity turns on the discretionary/ministerial line — sewer-system design is protected judgment; sewer repair is not.",
+          "caseId": "4512706"
+        },
+        {
+          "name": "Riss v. City of New York (N.Y. 1968)",
+          "holding": "The public duty doctrine — the city was not liable for failing to protect a woman who repeatedly begged for police protection before being maimed; protection owed to all is enforceable by none individually.",
+          "caseId": "6357118"
+        },
+        {
+          "name": "DeLong v. County of Erie (N.Y. App. Div. 1982)",
+          "holding": "The special-relationship exception — a 911 dispatcher's assurance that help was coming, relied on by the caller, created a duty the public duty doctrine did not erase.",
+          "caseId": "5995099"
+        }
       ]
     },
     {
@@ -731,7 +827,7 @@
         {
           "rule": "The Three Categories",
           "slug": null,
-          "description": "Trespasser (no permission): no duty of reasonable care — only no traps, warnings once discovered, and reasonable care where trespassers are frequent or tolerated; reduced duty to flagrant trespassers. Licensee (permission, own purposes — social guests included): take the property as the family finds it; warn of KNOWN hidden dangers; no duty to inspect. Invitee (present for the owner's purposes — customers): reasonable care to INSPECT, discover, and warn or fix; the owner is not an insurer. The memory trick: licensee = warn what you KNOW; invitee = INSPECT and fix."
+          "description": "Trespasser (no permission): no duty of reasonable care — only no traps, warnings once discovered, reasonable care where trespassers are frequent or tolerated, and a duty to aid a trespasser known to be trapped or helpless; reduced duty to flagrant trespassers. Licensee (permission, own purposes — social guests included): take the property as the family finds it; warn of KNOWN hidden dangers; no duty to inspect — though active operations require reasonable care even toward expected but undiscovered licensees. Invitee (present for the owner's purposes — customers): reasonable care to INSPECT, discover, and warn or fix; the owner is not an insurer. The memory trick: licensee = warn what you KNOW; invitee = INSPECT and fix."
         },
         {
           "rule": "Attractive Nuisance",
@@ -793,6 +889,11 @@
           "rule": "Apparent Agency",
           "slug": null,
           "description": "Holding someone out as your agent creates liability to third parties who reasonably believe the agency and trace that belief to your manifestations (Restatement (Third) of Agency § 2.03 drops the older reliance element). Franchise signage disclaiming ownership can defeat the reasonable belief."
+        },
+        {
+          "rule": "Joint Enterprise, Bailments & Negligent Entrustment",
+          "slug": null,
+          "description": "Joint enterprise: participants are vicariously liable for each other's torts when there is an agreement, a common purpose, a mutual right of control, and a shared pecuniary interest. Bailments: the bailor is generally NOT liable for the bailee's torts — lending your bicycle doesn't make you answer for the crash. The family-purpose doctrine is an exception in some states, but Ohio has not adopted it. Negligent entrustment is different in kind: lending the car to someone you know is unsafe is your OWN negligence, not vicarious liability."
         }
       ],
       "keyCases": [
@@ -924,6 +1025,12 @@
           "name": "BMW of North America, Inc. v. Gore (U.S. 1996)",
           "holding": "The three guideposts for reviewing punitive awards: degree of reprehensibility, ratio to actual or potential harm, and comparable civil penalties.",
           "caseId": "118026"
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Valuation Details",
+          "description": "Tax: compensatory awards for personal physical injury are excluded from income; punitive damages and awards for non-physical torts are taxable. Property: measured by fair market value — at the top of the range, since the plaintiff is an involuntary seller — with possible upward adjustment for heirlooms but generally none for attachment to a pet."
         }
       ]
     },
@@ -1084,6 +1191,12 @@
           "holding": "Hospitals sell services, not products — no strict liability for a defective pacemaker provided incidentally to treatment.",
           "caseId": "2123363"
         }
+      ],
+      "concepts": [
+        {
+          "name": "Warning-Defect Satellites",
+          "description": "Learned intermediary: for prescription drugs and devices, warning the physician suffices — except for mass immunizations, direct-to-consumer marketing, and birth control. No duty to warn of open and obvious dangers or common knowledge (sharp knives cut). Heeding presumption: the plaintiff must show an adequate warning would have changed the outcome, but most states presume a warning would have been read and heeded, rebuttably. An adequate warning gets attention, describes the hazard, and explains how to avoid it."
+        }
       ]
     },
     {
@@ -1128,5 +1241,5 @@
       ]
     }
   ],
-  "revision_note": "Initial canonical Torts outline: 16 sections authored from Sage's Fall 2025 course notes, with 110 key cases (88 linked to case pages)."
+  "revision_note": "v2: add Immunities section (family, charitable, sovereign/FTCA, municipal, public duty — from Sage's Oct 29 notes and Reading Assignment 16, 8 cases, 7 linked) and gap-fill from the slide-deck coverage check: policy limits on proximate cause, seatbelt non-use, joint enterprise/bailments/negligent entrustment, premises and warning-defect details, damages valuation (all from Sage's notes), plus professional-malpractice and informed-consent concepts stated from general black-letter doctrine (slides used as coverage checklist only)."
 }
