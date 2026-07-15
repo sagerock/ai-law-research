@@ -457,6 +457,34 @@ async def debit_pool(amount: float, description: str, reference_id: str | None) 
     )
 
 
+def anthropic_call_cost(
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
+    model: str = "claude-sonnet-4-6",
+) -> float:
+    """Price one Anthropic Messages call, including prompt-cache activity.
+
+    With prompt caching enabled, usage.input_tokens excludes the cached
+    prefix — cache reads bill at 10% of the input rate and 5-minute-TTL
+    cache writes at 125%. Omitting them underprices every cached call
+    (and under-debits the pool).
+    """
+    if "haiku" in model:
+        input_rate, output_rate = 1.00, 5.00    # Haiku 4.5
+    elif "opus" in model:
+        input_rate, output_rate = 5.00, 25.00   # Opus 4.x
+    else:
+        input_rate, output_rate = 3.00, 15.00   # Sonnet 4.x
+    return (
+        input_tokens * input_rate
+        + output_tokens * output_rate
+        + cache_read_tokens * input_rate * 0.10
+        + cache_write_tokens * input_rate * 1.25
+    ) / 1_000_000
+
+
 async def credit_pool(amount: float, entry_type: str, description: str, reference_id: str | None, created_by: str) -> float:
     """Credit the pool. Returns new balance."""
     async with db_pool.acquire() as conn:
@@ -5224,9 +5252,15 @@ Continue the practice essay study session. Generate fact patterns only from outl
 
         resp_data = resp.json()
         ai_content = resp_data["content"][0]["text"]
-        input_tokens = resp_data.get("usage", {}).get("input_tokens", 0)
-        output_tokens = resp_data.get("usage", {}).get("output_tokens", 0)
-        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+        usage_data = resp_data.get("usage", {})
+        input_tokens = usage_data.get("input_tokens", 0)
+        output_tokens = usage_data.get("output_tokens", 0)
+        cost = anthropic_call_cost(
+            input_tokens, output_tokens,
+            cache_read_tokens=usage_data.get("cache_read_input_tokens") or 0,
+            cache_write_tokens=usage_data.get("cache_creation_input_tokens") or 0,
+            model=model,
+        )
 
         # Save AI response
         await conn.execute("""
@@ -5764,6 +5798,7 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
             notes = await conn.fetch("""
                 SELECT title, extracted_text FROM study_notes
                 WHERE id = ANY($1) AND user_id = $2
+                ORDER BY id
             """, note_ids, user_id)
             for note in notes:
                 text = note["extracted_text"] or ""
@@ -5839,6 +5874,8 @@ Guidelines:
         full_response = ""
         input_tokens = 0
         output_tokens = 0
+        cache_read_tokens = 0
+        cache_write_tokens = 0
 
         try:
             async with httpx.AsyncClient() as client:
@@ -5890,6 +5927,8 @@ Guidelines:
                         elif event_type == "message_start":
                             usage = event.get("message", {}).get("usage", {})
                             input_tokens = usage.get("input_tokens", 0)
+                            cache_read_tokens = usage.get("cache_read_input_tokens") or 0
+                            cache_write_tokens = usage.get("cache_creation_input_tokens") or 0
 
                         elif event_type == "message_delta":
                             usage = event.get("usage", {})
@@ -5900,13 +5939,14 @@ Guidelines:
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
-        # Calculate cost
-        if "haiku" in model:
-            cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
-            usage_type = "study_chat_haiku"
-        else:
-            cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
-            usage_type = "study_chat_sonnet"
+        # Calculate cost (includes prompt-cache reads/writes; rates by model)
+        cost = anthropic_call_cost(
+            input_tokens, output_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
+            model=model,
+        )
+        usage_type = "study_chat_haiku" if "haiku" in model else "study_chat_sonnet"
 
         # Save assistant message, update usage
         try:
@@ -5995,6 +6035,7 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
             FROM citations cit
             JOIN cases c ON cit.target_case_id = c.id
             WHERE cit.source_case_id = $1
+            ORDER BY c.id
             LIMIT 10
         """, case_id)
 
@@ -6003,6 +6044,7 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
             FROM citations cit
             JOIN cases c ON cit.source_case_id = c.id
             WHERE cit.target_case_id = $1
+            ORDER BY c.id
             LIMIT 10
         """, case_id)
 
@@ -6187,6 +6229,8 @@ Guidelines:
         full_response = ""
         input_tokens = 0
         output_tokens = 0
+        cache_read_tokens = 0
+        cache_write_tokens = 0
 
         try:
             client = anthropic.AsyncAnthropic(api_key=chat_api_key)
@@ -6211,6 +6255,8 @@ Guidelines:
                 final_message = await stream.get_final_message()
                 input_tokens = final_message.usage.input_tokens
                 output_tokens = final_message.usage.output_tokens
+                cache_read_tokens = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
+                cache_write_tokens = getattr(final_message.usage, "cache_creation_input_tokens", 0) or 0
 
         except anthropic.APIStatusError as e:
             print(f"Case ask API error {e.status_code}: {e.message}")
@@ -6221,13 +6267,14 @@ Guidelines:
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
-        # Calculate cost
-        if "haiku" in model:
-            cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
-            usage_type = "case_ask_haiku"
-        else:
-            cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
-            usage_type = "case_ask_sonnet"
+        # Calculate cost (includes prompt-cache reads/writes; rates by model)
+        cost = anthropic_call_cost(
+            input_tokens, output_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
+            model=model,
+        )
+        usage_type = "case_ask_haiku" if "haiku" in model else "case_ask_sonnet"
 
         # Final done event — always send before DB operations so frontend never hangs
         remaining = None
@@ -9218,7 +9265,7 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         case_info = json.loads(project["case_info"]) if isinstance(project["case_info"], str) else (project["case_info"] or {})
         jurisdiction = case_info.get("jurisdiction", "federal")
         library_docs = await conn.fetch(
-            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND (jurisdiction = $1 OR jurisdiction IS NULL) LIMIT 5",
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND (jurisdiction = $1 OR jurisdiction IS NULL) ORDER BY id LIMIT 5",
             jurisdiction
         )
 
@@ -9297,13 +9344,19 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
                 final_message = await stream.get_final_message()
                 input_tokens = final_message.usage.input_tokens
                 output_tokens = final_message.usage.output_tokens
+                cache_read_tokens = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
+                cache_write_tokens = getattr(final_message.usage, "cache_creation_input_tokens", 0) or 0
 
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
-        # Calculate cost (Sonnet: $3/1M input, $15/1M output)
-        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+        # Calculate cost (includes prompt-cache reads/writes)
+        cost = anthropic_call_cost(
+            input_tokens, output_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
+        )
 
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
 
@@ -9359,7 +9412,7 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         case_info = json.loads(project["case_info"]) if isinstance(project["case_info"], str) else (project["case_info"] or {})
         jurisdiction = case_info.get("jurisdiction", "federal")
         library_docs = await conn.fetch(
-            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND (jurisdiction = $1 OR jurisdiction IS NULL) LIMIT 5",
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND (jurisdiction = $1 OR jurisdiction IS NULL) ORDER BY id LIMIT 5",
             jurisdiction
         )
 
@@ -9978,7 +10031,7 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
         form_data = _parse_jsonb(project["form_data"])
         jurisdiction = case_info.get("jurisdiction", "federal")
         library_docs = await conn.fetch(
-            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND tool_type = $1 AND (jurisdiction = $2 OR jurisdiction IS NULL) LIMIT 5",
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND tool_type = $1 AND (jurisdiction = $2 OR jurisdiction IS NULL) ORDER BY id LIMIT 5",
             tool_type, jurisdiction
         )
 
@@ -10022,12 +10075,19 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
                 final_message = await stream.get_final_message()
                 input_tokens = final_message.usage.input_tokens
                 output_tokens = final_message.usage.output_tokens
+                cache_read_tokens = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
+                cache_write_tokens = getattr(final_message.usage, "cache_creation_input_tokens", 0) or 0
 
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             return
 
-        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+        # Includes prompt-cache reads/writes
+        cost = anthropic_call_cost(
+            input_tokens, output_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
+        )
 
         yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
 
@@ -10087,7 +10147,7 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
         form_data = _parse_jsonb(project["form_data"])
         jurisdiction = case_info.get("jurisdiction", "federal")
         library_docs = await conn.fetch(
-            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND tool_type = $1 AND (jurisdiction = $2 OR jurisdiction IS NULL) LIMIT 5",
+            "SELECT title, content FROM msj_library WHERE is_active = TRUE AND tool_type = $1 AND (jurisdiction = $2 OR jurisdiction IS NULL) ORDER BY id LIMIT 5",
             tool_type, jurisdiction
         )
 
