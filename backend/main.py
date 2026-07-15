@@ -6756,6 +6756,7 @@ async def get_textbook_detail(textbook_id: int):
         "pending_count": pending or 0,
         "supports_qa": bool(_casebook_qa_collection(book["metadata"])),
         "supports_reader": bool(has_reader),
+        "license": _casebook_license(book["metadata"]),
     }
     _textbook_detail_cache[textbook_id] = {"data": result, "time": now}
     return result
@@ -6771,6 +6772,25 @@ def _casebook_qa_collection(metadata) -> Optional[str]:
         except (json.JSONDecodeError, TypeError):
             return None
     return metadata.get("qdrant_collection") if isinstance(metadata, dict) else None
+
+
+def _casebook_license(metadata) -> Optional[dict]:
+    """Return the casebook's content license, if any.
+
+    Full text (reader/Q&A corpus) may only be loaded for casebooks whose
+    metadata carries a license permitting it; this surfaces that license so
+    the frontend can render the attribution the license requires.
+    Shape: {"name", "url", "attribution"}.
+    """
+    if not metadata:
+        return None
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    lic = metadata.get("license") if isinstance(metadata, dict) else None
+    return lic if isinstance(lic, dict) else None
 
 
 def _norm_case_name(s: Optional[str]) -> str:

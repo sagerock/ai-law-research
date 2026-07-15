@@ -32,6 +32,7 @@ interface TextbookData {
   pending_count: number
   supports_qa?: boolean
   supports_reader?: boolean
+  license?: { name: string; url: string; attribution: string } | null
 }
 
 const SUBJECT_LABELS: Record<string, string> = {
@@ -339,6 +340,20 @@ export default function TextbookDetailClient({ textbook }: { textbook: TextbookD
                 <BookOpen className="h-5 w-5" />
                 Read the full book
               </Link>
+            )}
+            {textbook.license && (
+              <p className="mt-3 text-xs text-stone-500">
+                {textbook.license.attribution}{' '}
+                <a
+                  href={textbook.license.url}
+                  target="_blank"
+                  rel="noopener noreferrer license"
+                  className="underline hover:text-stone-700"
+                >
+                  {textbook.license.name}
+                </a>
+                .
+              </p>
             )}
           </div>
 
