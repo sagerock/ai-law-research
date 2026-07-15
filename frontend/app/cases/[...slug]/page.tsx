@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import CaseDetailClient from '../../case/[id]/CaseDetailClient'
 import { BRAND_NAME, SITE_URL } from '@/lib/site'
 import { caseYear, getCase, resolveSlug } from '@/lib/case-data'
+import { getCaseArt } from '@/lib/caseArt'
 
 interface PageProps {
   params: Promise<{ slug: string[] }>
@@ -22,12 +23,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const dateStr = caseData.decision_date || caseData.date_filed
   const year = caseYear(dateStr)
   const canonicalUrl = `${SITE_URL}/cases/${resolved.canonical_slug}`
-  const socialImage = {
-    url: `${SITE_URL}/api/og/cases/${encodeURIComponent(resolved.case_id)}`,
-    width: 1200,
-    height: 630,
-    alt: `${caseName} case brief | ${BRAND_NAME}`,
-  }
+  const art = getCaseArt(resolved.case_id)
+  const socialImage = art
+    ? { url: `${SITE_URL}${art.file}`, width: art.width, height: art.height, alt: art.alt }
+    : {
+        url: `${SITE_URL}/api/og/cases/${encodeURIComponent(resolved.case_id)}`,
+        width: 1200,
+        height: 630,
+        alt: `${caseName} case brief | ${BRAND_NAME}`,
+      }
 
   return {
     title: caseName,
