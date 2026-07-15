@@ -367,6 +367,27 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### The Criminal Law Outline (canonical outline #3)
+Owner: Claude
+Status: shipped 2026-07-15 (v1 live: 18 sections / 45 sources; 70 key cases, 45 linked)
+Files: `frontend/content/outlines/criminal-law.json`, `frontend/app/sitemap.ts`
+Summary: authored from Sage's Spring 2026 notes (Professor Cole, Dressler casebook) — the
+Notion master outline (24 units, distilled by three parallel agents from a 90KB fetch split
+into thirds) plus his compiled "Criminal Law MAIN OUTLINE.pdf" (pulled from his MacBook),
+whose Weeks 13-14 supplied the final-weeks units Notion never got: attempt's act tests and
+impossibility, conspiracy's full doctrine, entrapment, and the entire accomplice-liability
+section. Structure follows Cole's exam decision tree: building blocks (punishment, actus
+reus, causation, mens rea, strict liability, mistakes) → homicide (PA model, voluntary
+manslaughter's three frameworks, felony murder's four limitations) → defenses
+(justification/excuse taxonomy, self-defense/BWS, retreat incl. ORC 2901.09, necessity,
+duress, insanity/competency with all five tests) → inchoate (attempt, conspiracy,
+accomplice). English staples link via manually-added records (manual-dudley-stephens,
+manual-cunningham); 25 cases unlinked (crim state cases are spotty in CourtListener).
+Known gap, deliberate: attempt abandonment/renunciation — absent from all of Sage's
+materials, likely never covered in class. Verified live (200, correct title); 43/44 linked
+cases entered the outline-priority rebuild queue.
+Commits: c1c2112 (v1), 17efa2a (final-weeks fill)
+
 ### The Torts Outline (canonical outline #2) + Civ Pro v6
 Owner: Claude
 Status: shipped 2026-07-15; **v2 live same day** — Sage compiled his professor's complete
