@@ -358,6 +358,32 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### The Torts Outline (canonical outline #2) + Civ Pro v6
+Owner: Claude
+Status: shipped 2026-07-15
+Files: `frontend/content/outlines/torts.json`, `frontend/content/outlines/civil-procedure.json`,
+`frontend/app/study/outlines/page.tsx`, `frontend/app/sitemap.ts`
+Summary: Civ Pro reached v6 (Filing & Service and Appeal enriched from Sage's Notion notes;
+Enforcement deliberately left thin — he has no notes on it, and the fidelity-first rule bars
+inventing doctrine). The Torts Outline shipped as canonical outline #2: 16 doctrine sections
+authored from Sage's Fall 2025 Torts notes (three parallel distillation agents produced
+fidelity-first digests in the session scratchpad), 110 key cases with 88 linked to case pages
+(court + date verified against production search; English cases and a handful missing from
+CourtListener — Vaughan, Blyth, Byrne, Rylands, both Wagon Mounds, Cordas, Lyon v. Carey,
+Indiana Harbor's 7th Cir. opinion, Erie v. Amazon, Montgomery Ward v. Anderson, Schott —
+included unlinked). The study landing page now lists canonical outlines dynamically from
+`GET /api/v1/canonical-outlines` (static Civ Pro fallback if the fetch fails), replacing the
+hardcoded card whose section counts had gone stale; sitemap includes `/outlines/torts`.
+Verification: 97 backend tests, 8 frontend tests, tsc typecheck, importer dry runs
+(Civ Pro 15 sections / 158 sources; Torts 16 sections / 88 sources); both imported to
+production and smoke-tested (list endpoint shows civil-procedure v6 + torts v1;
+tortwell.com/outlines/torts returns 200 with correct title). Section-level votes/comments
+work on Torts automatically — same canonical tables and UI.
+Next: Crim Law outline (Sage's spring notes), then Evidence (target ~July 31). Torts
+follow-ups if desired: link stragglers if the cases land in the DB later; premises-liability
+section has only Rowland linked (his notes attribute little there).
+Commit: 45eaf45 (Torts + landing page), e6b1a57 (Civ Pro v6)
+
 ### Canonical outlines v1 (Civ Pro)
 Owner: Sol
 Status: shipped
