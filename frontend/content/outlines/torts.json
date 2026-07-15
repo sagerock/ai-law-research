@@ -1,0 +1,1132 @@
+{
+  "slug": "torts",
+  "subject": "Torts",
+  "title": "The Torts Outline",
+  "description": "A community-improved, source-linked guide to tort law — intentional torts, negligence, strict liability, and products liability.",
+  "version": 1,
+  "sections": [
+    {
+      "id": 1,
+      "title": "The Framework of Tort Liability",
+      "subtitle": "Four bases of liability and the intent doctrine that separates them",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Four Bases of Liability",
+          "slug": null,
+          "description": "Intentional wrongdoing, negligence, recklessness (conscious disregard of a high probability of harm), and strict liability. The triage for any fact pattern: did the defendant act with purpose? If yes, intentional. If not, but knew the risk, reckless. If they should have known, negligent. If no fault at all but the activity qualifies, strict liability."
+        },
+        {
+          "rule": "The Hierarchy of Mental States",
+          "slug": null,
+          "description": "Specific intent (purpose or desire for the result) → general intent (knowledge to a substantial certainty) → recklessness (awareness of a high probability) → negligence (awareness of a possibility, or should have been aware)."
+        },
+        {
+          "rule": "Transferred Intent (FABTT)",
+          "slug": null,
+          "description": "Intent for one tort or one person transfers when a different tort or different person results — but only among the five writ-of-trespass torts: False imprisonment, Assault, Battery, Trespass to land, Trespass to chattels. Transferred intent does NOT apply to IIED or conversion."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Intent Is Not Motive",
+          "description": "Malice is not required — a prank or a joke counts if the actor intended the contact or apprehension. Good intentions do not negate intent."
+        },
+        {
+          "name": "Substantial Certainty Equals Intent",
+          "description": "Knowledge that a consequence is substantially certain to follow is intent, even without purpose or desire — the five-year-old who pulls the chair away knowing the plaintiff is about to sit."
+        },
+        {
+          "name": "Capacity and Mistake",
+          "description": "Children and the mentally ill can form tortious intent. Mistake — even a reasonable, good-faith one — does not negate intent: shooting the plaintiff's dog believing it a wolf is still intentional."
+        },
+        {
+          "name": "Single vs. Dual Intent",
+          "description": "Single intent (majority): intent to make the contact suffices. Dual intent (minority): must also intend the contact to be harmful or offensive. Assume single intent on exams."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Brown v. Kendall (Mass. 1850)",
+          "holding": "Established the modern fault-based framework — a defendant exercising ordinary care is not liable for accidental injury; the plaintiff must prove fault.",
+          "caseId": "6535730"
+        },
+        {
+          "name": "Garratt v. Dailey (Wash. 1955)",
+          "holding": "Knowledge to a substantial certainty that contact will result satisfies the intent element of battery — even for a five-year-old who moved the chair.",
+          "caseId": "1415303"
+        },
+        {
+          "name": "McGuire v. Almy (Mass. 1937)",
+          "holding": "A mentally ill person is liable for battery if capable of forming and acting on the intent to strike — insanity is not a defense to intentional torts.",
+          "caseId": "6568714"
+        },
+        {
+          "name": "Ranson v. Kitner (Ill. App. 1889)",
+          "holding": "Good-faith mistake does not negate intent — defendants who shot the plaintiff's dog believing it was a wolf were liable for its value.",
+          "caseId": "7085923"
+        },
+        {
+          "name": "Wagner v. State (Utah 2005)",
+          "holding": "Single-intent rule: battery requires only intent to make the contact, not intent that the contact harm or offend.",
+          "caseId": "2576436"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Intentional Torts to Persons",
+      "subtitle": "Battery, assault, false imprisonment, and IIED",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Battery — Elements",
+          "slug": null,
+          "description": "(1) Intent to cause contact (or apprehension, via transferred intent); (2) contact results, directly or indirectly; (3) the contact is harmful or offensive, judged objectively. No actual damages required; the plaintiff need not even be aware of the contact when it happens; consent negates; the eggshell-skull rule applies."
+        },
+        {
+          "rule": "Assault — Elements",
+          "slug": null,
+          "description": "(1) Intent to cause apprehension of imminent contact; (2) the plaintiff actually apprehends the contact; (3) reasonable belief in the defendant's present ability to carry it out. The threat must be imminent — future or conditional threats fail; apprehension means awareness, not fear; words alone are insufficient; no damages required."
+        },
+        {
+          "rule": "False Imprisonment — Elements",
+          "slug": null,
+          "description": "(1) Intent to confine within a bounded area; (2) confinement occurs — no reasonable means of escape; (3) the plaintiff is aware of the confinement OR suffers bodily harm from it. Duration is irrelevant, and comfortable confinement is still confinement."
+        },
+        {
+          "rule": "IIED — Elements",
+          "slug": null,
+          "description": "(1) Extreme and outrageous conduct that shocks the conscience; (2) intent or recklessness; (3) causation; (4) severe emotional distress. Unlike the other intentional torts, actual damages are required and transferred intent does not apply. A mid-20th-century \"gap-filler\" tort."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The Crowded-World Rule",
+          "description": "Ordinary, socially expected touches — a tap on the shoulder to get attention — are not offensive contact; battery's objective standard makes allowance for life in a crowded world."
+        },
+        {
+          "name": "Extension of the Person",
+          "description": "Contact with something closely associated with the plaintiff's body — the plate in their hand, the hat on their head — counts as contact with the person."
+        },
+        {
+          "name": "Mere Insults Are Not IIED",
+          "description": "Rudeness, insults, and indignities fall short of extreme and outrageous conduct; and a bystander who suffers distress watching harm to another generally cannot recover without the defendant knowing of their presence."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Wallace v. Rosen (Ind. Ct. App. 2002)",
+          "holding": "A teacher's touch on the shoulder during a fire drill was not battery — the crowded-world rule tolerates ordinary contacts that are customary and reasonably necessary.",
+          "caseId": "2079379"
+        },
+        {
+          "name": "Fisher v. Carrousel Motor Hotel (Tex. 1967)",
+          "holding": "Snatching a plate from a person's hand is battery — intentional contact with an object closely identified with the body is contact with the person, and no physical injury is required.",
+          "caseId": "2412052"
+        },
+        {
+          "name": "Western Union Telegraph Co. v. Hill (Ala. Ct. App. 1933)",
+          "holding": "Assault turns on the plaintiff's reasonable apprehension and the defendant's apparent present ability to make contact — a jury question even if the defendant could not actually reach her.",
+          "caseId": "3225207"
+        },
+        {
+          "name": "Big Town Nursing Home v. Newman (Tex. Civ. App. 1970)",
+          "holding": "Holding a resident against his will was false imprisonment — the comfort of the confinement is irrelevant.",
+          "caseId": "1754156"
+        },
+        {
+          "name": "Parvi v. City of Kingston (N.Y. 1977)",
+          "holding": "Police who left an intoxicated man near a highway could be liable for false imprisonment — awareness of confinement at the time is what matters, even if memory is later lost.",
+          "caseId": "5632396"
+        },
+        {
+          "name": "Enright v. Groves (Colo. App. 1977)",
+          "holding": "An arrest without proper legal grounds is false imprisonment — the officer demanded a driver's license from a woman walking her dog, and the invalid arrest supplied the unlawful confinement.",
+          "caseId": "1221915"
+        },
+        {
+          "name": "State Rubbish Collectors Ass'n v. Siliznoff (Cal. 1952)",
+          "holding": "Recognized IIED as an independent tort — serious threats intended to cause mental distress are actionable without physical contact or technical assault.",
+          "caseId": "1138855"
+        },
+        {
+          "name": "Harris v. Jones (Md. 1977)",
+          "holding": "IIED failed for lack of proof of SEVERE distress — a supervisor's mockery of the plaintiff's stutter was outrageous, but the distress shown was not severe enough.",
+          "caseId": "1560933"
+        },
+        {
+          "name": "Taylor v. Vallelunga (Cal. App. 1959)",
+          "holding": "A bystander who watched her father being beaten could not recover for IIED — the defendants neither knew she was present nor intended her distress.",
+          "caseId": "1203713"
+        },
+        {
+          "name": "Slocum v. Food Fair Stores (Fla. 1958)",
+          "holding": "\"You stink to me\" is not extreme and outrageous conduct — mere insults and bad manners do not support IIED.",
+          "caseId": "1607019"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Intentional Torts to Property",
+      "subtitle": "Trespass to land, trespass to chattels, and conversion",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Trespass to Land",
+          "slug": null,
+          "description": "Intentional entry onto the land of another (or causing an object to enter). Mistake about ownership or boundary is no defense, and no damages are required — the tort protects the right of exclusive possession itself."
+        },
+        {
+          "rule": "Trespass to Chattels",
+          "slug": null,
+          "description": "Intentional interference with another's personal property. Unlike trespass to land, ACTUAL damages are required — minor interference without harm is not actionable."
+        },
+        {
+          "rule": "Conversion",
+          "slug": null,
+          "description": "Interference so serious that the defendant has exercised dominion over the chattel — the remedy is a forced sale: the defendant pays the full value of the property. Transferred intent does not apply."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Chattels vs. Conversion — the Sliding Scale",
+          "description": "The line is seriousness of interference: minor interference with actual damages is trespass to chattels; interference serious enough to justify a forced sale — destruction, theft, long deprivation — is conversion, with full-value damages and no separate damages requirement."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Privileges & Defenses to Intentional Torts",
+      "subtitle": "Consent, protective privileges, and necessity",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Consent",
+          "slug": null,
+          "description": "Actual, apparent, or presumed (implied in emergencies). Vitiated by fraud, coercion, or incapacity, and exceeding the scope of consent forfeits the privilege."
+        },
+        {
+          "rule": "Self-Defense and Defense of Others",
+          "slug": null,
+          "description": "Reasonable belief in the need for protection, force proportionate to the threat, and the privilege ends when the threat ends. Defense of others tracks self-defense; the majority allows a reasonable mistake about the need to intervene."
+        },
+        {
+          "rule": "Defense and Recovery of Property",
+          "slug": null,
+          "description": "Reasonable force only — never deadly force for property alone; spring guns are prohibited. Recapture of chattels requires wrongful dispossession, fresh pursuit, a demand first, and reasonable force — and force may never be used against innocent parties."
+        },
+        {
+          "rule": "Shopkeeper's Privilege",
+          "slug": null,
+          "description": "A merchant may detain a suspected shoplifter on (1) reasonable belief of theft, (2) in a reasonable manner, (3) for a reasonable time, (4) on the premises or in immediate vicinity. The burden of justifying the detention is on the defendant."
+        },
+        {
+          "rule": "Necessity",
+          "slug": null,
+          "description": "Public necessity (acting for the community) is a COMPLETE privilege — no compensation owed. Private necessity (acting to protect oneself) is an INCOMPLETE privilege — the entry is privileged and the owner cannot expel the entrant during the emergency, but the entrant pays for any damage done."
+        },
+        {
+          "rule": "Discipline and Authority of Law",
+          "slug": null,
+          "description": "Parents and teachers may use reasonable force within the bounds of discipline; officers and citizens acting under lawful authority are privileged within its scope."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Kirby v. Foster (R.I. 1891)",
+          "holding": "The recapture privilege cannot be used against someone who took property in good faith under claim of right — force against innocent parties is not privileged.",
+          "caseId": "4104630"
+        },
+        {
+          "name": "Bonkowski v. Arlan's Department Store (Mich. App. 1968)",
+          "holding": "Shopkeeper's privilege extends to a reasonable detention just outside the store on reasonable suspicion of theft — the merchant bears the burden of showing reasonableness.",
+          "caseId": "2211202"
+        },
+        {
+          "name": "Surocco v. Geary (Cal. 1853)",
+          "holding": "Public necessity is a complete defense — destroying a house to stop a fire from spreading through the city required no compensation.",
+          "caseId": "5590287"
+        },
+        {
+          "name": "Ploof v. Putnam (Vt. 1908)",
+          "holding": "Private necessity privileges entry — a dock owner who unmoored a family's boat during a storm was liable for the resulting injuries; the family had the right to remain during the emergency.",
+          "caseId": "6705727"
+        },
+        {
+          "name": "Vincent v. Lake Erie Transportation Co. (Minn. 1910)",
+          "holding": "Private necessity is incomplete — the ship owner who deliberately kept his vessel lashed to the dock through the storm had to pay for the damage to the dock.",
+          "caseId": "8019723"
+        },
+        {
+          "name": "Ingraham v. Wright (U.S. 1977)",
+          "holding": "Corporal punishment in schools is analyzed within the common-law discipline privilege — reasonable force within disciplinary bounds.",
+          "caseId": "109635"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Negligence: Duty & the Reasonable Person",
+      "subtitle": "The prima facie case and the objective standard of care",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Prima Facie Case",
+          "slug": null,
+          "description": "Duty → breach → factual cause → proximate cause → damages. All five required; unlike the intentional torts, actual harm is an element — there are no nominal damages in negligence. The judge decides whether a duty exists; the jury decides whether it was breached."
+        },
+        {
+          "rule": "The Objective Standard",
+          "slug": null,
+          "description": "Conduct is measured against the reasonable person under the circumstances, not the defendant's best efforts. Intelligence or skill deficits are no excuse, and neither is trying hard. The reasonable person also knows what a reasonable inspection would reveal."
+        },
+        {
+          "rule": "The Hand Formula",
+          "slug": null,
+          "description": "Breach when B < P × L — the burden of precautions is less than the probability of harm times the gravity of the loss. Courts and lawyers use it conceptually; juries are never given the formula, only \"reasonable care under the circumstances.\""
+        },
+        {
+          "rule": "Special Standards",
+          "slug": null,
+          "description": "Children: a reasonable child of like age, intelligence, and experience — UNLESS engaged in an adult or inherently dangerous activity. Physical disability: a reasonable person with the same disability. Mental disability: no accommodation. Professionals: a reasonably competent professional in the field. Emergencies: a reasonable person in the same emergency, if not of the actor's own making. Superior skill or knowledge must be used."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Not All Risks Are Unreasonable",
+          "description": "Negligence requires an unreasonable risk, not any conceivable one — objects that are not intrinsically dangerous (a golf club in a yard) and extraordinary, unforeseeable events (unprecedented frost) do not establish breach. Notice changes the calculus: once a danger has shown itself, precautions against recurrence are required."
+        },
+        {
+          "name": "Balancing Safety and Progress",
+          "description": "\"The business of life must go forward\" — reasonable care requires precautions only up to the point where their burden no longer outweighs the danger, an explicit cost-benefit balance that prefigured the Hand formula."
+        },
+        {
+          "name": "Judge-Made Rules of Conduct Rise and Fall",
+          "description": "Holmes tried to fix the standard of care as a matter of law (stop, look, and listen at every crossing); Cardozo walked it back seven years later — standards of behavior are ordinarily for the jury, framed case by case."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Vaughan v. Menlove (C.P. 1837)",
+          "holding": "The foundation of the objective standard — a defendant who built a combustible hay rick was judged by the reasonable person, not his own honest best judgment. \"No A for effort.\""
+        },
+        {
+          "name": "Lubitz v. Wells (Conn. Super. 1955)",
+          "holding": "Leaving a golf club in the backyard was not negligence as a matter of law — a golf club is not obviously and intrinsically dangerous.",
+          "caseId": "3347009"
+        },
+        {
+          "name": "Blyth v. Birmingham Waterworks (Ex. 1856)",
+          "holding": "No duty to guard against extraordinary, unforeseeable events — a water plug burst in an unprecedented frost; reasonable care means preparing for ordinary risks."
+        },
+        {
+          "name": "Pipher v. Parsell (Del. 2007)",
+          "holding": "Once a passenger grabbed the wheel, a second grab was foreseeable — a driver on notice of a danger must take reasonable precautions against its recurrence; jury question.",
+          "caseId": "2330474"
+        },
+        {
+          "name": "Chicago, B. & Q. R. Co. v. Krayenbuhl (Neb. 1902)",
+          "holding": "The unlocked turntable case — explicit cost-benefit balancing: weigh the probability of injury against the burden of precautions and the beneficial use of the premises.",
+          "caseId": "6771829"
+        },
+        {
+          "name": "United States v. Carroll Towing Co. (2d Cir. 1947)",
+          "holding": "The Hand formula: liability when the burden of precautions is less than the probability of harm times the gravity of loss (B < P × L).",
+          "caseId": "1565896"
+        },
+        {
+          "name": "Delair v. McAdoo (Pa. 1936)",
+          "holding": "Drivers are charged with knowledge a reasonable inspection would reveal — ignorance of dangerously worn tires is no excuse.",
+          "caseId": "4091720"
+        },
+        {
+          "name": "Cordas v. Peerless Transportation Co. (N.Y. City Ct. 1941)",
+          "holding": "The emergency doctrine — a chauffeur who leapt from his cab at gunpoint is judged by what a reasonable person would do in the same sudden peril, not with split-second perfection."
+        },
+        {
+          "name": "Roberts v. State of Louisiana (La. App. 1981)",
+          "holding": "A blind concession operator is held to the standard of a reasonable person with the same disability — physical disability is part of the circumstances."
+        },
+        {
+          "name": "Breunig v. American Family Insurance Co. (Wis. 1970)",
+          "holding": "A narrow exception for sudden, unforeseeable mental incapacity — otherwise mental illness does not lower the objective standard.",
+          "caseId": "1600605"
+        },
+        {
+          "name": "Robinson v. Lindsay (Wash. 1979)",
+          "holding": "A child operating a snowmobile is held to the adult standard — the child standard yields when the child engages in an inherently dangerous or adult activity.",
+          "caseId": "1218205"
+        },
+        {
+          "name": "Baltimore & Ohio R.R. v. Goodman (U.S. 1927)",
+          "holding": "Holmes fixed a judge-made rule of conduct: a driver at a rail crossing must stop, look, and listen — clear standards should be laid down once and for all by courts.",
+          "caseId": "101143"
+        },
+        {
+          "name": "Pokora v. Wabash Railway Co. (U.S. 1934)",
+          "holding": "Cardozo's counterpoint to Goodman — courts should be cautious about freezing standards of behavior into rules of law; reasonableness is ordinarily for the jury.",
+          "caseId": "102254"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Breach: Proving Negligence",
+      "subtitle": "Custom, constructive notice, negligence per se, and res ipsa loquitur",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Custom Evidence",
+          "slug": null,
+          "description": "Compliance with industry custom is a shield (evidence of due care) and departure from it a sword (evidence of negligence) — but neither is conclusive. A whole industry can lag behind reasonable care; the jury may find the custom itself unreasonable."
+        },
+        {
+          "rule": "Negligence Per Se",
+          "slug": null,
+          "description": "A statutory violation is negligence per se when (1) the statute is appropriate to adopt as a standard of care, (2) the harm is the type the statute was designed to prevent, and (3) the victim is in the class the statute protects. Excuses: incapacity, inability to comply after reasonable diligence, emergency not of the actor's making, no reason to know of the occasion for compliance, or compliance posing greater risk. The doctrine shortcuts duty and breach only — causation and damages must still be proved."
+        },
+        {
+          "rule": "Res Ipsa Loquitur",
+          "slug": null,
+          "description": "The jury may infer negligence when (1) the accident is of a kind that ordinarily does not occur without negligence, (2) the instrumentality was within the defendant's exclusive control, and (3) the injury was not due to the plaintiff's own action. It creates an inference, not a presumption — and the Third Restatement drops the exclusive-control element. Rarely needed today, since discovery usually reveals what happened."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Constructive Notice — the Banana Peel Line",
+          "description": "A business owner is liable for a dangerous condition only with actual or constructive notice: a fresh banana peel proves nothing, but a black, gritty, flattened one shows it lay there long enough that reasonable inspection would have found it. Failure to inspect within a reasonable time lets the jury infer notice."
+        },
+        {
+          "name": "Mode of Operation",
+          "description": "When the business model itself makes the hazard recurring and foreseeable — self-serve pizza on wax paper — notice is imputed and the plaintiff need not prove how long the specific hazard existed."
+        },
+        {
+          "name": "Judge vs. Jury",
+          "description": "The judge decides whether a duty exists and takes the case away only when no reasonable jury could differ; the jury decides whether the standard was breached and every other factual question."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "The T.J. Hooper (2d Cir. 1932)",
+          "holding": "Custom is not conclusive — tugs without weather radios were negligent even though radios were not yet industry custom; \"a whole calling may have unduly lagged.\"",
+          "caseId": "1542549"
+        },
+        {
+          "name": "Osborne v. McMasters (Minn. 1889)",
+          "holding": "The foundational negligence per se case — selling unlabeled poison in violation of a labeling statute was negligence per se; the statute supplies the standard of care.",
+          "caseId": "8011017"
+        },
+        {
+          "name": "Stachniewicz v. Mar-Cam Corp. (Or. 1971)",
+          "holding": "The statute must fit the harm — a regulation requiring bars to remove visibly intoxicated patrons supported negligence per se for a barroom-brawl injury, while the serving statute did not (causation from \"one more drink\" unprovable).",
+          "caseId": "2614083"
+        },
+        {
+          "name": "Byrne v. Boadle (Ex. 1863)",
+          "holding": "The origin of res ipsa loquitur — flour barrels do not fall from warehouse windows without negligence, and the facts lay within the defendant's control."
+        },
+        {
+          "name": "Anjou v. Boston Elevated Railway (Mass. 1911)",
+          "holding": "Constructive notice from the condition itself — a black, gritty, flattened banana peel showed it had been there long enough to be discovered."
+        },
+        {
+          "name": "Jasko v. F.W. Woolworth Co. (Colo. 1972)",
+          "holding": "Mode-of-operation rule — selling pizza slices on wax paper to standing customers made dropped food a foreseeable, recurring hazard; no proof of notice required."
+        },
+        {
+          "name": "Larson v. St. Francis Hotel (Cal. App. 1948)",
+          "holding": "Res ipsa denied — a hotel does not have exclusive control of furniture that guests can throw from windows (the V-J Day armchair).",
+          "caseId": "1438013"
+        },
+        {
+          "name": "Ybarra v. Spangard (Cal. 1944)",
+          "holding": "Res ipsa extended to an unconscious surgical patient injured by unknown hands — all defendants with control over the patient must explain or face the inference.",
+          "caseId": "2620203"
+        },
+        {
+          "name": "Sullivan v. Crabtree (Tenn. App. 1953)",
+          "holding": "Res ipsa creates a permissible inference the jury may accept or reject — it does not compel a finding of negligence.",
+          "caseId": "2448357"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Factual Causation",
+      "subtitle": "But-for causation and its substitutes",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "But-For Causation",
+          "slug": null,
+          "description": "The harm would not have occurred absent the defendant's BREACH — the negligence, not merely the actor, must be the cause (\"sine qua non\"). If the harm would have happened anyway, causation fails and the whole claim falls, no matter how clear the breach. Proved by a preponderance: a reasonable probability, not a mere possibility, and increased risk alone is not enough."
+        },
+        {
+          "rule": "Concurrent Causes",
+          "slug": null,
+          "description": "Necessary version: neither act alone would have caused the harm, both together did — the negligence merges and both defendants are jointly and severally liable. Sufficient version: each act ALONE would have caused the harm (two merged fires) — but-for fails, so each is liable as a substantial factor; the Third Restatement § 27 treats each as a factual cause."
+        },
+        {
+          "rule": "Alternative Liability",
+          "slug": null,
+          "description": "When all possible tortfeasors are before the court, each acted tortiously, only one could have caused the harm, and the plaintiff cannot tell which — the burden shifts to the DEFENDANTS to exculpate themselves; failing that, both are jointly and severally liable."
+        },
+        {
+          "rule": "Market Share Liability",
+          "slug": null,
+          "description": "For fungible products where the manufacturer cannot be identified (in practice, DES): defendants representing a substantial share of the market are severally liable for their market-share percentage, and each may exculpate by proving its product could not have caused the injury."
+        },
+        {
+          "rule": "Loss of Chance",
+          "slug": null,
+          "description": "Medical malpractice only: when the negligence destroyed a quantified less-than-50% chance of recovery, the lost chance is itself the compensable injury — damages equal the total harm times the percentage chance lost. Courts split three ways: traditional all-or-nothing, reduced burden via \"substantial cause,\" or lost-chance-as-injury."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "Inference vs. Speculation",
+          "description": "Some evidence connecting the negligence to the harm lets the jury infer causation; a total absence of proof keeps the question from them. Expert testimony is required where causation involves specialized knowledge — \"possible\" is not enough."
+        },
+        {
+          "name": "Correlation Is Not Causation",
+          "description": "That two things occur together proves nothing about cause — the notes' example: most cancer patients have dark hair; dark hair does not cause cancer."
+        },
+        {
+          "name": "Substantial Factor, Cabined",
+          "description": "The modern course correction: substantial factor is an exception for multiple-sufficient-cause cases only, not an all-purpose substitute for but-for. Multiple causes are not the same as multiple SUFFICIENT causes."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Perkins v. Texas and New Orleans R. Co. (La. 1962)",
+          "holding": "A speeding train was not the cause-in-fact of a crossing death that would have happened at the legal speed — breach without but-for causation is not actionable.",
+          "caseId": "1661133"
+        },
+        {
+          "name": "Kramer Service, Inc. v. Wilkins (Miss. 1939)",
+          "holding": "Causation requires reasonable probability, not possibility — an expert's testimony that a cut \"possibly\" caused cancer could not reach the jury.",
+          "caseId": "3543383"
+        },
+        {
+          "name": "Hill v. Edmonds (N.Y. App. Div. 1966)",
+          "holding": "Concurrent necessary causes — an unlit truck left in the road plus an inattentive driver each supplied a but-for cause of one indivisible injury; both fully liable.",
+          "caseId": "5901760"
+        },
+        {
+          "name": "Anderson v. Minneapolis, St. P. & S. St. M. Ry. (Minn. 1920)",
+          "holding": "The two-fires case — where either fire alone would have destroyed the property, but-for fails and the defendant is liable if its fire was a material or substantial factor."
+        },
+        {
+          "name": "Corey v. Havener (Mass. 1902)",
+          "holding": "Two motor-tricyclists who together frightened a horse were both liable — concurrent tortfeasors whose combined conduct causes indivisible harm cannot each point at the other.",
+          "caseId": "6554250"
+        },
+        {
+          "name": "Doull v. Foster (Mass. 2021)",
+          "holding": "Reined in substantial factor — but-for governs nearly all negligence cases; substantial factor is reserved for genuine multiple-sufficient-cause scenarios, following the Third Restatement.",
+          "caseId": "4859927"
+        },
+        {
+          "name": "Summers v. Tice (Cal. 1948)",
+          "holding": "Alternative liability — two hunters fired negligently, one pellet hit the plaintiff; the burden shifted to the defendants to prove they were not the cause.",
+          "caseId": "1184099"
+        },
+        {
+          "name": "Sindell v. Abbott Laboratories (Cal. 1980)",
+          "holding": "Market share liability for DES — manufacturers representing a substantial share of the market pay in proportion to market share when the actual maker cannot be identified.",
+          "caseId": "1177800"
+        },
+        {
+          "name": "Smith v. Providence Health & Services (Or. 2017)",
+          "holding": "Loss of chance — the lost chance of recovery is itself a compensable injury; damages equal the total harm times the percentage of chance lost.",
+          "caseId": "4390560"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Proximate Cause",
+      "subtitle": "Scope of liability — where the law draws the line",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Four Tests",
+          "slug": null,
+          "description": "Run through all four on an exam: (1) Directness — factual cause is proximate cause unless a superseding event intervenes (the traditional approach). (2) Foreseeability — a reasonable person would have foreseen harm of the same general type to a class of persons including the plaintiff (how most courts instruct juries). (3) Risk-based — was the harm among the risks that made the conduct negligent? (Third Restatement § 29.) (4) Multi-factor — logic, common sense, justice, policy, and precedent (the Andrews dissent). None is dispositive."
+        },
+        {
+          "rule": "The Four Dimensions of Foreseeability",
+          "slug": null,
+          "description": "What kind of unforeseeability matters: unforeseeable TYPE OF PLAINTIFF — no liability (Palsgraf); unforeseeable TYPE OF HARM — usually no liability (Wagon Mound); unforeseeable MANNER of occurrence — still liable (Hughes); unforeseeable EXTENT of harm — still liable (eggshell skull). Mnemonic from the notes: \"People Have Many Experiences.\""
+        },
+        {
+          "rule": "Superseding Causes",
+          "slug": null,
+          "description": "An intervening third-party act breaks the chain only if it is all three of: Extraordinary, Unforeseeable, and Independent. Foreseeable responses never supersede — rescue attempts, medical negligence, chain-reaction accidents. Criminal acts generally supersede, EXCEPT when the risk of crime was the very danger the defendant should have guarded against. Deliberate suicide supersedes, except when caused by mental derangement from the defendant's negligence. The Third Restatement § 34 rejects superseding cause as a separate doctrine."
+        },
+        {
+          "rule": "The Rescue Doctrine",
+          "slug": null,
+          "description": "\"Danger invites rescue\" — rescuers are foreseeable plaintiffs as a matter of law; their voluntary intervention neither breaks the causal chain nor constitutes assumption of risk, unless the rescue is rash or reckless. Third Restatement § 32 puts harm from rescue efforts within the scope of liability."
+        },
+        {
+          "rule": "Eggshell Plaintiff",
+          "slug": null,
+          "description": "The defendant takes the plaintiff as found — an unforeseeable EXTENT of harm never defeats proximate cause. But this operates at the proximate-cause step only; the duty of care is still measured by the ordinary reasonable-person standard."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Atlantic Coast Line R. Co. v. Daniels (Ga. App. 1911)",
+          "holding": "Courts draw practical, not metaphysical, limits on cause and effect — \"proximate\" and \"natural\" are the law's terms for keeping liability within ordinary human understanding.",
+          "caseId": "5752483"
+        },
+        {
+          "name": "Ryan v. New York Central R.R. (N.Y. 1866)",
+          "holding": "Remoteness as a policy limit — the railroad was liable for the woodshed it set alight but not the houses beyond; liability stops where the chain becomes remote and dependent on accidental factors."
+        },
+        {
+          "name": "In re Polemis (K.B. 1921)",
+          "holding": "The directness test — liable for the unforeseeable fire from a falling plank because the damage flowed directly from the negligence with no intervening cause; largely displaced by Wagon Mound."
+        },
+        {
+          "name": "Wagon Mound No. 1 (P.C. 1961)",
+          "holding": "The foreseeability test — liability extends only to consequences a reasonable person would foresee at the time of the negligent act; fire was an unforeseeable type of harm from spilled oil."
+        },
+        {
+          "name": "Wagon Mound No. 2 (P.C. 1967)",
+          "holding": "A defendant may be liable for disregarding even a small foreseeable risk when the potential consequences are massive and prevention is cheap."
+        },
+        {
+          "name": "Palsgraf v. Long Island Railroad Co. (N.Y. 1928)",
+          "holding": "Cardozo: no duty to a plaintiff outside the zone of reasonably foreseeable harm — \"the risk reasonably perceived defines the duty to be obeyed.\" Andrews in dissent: duty runs to the world at large and foreseeability belongs to proximate cause — \"we must draw a line someplace.\"",
+          "caseId": "3602780"
+        },
+        {
+          "name": "Hughes v. Lord Advocate (H.L. 1963)",
+          "holding": "Manner of occurrence is irrelevant — burns were foreseeable even though the explosion mechanism was not; liability follows the foreseeable type of harm."
+        },
+        {
+          "name": "Bartolone v. Jeckovich (N.Y. App. Div. 1984)",
+          "holding": "Eggshell plaintiff — a minor collision that triggered a psychotic break was within proximate cause; the defendant takes the plaintiff as he finds him.",
+          "caseId": "6007937"
+        },
+        {
+          "name": "Benn v. Thomas (Iowa 1994)",
+          "holding": "Take your victim as you find him — a heart attack days after a rear-end collision presented a jury question under the eggshell-plaintiff rule.",
+          "caseId": "1244600"
+        },
+        {
+          "name": "Yun v. Ford Motor Co. (N.J. App. Div. 1994)",
+          "holding": "An injury must be a reasonably foreseeable consequence, \"not highly extraordinary\" — running across a dark highway to retrieve a fallen spare tire was held superseding, though the Supreme Court later made it a jury question.",
+          "caseId": "7405473"
+        },
+        {
+          "name": "Derdiarian v. Felix Contracting Corp. (N.Y. 1980)",
+          "holding": "A negligent driver crashing into an unprotected work site was exactly the foreseeable risk — an intervening act within the risk created does not supersede.",
+          "caseId": "5684475"
+        },
+        {
+          "name": "Watson v. Kentucky & Indiana Bridge & R.R. (Ky. 1910)",
+          "holding": "The classic line: an intervening act that is merely negligent usually does not supersede; an intentional or criminal act usually does.",
+          "caseId": "7225328"
+        },
+        {
+          "name": "Fuller v. Preis (N.Y. 1974)",
+          "holding": "Suicide resulting from crash-caused brain derangement is not a superseding cause — the causal chain holds.",
+          "caseId": "5680869"
+        },
+        {
+          "name": "Wagner v. International Railway Co. (N.Y. 1921)",
+          "holding": "Cardozo: \"Danger invites rescue. The cry of distress is the summons to relief.\" The wrongdoer is accountable to the rescuer as if the rescue had been foreseen.",
+          "caseId": "3607799"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Defenses to Negligence",
+      "subtitle": "Plaintiff's fault, assumption of risk, and time bars",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Contributory Negligence",
+          "slug": null,
+          "description": "The traditional all-or-nothing rule: any failure by the plaintiff to use ordinary care for their own safety that contributes to the injury bars ALL recovery. The defendant bears the burden of proving it. Survives today in only a handful of jurisdictions (Alabama, Maryland, North Carolina, Virginia, D.C.). Softened historically by last clear chance: the plaintiff recovers despite their own negligence if the defendant had — and failed to use — the last clear opportunity to avoid the harm."
+        },
+        {
+          "rule": "Comparative Fault — Three Systems",
+          "slug": null,
+          "description": "Pure (~13 states): plaintiff recovers even at 99% fault, reduced proportionally. Modified 50% bar (~12 states): barred at 50% or more. Modified 51% bar (~21 states, including Ohio since 1980): barred only if MORE than 50% at fault — a 50/50 split still recovers half. Comparative fault made last clear chance obsolete and absorbed secondary assumption of risk."
+        },
+        {
+          "rule": "Express Assumption of Risk",
+          "slug": null,
+          "description": "A written waiver is a complete bar if valid — but unenforceable for intentional, wanton, or reckless conduct, grossly unequal bargaining power, or transactions affecting the public interest (the Tunkl factors: regulated business, essential public service, open to the public, unequal bargaining power, no option to pay for protection, and control over the plaintiff's person). Releases generally fail for common carriers, medical treatment, day care, and (in many states) waivers signed by parents for minors."
+        },
+        {
+          "rule": "Implied Assumption of Risk",
+          "slug": null,
+          "description": "A SUBJECTIVE test: (1) actual knowledge of the risk, (2) appreciation of its character and magnitude, (3) voluntary acceptance with time and knowledge to make an intelligent choice. Primary assumption of risk (inherent risks of an activity — the foul ball in the stands) is really a no-duty conclusion and a complete bar; secondary assumption of risk is merged into comparative fault."
+        },
+        {
+          "rule": "Statutes of Limitations and Repose",
+          "slug": null,
+          "description": "The SOL (typically two years for torts) runs from when the plaintiff discovers or should have discovered the injury (the discovery rule), and can be tolled. The SOR runs from the defendant's act regardless of discovery, is substantive, and is generally not tolled. The claim is barred if EITHER has run."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Butterfield v. Forrester (K.B. 1809)",
+          "holding": "The birth of contributory negligence — a rider who failed to use ordinary care could not recover from the defendant who obstructed the road: \"One person being in fault will not dispense with another's using ordinary care for himself.\""
+        },
+        {
+          "name": "Davies v. Mann (Ex. 1842)",
+          "holding": "The fettered-donkey case — origin of last clear chance: the plaintiff's negligence does not bar recovery when the defendant could have avoided the harm with reasonable care."
+        },
+        {
+          "name": "McIntyre v. Balentine (Tenn. 1992)",
+          "holding": "Abandoned the all-or-nothing rule as \"outmoded and unjust\" — adopted modified comparative fault and declared last clear chance obsolete.",
+          "caseId": "2372676"
+        },
+        {
+          "name": "Seigneur v. National Fitness Institute (Md. App. 2000)",
+          "holding": "A gym waiver was enforced — exculpatory clauses fail only for unequal bargaining power or essential public services, and a health club is neither.",
+          "caseId": "2071159"
+        },
+        {
+          "name": "Tunkl v. Regents of University of California (Cal. 1963)",
+          "holding": "The six-factor public-interest test for striking down exculpatory clauses — a charity hospital's admission waiver was void against public policy.",
+          "caseId": "1149237"
+        },
+        {
+          "name": "Schott v. South Dakota Wheat Growers (S.D. 2017)",
+          "holding": "Implied assumption of risk is subjective — summary judgment is improper when the plaintiff's actual knowledge and appreciation of the risk are genuinely disputed."
+        },
+        {
+          "name": "Teeters v. Currey (Tenn. 1974)",
+          "holding": "The discovery rule — a malpractice claim accrues when the patient discovers or reasonably should have discovered the injury, not when the negligence occurred.",
+          "caseId": "1715073"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Premises Liability",
+      "subtitle": "Duties of owners and occupiers of land",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Three Categories",
+          "slug": null,
+          "description": "Trespasser (no permission): no duty of reasonable care — only no traps, warnings once discovered, and reasonable care where trespassers are frequent or tolerated; reduced duty to flagrant trespassers. Licensee (permission, own purposes — social guests included): take the property as the family finds it; warn of KNOWN hidden dangers; no duty to inspect. Invitee (present for the owner's purposes — customers): reasonable care to INSPECT, discover, and warn or fix; the owner is not an insurer. The memory trick: licensee = warn what you KNOW; invitee = INSPECT and fix."
+        },
+        {
+          "rule": "Attractive Nuisance",
+          "slug": null,
+          "description": "Restatement (Second) factors for child trespassers injured by artificial conditions: the owner knows children are likely to trespass; the condition poses an unreasonable risk of serious harm; children, due to youth, do not appreciate the danger; the utility of maintaining the condition is slight against the risk; and the owner fails to exercise reasonable care. The doctrine applies only to artificial conditions."
+        },
+        {
+          "rule": "Lessors",
+          "slug": null,
+          "description": "The traditional rule puts duties on the tenant, but lessors remain liable for common areas they control, hidden dangers known at the time of lease, and negligent repairs."
+        }
+      ],
+      "concepts": [
+        {
+          "name": "The Modern Trend — and Ohio",
+          "description": "Rowland v. Christian rejected the categories for ordinary negligence (visitor status is one factor for the jury); roughly 8 states follow fully, 17 partially (merging licensees into invitees), while about half the states — including Ohio — retain the traditional three categories."
+        },
+        {
+          "name": "Strays and Outsiders",
+          "description": "Duties generally run only to people ON the premises, with exceptions for trees abutting a public road, artificial intrusions into public space, and hazards near the border — but not natural conditions."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Rowland v. Christian (Cal. 1968)",
+          "holding": "Rejected the three-category system — landowner liability is governed by ordinary negligence principles, with the visitor's status as one factor rather than the answer.",
+          "caseId": "1447366"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Vicarious Liability",
+      "subtitle": "Respondeat superior and its boundaries",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Respondeat Superior",
+          "slug": null,
+          "description": "An employer is liable for an employee's torts committed within the scope of employment — \"let the master answer.\" It adds a defendant rather than excusing the tortfeasor (the employer may seek indemnity from the employee), and it requires no employer fault: the employee's negligence plus a qualifying relationship is enough."
+        },
+        {
+          "rule": "Scope of Employment",
+          "slug": null,
+          "description": "The questions: is the conduct of the same general nature as the job? Motivated even partly by a purpose to serve the employer? Within authorized time and space? Foreseeable? The modern trend replaces \"motive to serve\" with foreseeability — whether the conduct is characteristic of the enterprise. Frolic (a major personal departure) takes the employee outside scope; a detour does not — and \"today it's hard to get to a frolic.\""
+        },
+        {
+          "rule": "Going and Coming; Intentional Torts",
+          "slug": null,
+          "description": "Commuting is generally outside the scope of employment — unless the danger arises from the work itself. Intentional torts are generally outside scope, but when the job creates the friction that erupts (a delivery dispute), scope becomes a jury question."
+        },
+        {
+          "rule": "Independent Contractors",
+          "slug": null,
+          "description": "No vicarious liability for an independent contractor's torts — the key word is CONTROL: an employer directs HOW the work is done; an IC controls their own time and manner. Four exceptions: (1) the principal actually exercises control; (2) hiring an incompetent contractor; (3) inherently dangerous work (and strict liability for abnormally dangerous work); (4) non-delegable duties — you can delegate the work but not the legal responsibility."
+        },
+        {
+          "rule": "Apparent Agency",
+          "slug": null,
+          "description": "Holding someone out as your agent creates liability to third parties who reasonably believe the agency and trace that belief to your manifestations (Restatement (Third) of Agency § 2.03 drops the older reliance element). Franchise signage disclaiming ownership can defeat the reasonable belief."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Jones v. Hart (K.B. 1698)",
+          "holding": "The classic statement of respondeat superior — \"the act of the servant is the act of the master, where he acts by authority of the master.\""
+        },
+        {
+          "name": "Bussard v. Minimed, Inc. (Cal. App. 2003)",
+          "holding": "An exception to the going-and-coming rule — an employee sickened by workplace pesticide fumes who crashed driving home presented a work-created risk within respondeat superior.",
+          "caseId": "2283555"
+        },
+        {
+          "name": "O'Shea v. Welch (10th Cir. 2003)",
+          "holding": "Slight-deviation analysis — a manager's pull into a gas station en route on employer business was a jury question, weighing intent, time, place, and what the employer could reasonably expect.",
+          "caseId": "784334"
+        },
+        {
+          "name": "Lyon v. Carey (D.C. Cir. 1976)",
+          "holding": "An assault growing out of a delivery-payment dispute was a jury question on scope — when the job creates the friction and the tort is not purely personal, the employer may answer for it."
+        },
+        {
+          "name": "Murrell v. Goertz (Okla. App. 1979)",
+          "holding": "Employee vs. independent contractor turns on control over the manner of work — a newspaper carrier working on his own time and manner was an independent contractor.",
+          "caseId": "1187453"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Multiple Tortfeasors",
+      "subtitle": "Joint and several liability, contribution, and indemnity",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Joint and Several Liability",
+          "slug": null,
+          "description": "Where it applies, the plaintiff may collect the entire judgment from any one defendant (who then seeks contribution). It applies in three patterns: (1) concerted action — actors who encourage or induce each other's tort; (2) joint duties, including vicarious liability; (3) independent actors causing a single indivisible harm. Several liability is the alternative: each defendant pays only their percentage, and the plaintiff bears the risk of an insolvent defendant."
+        },
+        {
+          "rule": "Ohio's Hybrid (since 2003)",
+          "slug": null,
+          "description": "Non-economic damages: no joint and several liability — each defendant pays only their share. Economic damages: joint and several liability applies only against a defendant more than 50% responsible; at 50% or below, each pays only their percentage."
+        },
+        {
+          "rule": "Contribution vs. Indemnity",
+          "slug": null,
+          "description": "Contribution: a defendant who paid more than their share recovers proportionally from co-tortfeasors (not available for intentional torts). Indemnity: full shifting to the truly responsible party — the vicariously liable employer recovering from the employee, the retailer from the manufacturer."
+        },
+        {
+          "rule": "Satisfaction and Release",
+          "slug": null,
+          "description": "Only one satisfaction for a unitary harm — settlements reduce what others owe. The old rule that releasing one tortfeasor released all is gone in most jurisdictions. Mary Carter agreements (settling defendants staying in the case with an interest in the plaintiff's recovery) must usually be disclosed; some states void them."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Bierczynski v. Rogers (Del. 1968)",
+          "holding": "Concerted action — street racers induce and encourage each other's negligence, so the racer whose car never touched the plaintiff was jointly liable anyway.",
+          "caseId": "1992401"
+        },
+        {
+          "name": "Coney v. J.L.G. Industries (Ill. 1983)",
+          "holding": "Joint and several liability survives the adoption of comparative fault — a plaintiff's recovery against a deep-pocket defendant is not limited to that defendant's percentage.",
+          "caseId": "2024671"
+        },
+        {
+          "name": "Bartlett v. New Mexico Welding Supply (N.M. App. 1982)",
+          "holding": "The contrary view — under pure comparative fault, joint and several liability is abolished; each concurrent tortfeasor pays only its share.",
+          "caseId": "1381218"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Damages",
+      "subtitle": "Compensatory, punitive, and the rules that shape awards",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "Compensatory Damages",
+          "slug": null,
+          "description": "Economic (special): medical costs past and future, lost wages and earning capacity, property damage — \"things you can have receipts for,\" proved with specificity and reduced to present value. Non-economic (general): pain and suffering, loss of consortium, loss of enjoyment, disfigurement. No nominal damages in negligence — actual harm is an element."
+        },
+        {
+          "rule": "Punitive Damages",
+          "slug": null,
+          "description": "Require intentional, willful, wanton, or reckless conduct proved by CLEAR AND CONVINCING evidence — the focus is the defendant's behavior, not the plaintiff's injury. Due process caps the award: ratios beyond single digits to compensatories are presumptively excessive under the BMW v. Gore guideposts (reprehensibility, ratio, comparable civil penalties), and defendants cannot be punished for out-of-state conduct or harm to non-parties."
+        },
+        {
+          "rule": "The Collateral Source Rule",
+          "slug": null,
+          "description": "Payments the plaintiff receives from other sources — insurance, gratuitous care — do not reduce the defendant's liability. If someone gets a windfall, it is the innocent plaintiff, not the wrongdoer."
+        },
+        {
+          "rule": "Award-Shaping Rules",
+          "slug": null,
+          "description": "Lump-sum finality: the judgment is one-time and cannot be reopened. Mitigation: the plaintiff must take reasonable steps to minimize harm; the defendant bears the burden of proving failure. The American Rule: each side pays its own attorneys. Judicial control: remittitur (and where allowed, additur) only when the award shocks the conscience or exceeds what a reasonable jury could award."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Anderson v. Sears, Roebuck & Co. (E.D. La. 1974)",
+          "holding": "Maximum-recovery review — a court asks whether the verdict exceeds the maximum a reasonable jury could award; a $2 million award for a badly burned child stood.",
+          "caseId": "2343551"
+        },
+        {
+          "name": "Richardson v. Chapman (Ill. 1997)",
+          "holding": "Remittitur — an award is excessive if outside the range of fair compensation, the product of passion or prejudice, or so large it shocks the conscience.",
+          "caseId": "2195023"
+        },
+        {
+          "name": "Montgomery Ward & Co. v. Anderson (Ark. 1998)",
+          "holding": "Collateral source rule — evidence of discounted or gratuitous medical care is excluded; the tortfeasor does not benefit from the plaintiff's good fortune."
+        },
+        {
+          "name": "Cheatham v. Pohle (Ind. 2003)",
+          "holding": "A plaintiff has no property right in punitive damages — a statute directing most of the award to the state is valid, because punitives punish rather than compensate.",
+          "caseId": "853019"
+        },
+        {
+          "name": "State Farm Mutual Automobile Insurance Co. v. Campbell (U.S. 2003)",
+          "holding": "Due process limits punitive awards — ratios beyond single digits are usually grossly excessive, applying the BMW v. Gore guideposts.",
+          "caseId": "127910"
+        },
+        {
+          "name": "BMW of North America, Inc. v. Gore (U.S. 1996)",
+          "holding": "The three guideposts for reviewing punitive awards: degree of reprehensibility, ratio to actual or potential harm, and comparable civil penalties.",
+          "caseId": "118026"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Strict Liability",
+      "subtitle": "Animals and abnormally dangerous activities — liability without fault",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Structure",
+          "slug": null,
+          "description": "Liability without proof of intent or negligence — but only the DUTY element changes. Factual cause, proximate cause, and damages must still be proved exactly as in negligence, and the recognized strict-liability duties are three: dangerous animals, abnormally dangerous activities, and defective products. Exam note from class: raise strict liability AND negligence together."
+        },
+        {
+          "rule": "Animals",
+          "slug": null,
+          "description": "Wild animals: strict liability for any harm, however well-trained — there is no first bite for a wild animal (but no liability for indigenous wildlife unless you possess, introduce, or lure it). Domestic animals: strict liability only with scienter — the owner knew or should have known of the particular animal's dangerous propensity (the \"one bite rule,\" though snarling, reputation, or prior attacks can prove scienter before any bite; about a dozen states impose statutory strict liability for dog bites). Trespassing livestock: strict liability, shaped by fencing-in and fencing-out statutes; cats and dogs excluded."
+        },
+        {
+          "rule": "Abnormally Dangerous Activities",
+          "slug": null,
+          "description": "Restatement (Third) § 20 — the formulation to know: an activity is abnormally dangerous if (1) it creates a foreseeable and highly significant risk of physical harm even when reasonable care is exercised, and (2) it is not a matter of common usage. The older Restatement (Second) § 520 six-factor test (degree of risk, gravity, inability to eliminate by reasonable care, common usage, appropriateness of location, community value) still frames the analysis. Blasting is the paradigm; driving and firearms are too common to qualify."
+        },
+        {
+          "rule": "Defenses and Limits",
+          "slug": null,
+          "description": "Scope of risk: strict liability covers only harms flowing from what makes the activity dangerous. Act of God and unforeseeable third-party acts excuse. Contributory negligence traditionally was no defense (assumption of risk was); the modern trend applies comparative-fault principles. Statutory authorization (public zoos, common carriers required to ship explosives) exempts."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Rylands v. Fletcher (H.L. 1868)",
+          "holding": "The foundation — one who brings something onto his land likely to do mischief if it escapes keeps it at his peril; strict liability for non-natural uses of land."
+        },
+        {
+          "name": "Miller v. Civil Constructors, Inc. (Ill. App. 1995)",
+          "holding": "Firearms practice at a firing range is not ultrahazardous — where reasonable care can eliminate the risk, negligence law is sufficient.",
+          "caseId": "2066153"
+        },
+        {
+          "name": "Indiana Harbor Belt R.R. v. American Cyanamid Co. (7th Cir. 1990)",
+          "holding": "Shipping hazardous chemicals by rail is not abnormally dangerous — the spill came from careless maintenance, and avoidable-by-care risks belong to negligence law."
+        },
+        {
+          "name": "Spano v. Perini Corp. (N.Y. 1969)",
+          "holding": "Blasting triggers strict liability without proof of negligence — the paradigm abnormally dangerous activity.",
+          "caseId": "5677271"
+        },
+        {
+          "name": "Foster v. Preston Mill Co. (Wash. 1954)",
+          "holding": "Scope-of-risk limit — blasting that frightened a mink into killing her kittens was outside the risks (debris, vibration) that make blasting ultrahazardous; no strict liability.",
+          "caseId": "1221589"
+        },
+        {
+          "name": "Golden v. Amory (Mass. 1952)",
+          "holding": "Act of God — no strict liability where an unanticipated hurricane caused the dike to flood the plaintiffs' land.",
+          "caseId": "2226540"
+        },
+        {
+          "name": "Sandy v. Bushey (Me. 1925)",
+          "holding": "Scienter-based strict liability for a vicious horse — and ordinary contributory negligence is no defense unless the plaintiff voluntarily and unnecessarily put himself in the animal's way.",
+          "caseId": "5120851"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Products Liability",
+      "subtitle": "Three theories, three defects",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Three Theories",
+          "slug": null,
+          "description": "On a products fact pattern, make all three cases: (1) negligence by the manufacturer; (2) express warranty — a false factual statement the plaintiff relied on; (3) strict liability for a defective product. Implied warranty survives mostly as history — its work is now done by strict liability. However many theories, only one satisfaction."
+        },
+        {
+          "rule": "The Three Defect Types (Restatement Third §§ 1-2)",
+          "slug": null,
+          "description": "Manufacturing defect: this unit departs from its intended design — true strict liability, no matter how much care was taken; provable circumstantially. Design defect: the whole line is at issue; the plaintiff must show a reasonable alternative design under consumer-expectation and risk-utility tests. Warning defect: a foreseeable, non-obvious risk that an adequate warning would have reduced — closest to negligence, since the maker must have known or been able to know of the danger."
+        },
+        {
+          "rule": "The RAD Test",
+          "slug": null,
+          "description": "A reasonable alternative design must: (1) have prevented or significantly reduced the risk without being less safe in other circumstances; (2) not substantially impair the product's utility; (3) have been technologically AND economically feasible at the time of manufacture. \"If you can't make a better design, it's not a defective design\" — expert testimony is essential. A separate narrow category — manifestly unreasonable design — covers products with no social utility that should never have been made."
+        },
+        {
+          "rule": "Who Can Be Sued",
+          "slug": null,
+          "description": "Every commercial seller in the vertical chain of distribution — manufacturer, wholesaler, retailer (the retailer can seek indemnity up the chain). Not casual or occasional sellers, not used-goods dealers outside the original chain, not service providers whose product transfer is incidental (hospitals), and — on the title-based view — not marketplaces that never own the goods."
+        },
+        {
+          "rule": "Economic Loss Rule and Defenses",
+          "slug": null,
+          "description": "No strict liability for pure economic loss or damage to the product itself — that is contract/warranty territory; personal injury or damage to OTHER property is required. Defenses: comparative fault (majority rule), assumption of a known specific defect, unforeseeable misuse, substantial alteration, state of the art, statutes of repose, and federal preemption."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "MacPherson v. Buick Motor Co. (N.Y. 1916)",
+          "holding": "Cardozo eliminated privity — a manufacturer owes a duty of care to foreseeable users of a product that is reasonably certain to be dangerous if negligently made.",
+          "caseId": "3616523"
+        },
+        {
+          "name": "Baxter v. Ford Motor Co. (Wash. 1932)",
+          "holding": "Express warranty without privity — a catalog's \"shatter-proof\" windshield claim was a factual representation the consumer relied on, and its falsity made Ford liable.",
+          "caseId": "4224065"
+        },
+        {
+          "name": "Henningsen v. Bloomfield Motors, Inc. (N.J. 1960)",
+          "holding": "Implied warranty reaches the consumer and boilerplate disclaimers procured through unequal bargaining power are void — the bridge from warranty to strict liability.",
+          "caseId": "1955969"
+        },
+        {
+          "name": "Greenman v. Yuba Power Products, Inc. (Cal. 1963)",
+          "holding": "Traynor's landmark — a manufacturer who places a product on the market is strictly liable in TORT for defects that injure users; no privity, no notice requirement, no contract.",
+          "caseId": "1168887"
+        },
+        {
+          "name": "Rix v. General Motors Corp. (Mont. 1986)",
+          "holding": "The §402A framework applied — a manufacturing defect is an aberration from intended design, and the defect must have existed when the product left the manufacturer.",
+          "caseId": "879144"
+        },
+        {
+          "name": "Prentis v. Yale Manufacturing Co. (Mich. 1984)",
+          "holding": "Design-defect claims are judged by a unified negligence-flavored risk-utility standard — the plaintiff must show the design CHOICE was unreasonable, not merely that the product caused harm.",
+          "caseId": "1639879"
+        },
+        {
+          "name": "Anderson v. Owens-Corning Fiberglas Corp. (Cal. 1991)",
+          "holding": "Failure-to-warn requires actual or constructive KNOWLEDGE of the danger — state-of-the-art evidence is admissible, or strict liability would become absolute liability.",
+          "caseId": "1232223"
+        },
+        {
+          "name": "Friedman v. General Motors Corp. (Ohio 1975)",
+          "holding": "Defects may be proved circumstantially — \"res ipsa in all but name\": show the defect existed when it left the manufacturer and caused the injury, without eliminating every other cause.",
+          "caseId": "6865518"
+        },
+        {
+          "name": "Daly v. General Motors Corp. (Cal. 1978)",
+          "holding": "Comparative fault applies in strict products liability — the plaintiff's own unreasonable conduct proportionally reduces recovery.",
+          "caseId": "1206545"
+        },
+        {
+          "name": "Peterson v. Lou Bachrodt Chevrolet Co. (Ill. 1975)",
+          "holding": "Used-product sellers outside the original producing and marketing chain are not strictly liable — second-hand goods are generally sold as-is.",
+          "caseId": "2017354"
+        },
+        {
+          "name": "Erie Insurance Co. v. Amazon.com, Inc. (4th Cir. 2019)",
+          "holding": "A marketplace that facilitates sales without taking title is not a \"seller\" for strict liability — the modern supply-chain problem the doctrine hasn't caught up with."
+        },
+        {
+          "name": "Hector v. Cedars-Sinai Medical Center (Cal. App. 1986)",
+          "holding": "Hospitals sell services, not products — no strict liability for a defective pacemaker provided incidentally to treatment.",
+          "caseId": "2123363"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Wrongful Death & Survival",
+      "subtitle": "Who sues, for what, when the victim dies",
+      "kind": "doctrine",
+      "isWide": true,
+      "rules": [
+        {
+          "rule": "The Two Actions",
+          "slug": null,
+          "description": "Survival action: the decedent's OWN claim carried forward by the estate — conscious pain and suffering before death, medical expenses, lost wages up to death; recovery enters the estate, reachable by creditors. Wrongful death: a NEW statutory claim for the statutory beneficiaries' own losses — lost support, companionship, funeral costs — paid directly to them. Future earnings belong to wrongful death only; the two may proceed concurrently, but there is no double recovery."
+        },
+        {
+          "rule": "Statutory Foundation",
+          "slug": null,
+          "description": "At common law the claim died with the person (\"more profitable to kill a man than to scratch him\"). Lord Campbell's Act (1846) created the modern wrongful-death action, and every state statute traces to it. This area is ALL statutes now — every state has both survival and wrongful-death acts, with wide variation."
+        },
+        {
+          "rule": "Beneficiaries and Defenses",
+          "slug": null,
+          "description": "Spouses everywhere; children in most states; parents usually only if the child leaves no spouse or children. Defenses good against the decedent (comparative fault, assumption of risk, consent) work in both actions; a sole beneficiary's own negligence bars their claim, but one beneficiary's negligence does not bar the others. Most wrongful-death time limits are substantive and not tolled."
+        }
+      ],
+      "keyCases": [
+        {
+          "name": "Moragne v. States Marine Lines, Inc. (U.S. 1970)",
+          "holding": "Recognized wrongful death in general maritime law, overruling The Harrisburg — the common-law bar's foundations (the felony-merger doctrine) had collapsed; \"more important to be right than consistent.\"",
+          "caseId": "108166"
+        },
+        {
+          "name": "Murphy v. Martin Oil Co. (Ill. 1974)",
+          "holding": "Survival and wrongful-death actions may proceed concurrently from the same incident — nine days of pre-death suffering belongs to the estate; the death losses to the statutory beneficiaries.",
+          "caseId": "2151622"
+        },
+        {
+          "name": "Selders v. Armentrout (Neb. 1973)",
+          "holding": "Damages for a child's death include lost society, comfort, and companionship — the pure pecuniary-loss measure \"stamps almost all modern children as worthless in the eyes of the law.\"",
+          "caseId": "1229086"
+        }
+      ]
+    }
+  ],
+  "revision_note": "Initial canonical Torts outline: 16 sections authored from Sage's Fall 2025 course notes, with 110 key cases (88 linked to case pages)."
+}

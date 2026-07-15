@@ -9,6 +9,22 @@ import { API_URL } from '@/lib/api'
 import { createClient } from '@/lib/supabase'
 import type { Outline } from '@/types'
 
+interface CanonicalOutlineSummary {
+  slug: string
+  title: string
+  description: string
+  section_count: number
+}
+
+const CANONICAL_FALLBACK: CanonicalOutlineSummary[] = [
+  {
+    slug: 'civil-procedure',
+    title: 'The Civil Procedure Outline',
+    description: 'A community-improved, source-linked guide to the federal civil litigation process.',
+    section_count: 15,
+  },
+]
+
 const SUBJECT_OPTIONS = [
   'Constitutional Law', 'Contracts', 'Civil Procedure', 'Criminal Law',
   'Criminal Procedure', 'Evidence', 'Property', 'Torts',
@@ -31,6 +47,23 @@ export default function OutlinesPage() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [canonicalOutlines, setCanonicalOutlines] = useState<CanonicalOutlineSummary[]>(CANONICAL_FALLBACK)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${API_URL}/api/v1/canonical-outlines`)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to load canonical outlines')
+        return response.json()
+      })
+      .then(data => {
+        if (!cancelled && Array.isArray(data.outlines) && data.outlines.length > 0) {
+          setCanonicalOutlines(data.outlines)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     if (authLoading) return
@@ -151,25 +184,29 @@ export default function OutlinesPage() {
           <p className="mt-3 max-w-2xl text-stone-600">Start with Tortwell&apos;s source-linked canonical outlines, or privately upload your own outline to study against it with AI.</p>
         </header>
 
-        <section className="mb-12 overflow-hidden rounded-3xl border border-sage-200 bg-white shadow-sm">
-          <div className="grid md:grid-cols-[1fr_280px]">
-            <div className="p-7 sm:p-9">
-              <span className="inline-flex rounded-full bg-sage-100 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-sage-700">Canonical outline</span>
-              <h2 className="mt-5 font-display text-3xl font-semibold text-stone-900 sm:text-4xl">The Civil Procedure Outline</h2>
-              <p className="mt-3 max-w-2xl leading-7 text-stone-600">Eleven structured stages covering the federal civil litigation process, with direct links to the governing rules and cases.</p>
-              <div className="mt-6 flex flex-wrap gap-4 text-sm text-stone-500">
-                <span>11 sections</span><span>69 sources</span><span>Community feedback by section</span>
+        <section className="mb-12 space-y-6">
+          {canonicalOutlines.map(outline => (
+            <div key={outline.slug} className="overflow-hidden rounded-3xl border border-sage-200 bg-white shadow-sm">
+              <div className="grid md:grid-cols-[1fr_280px]">
+                <div className="p-7 sm:p-9">
+                  <span className="inline-flex rounded-full bg-sage-100 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-sage-700">Canonical outline</span>
+                  <h2 className="mt-5 font-display text-3xl font-semibold text-stone-900 sm:text-4xl">{outline.title}</h2>
+                  <p className="mt-3 max-w-2xl leading-7 text-stone-600">{outline.description}</p>
+                  <div className="mt-6 flex flex-wrap gap-4 text-sm text-stone-500">
+                    <span>{outline.section_count} sections</span><span>Source-linked rules and cases</span><span>Community feedback by section</span>
+                  </div>
+                  <Link href={`/outlines/${outline.slug}`} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-sage-700 px-5 py-3 font-semibold text-white hover:bg-sage-600">
+                    Open the outline <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <div className="flex min-h-52 items-center justify-center bg-sage-50 p-8">
+                  <div className="flex h-36 w-36 items-center justify-center rounded-full border border-sage-200 bg-white shadow-sm">
+                    <BookOpen className="h-16 w-16 text-sage-600" strokeWidth={1.4} />
+                  </div>
+                </div>
               </div>
-              <Link href="/outlines/civil-procedure" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-sage-700 px-5 py-3 font-semibold text-white hover:bg-sage-600">
-                Open the outline <ArrowRight className="h-4 w-4" />
-              </Link>
             </div>
-            <div className="flex min-h-52 items-center justify-center bg-sage-50 p-8">
-              <div className="flex h-36 w-36 items-center justify-center rounded-full border border-sage-200 bg-white shadow-sm">
-                <BookOpen className="h-16 w-16 text-sage-600" strokeWidth={1.4} />
-              </div>
-            </div>
-          </div>
+          ))}
         </section>
 
         <section>
