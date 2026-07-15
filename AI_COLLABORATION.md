@@ -274,6 +274,15 @@ is what existed before 2026-07-12, and per-endpoint copies invite silent diverge
 
 ### Structured Brief Rebuild (legacy → source-linked)
 
+**Outline-priority tier added 2026-07-15 (Claude, commit d1143b8):** cases linked from a
+published canonical outline's current revision now rank just below the priority casebook
+in `candidate-list` (by citation count within the tier) and are admitted even without a
+legacy brief. Trigger: 174 of 178 outline-linked cases still lacked structured briefs, and
+31 had no brief at all — orphaned between the rebuild queue (which required a legacy brief)
+and the paused legacy batch. Expected: outline cases convert within ~4 Sundays. Grable
+(140872) remains skiplisted — its stored opinion text is the cert grant, not the merits
+opinion; fixing that is a data task, not a queue task.
+
 The ~900 legacy briefs are being rebuilt as source-linked briefs using leftover
 subscription credits, not API dollars. Design decisions and why (2026-07-12):
 
