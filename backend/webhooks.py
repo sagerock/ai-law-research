@@ -5,7 +5,7 @@ This module receives and processes webhook events from CourtListener
 to keep the database updated with new cases in real-time.
 """
 
-from fastapi import APIRouter, Request, BackgroundTasks, Header
+from fastapi import APIRouter, Request, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import asyncpg
@@ -13,7 +13,7 @@ import httpx
 import json
 import os
 from datetime import date
-from webhook_security import require_webhook_secret
+from webhook_security import require_courtlistener_source
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -36,7 +36,6 @@ async def handle_search_alert(
     request: Request,
     webhook: SearchAlertWebhook,
     background_tasks: BackgroundTasks,
-    webhook_secret: Optional[str] = Header(None, alias="X-Webhook-Secret"),
 ):
     """
     Handle Search Alert webhook events from CourtListener.
@@ -45,7 +44,10 @@ async def handle_search_alert(
     We automatically import them into our database.
     """
 
-    require_webhook_secret(webhook_secret)
+    require_courtlistener_source(
+        request.headers.get("x-forwarded-for"),
+        request.client.host if request.client else None,
+    )
 
     # Get idempotency key to prevent duplicate processing
     idempotency_key = request.headers.get("Idempotency-Key")
@@ -206,10 +208,12 @@ async def process_new_cases(results: List[Dict], idempotency_key: str):
 async def handle_docket_alert(
     request: Request,
     background_tasks: BackgroundTasks,
-    webhook_secret: Optional[str] = Header(None, alias="X-Webhook-Secret"),
 ):
     """Handle Docket Alert webhook events."""
-    require_webhook_secret(webhook_secret)
+    require_courtlistener_source(
+        request.headers.get("x-forwarded-for"),
+        request.client.host if request.client else None,
+    )
     payload = await request.json()
     idempotency_key = request.headers.get("Idempotency-Key")
     print(f"Received Docket Alert webhook")
