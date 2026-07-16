@@ -45,6 +45,7 @@ async def handle_search_alert(
     """
 
     require_courtlistener_source(
+        request.headers.get("x-real-ip"),
         request.headers.get("x-forwarded-for"),
         request.client.host if request.client else None,
     )
@@ -211,6 +212,7 @@ async def handle_docket_alert(
 ):
     """Handle Docket Alert webhook events."""
     require_courtlistener_source(
+        request.headers.get("x-real-ip"),
         request.headers.get("x-forwarded-for"),
         request.client.host if request.client else None,
     )
