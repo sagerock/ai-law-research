@@ -450,14 +450,17 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     }
   }
 
-  const fetchCachedSummary = async () => {
+  const fetchCachedSummary = async (requireStructured = false): Promise<boolean> => {
     try {
       const headers: Record<string, string> = {}
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
-      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/summary`, { headers })
-      if (!response.ok) return
+      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/summary`, {
+        headers,
+        cache: 'no-store',
+      })
+      if (!response.ok) return false
       const data = await response.json()
       if (data.ratings) {
         setThumbsUp(data.ratings.thumbs_up)
@@ -467,10 +470,20 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       if (data.cached && data.summary) {
         setCaseSummary(data)
         console.log('Loaded cached summary')
+        return !requireStructured || (data.structured_candidates?.length ?? 0) > 0
       }
     } catch (err) {
       console.log('No cached summary available')
     }
+    return false
+  }
+
+  const waitForGeneratedSummary = async (requireStructured: boolean): Promise<boolean> => {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      if (await fetchCachedSummary(requireStructured)) return true
+      await new Promise(resolve => setTimeout(resolve, 3000))
+    }
+    return false
   }
 
   const rateSummary = async (rating: number) => {
@@ -545,6 +558,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const generateSummary = async () => {
     setSummaryLoading(true)
     setSummaryError(null)
+    const requireStructured = Boolean(caseSummary)
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -568,6 +582,9 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       }
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        if (response.status >= 500 && !errorData.detail) {
+          if (await waitForGeneratedSummary(requireStructured)) return
+        }
         throw new Error(errorData.detail || 'Failed to generate summary')
       }
       const data = await response.json()
@@ -587,6 +604,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       }
     } catch (err: any) {
       console.error('Failed to generate summary:', err)
+      if (err instanceof TypeError || /load failed|failed to fetch|networkerror/i.test(err?.message || '')) {
+        if (await waitForGeneratedSummary(requireStructured)) return
+        setSummaryError('The brief is taking longer than expected. Refresh the page in a minute to check again.')
+        return
+      }
       setSummaryError(err.message || 'Failed to generate summary')
     } finally {
       setSummaryLoading(false)
