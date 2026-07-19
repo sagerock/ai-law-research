@@ -108,6 +108,84 @@ def test_labels_old_us_reports_headings_in_html():
     ]
 
 
+def test_labels_circuit_court_headings():
+    # Heading shapes from Stephens v. Miller, 13 F.3d 998 (7th Cir. 1994) (en banc)
+    _, passages = build_opinion_passages(
+        """MANION, Circuit Judge.
+Majority sentence.
+FLAUM, Circuit Judge, concurring.
+Concurrence sentence.
+ILANA DIAMOND ROVNER, Circuit Judge, concurring.
+Second concurrence sentence.
+CUMMINGS, Circuit Judge, joined by CUDAHY and MANION, Circuit Judges, dissenting.
+First dissent sentence.
+RIPPLE, Circuit Judge, dissenting.
+Second dissent sentence."""
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority sentence."),
+        ("concurrence", "Concurrence sentence."),
+        ("concurrence", "Second concurrence sentence."),
+        ("dissent", "First dissent sentence."),
+        ("dissent", "Second dissent sentence."),
+    ]
+
+
+def test_labels_inline_circuit_headings_with_paragraph_numbers():
+    # Numbered-paragraph reporter text flattens headings into the text flow.
+    _, passages = build_opinion_passages(
+        "MANION, Circuit Judge. Majority sentence. "
+        "100 COFFEY, Circuit Judge, dissenting. Dissent sentence."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority sentence."),
+        ("dissent", "Dissent sentence."),
+    ]
+
+
+def test_labels_partial_dissent_as_dissent():
+    _, passages = build_opinion_passages(
+        "POSNER, Chief Judge.\nMajority sentence.\n"
+        "EASTERBROOK, Circuit Judge, concurring in part and dissenting in part.\n"
+        "Partial dissent sentence."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority sentence."),
+        ("dissent", "Partial dissent sentence."),
+    ]
+
+
+def test_circuit_citation_strings_are_not_headings():
+    # Mixed-case citation references and page cites must not flip the part.
+    _, passages = build_opinion_passages(
+        "MANION, Circuit Judge.\n"
+        "See Cudahy, J., dissenting, at 1012-14. "
+        "The court disagreed (Scalia, J., dissenting). "
+        "Majority conclusion."
+    )
+    assert {p["opinion_part"] for p in passages} == {"majority"}
+
+
+def test_vote_lines_are_not_headings():
+    # End-of-opinion vote lines use finite verbs, not participles.
+    _, passages = build_opinion_passages(
+        "[by Cardozo]\nMajority sentence.\n"
+        "POUND, LEHMAN and KELLOGG, JJ., concur with CARDOZO, Ch. J.\n"
+        "ANDREWS, J., dissents in opinion in which CRANE and O'BRIEN, JJ., concur."
+    )
+    assert all(p["opinion_part"] == "majority" for p in passages)
+
+
+def test_labels_state_court_parenthetical_dissent_heading():
+    _, passages = build_opinion_passages(
+        "[by Cardozo]\nMajority sentence.\nANDREWS, J. (dissenting).\nDissent sentence."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority sentence."),
+        ("dissent", "Dissent sentence."),
+    ]
+
+
 def test_labels_inline_old_us_reports_dissent_heading():
     _, passages = build_opinion_passages(
         "Justice Brown delivered the opinion of the Court. "

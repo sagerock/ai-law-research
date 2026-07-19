@@ -5,7 +5,37 @@ import re
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
-PASSAGE_FORMAT_VERSION = "2"
+PASSAGE_FORMAT_VERSION = "3"
+
+# Lower courts introduce separate writings surname-first ("RIPPLE, Circuit
+# Judge, dissenting."), unlike the Supreme Court's "Justice Kagan, dissenting."
+# The author name is required to be ALL CAPS and the disposition to be a
+# participle: citation strings ("Cudahy, J., dissenting, at 1012-14") use mixed
+# case, and end-of-opinion vote lines ("ANDREWS, J., dissents ... JJ., concur")
+# use finite verbs, so both fail these anchors.
+LOWER_COURT_AUTHOR = (
+    r"(?:[A-Z]\.\s+)*(?:(?:Mc|Mac|O'|D')?[A-Z][A-Z'\-]+)"
+    r"(?:\s+(?:[A-Z]\.|(?:Mc|Mac|O'|D')?[A-Z][A-Z'\-]+))*"
+)
+LOWER_COURT_TITLE = (
+    r"(?:(?:Chief|Circuit|District|Senior|Presiding)\s+)*"
+    r"(?:Judges?|Justices?|C\.\s?J\.|Ch\.\s?J\.|JJ?\.)"
+)
+LOWER_COURT_HEADING = re.compile(
+    rf"(?:\d{{1,4}}\s+)?{LOWER_COURT_AUTHOR},\s*{LOWER_COURT_TITLE}"
+    r"(?:,[^.;]*?)?"  # optional "joined by ..." / "with whom ..." clause
+    r",?\s+\(?(?:dissenting|concurring)"
+    r"(?:\s+in\s+part)?(?:\s+and\s+(?:dissenting|concurring)(?:\s+in\s+part)?)*"
+    r"(?:\s+in\s+the\s+(?:judgment|result))?"
+    r"(?:\s+from\b[^.;]*)?"
+    r"\)?\s*\."
+)
+LOWER_COURT_MAJORITY = re.compile(
+    rf"(?:\d{{1,4}}\s+)?{LOWER_COURT_AUTHOR}"
+    r",\s*(?:(?:Chief|Circuit|District|Senior|Presiding)\s+)*Judges?"
+    r"(?:,(?![^.;]*(?:dissent|concurr))[^.;]*?)?"
+    r"(?:[:.]|,?\s+deliver\w+\s+the\s+opinion\b[^.;]*\.)"
+)
 
 
 def prepare_opinion_text(text: str) -> str:
@@ -44,7 +74,11 @@ def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, in
     if re.fullmatch(r"(?:notes|footnotes)", block, re.I):
         return "opinion", 1
 
-    if not re.match(rf"^{JUSTICE_PREFIX}", block, re.I):
+    is_justice_intro = bool(re.match(rf"^{JUSTICE_PREFIX}", block, re.I))
+    is_lower_court_intro = bool(
+        re.match(rf"^(?:\d{{1,4}}\s+)?{LOWER_COURT_AUTHOR},", block)
+    )
+    if not is_justice_intro and not is_lower_court_intro:
         return None, 0
 
     # Opinion introductions in reporter text commonly wrap after one or two
@@ -85,6 +119,14 @@ def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, in
             re.I,
         ):
             return "majority", consumed
+        if is_lower_court_intro:
+            if LOWER_COURT_HEADING.fullmatch(candidate):
+                # A partial dissent ("concurring in part and dissenting in
+                # part") reads as dissent so dissent claims may cite it.
+                part = "dissent" if "dissent" in candidate.lower() else "concurrence"
+                return part, consumed
+            if LOWER_COURT_MAJORITY.fullmatch(candidate):
+                return "majority", consumed
     return None, 0
 
 
