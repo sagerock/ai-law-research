@@ -23,5 +23,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
 
 EXPOSE 8000
 
-# Railway sets PORT env var, default to 8000
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Railway sets PORT env var, default to 8000.
+# 3 workers: the app is CPU-bound under crawler load and a single worker caps
+# at one core. All cross-request state is DB-backed (billing reservations) or
+# harmless per-worker TTL caches; pool math: 3 workers x max_size 10 = 30
+# connections against Postgres max_connections=100.
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 3
