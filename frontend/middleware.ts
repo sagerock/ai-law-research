@@ -4,6 +4,18 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
 
+  // Temporary diagnostics: identify who is sweeping the case catalog
+  // (2026-07-19 crawler wave). Remove once the crawler is identified.
+  const path = request.nextUrl.pathname
+  if (path.startsWith('/cases/') || path.startsWith('/opinion/') || path.startsWith('/c/')) {
+    const ua = request.headers.get('user-agent') ?? 'none'
+    const ip =
+      request.headers.get('x-real-ip') ??
+      request.headers.get('x-forwarded-for') ??
+      'unknown'
+    console.log(`[crawl] ${ip} ${path.slice(0, 90)} UA=${ua.slice(0, 140)}`)
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseKey) {
