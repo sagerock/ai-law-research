@@ -197,3 +197,20 @@ def test_labels_inline_old_us_reports_dissent_heading():
         ("majority", "Majority conclusion."),
         ("dissent", "Dissent sentence."),
     ]
+
+
+def test_labels_unqualified_separate_opinion_after_disposition_as_concurrence():
+    # Chevron Oil Co. v. Huson, 404 U.S. 97, uses only "MR. JUSTICE
+    # DOUGLAS." even though the reporter describes it as a separate opinion
+    # and Douglas concurred in the judgment.
+    _, passages = build_opinion_passages(
+        "Mr. Justice Stewart delivered the opinion of the Court. "
+        "Majority conclusion. It is so ordered. Mr. Justice Douglas. "
+        "Rodrigue does not require reversal. I would affirm the judgment."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority conclusion."),
+        ("majority", "It is so ordered."),
+        ("concurrence", "Rodrigue does not require reversal."),
+        ("concurrence", "I would affirm the judgment."),
+    ]

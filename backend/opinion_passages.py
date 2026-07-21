@@ -5,7 +5,7 @@ import re
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
-PASSAGE_FORMAT_VERSION = "3"
+PASSAGE_FORMAT_VERSION = "4"
 
 # Lower courts introduce separate writings surname-first ("RIPPLE, Circuit
 # Judge, dissenting."), unlike the Supreme Court's "Justice Kagan, dissenting."
@@ -53,7 +53,9 @@ def prepare_opinion_text(text: str) -> str:
     return "\n".join(line for line in lines if line)
 
 
-def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, int]:
+def detect_opinion_marker(
+    blocks: list[str], index: int, previous_text: str | None = None
+) -> tuple[str | None, int]:
     """Return an opinion part and number of marker blocks consumed.
 
     CourtListener's hand-curated opinions use bracketed markers such as
@@ -119,6 +121,22 @@ def detect_opinion_marker(blocks: list[str], index: int) -> tuple[str | None, in
             re.I,
         ):
             return "majority", consumed
+        # Some older U.S. Reports opinions omit "concurring" from a separate
+        # writing's heading. A bare justice name immediately after the Court's
+        # terminal disposition still marks a new writing. Treat it as a
+        # concurrence rather than allowing it to contaminate majority sources;
+        # a true labeled dissent is handled by the stricter rule above.
+        if (
+            previous_text
+            and re.fullmatch(r"it\s+is\s+so\s+ordered\.", previous_text, re.I)
+            and re.fullmatch(
+                rf"{JUSTICE_PREFIX}\s+[A-Z][A-Za-z'.-]*"
+                r"(?:\s+[A-Z][A-Za-z'.-]*)*\.",
+                candidate,
+                re.I,
+            )
+        ):
+            return "concurrence", consumed
         if is_lower_court_intro:
             if LOWER_COURT_HEADING.fullmatch(candidate):
                 # A partial dissent ("concurring in part and dissenting in
@@ -160,7 +178,8 @@ def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[s
     blocks = [block.strip() for block in prepared.splitlines() if block.strip()]
     index = 0
     while index < len(blocks):
-        marker_part, consumed = detect_opinion_marker(blocks, index)
+        previous_text = sentences[-1][1] if sentences else None
+        marker_part, consumed = detect_opinion_marker(blocks, index, previous_text)
         if marker_part:
             opinion_part = marker_part
             index += consumed
@@ -169,7 +188,8 @@ def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[s
         for sentence in split_sentences(block):
             # Some plain-text opinions flatten separate-writing headings into
             # the surrounding paragraph instead of preserving line breaks.
-            marker_part, _ = detect_opinion_marker([sentence], 0)
+            previous_text = sentences[-1][1] if sentences else None
+            marker_part, _ = detect_opinion_marker([sentence], 0, previous_text)
             if marker_part:
                 opinion_part = marker_part
                 continue

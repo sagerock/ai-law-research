@@ -55,8 +55,11 @@ def validate_structured_summary(candidate: dict, passages: list[dict]) -> list[s
                 errors.append(f"{section}[{index}] has unknown sources: {unknown}")
                 continue
             parts = {passage_by_id[source]["opinion_part"] for source in sources}
-            if section == "majority_reasoning" and "dissent" in parts:
-                errors.append(f"{section}[{index}] cites dissent")
+            if section == "majority_reasoning":
+                if "dissent" in parts:
+                    errors.append(f"{section}[{index}] cites dissent")
+                elif any(part not in {"opinion", "majority"} for part in parts):
+                    errors.append(f"{section}[{index}] cites non-majority passage")
             if section == "dissent" and any(part != "dissent" for part in parts):
                 errors.append(f"{section}[{index}] cites non-dissent passage")
 
@@ -151,7 +154,7 @@ Requirements:
 - Write 400-800 words total.
 - Use 1-4 facts, exactly 1 issue, 1-2 holdings, 1-2 rules, 1-4 majority-reasoning claims, and 0-4 dissent claims.
 - Every claim must cite one or more passage IDs that directly support the complete claim.
-- Do not cite dissent passages for majority reasoning or non-dissent passages for dissent.
+- Cite only opinion/majority passages for majority reasoning and only dissent passages for dissent.
 - Use an empty dissent array if the packet contains no dissent.
 - Significance is concise editorial context and has no source IDs.
 - Do not invent facts, procedure, quotations, rules, or later history.

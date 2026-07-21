@@ -87,6 +87,15 @@ class StructuredBriefTests(unittest.TestCase):
         self.assertTrue(has_majority_source_material([{"opinion_part": "opinion"}]))
         self.assertTrue(has_majority_source_material([{"opinion_part": "majority"}]))
 
+    def test_majority_reasoning_rejects_concurrence_source(self):
+        value = valid_summary()
+        value["majority_reasoning"][0]["sources"] = ["op-concurrence"]
+        passages = self.passages + [
+            {"id": "op-concurrence", "opinion_part": "concurrence", "text": "Separate."}
+        ]
+        errors = validate_structured_summary(value, passages)
+        self.assertIn("majority_reasoning[0] cites non-majority passage", errors)
+
     def test_text_rendering_preserves_legacy_fallback(self):
         text = structured_summary_to_text(valid_summary())
         self.assertTrue(text.startswith("**📋 Facts**"))
