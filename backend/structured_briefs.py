@@ -63,7 +63,13 @@ def validate_structured_summary(candidate: dict, passages: list[dict]) -> list[s
                     errors.append(f"{section}[{index}] cites dissent")
                 elif any(part not in {"opinion", "majority"} for part in parts):
                     errors.append(f"{section}[{index}] cites non-majority passage")
-            if section == "dissent" and any(part != "dissent" for part in parts):
+            # "separate" marks a writing whose disposition the source never
+            # states (e.g. a bare "Mr. Justice Douglas." heading). Dissent
+            # claims may characterize it from its content; majority sections
+            # are still barred from citing it by the check above.
+            if section == "dissent" and any(
+                part not in {"dissent", "separate"} for part in parts
+            ):
                 errors.append(f"{section}[{index}] cites non-dissent passage")
 
     significance = candidate.get("significance")
@@ -158,7 +164,8 @@ Requirements:
 - Use 1-4 facts, exactly 1 issue, 1-2 holdings, 1-2 rules, 1-4 majority-reasoning claims, and 0-4 dissent claims.
 - Every claim must cite one or more passage IDs that directly support the complete claim.
 - Cite only opinion/majority passages for facts, issue, holding, rule, and majority reasoning.
-- Cite only dissent passages for dissent.
+- Cite only dissent or (separate) passages for dissent.
+- A (separate) tag marks a separate writing whose type the source does not state. If its content is a dissent, describe it under dissent; never cite it for the majority sections.
 - Use an empty dissent array if the packet contains no dissent.
 - Significance is concise editorial context and has no source IDs.
 - Do not invent facts, procedure, quotations, rules, or later history.

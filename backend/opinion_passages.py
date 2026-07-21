@@ -8,7 +8,7 @@ import re
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
-PASSAGE_FORMAT_VERSION = "5"
+PASSAGE_FORMAT_VERSION = "6"
 CANONICAL_MARKER_RE = re.compile(r"\[\[COURTLISTENER_SUBOPINION\s+(.+)\]\]")
 EXTRACTOR_MARKER_RE = re.compile(
     r"={3,}\s*(Lead Opinion|Majority|Opinion|Plurality|Concurrence(?: in Part)?|Dissent)\s*={3,}",
@@ -158,11 +158,14 @@ def detect_opinion_marker(
             re.I,
         ):
             return "majority", consumed
-        # Some older U.S. Reports opinions omit "concurring" from a separate
-        # writing's heading. A bare justice name immediately after the Court's
-        # terminal disposition still marks a new writing. Treat it as a
-        # concurrence rather than allowing it to contaminate majority sources;
-        # a true labeled dissent is handled by the stricter rule above.
+        # Some older U.S. Reports opinions omit the disposition from a separate
+        # writing's heading entirely — Chevron Oil v. Huson introduces Douglas's
+        # partial dissent with only "Mr. Justice Douglas." A bare justice name
+        # immediately after the Court's terminal disposition still marks a new
+        # writing, but its type is genuinely unknowable from the text, so label
+        # it "separate" (unknown disposition) rather than guessing concurrence:
+        # validation forbids majority sections from citing it either way, and
+        # dissent claims are allowed to characterize it from its content.
         if (
             previous_text
             and re.fullmatch(r"it\s+is\s+so\s+ordered\.", previous_text, re.I)
@@ -173,7 +176,7 @@ def detect_opinion_marker(
                 re.I,
             )
         ):
-            return "concurrence", consumed
+            return "separate", consumed
         if is_lower_court_intro:
             if LOWER_COURT_HEADING.fullmatch(candidate):
                 # A partial dissent ("concurring in part and dissenting in
@@ -309,7 +312,9 @@ def assess_opinion_boundaries(
 
     if not counts.get("majority") and not counts.get("opinion"):
         errors.append("source packet has no majority material")
-    elif (counts.get("concurrence") or counts.get("dissent")) and not counts.get("majority"):
+    elif (
+        counts.get("concurrence") or counts.get("dissent") or counts.get("separate")
+    ) and not counts.get("majority"):
         errors.append("source has separate opinions but no explicit majority boundary")
     if set(counts) == {"opinion"}:
         warnings.append("source has no explicit opinion-part boundaries")

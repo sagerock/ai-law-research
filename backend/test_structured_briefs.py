@@ -107,6 +107,37 @@ class StructuredBriefTests(unittest.TestCase):
                 errors = validate_structured_summary(value, passages)
                 self.assertIn(f"{section}[0] cites non-majority passage", errors)
 
+    def test_dissent_may_cite_separate_unknown_disposition_writing(self):
+        # Chevron-shaped source: the dissent-in-part is introduced with a bare
+        # justice name, so its passages carry the "separate" part. The model,
+        # having read the content, may describe it under dissent.
+        value = valid_summary()
+        claim = " ".join(["supported"] * 10)
+        value["dissent"] = [{"text": claim, "sources": ["op-separate"]}]
+        passages = self.passages + [
+            {"id": "op-separate", "opinion_part": "separate", "text": "I would affirm."}
+        ]
+        errors = validate_structured_summary(value, passages)
+        self.assertEqual(errors, [])
+
+    def test_dissent_still_rejects_majority_and_concurrence_sources(self):
+        value = valid_summary()
+        claim = " ".join(["supported"] * 10)
+        value["dissent"] = [{"text": claim, "sources": ["op-majority"]}]
+        errors = validate_structured_summary(value, self.passages)
+        self.assertIn("dissent[0] cites non-dissent passage", errors)
+
+    def test_majority_sections_reject_separate_part_sources(self):
+        passages = self.passages + [
+            {"id": "op-sep", "opinion_part": "separate", "text": "I would affirm."}
+        ]
+        for section in ("facts", "issue", "holding", "rule", "majority_reasoning"):
+            with self.subTest(section=section):
+                value = valid_summary()
+                value[section][0]["sources"] = ["op-sep"]
+                errors = validate_structured_summary(value, passages)
+                self.assertIn(f"{section}[0] cites non-majority passage", errors)
+
     def test_text_rendering_preserves_legacy_fallback(self):
         text = structured_summary_to_text(valid_summary())
         self.assertTrue(text.startswith("**📋 Facts**"))
