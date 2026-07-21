@@ -388,7 +388,7 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Systemic CourtListener opinion assembly and preflight
 Owner: Sol
-Status: approved; staged for commit and deployment
+Status: shipped 2026-07-21
 Files: `backend/courtlistener_opinions.py`, `backend/opinion_passages.py`,
 `backend/structured_briefs.py`, CourtListener/source-preflight hunks in `backend/main.py`,
 `backend/webhooks.py`, `citator/{prefetch_opinions_local,upload_opinions_s3,sunday_briefs,
@@ -401,10 +401,11 @@ all pass; full local Parquet probes pass, including cluster `7101` at 271 majori
 after fixing its inline colon-terminated circuit dissent heading. Exact staged snapshot: 131 passed;
 the full working tree (including separate billing work) passes 161.
 Focused review reports no remaining high/medium blocker.
-Next: commit, push, deploy, and verify production without triggering AI spend. Opinion hunks are
-isolated from the unrelated dirty billing work in `backend/main.py`.
-Deployment: not deployed (the earlier Chevron-only `05609c6` remains live)
-Commit: not committed
+Next: none. Legacy malformed stored packets remain blocked by preflight and repair from canonical
+CourtListener data when generation is next requested; deployment verification made no paid AI call.
+Deployment: backend `39fb3781-bbcf-438e-a412-0c715ecf4386`; frontend
+`2d3ef5c1-a71f-4655-b711-d8b30b8f89e7` (both successful)
+Commit: `06f137c`
 
 ### The Criminal Law Outline (canonical outline #3)
 Owner: Claude
