@@ -25,6 +25,66 @@ def has_majority_source_material(passages: list[dict]) -> bool:
     )
 
 
+# Parts no brief section is permitted to cite. Concurrences are excluded from
+# briefs by design; "other" covers remittiturs, addenda, and similar.
+UNCITABLE_PARTS = frozenset({"concurrence", "other"})
+
+
+def generation_shape_report(passages: list[dict]) -> tuple[list[str], list[str]]:
+    """Check that a source packet's labels and the validation rules can both
+    be satisfied by a well-formed candidate — without any AI call.
+
+    Errors mean generation is guaranteed to fail validation regardless of
+    claim quality. Warnings flag packets where a content-reading model is
+    likely to collide with the labels: when a large share of the packet is
+    material no section may cite (pre-fix Chevron: a dissent mislabeled
+    "concurrence" was 51% of the packet), the model tends to describe it
+    under dissent and fail.
+    """
+    def first_id(parts):
+        for passage in passages:
+            if passage.get("opinion_part") in parts:
+                return passage.get("passage_id", passage.get("id"))
+        return None
+
+    warnings: list[str] = []
+    majority_id = first_id({"opinion", "majority"})
+    if not majority_id:
+        return ["generation-shape: no majority/opinion passage available to cite"], warnings
+
+    dissent_id = first_id({"dissent", "separate"})
+    filler = " ".join(["synthetic"] * 70)
+    candidate = {
+        section: [{"text": filler, "sources": [majority_id]}]
+        for section in MAJORITY_SOURCE_SECTIONS
+    }
+    candidate["dissent"] = (
+        [{"text": filler, "sources": [dissent_id]}] if dissent_id else []
+    )
+    candidate["significance"] = filler
+    errors = [
+        f"generation-shape: {error}"
+        for error in validate_structured_summary(candidate, passages)
+        # The synthetic filler intentionally ignores the word budget.
+        if "must contain 400-800 words" not in error
+    ]
+
+    uncitable = sum(
+        1 for passage in passages if passage.get("opinion_part") in UNCITABLE_PARTS
+    )
+    if len(passages) > 10 and uncitable / len(passages) > 0.25:
+        parts_found = ", ".join(sorted({
+            passage["opinion_part"] for passage in passages
+            if passage.get("opinion_part") in UNCITABLE_PARTS
+        }))
+        warnings.append(
+            f"generation-shape: {uncitable}/{len(passages)} passages "
+            f"({uncitable / len(passages):.0%}) are uncitable parts ({parts_found}) "
+            "— a content-reading model may describe them under dissent and fail validation"
+        )
+    return errors, warnings
+
+
 def validate_structured_summary(candidate: dict, passages: list[dict]) -> list[str]:
     errors = []
     allowed = set(SECTION_LIMITS) | {"significance"}

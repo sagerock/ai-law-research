@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 import hashlib
 import html
@@ -185,6 +186,23 @@ def assemble_sub_opinions(cluster_id: str, parts: Iterable[SubOpinion]) -> Opini
     )
 
 
+async def _get_with_retry(client: Any, url: str, **kwargs: Any) -> Any:
+    """One retry on a failed request: a single transient sub-opinion error
+    otherwise refuses the whole cluster (complete-fetch invariant)."""
+    for attempt in (1, 2):
+        try:
+            response = await client.get(url, **kwargs)
+        except Exception:
+            if attempt == 2:
+                raise
+            await asyncio.sleep(1.0)
+            continue
+        if response.status_code == 200 or attempt == 2:
+            return response
+        await asyncio.sleep(1.0)
+    return response
+
+
 async def fetch_courtlistener_document(
     cluster_id: str,
     api_key: str | None,
@@ -202,7 +220,8 @@ async def fetch_courtlistener_document(
 
         client = httpx.AsyncClient()
     try:
-        response = await client.get(
+        response = await _get_with_retry(
+            client,
             f"{COURTLISTENER_API_BASE}/clusters/{cluster_id}/",
             headers=headers,
             timeout=30.0,
@@ -217,7 +236,8 @@ async def fetch_courtlistener_document(
         }
         for opinion_url in opinion_urls:
             opinion_id = str(opinion_url).rstrip("/").split("/")[-1]
-            opinion_response = await client.get(
+            opinion_response = await _get_with_retry(
+                client,
                 f"{COURTLISTENER_API_BASE}/opinions/{opinion_id}/",
                 headers=headers,
                 timeout=30.0,
@@ -228,7 +248,8 @@ async def fetch_courtlistener_document(
         if not opinion_data_by_id or (
             expected_ids is not None and not expected_ids.issubset(opinion_data_by_id)
         ):
-            search = await client.get(
+            search = await _get_with_retry(
+                client,
                 f"{COURTLISTENER_API_BASE}/opinions/",
                 params={"cluster": cluster_id},
                 headers=headers,

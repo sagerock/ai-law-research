@@ -23,7 +23,11 @@ BACKEND = os.path.join(os.path.dirname(HERE), "backend")
 sys.path.insert(0, BACKEND)
 
 from opinion_passages import assess_opinion_boundaries
-from structured_briefs import build_source_packet, has_majority_source_material
+from structured_briefs import (
+    build_source_packet,
+    generation_shape_report,
+    has_majority_source_material,
+)
 
 
 BUCKET = os.getenv("OPINIONS_BUCKET", "lawstudygroup-opinions")
@@ -117,6 +121,11 @@ async def run(args):
             errors = list(assessment.errors)
             if not has_majority_source_material(selected):
                 errors.append("selected source packet has no majority material")
+            # Generation-shaped probe: would a well-formed candidate that
+            # trusts the packet's labels survive validation? Runs on the
+            # selected packet (what generation actually sends), no AI call.
+            shape_errors, shape_warnings = generation_shape_report(selected)
+            errors.extend(shape_errors)
             result = {
                 "case_id": row["id"],
                 "title": row["title"],
@@ -127,6 +136,7 @@ async def run(args):
                 **assessment.as_dict(),
                 "ok": not errors,
                 "errors": errors,
+                "warnings": list(assessment.warnings) + shape_warnings,
             }
         else:
             result = {

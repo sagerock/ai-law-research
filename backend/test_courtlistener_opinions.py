@@ -153,6 +153,32 @@ def test_textless_expected_sub_opinion_is_not_treated_as_complete():
     assert document is None
 
 
+class FlakyOnceClient(PartialClient):
+    """Opinion 21 fails on the first attempt only — a transient blip must not
+    refuse the whole cluster."""
+
+    def __init__(self):
+        self.failed_once = False
+
+    async def get(self, url, **kwargs):
+        if "/opinions/21/" in url:
+            if not self.failed_once:
+                self.failed_once = True
+                return FakeResponse(503, {})
+            return FakeResponse(200, {
+                "id": 21, "type": "040dissent", "plain_text": "Dissent. " * 30,
+            })
+        return await super().get(url, **kwargs)
+
+
+def test_transient_sub_opinion_failure_is_retried_and_assembles():
+    document = asyncio.run(fetch_courtlistener_document(
+        "16", "token", client=FlakyOnceClient(),
+    ))
+    assert document is not None
+    assert [value.type_code for value in document.parts] == ["020lead", "040dissent"]
+
+
 class MissingClusterClient:
     async def get(self, url, **kwargs):
         if "/clusters/16/" in url:

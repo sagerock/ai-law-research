@@ -3,6 +3,7 @@ import unittest
 
 from structured_briefs import (
     build_source_packet,
+    generation_shape_report,
     has_majority_source_material,
     parse_structured_response,
     repair_unknown_sources,
@@ -137,6 +138,31 @@ class StructuredBriefTests(unittest.TestCase):
                 value[section][0]["sources"] = ["op-sep"]
                 errors = validate_structured_summary(value, passages)
                 self.assertIn(f"{section}[0] cites non-majority passage", errors)
+
+    def test_generation_shape_passes_clean_packets(self):
+        packet = [
+            {"id": "op-m", "opinion_part": "majority", "text": "Majority."},
+            {"id": "op-d", "opinion_part": "dissent", "text": "Dissent."},
+        ]
+        errors, warnings = generation_shape_report(packet)
+        self.assertEqual(errors, [])
+        self.assertEqual(warnings, [])
+
+    def test_generation_shape_errors_without_citable_majority(self):
+        packet = [{"id": "op-d", "opinion_part": "dissent", "text": "Dissent."}]
+        errors, _ = generation_shape_report(packet)
+        self.assertTrue(any("no majority/opinion passage" in e for e in errors))
+
+    def test_generation_shape_warns_on_dominant_uncitable_material(self):
+        # Pre-fix Chevron shape: half the packet labeled concurrence, which no
+        # section may cite — a content-reading model will collide with it.
+        packet = (
+            [{"id": f"op-m{i}", "opinion_part": "majority", "text": "M."} for i in range(6)]
+            + [{"id": f"op-c{i}", "opinion_part": "concurrence", "text": "C."} for i in range(6)]
+        )
+        errors, warnings = generation_shape_report(packet)
+        self.assertEqual(errors, [])
+        self.assertTrue(any("uncitable" in w for w in warnings))
 
     def test_text_rendering_preserves_legacy_fallback(self):
         text = structured_summary_to_text(valid_summary())
