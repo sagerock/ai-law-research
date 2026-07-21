@@ -96,6 +96,17 @@ class StructuredBriefTests(unittest.TestCase):
         errors = validate_structured_summary(value, passages)
         self.assertIn("majority_reasoning[0] cites non-majority passage", errors)
 
+    def test_majority_sections_reject_separate_opinion_sources(self):
+        passages = self.passages + [
+            {"id": "op-separate", "opinion_part": "concurrence", "text": "Separate."}
+        ]
+        for section in ("facts", "issue", "holding", "rule"):
+            with self.subTest(section=section):
+                value = valid_summary()
+                value[section][0]["sources"] = ["op-separate"]
+                errors = validate_structured_summary(value, passages)
+                self.assertIn(f"{section}[0] cites non-majority passage", errors)
+
     def test_text_rendering_preserves_legacy_fallback(self):
         text = structured_summary_to_text(valid_summary())
         self.assertTrue(text.startswith("**📋 Facts**"))

@@ -1,6 +1,10 @@
 import hashlib
 
-from opinion_passages import PASSAGE_FORMAT_VERSION, build_opinion_passages
+from opinion_passages import (
+    PASSAGE_FORMAT_VERSION,
+    assess_opinion_boundaries,
+    build_opinion_passages,
+)
 
 
 def test_passage_ids_survive_insertions_before_unchanged_text():
@@ -19,11 +23,22 @@ def test_content_hash_changes_when_opinion_changes():
 
 def test_content_hash_is_namespaced_by_passage_format():
     text = "One sentence."
-    content_hash, _ = build_opinion_passages(text)
+    content_hash, passages = build_opinion_passages(text)
+    material = "\n".join(
+        f'{p["ordinal"]}\0{p["id"]}\0{p["opinion_part"]}\0{p["text"]}' for p in passages
+    )
     assert content_hash == hashlib.sha256(
-        f"{PASSAGE_FORMAT_VERSION}\0{text}".encode("utf-8")
+        f"{PASSAGE_FORMAT_VERSION}\0{material}".encode("utf-8")
     ).hexdigest()
     assert content_hash != hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def test_content_hash_changes_when_boundaries_change():
+    plain_hash, _ = build_opinion_passages("Majority sentence. Dissent sentence.")
+    marked_hash, _ = build_opinion_passages(
+        "=== Lead Opinion ===\nMajority sentence.\n=== Dissent ===\nDissent sentence."
+    )
+    assert plain_hash != marked_hash
 
 
 def test_labels_majority_and_dissent():
@@ -155,6 +170,17 @@ def test_labels_partial_dissent_as_dissent():
     ]
 
 
+def test_labels_supreme_court_partial_dissent_conservatively_as_dissent():
+    _, passages = build_opinion_passages(
+        "Justice Smith delivered the opinion of the Court. Majority sentence. "
+        "Justice Jones, concurring in part and dissenting in part. Mixed sentence."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority sentence."),
+        ("dissent", "Mixed sentence."),
+    ]
+
+
 def test_circuit_citation_strings_are_not_headings():
     # Mixed-case citation references and page cites must not flip the part.
     _, passages = build_opinion_passages(
@@ -213,4 +239,59 @@ def test_labels_unqualified_separate_opinion_after_disposition_as_concurrence():
         ("majority", "It is so ordered."),
         ("concurrence", "Rodrigue does not require reversal."),
         ("concurrence", "I would affirm the judgment."),
+    ]
+
+
+def test_labels_canonical_courtlistener_markers_and_assesses_expected_parts():
+    text = (
+        '[[COURTLISTENER_SUBOPINION {"id":"1","type":"020lead","part":"majority","author":"A"}]]\n'
+        "Majority sentence.\n"
+        '[[COURTLISTENER_SUBOPINION {"id":"2","type":"040dissent","part":"dissent","author":"B"}]]\n'
+        "Dissent sentence."
+    )
+    _, passages = build_opinion_passages(text)
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("majority", "Majority sentence."),
+        ("dissent", "Dissent sentence."),
+    ]
+    assessment = assess_opinion_boundaries(text, passages)
+    assert assessment.ok
+    assert assessment.part_counts == {"majority": 1, "dissent": 1}
+
+
+def test_labels_extractor_markers_and_rejects_separate_only_source():
+    text = "=== Dissent ===\nAndrews, J.\n(dissenting). Separate sentence."
+    _, passages = build_opinion_passages(text)
+    assert all(p["opinion_part"] == "dissent" for p in passages)
+    assessment = assess_opinion_boundaries(text, passages)
+    assert not assessment.ok
+    assert "source packet has no majority material" in assessment.errors
+
+
+def test_strict_preflight_rejects_fully_unclassified_source():
+    text = "Unmarked opinion sentence. " * 120
+    _, passages = build_opinion_passages(text)
+    assessment = assess_opinion_boundaries(
+        text, passages, min_chars=2500, require_explicit=True
+    )
+    assert not assessment.ok
+    assert "source has no verifiable opinion-part boundaries" in assessment.errors
+
+
+def test_preflight_rejects_neutral_preamble_before_dissent_only_source():
+    text = "Case caption.\n=== Dissent ===\nSeparate reasoning. " * 120
+    _, passages = build_opinion_passages(text)
+    assessment = assess_opinion_boundaries(text, passages, require_explicit=True)
+    assert not assessment.ok
+    assert "source has separate opinions but no explicit majority boundary" in assessment.errors
+
+
+def test_labels_colon_terminated_circuit_dissent_heading():
+    _, passages = build_opinion_passages(
+        "The motion is DENIED. GARWOOD, Circuit Judge, dissenting in part: "
+        "Separate reasoning."
+    )
+    assert [(passage["opinion_part"], passage["text"]) for passage in passages] == [
+        ("opinion", "The motion is DENIED."),
+        ("dissent", "Separate reasoning."),
     ]

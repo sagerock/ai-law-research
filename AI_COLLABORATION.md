@@ -354,6 +354,25 @@ English full-text stemming was rejected for this path because it reduced `Ince` 
 creating corporate-name false positives such as `Prince`. Exact citation and contiguous-title
 matches still rank ahead of token matches. (Sol, 2026-07-12.)
 
+### Opinion boundaries are ingestion metadata, not model inference (2026-07-21)
+
+CourtListener API hydration, local Parquet graduation, and S3 publication use one canonical
+assembler that preserves every selected sub-opinion's ID, type, author, and source field in
+machine-readable boundary markers. Typed components win when they collectively represent the
+case; a combined record is retained when the only component is a duplicate lead because it may
+contain an embedded dissent absent from the component list. In that shape the typed lead supplies
+the default majority boundary, while reporter headings still split separate writings. This avoids
+both duplicated majority text and silently omitted dissents. Passage format v5 hashes the derived
+passages plus classifications, so changed boundaries cannot share a provenance namespace.
+
+Strict source preflight runs before paid generation and requires a briefable source, verifiable
+boundaries, and majority material in the selected prompt packet. Facts, issue, holding, rule, and
+majority reasoning may cite only majority/opinion passages; dissent claims may cite only dissent.
+Rejected alternative: relaxing validation case by case when a model correctly recognizes a
+separate opinion that the parser missed. That would hide source corruption and allow the same bug
+to recur across cases. Source-preflight failures are cheap and retry after a six-day backoff so a
+repaired source or parser returns to the next weekly queue without livelocking the current run.
+
 ## Open Questions
 
 Genuine design questions left for the next assistant. If you can resolve one (with
@@ -366,6 +385,26 @@ with an existing decision, add your case here instead of silently changing the c
   2026-07-12 by Claude while unifying the validators; no evidence gathered yet.)
 
 ## Current Handoffs
+
+### Systemic CourtListener opinion assembly and preflight
+Owner: Sol
+Status: approved; staged for commit and deployment
+Files: `backend/courtlistener_opinions.py`, `backend/opinion_passages.py`,
+`backend/structured_briefs.py`, CourtListener/source-preflight hunks in `backend/main.py`,
+`backend/webhooks.py`, `citator/{prefetch_opinions_local,upload_opinions_s3,sunday_briefs,
+opinion_boundary_preflight}.py`, and focused tests
+Summary: supersedes the shipped Chevron-only parser fix with canonical typed assembly across all
+ingestion paths, strict pre-provider source checks, complete-cluster refusal on partial API fetches,
+retryable Sunday preflight, durable webhook stub persistence, and compare-and-swap source repair.
+Real API probes for Chevron (`108406`), Giles (`145781`), Stephens (`660220`), and cluster `7101`
+all pass; full local Parquet probes pass, including cluster `7101` at 271 majority / 1 dissent
+after fixing its inline colon-terminated circuit dissent heading. Exact staged snapshot: 131 passed;
+the full working tree (including separate billing work) passes 161.
+Focused review reports no remaining high/medium blocker.
+Next: commit, push, deploy, and verify production without triggering AI spend. Opinion hunks are
+isolated from the unrelated dirty billing work in `backend/main.py`.
+Deployment: not deployed (the earlier Chevron-only `05609c6` remains live)
+Commit: not committed
 
 ### The Criminal Law Outline (canonical outline #3)
 Owner: Claude

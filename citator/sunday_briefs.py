@@ -32,8 +32,12 @@ SKIPLIST = os.path.join(HERE, "data", "briefs_skiplist.txt")
 MIN_OPINION = 2500  # chars; below this it's a procedural order, not an opinion
 BACKEND = os.path.join(os.path.dirname(HERE), "backend")
 sys.path.insert(0, BACKEND)
-from opinion_passages import build_opinion_passages
-from structured_briefs import validate_structured_summary
+from opinion_passages import assess_opinion_boundaries
+from structured_briefs import (
+    build_source_packet,
+    has_majority_source_material,
+    validate_structured_summary,
+)
 
 # Diverse, hand-verified pilot: civil procedure, constitutional law, and jurisdiction;
 # modern/older OCR opinions; majority-only and separate-opinion cases.
@@ -253,8 +257,10 @@ async def cmd_candidate_list(n):
                  AND NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
                                   WHERE k.case_id = c.id AND k.provider = $1)
                   AND NOT EXISTS (SELECT 1 FROM structured_summary_failures f
-                                  WHERE f.case_id = c.id AND f.provider = $1
-                                    AND f.stage = 'semantic_review')""",
+                                   WHERE f.case_id = c.id AND f.provider = $1
+                                     AND (f.stage = 'semantic_review'
+                                          OR (f.stage = 'source_preflight'
+                                              AND f.created_at > NOW() - INTERVAL '6 days')))""",
             SOURCE_PROVIDER, PRIORITY_CASEBOOK_ID,
         )
         skip = skiplist()
@@ -288,20 +294,45 @@ async def cmd_candidate_list(n):
 
 
 async def cmd_candidate_opinion(cid):
-    text, source = await asyncio.to_thread(read_full_opinion, cid)
     conn = await asyncpg.connect(prod_url())
     try:
-        if not text:
-            text = await conn.fetchval("SELECT content FROM cases WHERE id = $1", cid)
-            source = "database"
+        text = await conn.fetchval("SELECT content FROM cases WHERE id = $1", cid)
+        source = "database" if text else None
+        if not text or len(text) < MIN_OPINION:
+            alternate_text, alternate_source = await asyncio.to_thread(read_full_opinion, cid)
+            if alternate_text and len(alternate_text) >= MIN_OPINION:
+                text, source = alternate_text, alternate_source
         if not text or len(text) < MIN_OPINION:
             with open(SKIPLIST, "a") as f:
                 f.write(f"{cid}\t{len(text or '')} chars, auto-skipped (candidate) "
                         f"{__import__('datetime').date.today()}\n")
             raise SystemExit(f"SKIPPED {cid}: opinion is missing or too short "
-                             f"({len(text or '')} chars) — added to skiplist")
+                              f"({len(text or '')} chars) — added to skiplist")
         title = await conn.fetchval("SELECT title FROM cases WHERE id = $1", cid)
-        content_hash, passages = build_opinion_passages(text)
+        def preflight(value):
+            value_hash, value_passages, value_selected = build_source_packet(value)
+            value_assessment = assess_opinion_boundaries(
+                value, value_passages, min_chars=MIN_OPINION, require_explicit=True
+            )
+            value_errors = list(value_assessment.errors)
+            if not has_majority_source_material(value_selected):
+                value_errors.append("selected source packet has no majority material")
+            return value_hash, value_passages, value_selected, value_assessment, value_errors
+
+        content_hash, passages, selected, assessment, preflight_errors = preflight(text)
+        if preflight_errors and source == "database":
+            alternate_text, alternate_source = await asyncio.to_thread(read_full_opinion, cid)
+            if alternate_text and alternate_text != text:
+                alternate = preflight(alternate_text)
+                if not alternate[-1]:
+                    text, source = alternate_text, alternate_source
+                    content_hash, passages, selected, assessment, preflight_errors = alternate
+        if preflight_errors:
+            error = "; ".join(preflight_errors)
+            await record_candidate_failure(
+                conn, cid, content_hash, "source_preflight", error
+            )
+            raise SystemExit(f"REFUSING candidate source: {error}")
         async with conn.transaction():
             await conn.executemany(
                 """INSERT INTO opinion_passages
@@ -317,21 +348,6 @@ async def cmd_candidate_opinion(cid):
                 ],
             )
 
-        selected, chars = [], 0
-        for passage in passages:
-            if chars + len(passage["text"]) > 65000:
-                break
-            selected.append(passage)
-            chars += len(passage["text"])
-        if len(selected) < len(passages):
-            tail, tail_chars = [], 0
-            for passage in reversed(passages):
-                if tail_chars + len(passage["text"]) > 15000:
-                    break
-                tail.append(passage)
-                tail_chars += len(passage["text"])
-            selected_ids = {p["id"] for p in selected}
-            selected.extend(p for p in reversed(tail) if p["id"] not in selected_ids)
         packet = {
             "case_id": cid,
             "title": title,
@@ -339,6 +355,7 @@ async def cmd_candidate_opinion(cid):
             "source": source,
             "is_partial_packet": len(selected) < len(passages),
             "total_passages": len(passages),
+            "boundary_assessment": assessment.as_dict(),
             "passages": selected,
         }
         print(json.dumps(packet, ensure_ascii=False))

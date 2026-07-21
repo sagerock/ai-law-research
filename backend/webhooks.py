@@ -9,10 +9,11 @@ from fastapi import APIRouter, Request, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import asyncpg
-import httpx
+import hashlib
 import json
 import os
 from datetime import date
+from courtlistener_opinions import fetch_courtlistener_document
 from webhook_security import require_courtlistener_source
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -30,6 +31,58 @@ class WebhookMetadata(BaseModel):
 class SearchAlertWebhook(BaseModel):
     payload: SearchAlertPayload
     webhook: WebhookMetadata
+
+
+def _case_values(result: Dict[str, Any]) -> dict:
+    case_id = str(result.get("cluster_id") or result.get("id"))
+    date_filed = None
+    if result.get("dateFiled"):
+        try:
+            date_filed = date.fromisoformat(result["dateFiled"])
+        except (ValueError, TypeError):
+            pass
+    citations = result.get("citation", [])
+    reporter_cite = citations[0] if isinstance(citations, list) and citations else citations
+    url = result.get("absolute_url", "")
+    return {
+        "id": case_id,
+        "title": result.get("caseName", ""),
+        "court_id": result.get("court_id"),
+        "decision_date": date_filed,
+        "reporter_cite": reporter_cite if isinstance(reporter_cite, str) else None,
+        "metadata": json.dumps(result),
+        "source_url": (
+            url if url.startswith("http")
+            else f"https://www.courtlistener.com{url}" if url else None
+        ),
+    }
+
+
+async def persist_new_case_stubs(results: List[Dict]) -> None:
+    """Durably record deliveries before acknowledging the webhook."""
+    conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    try:
+        for result in results:
+            values = _case_values(result)
+            court_db_id = None
+            if values["court_id"]:
+                court_db_id = await conn.fetchval(
+                    "SELECT id FROM courts WHERE court_listener_id = $1",
+                    values["court_id"],
+                )
+            await conn.execute(
+                """INSERT INTO cases (
+                       id, title, court_id, decision_date, reporter_cite,
+                       metadata, source_url, created_at
+                   )
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+                   ON CONFLICT (id) DO NOTHING""",
+                values["id"], values["title"], court_db_id,
+                values["decision_date"], values["reporter_cite"],
+                values["metadata"], values["source_url"],
+            )
+    finally:
+        await conn.close()
 
 @router.post("/courtlistener/search-alert")
 async def handle_search_alert(
@@ -56,7 +109,10 @@ async def handle_search_alert(
     print(f"Received Search Alert webhook: {webhook.payload.alert.get('name')}")
     print(f"   New results: {len(webhook.payload.results)}")
 
-    # Process the new cases in the background
+    # A provider retry remains possible until every result is durably represented.
+    await persist_new_case_stubs(webhook.payload.results)
+
+    # Hydrate public opinion text after the durable, idempotent insert.
     background_tasks.add_task(
         process_new_cases,
         webhook.payload.results,
@@ -71,51 +127,13 @@ async def handle_search_alert(
     }
 
 
-def extract_text_from_opinion(opinion_data: dict) -> str:
-    """Extract plain text from a CourtListener opinion response."""
-    from bs4 import BeautifulSoup
-    if opinion_data.get("plain_text") and len(opinion_data["plain_text"]) > 100:
-        return opinion_data["plain_text"]
-    for field in ["html_lawbox", "html_with_citations", "html", "html_columbia", "xml_harvard"]:
-        html_content = opinion_data.get(field, "")
-        if html_content:
-            soup = BeautifulSoup(html_content, "html.parser")
-            text = soup.get_text(separator="\n", strip=True)
-            if len(text) > 100:
-                return text
-    return ""
-
-
 async def fetch_opinion_text(cluster_id: str) -> str:
-    """Fetch full opinion text from CourtListener for a cluster."""
-    cl_token = os.getenv("COURTLISTENER_API_KEY", "")
-    cl_headers = {"Authorization": f"Token {cl_token}"} if cl_token else {}
-
+    """Fetch every typed writing through the canonical CourtListener assembler."""
     try:
-        async with httpx.AsyncClient() as client:
-            # Get cluster to find sub-opinions
-            resp = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
-                headers=cl_headers, timeout=30,
-            )
-            if resp.status_code != 200:
-                return ""
-
-            cluster = resp.json()
-            best_text = ""
-
-            for op_url in cluster.get("sub_opinions", []):
-                op_id = op_url.rstrip("/").split("/")[-1]
-                op_resp = await client.get(
-                    f"https://www.courtlistener.com/api/rest/v4/opinions/{op_id}/",
-                    headers=cl_headers, timeout=30,
-                )
-                if op_resp.status_code == 200:
-                    text = extract_text_from_opinion(op_resp.json())
-                    if len(text) > len(best_text):
-                        best_text = text
-
-            return best_text
+        document = await fetch_courtlistener_document(
+            cluster_id, os.getenv("COURTLISTENER_API_KEY")
+        )
+        return document.text if document else ""
     except Exception as e:
         print(f"   Error fetching opinion text for cluster {cluster_id}: {e}")
         return ""
@@ -128,82 +146,72 @@ async def process_new_cases(results: List[Dict], idempotency_key: str):
     This runs in the background so we return 200 quickly.
     """
 
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    conn = await asyncpg.connect(DATABASE_URL)
-
-    try:
-        for result in results:
-            # Extract case data
-            case_id = str(result.get("cluster_id") or result.get("id"))
-            case_name = result.get("caseName", "")
-            court_id = result.get("court_id")
-            date_filed_str = result.get("dateFiled")
-            url = result.get("absolute_url", "")
-
-            # Parse date
-            date_filed = None
-            if date_filed_str:
-                try:
-                    date_filed = date.fromisoformat(date_filed_str)
-                except (ValueError, TypeError):
-                    pass
-
-            # Extract citation if available
-            reporter_cite = None
-            citations = result.get("citation", [])
-            if isinstance(citations, list) and citations:
-                reporter_cite = citations[0]
-            elif isinstance(citations, str):
-                reporter_cite = citations
+    database_url = os.getenv("DATABASE_URL")
+    for result in results:
+        try:
+            values = _case_values(result)
+            case_id = values["id"]
 
             # Check if we already have this case
-            exists = await conn.fetchval(
-                "SELECT EXISTS(SELECT 1 FROM cases WHERE id = $1)",
-                case_id
-            )
-
-            if exists:
-                print(f"   Case {case_id} already exists, skipping")
-                continue
-
-            # Look up court
-            court_db_id = None
-            if court_id:
-                court_db_id = await conn.fetchval(
-                    "SELECT id FROM courts WHERE court_listener_id = $1",
-                    court_id
+            conn = await asyncpg.connect(database_url)
+            try:
+                existing_content = await conn.fetchval(
+                    "SELECT content FROM cases WHERE id = $1",
+                    case_id,
                 )
 
-            # Fetch full opinion text
+                # Look up court while the short-lived DB connection is open.
+                court_db_id = None
+                if values["court_id"]:
+                    court_db_id = await conn.fetchval(
+                        "SELECT id FROM courts WHERE court_listener_id = $1",
+                        values["court_id"],
+                    )
+            finally:
+                await conn.close()
+
+            if existing_content and len(existing_content) >= 200:
+                print(f"   Case {case_id} already has opinion text, skipping")
+                continue
+
+            # Do not hold a database connection during remote API requests.
             opinion_text = await fetch_opinion_text(case_id)
             if opinion_text:
                 print(f"   Fetched {len(opinion_text)} chars of opinion text")
 
-            # Insert new case
-            await conn.execute("""
-                INSERT INTO cases (
-                    id, title, court_id, decision_date, reporter_cite,
-                    content, metadata, source_url, created_at
+            conn = await asyncpg.connect(database_url)
+            try:
+                await conn.execute("""
+                    INSERT INTO cases (
+                        id, title, court_id, decision_date, reporter_cite,
+                        content, content_hash, metadata, source_url, created_at
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+                    ON CONFLICT (id) DO UPDATE SET
+                        content = EXCLUDED.content,
+                        content_hash = EXCLUDED.content_hash,
+                        metadata = EXCLUDED.metadata,
+                        source_url = EXCLUDED.source_url,
+                        updated_at = NOW()
+                    WHERE (cases.content IS NULL OR length(cases.content) < 200)
+                      AND EXCLUDED.content IS NOT NULL
+                """,
+                    case_id,
+                    values["title"],
+                    court_db_id,
+                    values["decision_date"],
+                    values["reporter_cite"],
+                    opinion_text if opinion_text else None,
+                    hashlib.sha256(opinion_text.encode("utf-8")).hexdigest() if opinion_text else None,
+                    values["metadata"],
+                    values["source_url"],
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-                ON CONFLICT (id) DO NOTHING
-            """,
-                case_id,
-                case_name,
-                court_db_id,
-                date_filed,
-                reporter_cite,
-                opinion_text if opinion_text else None,
-                json.dumps(result),
-                url if url.startswith("http") else f"https://www.courtlistener.com{url}" if url else None,
-            )
+            finally:
+                await conn.close()
 
-            print(f"   Imported case: {case_name[:60]}")
-
-    except Exception as e:
-        print(f"   Error processing webhook: {e}")
-    finally:
-        await conn.close()
+            print(f"   Imported case: {values['title'][:60]}")
+        except Exception as e:
+            print(f"   Error processing webhook case: {e}")
 
 @router.post("/courtlistener/docket-alert")
 async def handle_docket_alert(
