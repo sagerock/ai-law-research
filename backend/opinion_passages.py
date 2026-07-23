@@ -8,7 +8,7 @@ import re
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
-PASSAGE_FORMAT_VERSION = "6"
+PASSAGE_FORMAT_VERSION = "7"
 CANONICAL_MARKER_RE = re.compile(r"\[\[COURTLISTENER_SUBOPINION\s+(.+)\]\]")
 EXTRACTOR_MARKER_RE = re.compile(
     r"={3,}\s*(Lead Opinion|Majority|Opinion|Plurality|Concurrence(?: in Part)?|Dissent)\s*={3,}",
@@ -154,6 +154,13 @@ def detect_opinion_marker(
             rf"{JUSTICE_PREFIX}.*"
             r"(?:delivered\s+(?:the|an)\s+opinion\s+of\s+the\s+Court|"
             r"announced\s+the\s+judgment\s+of\s+the\s+Court)[^.]*\.",
+            candidate,
+            re.I,
+        ):
+            return "majority", consumed
+        # Rhode Island (and similar) style: "Justice Goldberg, for the Court."
+        if re.fullmatch(
+            rf"{JUSTICE_PREFIX}[^.]*,\s*for\s+the\s+Court\.",
             candidate,
             re.I,
         ):
@@ -317,9 +324,19 @@ def assess_opinion_boundaries(
     ) and not counts.get("majority"):
         errors.append("source has separate opinions but no explicit majority boundary")
     if set(counts) == {"opinion"}:
-        warnings.append("source has no explicit opinion-part boundaries")
-        if require_explicit:
-            errors.append("source has no verifiable opinion-part boundaries")
+        # A source whose ingestion manifest declares exactly one sub-opinion
+        # is a verified single writing: a single-opinion case has no part
+        # boundaries to find, and demanding them refuses the most common
+        # shape in the catalog (e.g. State v. Mosley, R.I. 2024).
+        canonical_marker_count = len(CANONICAL_MARKER_RE.findall(text))
+        if canonical_marker_count == 1:
+            warnings.append(
+                "single canonical sub-opinion; whole text is the opinion of the court"
+            )
+        else:
+            warnings.append("source has no explicit opinion-part boundaries")
+            if require_explicit:
+                errors.append("source has no verifiable opinion-part boundaries")
 
     marker_text_found = any(
         CANONICAL_MARKER_RE.search(passage.get("text", ""))

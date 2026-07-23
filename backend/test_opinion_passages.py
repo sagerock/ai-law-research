@@ -244,6 +244,40 @@ def test_labels_unqualified_separate_opinion_after_disposition_as_separate():
     ]
 
 
+def test_labels_for_the_court_heading_as_majority():
+    # Rhode Island style: "Justice Goldberg, for the Court." (State v. Mosley)
+    _, passages = build_opinion_passages(
+        "Caption sentence.\n"
+        "Justice Goldberg, for the Court. On the afternoon of August 13, 2014, "
+        "the defendant was arrested."
+    )
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("opinion", "Caption sentence."),
+        ("majority", "On the afternoon of August 13, 2014, the defendant was arrested."),
+    ]
+
+
+def test_single_canonical_sub_opinion_passes_strict_preflight():
+    # One combined sub-opinion, no separate writings: a verified single
+    # writing must not be refused for lacking boundaries it never had.
+    text = (
+        '[[COURTLISTENER_SUBOPINION {"id":"1","type":"010combined","part":"opinion","author":null}]]\n'
+        + "Body sentence. " * 300
+    )
+    _, passages = build_opinion_passages(text)
+    assessment = assess_opinion_boundaries(text, passages, require_explicit=True)
+    assert assessment.ok
+    assert any("single canonical sub-opinion" in w for w in assessment.warnings)
+
+
+def test_unmarked_all_opinion_source_still_fails_strict_preflight():
+    text = "Unmarked opinion sentence. " * 120
+    _, passages = build_opinion_passages(text)
+    assessment = assess_opinion_boundaries(text, passages, require_explicit=True)
+    assert not assessment.ok
+    assert "source has no verifiable opinion-part boundaries" in assessment.errors
+
+
 def test_labels_canonical_courtlistener_markers_and_assesses_expected_parts():
     text = (
         '[[COURTLISTENER_SUBOPINION {"id":"1","type":"020lead","part":"majority","author":"A"}]]\n'
