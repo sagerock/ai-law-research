@@ -18,6 +18,7 @@ import {
   Heart,
 } from 'lucide-react'
 import { BRAND_NAME } from '@/lib/site'
+import DonateLink from '@/components/DonateLink'
 
 export const metadata: Metadata = {
   title: 'Bring Your Own Key',
@@ -379,16 +380,15 @@ export default function BYOKPage() {
                   </Link>.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <a
+                  <DonateLink
                     href="https://ko-fi.com/sagelewis"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    placement="byok_pool"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF5E5B] hover:bg-[#e54d4a] text-white rounded-lg font-medium text-sm transition-colors shadow-sm"
                   >
                     <Heart className="h-4 w-4" />
                     Buy Me a Coffee
                     <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-                  </a>
+                  </DonateLink>
                   <Link
                     href="/transparency"
                     className="inline-flex items-center gap-2 px-4 py-2 border border-amber-300 text-amber-800 rounded-lg font-medium text-sm hover:bg-amber-100 transition-colors"

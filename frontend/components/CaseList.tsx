@@ -45,7 +45,7 @@ export default function CaseList({ cases, isLoading }: CaseListProps) {
 
       <div className="space-y-4">
         {cases.map((caseItem, index) => (
-          <CaseCard key={caseItem.id || index} case={caseItem} />
+          <CaseCard key={caseItem.id || index} case={caseItem} position={index + 1} />
         ))}
       </div>
     </div>

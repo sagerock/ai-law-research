@@ -17,6 +17,7 @@ import {
 import Header from '@/components/Header'
 import { API_URL } from '@/lib/api'
 import { TransparencyStats } from '@/types'
+import { track } from '@/lib/analytics'
 
 // Progress Bar Component
 function ProgressBar({
@@ -140,6 +141,7 @@ export default function TransparencyPage() {
               href={stats.kofi_url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => track('donate_click', { placement: 'transparency_hero' })}
               className="inline-flex items-center px-6 py-3 bg-[#FF5E5B] hover:bg-[#e54d4a] text-white font-bold rounded-lg text-base transition shadow-md hover:shadow-lg"
             >
               <Coffee className="h-5 w-5 mr-2" />
@@ -421,6 +423,7 @@ export default function TransparencyPage() {
                     href={stats.kofi_url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => track('donate_click', { placement: 'transparency_footer' })}
                     className="inline-flex items-center px-8 py-4 bg-[#FF5E5B] hover:bg-[#e54d4a] text-white font-bold rounded-lg text-lg transition shadow-lg hover:shadow-xl"
                   >
                     <Coffee className="h-6 w-6 mr-3" />

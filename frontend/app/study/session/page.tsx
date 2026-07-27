@@ -13,6 +13,7 @@ import QuizCard from '@/components/study/QuizCard'
 import ProgressPanel from '@/components/study/ProgressPanel'
 import DopamineFlash from '@/components/study/DopamineFlash'
 import type { Mindmap, MindmapNode, StudySession, NodeRef, CommunityMindmap } from '@/types'
+import { track } from '@/lib/analytics'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -251,6 +252,8 @@ export default function StudySessionPage() {
         setActiveMindmapId(mindmapId)
         applySession(data)
         loadMindmapNodes(mindmapId)
+        // Only a real start — data.completed means there was nothing left to drill.
+        track('study_session_start', { mindmap_id: mindmapId })
       }
     } catch (e: any) {
       setError(e.message)

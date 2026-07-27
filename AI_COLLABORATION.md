@@ -373,6 +373,67 @@ separate opinion that the parser missed. That would hide source corruption and a
 to recur across cases. Source-preflight failures are cheap and retry after a six-day backoff so a
 repaired source or parser returns to the next weekly queue without livelocking the current run.
 
+### GA4 custom events: env-gated, settle-debounced, failures untracked (2026-07-27)
+
+The GA4 snippet in `app/layout.tsx` was hardcoded to `G-CPYH7HZY5G`, so every local
+`npm run dev` session reported into the production property. It now renders only when
+`NEXT_PUBLIC_GA_ID` is set (production only), and `lib/analytics.ts` wraps `gtag` so every
+call no-ops on the server, in dev, and under ad blockers. Analytics must never interrupt
+reading — the wrapper swallows its own errors, matching the existing convention in
+`CaseDetailClient`.
+
+Phase 1 instruments the funnel: `search`, `select_content`, `brief_view`, `brief_generate`,
+`brief_blocked`. `search`, `select_content`, `sign_up`, and `login` use GA4's recommended
+event names so they populate built-in reports without extra configuration.
+
+Two deliberate choices worth preserving:
+
+*Settle-debounce, not keystroke-debounce.* The homepage search fires on a 300ms keystroke
+debounce, so one intentional search issues a request per prefix. Tracking each would fill
+`search_term` with `n`, `ne`, `neg`… Analytics instead waits `SEARCH_TRACK_DELAY_MS` (1200ms)
+after results land and reports only the settled query, deduped by term. Any future search UI
+that debounces needs the same treatment.
+
+*Failed requests are not zero-result searches.* The homepage `.catch` and the mock-data
+fallbacks in `SearchInterface` are deliberately untracked. Logging them would report phantom
+searches when the API is down and corrupt the `result_count: 0` content-gap signal. Note that
+`SearchInterface` still shows users two hardcoded fake cases on API failure — untracked here,
+but it remains a real correctness problem in its own right.
+
+`brief_view` is latched per case via a ref because `waitForGeneratedSummary` polls
+`fetchCachedSummary` up to 30 times; without the latch a slow generation reports 30 views.
+
+Phase 2 adds conversion and retention: `sign_up`, `login`, `bookmark_add`, `signup_intent`,
+`study_session_start`, `donate_click`.
+
+*Signup has two paths, not one.* `signUpWithEmail` inserts its own profile row, so the
+auto-create branch in `fetchProfile` — despite its "e.g. OAuth sign-in" comment — is reached
+**only** by OAuth users. Email signups are tracked in `signUpWithEmail` (`method: 'email'`);
+OAuth signups in the auto-create branch. Anyone consolidating these later must keep both, or
+half the signups vanish. The provider is stashed in `sessionStorage` before the OAuth redirect
+so `method` survives the round trip and the callback's full page load.
+
+*`login` fires on `SIGNED_IN` only.* A page reload replays the stored session as
+`INITIAL_SESSION`, which must not count; the tab-visibility resync calls `applySession`
+directly and so never counts either. A per-tab latch keyed on user id absorbs Supabase
+replaying `SIGNED_IN` on session recovery, and `signOut` clears it so signing back in counts.
+A first-time OAuth user fires both `sign_up` and `login` — `login` means "authentications",
+not "returning users". Subtract `sign_up` if you want the latter.
+
+*`brief_blocked{reason: sign_in_required}` is the auth wall on the brief path; `signup_intent`
+is the one on the bookmark path.* They are deliberately separate events rather than one
+merged signal, so neither double-counts the other.
+
+`/byok` is a server component (it exports `metadata`), so its Ko-fi button uses the
+`DonateLink` client component rather than converting the page. Reuse it for any future donate
+button on a server-rendered page.
+
+Custom event parameters do not appear in any GA4 report until they are registered as custom
+dimensions (Admin → Custom definitions, scope `Event`): `search_type`, `result_count`,
+`case_id`, `cached`, `has_structured`, `reason`, `outcome`, `source`, `position`, `has_brief`,
+`method`, `trigger`, `placement`, `mindmap_id`.
+Shipping the code and seeing an empty report is the expected failure if this step is skipped.
+
 ## Open Questions
 
 Genuine design questions left for the next assistant. If you can resolve one (with

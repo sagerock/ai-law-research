@@ -4,12 +4,17 @@ import { Case } from '@/types'
 import { Calendar, FileText, TrendingUp, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
+import { track } from '@/lib/analytics'
 
 interface CaseCardProps {
   case: Case
+  /** Where this card was rendered, for select_content attribution. */
+  source?: string
+  /** 1-based rank within its list, for select_content attribution. */
+  position?: number
 }
 
-export default function CaseCard({ case: caseItem }: CaseCardProps) {
+export default function CaseCard({ case: caseItem, source = 'case_list', position }: CaseCardProps) {
   const getCitatorBadge = (badge?: string) => {
     switch (badge) {
       case 'green':
@@ -49,7 +54,16 @@ export default function CaseCard({ case: caseItem }: CaseCardProps) {
   const courtName = getCourtName()
 
   return (
-    <Link href={`/case/${caseItem.id}`} className="block">
+    <Link
+      href={`/case/${caseItem.id}`}
+      className="block"
+      onClick={() => track('select_content', {
+        content_type: 'case',
+        content_id: String(caseItem.id ?? ''),
+        source,
+        ...(position !== undefined ? { position } : {}),
+      })}
+    >
       <div className="bg-white p-6 rounded-lg border border-stone-200 hover:border-sage-200 hover:shadow-md transition cursor-pointer">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">

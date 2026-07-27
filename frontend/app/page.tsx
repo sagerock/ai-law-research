@@ -11,6 +11,13 @@ import Header from '@/components/Header'
 import { TortoiseMark } from '@/components/TortoiseMark'
 import { BRAND_NAME, SITE_TAGLINE } from '@/lib/site'
 import { buildCanonicalUrl } from '@/lib/citationUrls'
+import { track } from '@/lib/analytics'
+
+// The search box fires on a 300ms keystroke debounce, so a single intentional
+// search produces a request per prefix ("n", "ne", "neg"…). Analytics waits a
+// further beat after results land and reports only the settled query, so
+// search_term stays meaningful instead of filling up with prefixes.
+const SEARCH_TRACK_DELAY_MS = 1200
 
 interface SearchCase {
   id: string
@@ -43,6 +50,9 @@ export default function HomePage() {
   const [caseCount, setCaseCount] = useState<number | null>(null)
   const [trendingCases, setTrendingCases] = useState<TrendingCase[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const trackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastResultRef = useRef<{ term: string; count: number } | null>(null)
+  const trackedTermRef = useRef<string>('')
 
   useEffect(() => {
     fetch(`${API_URL}/api/v1/case-count`)
@@ -54,6 +64,27 @@ export default function HomePage() {
       .then(res => res.json())
       .then(data => setTrendingCases(data.cases || []))
       .catch(() => {})
+  }, [])
+
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (trackTimerRef.current) clearTimeout(trackTimerRef.current)
+  }, [])
+
+  // Report the settled query once the user stops typing. Deduped by term so a
+  // re-render or a repeated result for the same term can't double-count.
+  const scheduleSearchTracking = useCallback(() => {
+    if (trackTimerRef.current) clearTimeout(trackTimerRef.current)
+    trackTimerRef.current = setTimeout(() => {
+      const last = lastResultRef.current
+      if (!last || last.term === trackedTermRef.current) return
+      trackedTermRef.current = last.term
+      track('search', {
+        search_term: last.term,
+        search_type: 'homepage',
+        result_count: last.count,
+      })
+    }, SEARCH_TRACK_DELAY_MS)
   }, [])
 
   const doSearch = useCallback((q: string) => {
@@ -68,15 +99,20 @@ export default function HomePage() {
     fetch(`${API_URL}/api/v1/search-cases?q=${encodeURIComponent(trimmed)}&limit=50`)
       .then(res => res.json())
       .then(data => {
-        setSearchResults(data.cases || [])
+        const cases = data.cases || []
+        setSearchResults(cases)
         setSearched(true)
         setSearching(false)
+        lastResultRef.current = { term: trimmed, count: cases.length }
+        scheduleSearchTracking()
       })
       .catch(() => {
         setSearching(false)
         setSearched(true)
+        // Deliberately untracked: a failed request is a backend problem, not a
+        // zero-result search. Logging it would corrupt the content-gap signal.
       })
-  }, [])
+  }, [scheduleSearchTracking])
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
@@ -344,10 +380,17 @@ export default function HomePage() {
                   <div className="flex-1 h-px bg-stone-200" />
                 </div>
                 <div className="space-y-0.5">
-                  {searchResults.map(c => (
+                  {searchResults.map((c, index) => (
                     <Link
                       key={c.id}
                       href={buildCanonicalUrl(c.reporter_cite, c.title)}
+                      onClick={() => track('select_content', {
+                        content_type: 'case',
+                        content_id: c.id,
+                        source: 'home_search',
+                        position: index + 1,
+                        has_brief: c.has_brief,
+                      })}
                       className="flex items-baseline justify-between gap-4 px-4 py-3 rounded-xl
                                  hover:bg-sage-50 transition-all group"
                     >

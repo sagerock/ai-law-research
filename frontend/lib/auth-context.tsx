@@ -3,6 +3,29 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient, Profile, isSupabaseConfigured } from './supabase'
+import { track } from './analytics'
+
+// The OAuth round trip leaves and re-enters the app, so the provider that
+// started it has to survive a full page load to reach the sign_up event.
+// sessionStorage is per-tab and the redirect returns to the same tab.
+const AUTH_METHOD_KEY = 'tw_auth_method'
+const LOGIN_TRACKED_KEY = 'tw_login_tracked'
+
+function readSession(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeSession(key: string, value: string) {
+  try {
+    window.sessionStorage.setItem(key, value)
+  } catch {
+    // Private mode / storage disabled — analytics degrades, auth still works.
+  }
+}
 
 interface ProfileUpdateData {
   full_name?: string
@@ -100,6 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error creating profile:', insertError)
         return null
       }
+      // Only OAuth reaches here — signUpWithEmail inserts its own profile row,
+      // so an email signup never hits this branch.
+      track('sign_up', { method: readSession(AUTH_METHOD_KEY) || 'oauth' })
       return newProfile as Profile
     }
 
@@ -178,6 +204,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
 
+        // Only SIGNED_IN counts as a login — a page reload replays the stored
+        // session as INITIAL_SESSION, which must not inflate the count. The
+        // per-tab latch guards against SIGNED_IN firing more than once for the
+        // same user (Supabase replays it on some session recoveries).
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          const userId = newSession.user.id
+          if (readSession(LOGIN_TRACKED_KEY) !== userId) {
+            writeSession(LOGIN_TRACKED_KEY, userId)
+            track('login', { method: readSession(AUTH_METHOD_KEY) || 'unknown' })
+          }
+        }
+
         applySession(newSession, version)
       }
     )
@@ -236,6 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in with email/password
   const signInWithEmail = async (email: string, password: string) => {
+    writeSession(AUTH_METHOD_KEY, 'email')
     const { error } = await withTimeout(
       supabase.auth.signInWithPassword({ email, password }),
       15000
@@ -268,6 +307,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error creating profile:', profileError)
         // Don't return error - user is created, profile can be created later
       }
+      // Tracked on user creation, not profile creation — the account exists
+      // either way, and a failed profile insert is not a failed signup.
+      track('sign_up', { method: 'email' })
     }
 
     return { error: null }
@@ -275,6 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in with OAuth provider
   const signInWithOAuth = async (provider: 'google' | 'github', returnTo?: string) => {
+    writeSession(AUTH_METHOD_KEY, provider)
     const callbackUrl = new URL('/auth/callback', window.location.origin)
     if (returnTo) {
       callbackUrl.searchParams.set('next', returnTo)
@@ -296,6 +339,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setProfile(null)
     setSession(null)
+    // Release the login latch so signing back in this tab counts again.
+    try {
+      window.sessionStorage.removeItem(LOGIN_TRACKED_KEY)
+      window.sessionStorage.removeItem(AUTH_METHOD_KEY)
+    } catch {
+      // Storage unavailable — nothing to release.
+    }
 
     try {
       // Give Supabase 3 seconds to sign out properly (invalidates refresh token server-side)

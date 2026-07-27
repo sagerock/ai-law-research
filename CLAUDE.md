@@ -41,6 +41,9 @@ The app is deployed on Railway with three services:
 - `NEXT_PUBLIC_SITE_URL`: `https://tortwell.com` (for sitemap and canonical URLs)
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
+- `NEXT_PUBLIC_GA_ID`: GA4 measurement ID (`G-CPYH7HZY5G`). **Production only** — leave it
+  unset locally so dev traffic never reports into the production property. Analytics
+  no-ops entirely when absent.
 
 ## Development Commands
 

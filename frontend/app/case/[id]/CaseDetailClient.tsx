@@ -15,6 +15,7 @@ import Comments from '@/components/Comments'
 import CaseAskAI from '@/components/CaseAskAI'
 import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 import { getCaseArt } from '@/lib/caseArt'
+import { track } from '@/lib/analytics'
 
 export interface CaseDetail {
   id: string
@@ -168,6 +169,9 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [copiedCitation, setCopiedCitation] = useState(false)
   const [highlightedPassage, setHighlightedPassage] = useState<string | null>(null)
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // waitForGeneratedSummary polls fetchCachedSummary up to 30 times, so the
+  // view event needs a latch to stay one-per-case rather than one-per-poll.
+  const briefViewTrackedRef = useRef<string | null>(null)
 
   // The API exposes only approved candidates here; never bypass review via the legacy column.
   const structuredCandidates = caseSummary?.structured_candidates || []
@@ -382,6 +386,9 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   // Toggle bookmark
   const toggleBookmark = async () => {
     if (!user || !session?.access_token) {
+      // Wanted to save a case, got sent to login instead — the clearest
+      // signup-intent signal on the page.
+      track('signup_intent', { trigger: 'bookmark', case_id: caseId })
       router.push(`/login?returnTo=${encodeURIComponent(pathname)}`)
       return
     }
@@ -404,6 +411,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
         })
         if (response.ok) {
           setIsBookmarked(true)
+          track('bookmark_add', { case_id: caseId })
         }
       }
     } catch (err) {
@@ -470,6 +478,14 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       if (data.cached && data.summary) {
         setCaseSummary(data)
         console.log('Loaded cached summary')
+        if (briefViewTrackedRef.current !== caseId) {
+          briefViewTrackedRef.current = caseId
+          track('brief_view', {
+            case_id: caseId,
+            cached: true,
+            has_structured: (data.structured_candidates?.length ?? 0) > 0,
+          })
+        }
         return !requireStructured || (data.structured_candidates?.length ?? 0) > 0
       }
     } catch (err) {
@@ -574,10 +590,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       })
       if (response.status === 401) {
         setSummaryError('sign_in_required')
+        track('brief_blocked', { case_id: caseId, reason: 'sign_in_required' })
         return
       }
       if (response.status === 402) {
         setSummaryError('pool_empty')
+        track('brief_blocked', { case_id: caseId, reason: 'pool_empty' })
         return
       }
       if (!response.ok) {
@@ -589,6 +607,10 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       }
       const data = await response.json()
       setCaseSummary(data)
+      // A freshly generated brief is also a view; latch it so the poll-driven
+      // fetchCachedSummary can't report a second one for the same case.
+      briefViewTrackedRef.current = caseId
+      track('brief_generate', { case_id: caseId, outcome: 'success' })
 
       // If this was a stub case, refresh case data (content is now populated)
       if (localCaseData.is_stub) {

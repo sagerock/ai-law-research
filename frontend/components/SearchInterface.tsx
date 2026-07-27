@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Search, Sparkles, Hash } from 'lucide-react'
 import { Case, SearchRequest } from '@/types'
 import { API_URL } from '@/lib/api'
+import { track } from '@/lib/analytics'
 
 interface SearchInterfaceProps {
   onSearch: (results: Case[]) => void
@@ -39,8 +40,16 @@ export default function SearchInterface({ onSearch, setIsLoading }: SearchInterf
       if (response.ok) {
         const data = await response.json()
         // Backend returns array directly, not wrapped in {results: []}
-        onSearch(Array.isArray(data) ? data : [])
+        const results = Array.isArray(data) ? data : []
+        track('search', {
+          search_term: query.trim(),
+          search_type: searchType,
+          result_count: results.length,
+        })
+        onSearch(results)
       } else {
+        // The mock-data fallbacks below are deliberately untracked — they fire
+        // when the API is down and would otherwise log phantom searches.
         // Fallback to mock data for testing
         const mockResults: Case[] = [
           {
