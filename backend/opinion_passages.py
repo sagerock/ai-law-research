@@ -7,8 +7,36 @@ import re
 
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
+
+# Citations are the densest source of periods in an opinion, and none of them
+# end a sentence. Reporters print volume and series abbreviations spaced
+# ("541 U. S. 36"), so a naive split shatters one citation into four passages —
+# "Crawford v.", "Washington, 541 U.", "S.", "36, 53-54 (2004)." — and a
+# source-linked brief ends up citing a passage whose entire text is "S."
+CITATION_ABBREVIATIONS = (
+    "Amend", "Ann", "App", "Arg", "Art", "Assn", "Bd", "Bros", "Cert", "Cf",
+    "Ch", "Cir", "Cl", "Comm", "Const", "Corp", "Cr", "Ct", "Dall", "Dept",
+    "Dist", "Div", "Ed", "Exch", "Gen", "How", "Ibid", "Id", "Inc", "Jur",
+    "MR", "MRS", "Misc", "No", "Nos", "Op", "Pet", "Pt", "Reg", "Regs",
+    "Proc", "Pub", "Rev", "Rptr", "Serv", "Sess", "Stat", "Sup", "Supp",
+    "Tit", "Tr", "Univ", "Wall", "Wheat", "cert", "pp",
+    # State and circuit abbreviations, for "Ariz. Rev. Stat. Ann." and reporters.
+    "Ala", "Ariz", "Ark", "Cal", "Colo", "Conn", "Del", "Fla", "Ga", "Ill",
+    "Ind", "Kan", "Ky", "La", "Mass", "Md", "Mich", "Minn", "Miss", "Mo",
+    "Mont", "Neb", "Nev", "Okla", "Ore", "Pa", "Tenn", "Tex", "Va", "Vt",
+    "Wash", "Wis", "Wyo",
+)
+# Quoted constitutional and statutory text elides with a spaced ellipsis
+# ("the right . . . to be confronted"), which a naive split reads as three
+# sentence boundaries and turns into passages whose whole text is ".".
+SPACED_ELLIPSIS_RE = re.compile(r"\.(?:\s+\.){1,3}")
+# A single letter standing alone before a period is an initial or a reporter
+# abbreviation ("v.", "U. S.", "L. Ed.", "N. E. 2d"), never a word.
+CITATION_ABBREVIATION_RE = re.compile(
+    r"\b(?:[A-Za-z]|" + "|".join(CITATION_ABBREVIATIONS) + r")\.(?=\s)"
+)
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
-PASSAGE_FORMAT_VERSION = "8"
+PASSAGE_FORMAT_VERSION = "9"
 CANONICAL_MARKER_RE = re.compile(r"\[\[COURTLISTENER_SUBOPINION\s+(.+)\]\]")
 EXTRACTOR_MARKER_RE = re.compile(
     r"={3,}\s*(Lead Opinion|Majority|Opinion|Plurality|Concurrence(?: in Part)?|Dissent)\s*={3,}",
@@ -368,6 +396,12 @@ def split_sentences(text: str) -> list[str]:
     protected = normalize_opinion_text(text)
     for abbreviation in ABBREVIATIONS:
         protected = protected.replace(abbreviation, abbreviation.replace(".", "<DOT>"))
+    protected = SPACED_ELLIPSIS_RE.sub(
+        lambda match: match.group(0).replace(".", "<DOT>"), protected
+    )
+    protected = CITATION_ABBREVIATION_RE.sub(
+        lambda match: match.group(0).replace(".", "<DOT>"), protected
+    )
     return [
         part.replace("<DOT>", ".").strip()
         for part in re.split(r"(?<=[.!?])\s+", protected)

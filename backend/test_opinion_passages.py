@@ -451,3 +451,53 @@ def test_double_spaced_slip_opinion_rejoins_across_blank_lines():
         "acrimonious relationship, leading Winslow to declare" in p["text"]
         for p in passages
     )
+
+
+def test_citation_stays_in_one_passage():
+    # The defect this guards: a naive split turned one citation into four
+    # passages and briefs cited a passage whose entire text was "S."
+    _, passages = build_opinion_passages(
+        "The Clause bars testimonial hearsay. Crawford v. Washington, 541 U. S. "
+        "36, 53-54 (2004). That rule applies to forensic evidence."
+    )
+    assert [p["text"] for p in passages] == [
+        "The Clause bars testimonial hearsay.",
+        "Crawford v. Washington, 541 U. S. 36, 53-54 (2004).",
+        "That rule applies to forensic evidence.",
+    ]
+
+
+def test_reporter_abbreviations_do_not_end_sentences():
+    _, passages = build_opinion_passages(
+        "See Ariz. Rev. Stat. Ann. No. 13-3407 (Supp. 2023). The statute applies."
+    )
+    assert [p["text"] for p in passages] == [
+        "See Ariz. Rev. Stat. Ann. No. 13-3407 (Supp. 2023).",
+        "The statute applies.",
+    ]
+
+
+def test_spaced_ellipsis_does_not_split():
+    # Quoted constitutional text elides this way; each dot became its own passage.
+    _, passages = build_opinion_passages(
+        "The Clause secures the right . . . to be confronted with the witnesses "
+        "against him. We apply it here."
+    )
+    assert [p["text"] for p in passages] == [
+        "The Clause secures the right . . . to be confronted with the witnesses "
+        "against him.",
+        "We apply it here.",
+    ]
+
+
+def test_ordinary_sentence_boundaries_still_split():
+    # The protections must not swallow real boundaries, including after a word
+    # that merely ends in a protected-looking token.
+    _, passages = build_opinion_passages(
+        "The court denied the motion. It then entered judgment. We affirm."
+    )
+    assert [p["text"] for p in passages] == [
+        "The court denied the motion.",
+        "It then entered judgment.",
+        "We affirm.",
+    ]
