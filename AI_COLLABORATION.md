@@ -159,6 +159,22 @@ embedding charge. Retrieval context is capped at 40,000 characters so the maximu
 has a meaningful ceiling. Rejected alternative: an in-memory limiter, which would reset on
 deploy and fail across multiple Railway instances.
 
+### Site-funded Anthropic calls use bounded reservations (2026-07-15)
+
+Round 2 variable-prompt paths that spend the shared Anthropic key call the free token-count
+endpoint before paid generation, then reserve every counted input token at the 125% cache-write
+rate plus declared maximum output. Textbook Q&A remains the deliberate exception: its existing
+fixed multi-provider reservation is bounded by the 40,000-character retrieval cap. Rejected or
+definite pre-provider failures refund; failures after possible acceptance retain the reservation
+and write an uncertainty marker. If the process dies before that marker, the still-open original
+reservation row is itself the durable audit trail. Settlement/cancellation is restart-safe: unique
+reservation and zero-dollar terminal ledger rows plus request/pool advisory locks make retries and
+settle/cancel races no-ops, including zero adjustments. The migrated SSE endpoints commit business
+writes, usage, adjustment, and terminal marker in one transaction; outline conversation start/reply
+does the same. Other non-SSE call sites reconcile billing but are not claimed to make unrelated
+business writes atomic. BYOK skips token counting and pool reservation. Accepted model IDs and
+prices are explicit, and admin overrides reject unknown IDs.
+
 ### Rebrand: Law Study Group → Tortwell (2026-07-13)
 
 Sage bought `tortwell.com` on 2026-07-13; the site will rebrand from "Law Study Group"
@@ -467,6 +483,233 @@ CourtListener data when generation is next requested; deployment verification ma
 Deployment: backend `39fb3781-bbcf-438e-a412-0c715ecf4386`; frontend
 `2d3ef5c1-a71f-4655-b711-d8b30b8f89e7` (both successful)
 Commit: `06f137c`
+Review (Claude, 2026-07-21): concurs — architecture is right (boundaries as ingestion metadata
+via one canonical assembler; free preflight before paid generation; majority-only sourcing for
+facts/issue/holding/rule). Independently verified: 157 backend tests pass; `cases.content_hash`
+exists in prod (migration 030); live-API probe of 8 random stub clusters assembled 8/8.
+Two watch items, neither blocking: (1) complete-cluster refusal treats a legitimately text-less
+sub-opinion (empty remittitur/addendum record — normal data, not a failed fetch) like a partial
+fetch and refuses the whole cluster — if "opinion unavailable" reports rise, require completeness
+only for PRIMARY_TYPES; (2) the combined-record fallback can still wholesale-tag an embedded
+dissent as majority when its heading format is unrecognized — residual failure class to expect
+in future reports; preflight/validation contain it.
+
+Follow-up fix (Claude, 2026-07-21, `efcdb61`): Sage hit "dissent[N] cites non-dissent passage"
+on Chevron itself (404 U.S. 97) with the new pipeline live. Cause: the source introduces
+Douglas's partial dissent with only "Mr. Justice Douglas." — no disposition word anywhere, and
+cluster metadata carries none (judges list only) — so the bare-name-after-"It is so ordered."
+heuristic's "concurrence" guess forced validation to reject the model's correct dissent claims.
+Fix: such writings are now labeled `separate` (unknown disposition); majority sections still
+cannot cite them, dissent claims may characterize them from content, the prompt explains the
+tag, and preflight counts them as separate-opinion material. Passage format v6. This is not the
+rejected "relax validation when the model disagrees with the parser" — there is nothing in the
+source to parse; `separate` is the honest ingestion-time label.
+Third fix (Claude, 2026-07-23, `5e286f4`): strict preflight refused State v. Mosley
+(`10089542`, R.I. 2024) — a verified single-opinion case (one canonical combined sub-opinion,
+no separate writings) — with "no verifiable opinion-part boundaries". Single-opinion cases have
+no boundaries to find; demanding them refuses the most common shape in the catalog. Fixes:
+(1) "Justice Goldberg, for the Court." recognized as an explicit majority heading (R.I. and
+similar states); (2) a source whose canonical manifest declares exactly one sub-opinion counts
+as a verified single writing under require_explicit (warning, not error). Unmarked legacy
+all-opinion sources still fail strict preflight. Passage format v7. Residual accepted risk:
+a lone combined record with an embedded separate writing in an unparseable heading format now
+passes as all-majority — same class as watch item 2, contained by the review gate.
+Third fix (Claude, 2026-07-23, `5e286f4`): strict preflight refused State v. Mosley
+(`10089542`, R.I. 2024) — a verified single-opinion case (one canonical combined sub-opinion,
+no separate writings) — with "no verifiable opinion-part boundaries". Single-opinion cases have
+no boundaries to find; demanding them refuses the most common shape in the catalog. Fixes:
+(1) "Justice Goldberg, for the Court." recognized as an explicit majority heading (R.I. and
+similar states); (2) a source whose canonical manifest declares exactly one sub-opinion counts
+as a verified single writing under require_explicit (warning, not error). Unmarked legacy
+all-opinion sources still fail strict preflight. Passage format v7. Residual accepted risk:
+a lone combined record with an embedded separate writing in an unparseable heading format now
+passes as all-majority — same class as watch item 2, contained by the review gate.
+Both follow-ups shipped (`c2756e1`, approved by Sage 2026-07-21): (1) generation-shaped probe
+in `structured_briefs.generation_shape_report`, wired into `opinion_boundary_preflight` —
+synthetic label-trusting candidate for hard errors, plus a >25%-uncitable-material warning
+(the pre-fix Chevron signature, since a label-trusting probe alone can't see mislabels);
+(2) one retry per CourtListener request in `fetch_courtlistener_document` so a transient
+failure no longer refuses the whole cluster. The complete-cluster strictness (watch item 1)
+was deliberately NOT loosened — no evidence it bites; revisit only if "opinion unavailable"
+reports rise.
+Fourth fix (Claude, 2026-07-26, `22b28ba`): Sage hit "dissent[N] cites non-dissent passage" ×4
+on Smith v. Arizona (`10600062`, 602 U.S. 779). Unlike Chevron this was not a mislabel — the
+parser was right. The case has no dissent: Kagan for the Court, Thomas and Gorsuch concurring
+in part, Alito concurring in the judgment only (joined by Roberts). Alito rejects the
+majority's Confrontation Clause reasoning, so it reads like a dissent and the model filed four
+claims about it under `dissent` citing concurrence passages. The corrective retry cannot help
+here — feeding the same error back does not change what the concurrence says. Cause: whether a
+dissent exists is a deterministic fact about the packet's tags, but the prompt only said "use
+an empty dissent array if the packet contains no dissent" and left the model to infer it from
+tone. Fixes: (1) `build_structured_prompt` now states the packet inventory outright ("This
+packet contains no (dissent) or (separate) passages, so "dissent" must be exactly []") and in
+every case bars describing a concurrence under dissent; (2) `drop_uncitable_dissent`, a
+pre-validation repair beside `repair_unknown_sources` — when a packet has no dissent/separate
+material, dissent claims are dropped rather than 502ing. Deliberately narrow: where a real
+dissent exists a miscite stays an error, since that is the near-miss the retry can fix. No
+passage-format change; segmentation was never wrong. The `c2756e1` uncitable-material warning
+predicted this on the live packet (789/2402, 33% concurrence) but it is a warning and is not
+wired into the on-demand endpoint — worth reconsidering. Verified post-deploy: regeneration
+returns 200, dissent `[]`, 648 words, Alito's disagreement captured in unsourced `significance`
+where it belongs. Deployment: backend `af1faaa5-deb4-4bb3-96cb-d3e59957f103` (SUCCESS).
+Fifth fix (Claude, 2026-07-26, `cd68b6c`): found while fixing the above — Smith is stored as a
+U.S. Reports preliminary print, hard-wrapped at the typesetter's column, so blocks were
+line-sized not sentence-sized: 2,655 passages for 95k chars (~36 each), citable as "To ad-" and
+"Page Proof Pending Publication". `prepare_opinion_text` now rejoins wrapped lines,
+de-hyphenates across the break, and drops page furniture. Smith 2,655→1,152 (median 32→42
+chars, real sentences of 120-200 where there were clause fragments); State v. Mosley
+2,267→711 (median 38→93). Gated on detection (40+ lines, median width ≤100, >50% of lines not
+ending a sentence) because rejoining is wrong for the paragraph-per-line shape that dominates
+the catalog: across a 14-case corpus (the `SOURCE_PILOT_IDS` set plus the case behind each
+earlier boundary fix) 12/14 are byte-identical, only the two typeset sources change.
+Three traps, all caught by measuring rather than reasoning: (1) a page break lands mid-sentence
+as often as between paragraphs, so most form-feed lines in Mosley carry real content
+("\fmale opened the barbershop door") — furniture is identified by content and alignment,
+never by the break itself, since deleting body text is worse than the fragmentation; (2) the
+blank lines padding a page break are typography, and letting them end a block stranded the
+interrupted clause ("It re-"); (3) a centered section label glued onto the heading below it
+("OPINION Justice Goldberg, for the Court.") hid it from `detect_opinion_marker` and Mosley
+silently lost its majority boundary — visible only because the corpus diff reported part counts.
+Passage format v8. Per the versioning contract, existing briefs keep their persisted v7 passage
+sets (verified live: Smith still serves 2,655 passages, links intact); only new generations
+re-segment. Smith and Mosley both have pre-fix cached briefs, so seeing v8 on either requires
+clearing their `ai_summaries`/`structured_summary_candidates` rows — not done, Sage's call.
+Accepted residuals: a compound broken at its own hyphen ("cross-"/"examine") loses it; footnote
+text interleaved at a page foot still splits two Smith passages; one watermark interleaved
+word-by-word into a body line by the upstream extractor survives.
+
+### Sentence splitting fragmented citations (fixed 2026-07-26, `601a880`)
+Owner: Claude
+Status: shipped; deployed `f1fd9f9e`
+Files: `backend/opinion_passages.py` (`split_sentences`, `CITATION_ABBREVIATIONS`, `SPACED_ELLIPSIS_RE`)
+Summary: found while fixing `cd68b6c`, and the larger of the two problems — it affected the
+whole catalog, not just typeset sources. `split_sentences` broke on any `[.!?]` + whitespace,
+so citations shattered: "Crawford v. Washington, 541 U. S. 36, 53-54 (2004)." became four
+passages — "Crawford v.", "Washington, 541 U.", "S.", "36, 53-54 (2004)." A source-linked brief
+could pin a claim to a passage whose entire text was "S.", which occurred 1,127 times in the
+14-case corpus. **9,438 of 20,024 passages (47%) contained no prose word at all; now 937 of
+9,891 (9%).** Median passage length 17-138 chars → 101-195 (Erie 19→107, Roe 17→101,
+Griswold 18→168). Three causes: (1) reporters print volume/series abbreviations spaced
+("541 U. S. 36") so every single-letter token split — a lone letter before a period is an
+initial or reporter abbreviation, never a word; (2) multi-letter legal abbreviations (Rev.,
+Stat., Ann., Supp., No., Cir.) plus state abbreviations for the "Ariz. Rev. Stat. Ann."
+statutory form; (3) spaced ellipses in quoted constitutional text ("the right . . . to be
+confronted") read as three boundaries — 462 passages whose entire text was ".".
+Part sets unchanged for all 14 corpus cases; preflight verdicts unchanged (Marbury still fails
+strict preflight as an unmarked legacy all-opinion source, as before and unrelated).
+Passage format v9. Where the rule is uncertain it errs toward protecting, because the failure
+modes are asymmetric: an unprotected abbreviation fragments a citation into junk passages,
+while an over-protected one merely joins two sentences into a passage that is still coherent
+prose. Known gap left alone: a sentence ending in a closing quote ('it is so." We agree.')
+never splits, since the boundary regex looks only at the character before the whitespace —
+that over-merges rather than fragments, and adding it raised the corpus fragment rate.
+
+### Re-segmentation reaches cached briefs only on force (mechanism shipped `91e911f`)
+Owner: Sage (the spend decision); mechanism done
+Status: force parameter shipped and deployed `15f7058a`; no backfill run
+Summary: `cd68b6c` and `601a880` both bump `PASSAGE_FORMAT_VERSION`, and per the versioning
+contract existing briefs keep their persisted passage sets — verified live (Smith still serves
+its 2,655 v7 passages, zero dangling links). So existing briefs keep their old, fragmented
+source links until regenerated, and `summarize_case` returned the cache unconditionally.
+`POST /api/v1/cases/{id}/summarize?force=true` now bypasses the cache. Two things turned out
+better than the earlier writeup assumed: regeneration needs **no deletion** — both the
+`ai_summaries` and `structured_summary_candidates` writes are `ON CONFLICT DO UPDATE` upserts
+inside one transaction, so a forced run replaces the brief in place and a failed run leaves the
+existing one untouched. And the bypass is `require_admin`-gated, because it spends from the
+shared Anthropic pool and would otherwise be a way to drain it by re-requesting one case in a
+loop. Verified on production: force with no auth and force with a bad token both 401; a normal
+cached read still 200s.
+Not run, and deliberately: a catalog backfill is ~501 briefs × $0.034 ≈ **$17**, against
+**$0.00 donations received** and the ~$23/month Sage already covers himself (`/transparency`,
+2026-07-26). That is a spending decision, not a cleanup. Cheapest worthwhile subset is the two
+known typeset cases, Smith `10600062` and Mosley `10089542`, ~$0.07 total — needs Sage's admin
+JWT, which the agent does not have and should not.
+
+### Backend saturation under Applebot crawl (resolved 2026-07-19)
+Owner: Claude
+Status: resolved; temporary crawl logging still in place (remove later)
+Files: `backend/Dockerfile` (`4438261`), `frontend/middleware.ts` (`c4f7e47`)
+Summary: for 6+ hours on 2026-07-19 the backend pegged one CPU and all requests queued
+(30–280s responses, widespread 499 client aborts; Sage's Ask AI timed out). Cause: Applebot
+(17.x.x.x, ~1 page/sec, with Googlebot and Meta alongside) sweeping the 219k-case catalog —
+each SSR pageview fires ~6 backend calls with S3 opinion reads and 100–300KB payloads — while
+uvicorn ran a single worker (hard one-core ceiling; Postgres and frontend were idle). Fix:
+`--workers 3` in the Dockerfile CMD. Verified safe first: deployed billing/reservation state
+is DB-backed, module-level state is only read-through TTL caches (per-worker duplication
+harmless), 3 workers × pool max 10 = 30 connections vs Postgres max_connections=100. After
+deploy: same crawl load, responses 4ms–1.5s, zero 499s. Crawler identified via temporary
+`[crawl]` logging in frontend middleware — remove that block once no longer useful.
+Not done (options if load returns): robots.txt `Crawl-delay` for Applebot (it honors
+robots.txt; but this crawl is wanted — Apple search/AI surfacing); Next ISR caching of case
+pages so a pageview stops costing six live API calls (the structural fix).
+Commits: `4438261` (workers), `c4f7e47` (crawl logging)
+
+### Lower-court dissent headings in passage segmentation
+Owner: Claude
+Status: shipped 2026-07-19 (`e3dc44a`); backend auto-deploying from main
+Files: `backend/opinion_passages.py`, `backend/test_opinion_passages.py`
+Summary: Stephens v. Miller (`660220`, 13 F.3d 998, 7th Cir. en banc) failed on-demand
+generation with "dissent[N] cites non-dissent passage" ×4. Root cause: `detect_opinion_marker`
+only knew bracketed CourtListener markers and SCOTUS "Justice X, dissenting." prose, so
+circuit-style headings ("RIPPLE, Circuit Judge, dissenting." — all-caps surname, Judge not
+Justice) were invisible and all 1,884 passages were tagged `opinion`; the model's correct
+dissent claims then failed validation against wrong labels. This was the remaining format
+family after Sol's 7/13–14 fixes (`c2a8959` SCOTUS headings, `6c6fd1a` HTML sections) — all
+19 July-12/13 part-mismatch failures already have candidates; this class covers the F.2d/F.3d
+and state-court cases that dominate the remaining backlog. Fix: recognize all-caps-author
+headings (Judge/Justice titles, joined-by clauses, leading paragraph numbers, "(dissenting)"
+parentheticals, "in part" forms; partial dissents tag as dissent). False-positive guards:
+participles only (vote lines like "ANDREWS, J., dissents ... JJ., concur" use finite verbs),
+all-caps names only (citation strings are mixed-case), strict end-of-sentence tail.
+`PASSAGE_FORMAT_VERSION` bumped 2→3 per the `bfef03e` versioning contract — stored candidates
+keep their own persisted passage sets; only new generations use the new segmentation.
+Verified against production Stephens text: parts now majority=401/concurrence=359/dissent=1110
+(that content is also messy — sub-opinions concatenated out of order plus a numbered duplicate
+copy — worth a look if Stephens briefs read oddly). 134 backend tests pass.
+Next: Sage retries the Stephens brief from the case page after deploy; watch
+`structured_summary_failures` for residual "cites non-dissent" errors in the next batch run.
+Commit: `e3dc44a`
+
+### Long source-linked brief generation recovery
+Owner: Sol
+Status: shipped 2026-07-18
+Files: `frontend/app/case/[id]/CaseDetailClient.tsx`
+Summary: Palmer v. Hoffman (`103772`, `318 U.S. 109`) exposed Railway dropping the
+synchronous generation response: the first request returned 502 at exactly 15 seconds and
+later browser disconnects appeared as Firefox `Load failed`, while the backend continued and
+saved valid summaries. The case page now treats body-less 5xx and fetch/network failures as a
+possibly-running generation and polls the uncached summary endpoint for up to 90 seconds. It
+waits specifically for a structured candidate when upgrading a legacy brief, so it cannot
+mistake the old brief for the requested result. This also discourages duplicate clicks and
+duplicate Opus spend while the first request is still running.
+Verification: 8 frontend tests, TypeScript, production build, cached Palmer summary readback;
+frontend deployment `dc949116-940b-4ebe-8bdd-df7ff13a9992` successful.
+Next: none. A proper asynchronous generation-job API would be cleaner long-term, but polling
+is the smallest fix compatible with the current endpoint and Railway behavior.
+Commit: `2566c27`
+
+### CourtListener webhook authentication
+Owner: Sol (IP-allowlist design), Claude (Railway header fix 2026-07-16)
+Status: fixed and deployed 2026-07-16; awaiting CourtListener's next automatic retry
+Files: `backend/webhook_security.py`, `backend/webhooks.py`,
+`backend/test_webhook_security.py`, `DEPLOYMENT.md`
+Summary: production returned 401 for Search Alert deliveries because the July 10 security
+change required an `X-Webhook-Secret` header that CourtListener explicitly does not support.
+Sol's 2026-07-15 fix (`58c9790`) switched to verifying CourtListener's two documented static
+sender IPs, but its nearest-public-`X-Forwarded-For` walk still 401'd every delivery: Railway
+appends its own *public* edge-proxy hop to `X-Forwarded-For` (observed:
+`'<client-ip>, 152.233.40.1'`), so the walk always found Railway's edge, never CourtListener.
+Fix (`fee041e`): read Railway's `X-Real-IP` header as the authoritative source — verified live
+that Railway overwrites a client-forged `X-Real-IP` with the true address, so it is
+spoof-proof — keeping the `X-Forwarded-For` walk only as a non-Railway fallback, and log
+rejected sources (search deploy logs for "Rejected webhook"). 9 webhook-security tests pass;
+deployment `084eebef-cd08-46d7-8a76-ef6913404191` succeeded; forged-header and plain probes
+both correctly 401 with correct source attribution in logs.
+Next: confirm CourtListener's retry returns 2xx in Railway HTTP logs (failure count was 6 of 8
+as of 03:51 UTC 2026-07-16; if it reaches 8 the webhook is disabled and must be re-enabled at
+courtlistener.com/profile/webhooks — a manual test event from that panel confirms faster).
+Deployment: production backend successful; provider delivery retry not yet observed
+Commit: `fee041e`
 
 ### The Criminal Law Outline (canonical outline #3)
 Owner: Claude
@@ -801,18 +1044,21 @@ Next: none; production search, case API, citation-slug resolver, and canonical p
 Deployment: n/a (offline data operation)
 Commit: `38d9ba2`
 
-### Textbook Q&A billing protection
-Owner: Codex
-Status: ready for review
+### AI billing protection Round 2
+Owner: Sol
+Status: implemented locally; 127 tests pass
 Files: `backend/main.py`, `backend/ai_usage.py`, `backend/test_ai_usage.py`,
-`frontend/app/textbooks/[id]/TextbookDetailClient.tsx`
-Summary: require sign-in, validate JWT subjects, atomically reserve daily quota and pool
-funds before paid provider calls, use BYOK where available, reconcile actual token costs,
-and prevent all community-pool debits from overdrawing the ledger.
-Next: review, commit, deploy both backend and frontend, then smoke-test signed-out, free-tier,
-BYOK, pool-empty, and successful textbook questions in production.
+`backend/test_stream_finalization.py`, `migrations/039_ai_reservation_idempotency.sql`
+Summary: migrated variable-prompt paths preflight and reserve bounded cost; textbook Q&A keeps its
+bounded fixed reservation. Case Ask, study chat, MSJ chat/generation, and generic tool
+chat/generation atomically persist output, usage, and settlement before SSE `done`; outline
+conversation writes are atomic too. Ledger markers make reserve/settle/cancel retries idempotent,
+and pending outline/study/case turns are not persisted on pool or token-count failure. MSJ prompt
+inputs are deterministic; pricing and overrides fail closed. BYOK provider behavior is unchanged.
+Next: review, commit, deploy backend, then smoke-test BYOK, pool-empty, cancellation, Case Ask,
+MSJ, and affidavit chat/generation.
 Deployment: not deployed
-Commit: this commit
+Commit: not committed
 
 ### Tortwell domain migration
 Owner: Sol

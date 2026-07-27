@@ -41,11 +41,21 @@ from structured_briefs import (
     validate_structured_summary,
 )
 from ai_usage import (
+    ANTHROPIC_MODEL_PRICING,
     POOL_EMPTY_DETAIL,
+    anthropic_call_cost,
+    anthropic_reservation_cost,
+    cancel_pool_reservation,
+    lock_ai_request_on_connection,
+    mark_ai_request_finalized_on_connection,
+    mark_pool_reservation_uncertain,
+    mark_pool_reservation_uncertain_on_connection,
     release_daily_ai_request,
     reserve_daily_ai_request,
     reserve_pool_funds,
+    reserve_pool_funds_on_connection,
     settle_pool_reservation,
+    settle_pool_reservation_on_connection,
 )
 
 app = FastAPI(title="Legal Research API", version="1.0.0")
@@ -407,6 +417,26 @@ class AdminUserUpdate(BaseModel):
 
 
 # Transparency dashboard helper
+async def _record_api_usage(
+    conn,
+    usage_type: str,
+    input_tokens: int,
+    output_tokens: int,
+    cost: float,
+    source: str,
+):
+    await conn.execute("""
+        INSERT INTO api_usage_log (usage_date, usage_type, call_count, input_tokens, output_tokens, estimated_cost, source, updated_at)
+        VALUES (CURRENT_DATE, $1, 1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        ON CONFLICT (usage_date, usage_type) DO UPDATE SET
+            call_count = api_usage_log.call_count + 1,
+            input_tokens = api_usage_log.input_tokens + EXCLUDED.input_tokens,
+            output_tokens = api_usage_log.output_tokens + EXCLUDED.output_tokens,
+            estimated_cost = api_usage_log.estimated_cost + EXCLUDED.estimated_cost,
+            updated_at = CURRENT_TIMESTAMP
+    """, usage_type, input_tokens, output_tokens, cost, source)
+
+
 async def log_api_usage(
     usage_type: str,
     input_tokens: int,
@@ -419,16 +449,7 @@ async def log_api_usage(
     """Log API usage for transparency dashboard tracking"""
     try:
         async with db_pool.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO api_usage_log (usage_date, usage_type, call_count, input_tokens, output_tokens, estimated_cost, source, updated_at)
-                VALUES (CURRENT_DATE, $1, 1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-                ON CONFLICT (usage_date, usage_type) DO UPDATE SET
-                    call_count = api_usage_log.call_count + 1,
-                    input_tokens = api_usage_log.input_tokens + EXCLUDED.input_tokens,
-                    output_tokens = api_usage_log.output_tokens + EXCLUDED.output_tokens,
-                    estimated_cost = api_usage_log.estimated_cost + EXCLUDED.estimated_cost,
-                    updated_at = CURRENT_TIMESTAMP
-            """, usage_type, input_tokens, output_tokens, cost, source)
+            await _record_api_usage(conn, usage_type, input_tokens, output_tokens, cost, source)
         # Also debit the community pool for site-funded AI calls
         if source == "site" and cost > 0 and debit_pool_funds:
             try:
@@ -460,32 +481,198 @@ async def debit_pool(amount: float, description: str, reference_id: str | None) 
     )
 
 
-def anthropic_call_cost(
+async def reserve_anthropic_request(
+    api_key: str,
+    key_source: str,
+    model: str,
+    max_tokens: int,
+    messages: list,
+    description: str,
+    *,
+    system=None,
+    reference_id: str | None = None,
+    conn=None,
+):
+    """Preflight and reserve the maximum site-funded cost for one Messages call."""
+    reference_id = reference_id or f"anthropic:{uuid4()}"
+    if key_source != "site":
+        return {"reference_id": reference_id, "site_funded": False}
+
+    try:
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        count_args = {"model": model, "messages": messages}
+        if system is not None:
+            count_args["system"] = system
+        token_count = await client.messages.count_tokens(**count_args)
+    except anthropic.APIStatusError as exc:
+        raise HTTPException(status_code=502, detail="AI token preflight was rejected") from exc
+    except (anthropic.APIConnectionError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=503, detail="AI token preflight is unavailable") from exc
+    amount = anthropic_reservation_cost(token_count.input_tokens, max_tokens, model)
+    # pool_ledger stores six decimal places. Round upward so storage cannot
+    # make the reservation smaller than the calculated maximum.
+    amount = int(amount * 1_000_000 + 0.999999999) / 1_000_000
+    if conn is None:
+        await reserve_pool_funds(db_pool, amount, description, reference_id)
+    else:
+        async with conn.transaction():
+            await reserve_pool_funds_on_connection(
+                conn, amount, description, reference_id
+            )
+    return {
+        "amount": amount,
+        "reference_id": reference_id,
+        "site_funded": True,
+    }
+
+
+async def settle_anthropic_request(
+    reservation, actual_cost: float, description: str, *, conn=None
+):
+    if not reservation or not reservation["site_funded"]:
+        return
+    if conn is None:
+        await settle_pool_reservation(
+            db_pool, actual_cost, description, reservation["reference_id"]
+        )
+    else:
+        async with conn.transaction():
+            await settle_pool_reservation_on_connection(
+                conn, actual_cost, description, reservation["reference_id"]
+            )
+
+
+async def cancel_anthropic_request(reservation, description: str, *, conn=None):
+    if not reservation or not reservation["site_funded"]:
+        return
+    if conn is None:
+        await cancel_pool_reservation(
+            db_pool, description, reservation["reference_id"]
+        )
+    else:
+        async with conn.transaction():
+            await settle_pool_reservation_on_connection(
+                conn, 0.0, description, reservation["reference_id"]
+            )
+
+
+def _provider_failure_is_definite(error: Exception) -> bool:
+    if isinstance(error, anthropic.APIStatusError):
+        return True
+    if isinstance(error, (httpx.ConnectError, httpx.ConnectTimeout)):
+        return True
+    cause = error.__cause__
+    return isinstance(cause, (httpx.ConnectError, httpx.ConnectTimeout))
+
+
+async def handle_anthropic_provider_failure(
+    reservation, error: Exception, description: str, *, definite: bool | None = None,
+    conn=None,
+) -> None:
+    """Refund definite pre-acceptance failures; audit uncertain outcomes."""
+    if not reservation or not reservation["site_funded"]:
+        return
+    should_refund = definite if definite is not None else _provider_failure_is_definite(error)
+    if should_refund:
+        await cancel_anthropic_request(
+            reservation, f"{description} refund", conn=conn
+        )
+    elif conn is not None:
+        async with conn.transaction():
+            await mark_pool_reservation_uncertain_on_connection(
+                conn,
+                f"{description}; provider acceptance unknown",
+                reservation["reference_id"],
+            )
+    else:
+        await mark_pool_reservation_uncertain(
+            db_pool,
+            f"{description}; provider acceptance unknown",
+            reservation["reference_id"],
+        )
+
+
+async def audit_cancelled_anthropic_provider(reservation, description: str) -> None:
+    """Best-effort durable audit for cancellation during provider streaming."""
+    if not reservation or not reservation["site_funded"]:
+        return
+    audit = asyncio.create_task(mark_pool_reservation_uncertain(
+        db_pool,
+        f"{description}; stream cancelled after provider phase began",
+        reservation["reference_id"],
+    ))
+    try:
+        await asyncio.shield(audit)
+    except asyncio.CancelledError:
+        # A second cancellation may interrupt waiting, but the shielded audit
+        # continues while this process remains alive. The open reservation row
+        # remains the durable audit if the process itself dies.
+        pass
+
+
+async def finalize_anthropic_sse(
+    reservation,
+    actual_cost: float,
+    usage_type: str,
     input_tokens: int,
     output_tokens: int,
-    cache_read_tokens: int = 0,
-    cache_write_tokens: int = 0,
-    model: str = "claude-sonnet-4-6",
-) -> float:
-    """Price one Anthropic Messages call, including prompt-cache activity.
+    source: str,
+    description: str,
+    persist,
+) -> None:
+    """Atomically persist one SSE result, usage, and pool settlement."""
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            await finalize_anthropic_on_connection(
+                conn, reservation, actual_cost, usage_type, input_tokens,
+                output_tokens, source, description, persist,
+            )
 
-    With prompt caching enabled, usage.input_tokens excludes the cached
-    prefix — cache reads bill at 10% of the input rate and 5-minute-TTL
-    cache writes at 125%. Omitting them underprices every cached call
-    (and under-debits the pool).
-    """
-    if "haiku" in model:
-        input_rate, output_rate = 1.00, 5.00    # Haiku 4.5
-    elif "opus" in model:
-        input_rate, output_rate = 5.00, 25.00   # Opus 4.x
+
+async def finalize_anthropic_on_connection(
+    conn,
+    reservation,
+    actual_cost: float,
+    usage_type: str,
+    input_tokens: int,
+    output_tokens: int,
+    source: str,
+    description: str,
+    persist,
+) -> bool:
+    """Finalize one request inside the caller's active transaction."""
+    reference_id = reservation["reference_id"]
+    if await lock_ai_request_on_connection(conn, reference_id):
+        return False
+    await persist(conn)
+    await _record_api_usage(
+        conn, usage_type, input_tokens, output_tokens, actual_cost, source
+    )
+    if reservation["site_funded"]:
+        await settle_pool_reservation_on_connection(
+            conn,
+            actual_cost,
+            description,
+            reference_id,
+            request_locked=True,
+        )
     else:
-        input_rate, output_rate = 3.00, 15.00   # Sonnet 4.x
-    return (
-        input_tokens * input_rate
-        + output_tokens * output_rate
-        + cache_read_tokens * input_rate * 0.10
-        + cache_write_tokens * input_rate * 1.25
-    ) / 1_000_000
+        await mark_ai_request_finalized_on_connection(
+            conn, reference_id, description
+        )
+    return True
+
+
+async def terminal_sse_event(finalize, payload: dict) -> str:
+    """Build a terminal event only after its durable finalizer succeeds."""
+    await finalize()
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def validate_configured_anthropic_model(model: str) -> str:
+    if model not in ANTHROPIC_MODEL_PRICING:
+        raise HTTPException(status_code=500, detail="Configured Anthropic model is unsupported")
+    return model
 
 
 async def credit_pool(amount: float, entry_type: str, description: str, reference_id: str | None, created_by: str) -> float:
@@ -497,16 +684,6 @@ async def credit_pool(amount: float, entry_type: str, description: str, referenc
         )
         row = await conn.fetchrow("SELECT COALESCE(SUM(amount), 0) as balance FROM pool_ledger")
         return float(row["balance"])
-
-
-async def check_pool_available(user_id: str | None) -> bool:
-    """Check if pool has funds. BYOK users always pass."""
-    if user_id:
-        user_key = await get_user_api_key(user_id)
-        if user_key:
-            return True
-    balance = await get_pool_balance()
-    return balance > 0
 
 
 @app.on_event("startup")
@@ -1838,11 +2015,6 @@ async def summarize_case(
     user_id = current_user["id"] if current_user else None
     api_key, key_source = await get_anthropic_api_key(user_id)
 
-    # Check community pool for non-BYOK users
-    if key_source == "site":
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
-
     # Get the case from database and related cases
     async with db_pool.acquire() as conn:
         # A legacy text summary is not a hit for the source-linked generator.
@@ -2026,35 +2198,65 @@ async def summarize_case(
         validation_errors: list = []
         input_tokens = 0
         output_tokens = 0
+        model = "claude-opus-4-8"
+        max_tokens = 4000
         for attempt in range(2):
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": "claude-opus-4-8",
-                        "max_tokens": 4000,
-                        "messages": messages
-                    },
-                    timeout=90.0  # Increased timeout for longer cases
+            attempt_reservation = await reserve_anthropic_request(
+                api_key,
+                key_source,
+                model,
+                max_tokens,
+                messages,
+                "Source-linked brief provider reservation",
+            )
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={
+                            "x-api-key": api_key,
+                            "anthropic-version": "2023-06-01",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": model,
+                            "max_tokens": max_tokens,
+                            "messages": messages
+                        },
+                        timeout=90.0
+                    )
+            except Exception as exc:
+                await handle_anthropic_provider_failure(
+                    attempt_reservation, exc,
+                    "Source-linked brief request failure",
                 )
+                raise
 
             if response.status_code != 200:
+                await handle_anthropic_provider_failure(
+                    attempt_reservation, RuntimeError("provider rejected request"),
+                    "Source-linked brief rejected request", definite=True,
+                )
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Anthropic API error: {response.text}"
+                    detail=f"Anthropic API error ({response.status_code})"
                 )
 
             result = response.json()
             print(f"Claude API Response: stop_reason={result.get('stop_reason')}")  # Debug logging
 
             usage = result.get("usage", {})
-            input_tokens += usage.get("input_tokens", 0)
-            output_tokens += usage.get("output_tokens", 0)
+            attempt_input_tokens = usage.get("input_tokens", 0)
+            attempt_output_tokens = usage.get("output_tokens", 0)
+            input_tokens += attempt_input_tokens
+            output_tokens += attempt_output_tokens
+            await settle_anthropic_request(
+                attempt_reservation,
+                anthropic_call_cost(
+                    attempt_input_tokens, attempt_output_tokens, model=model
+                ),
+                "Source-linked brief actual provider cost",
+            )
 
             # Extract and validate source-linked JSON from Claude's response.
             content_blocks = result.get("content", [])
@@ -2099,7 +2301,7 @@ async def summarize_case(
 
         # Calculate cost (accumulated across attempts)
         # Claude Opus 4.8: $5 per 1M input tokens, $25 per 1M output tokens
-        cost = (input_tokens * 5.0 / 1_000_000) + (output_tokens * 25.0 / 1_000_000)
+        cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
 
         generation_metadata = json.dumps({
             "source": key_source,
@@ -2167,7 +2369,10 @@ async def summarize_case(
         print(f"💾 Saved summary for case {case_id} to database")
 
         # Log usage for transparency dashboard
-        await log_api_usage("ai_summary", input_tokens, output_tokens, cost, source=key_source)
+        await log_api_usage(
+            "ai_summary", input_tokens, output_tokens, cost, source=key_source,
+            debit_pool_funds=False,
+        )
 
         response_data = await get_case_summary(case_id, current_user)
         response_data["cached"] = False
@@ -4734,10 +4939,6 @@ async def extract_outline_topics(outline_id: int, user: dict = Depends(require_a
     if not api_key:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
-    if not is_byok:
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
-
     async with db_pool.acquire() as conn:
         outline = await conn.fetchrow(
             "SELECT id, user_id, content, topics, visibility FROM outlines WHERE id = $1",
@@ -4758,31 +4959,59 @@ async def extract_outline_topics(outline_id: int, user: dict = Depends(require_a
         if len(outline_text) > 40000:
             outline_text = outline_text[:40000] + "\n...[truncated]"
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": "claude-haiku-4-5-20251001",
-                    "max_tokens": 1000,
-                    "system": "You extract topic names from legal outlines. Return ONLY a JSON array of topic strings, nothing else. Each topic should be 2-5 words. Extract 5-15 key topics. Example: [\"Proximate Cause\", \"Duty of Care\", \"Res Ipsa Loquitur\"]",
-                    "messages": [{"role": "user", "content": f"Extract the key topics from this outline:\n\n{outline_text}"}],
-                },
-                timeout=30.0,
+        model = "claude-haiku-4-5-20251001"
+        max_tokens = 1000
+        system_prompt = "You extract topic names from legal outlines. Return ONLY a JSON array of topic strings, nothing else. Each topic should be 2-5 words. Extract 5-15 key topics. Example: [\"Proximate Cause\", \"Duty of Care\", \"Res Ipsa Loquitur\"]"
+        messages = [{"role": "user", "content": f"Extract the key topics from this outline:\n\n{outline_text}"}]
+        pool_reservation = await reserve_anthropic_request(
+            api_key,
+            "byok" if is_byok else "site",
+            model,
+            max_tokens,
+            messages,
+            "Outline topics provider reservation",
+            system=system_prompt,
+            conn=conn,
+        )
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": max_tokens,
+                        "system": system_prompt,
+                        "messages": messages,
+                    },
+                    timeout=30.0,
+                )
+        except Exception as exc:
+            await handle_anthropic_provider_failure(
+                pool_reservation, exc, "Outline topics request failure", conn=conn
             )
+            raise HTTPException(status_code=502, detail="AI service error") from exc
 
         if resp.status_code != 200:
+            await handle_anthropic_provider_failure(
+                pool_reservation, RuntimeError("provider rejected request"),
+                "Outline topics rejected request", definite=True, conn=conn,
+            )
             raise HTTPException(status_code=502, detail="AI service error")
 
         resp_data = resp.json()
         ai_text = resp_data["content"][0]["text"].strip()
         input_tokens = resp_data.get("usage", {}).get("input_tokens", 0)
         output_tokens = resp_data.get("usage", {}).get("output_tokens", 0)
-        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+        cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
+        await settle_anthropic_request(
+            pool_reservation, cost, "Outline topics actual provider cost", conn=conn
+        )
 
         # Parse JSON array from response
         import json as json_mod
@@ -4805,7 +5034,10 @@ async def extract_outline_topics(outline_id: int, user: dict = Depends(require_a
                 json_mod.dumps(topics), outline_id,
             )
 
-        await log_api_usage("outline_topics", input_tokens, output_tokens, cost, "byok" if is_byok else "site")
+        await _record_api_usage(
+            conn, "outline_topics", input_tokens, output_tokens, cost,
+            "byok" if is_byok else "site",
+        )
 
     return {"topics": topics}
 
@@ -4842,16 +5074,12 @@ async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: di
 
     user_id = user["id"]
 
-    # BYOK / pool check
+    # BYOK / provider setup
     user_api_key = await get_user_api_key(user_id)
     is_byok = user_api_key is not None
     api_key = user_api_key or ANTHROPIC_API_KEY
     if not api_key:
         raise HTTPException(status_code=503, detail="AI service not configured")
-
-    if not is_byok:
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     async with db_pool.acquire() as conn:
         # Get outline with visibility check
@@ -4914,7 +5142,7 @@ async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: di
             default_model = "claude-sonnet-4-6"
         else:
             default_model = "claude-haiku-4-5-20251001"
-        model = model_override or default_model
+        model = validate_configured_anthropic_model(model_override or default_model)
 
         # Build system prompt
         subject = outline["subject"] or "Law"
@@ -5014,68 +5242,93 @@ YOUR TASK: Answer the student's questions about legal concepts covered in their 
                 user_msg_parts.append(f"Focus on: {body.topic}")
             initial_user_msg = " ".join(user_msg_parts)
 
+        max_tokens = 2000
+        initial_messages = [{"role": "user", "content": initial_user_msg}]
+        pool_reservation = await reserve_anthropic_request(
+            api_key,
+            "byok" if is_byok else "site",
+            model,
+            max_tokens,
+            initial_messages,
+            "Outline study provider reservation",
+            system=system_prompt,
+            conn=conn,
+        )
+
         # Call Claude API
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "max_tokens": 2000,
-                    "system": system_prompt,
-                    "messages": [{"role": "user", "content": initial_user_msg}],
-                },
-                timeout=60.0,
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": max_tokens,
+                        "system": system_prompt,
+                        "messages": initial_messages,
+                    },
+                    timeout=60.0,
+                )
+        except Exception as exc:
+            await handle_anthropic_provider_failure(
+                pool_reservation, exc, "Outline study request failure", conn=conn
             )
+            raise HTTPException(status_code=502, detail="AI service error") from exc
 
         if resp.status_code != 200:
+            await handle_anthropic_provider_failure(
+                pool_reservation, RuntimeError("provider rejected request"),
+                "Outline study rejected request", definite=True, conn=conn,
+            )
             raise HTTPException(status_code=502, detail=f"AI service error: {resp.status_code}")
 
         resp_data = resp.json()
         ai_content = resp_data["content"][0]["text"]
         input_tokens = resp_data.get("usage", {}).get("input_tokens", 0)
         output_tokens = resp_data.get("usage", {}).get("output_tokens", 0)
-        cost = (input_tokens * 3.0 / 1_000_000) + (output_tokens * 15.0 / 1_000_000)
+        cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
+        conv_id = None
 
-        # Create conversation record
-        conv_row = await conn.fetchrow("""
-            INSERT INTO outline_conversations (outline_id, user_id, mode)
-            VALUES ($1, $2, $3)
-            RETURNING id, created_at
-        """, outline_id, user_id, body.mode)
-        conv_id = conv_row["id"]
+        async def persist(finalize_conn):
+            nonlocal conv_id
+            conv_row = await finalize_conn.fetchrow("""
+                INSERT INTO outline_conversations (outline_id, user_id, mode)
+                VALUES ($1, $2, $3)
+                RETURNING id, created_at
+            """, outline_id, user_id, body.mode)
+            conv_id = conv_row["id"]
+            await finalize_conn.execute("""
+                INSERT INTO outline_conversation_messages (conversation_id, role, content)
+                VALUES ($1, 'user', $2)
+            """, conv_id, initial_user_msg)
+            await finalize_conn.execute("""
+                INSERT INTO outline_conversation_messages
+                    (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+                VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+            """, conv_id, ai_content, model, input_tokens, output_tokens, cost)
+            await finalize_conn.execute("""
+                INSERT INTO user_tiers (user_id, messages_today, last_message_date)
+                VALUES ($1, 1, CURRENT_DATE)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    messages_today = CASE
+                        WHEN user_tiers.last_message_date = CURRENT_DATE
+                        THEN user_tiers.messages_today + 1
+                        ELSE 1
+                    END,
+                    last_message_date = CURRENT_DATE,
+                    updated_at = NOW()
+            """, user_id)
 
-        # Save the initial user trigger message and AI response
-        await conn.execute("""
-            INSERT INTO outline_conversation_messages (conversation_id, role, content)
-            VALUES ($1, 'user', $2)
-        """, conv_id, initial_user_msg)
-
-        await conn.execute("""
-            INSERT INTO outline_conversation_messages
-                (conversation_id, role, content, model, input_tokens, output_tokens, cost)
-            VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-        """, conv_id, ai_content, model, input_tokens, output_tokens, cost)
-
-        # Update daily usage
-        await conn.execute("""
-            INSERT INTO user_tiers (user_id, messages_today, last_message_date)
-            VALUES ($1, 1, CURRENT_DATE)
-            ON CONFLICT (user_id) DO UPDATE SET
-                messages_today = CASE
-                    WHEN user_tiers.last_message_date = CURRENT_DATE
-                    THEN user_tiers.messages_today + 1
-                    ELSE 1
-                END,
-                last_message_date = CURRENT_DATE,
-                updated_at = NOW()
-        """, user_id)
-
-    await log_api_usage("outline_study", input_tokens, output_tokens, cost, "byok" if is_byok else "site")
+        async with conn.transaction():
+            await finalize_anthropic_on_connection(
+                conn, pool_reservation, cost, "outline_study", input_tokens,
+                output_tokens, "byok" if is_byok else "site",
+                "Outline study actual provider cost", persist,
+            )
 
     return {
         "conversation_id": conv_id,
@@ -5091,16 +5344,12 @@ async def outline_study_message(outline_id: int, conv_id: int, body: OutlineStud
     """Send a message in an outline study conversation"""
     user_id = user["id"]
 
-    # BYOK / pool check
+    # BYOK / provider setup
     user_api_key = await get_user_api_key(user_id)
     is_byok = user_api_key is not None
     api_key = user_api_key or ANTHROPIC_API_KEY
     if not api_key:
         raise HTTPException(status_code=503, detail="AI service not configured")
-
-    if not is_byok:
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     async with db_pool.acquire() as conn:
         # Daily limit check
@@ -5148,7 +5397,7 @@ async def outline_study_message(outline_id: int, conv_id: int, body: OutlineStud
             default_model = "claude-sonnet-4-6"
         else:
             default_model = "claude-haiku-4-5-20251001"
-        model = model_override or default_model
+        model = validate_configured_anthropic_model(model_override or default_model)
 
         # Verify both the conversation and its now-private outline belong to this user.
         conv = await conn.fetchrow("""
@@ -5182,13 +5431,7 @@ STUDENT'S OUTLINE:
 
 Continue the practice essay study session. Generate fact patterns only from outline topics, provide detailed IRAC feedback, and keep a supportive tone."""
 
-        # Save user message
-        await conn.execute("""
-            INSERT INTO outline_conversation_messages (conversation_id, role, content)
-            VALUES ($1, 'user', $2)
-        """, conv_id, body.content)
-
-        # Fetch full conversation history
+        # Keep the pending turn in memory until reservation and provider success.
         history = await conn.fetch("""
             SELECT role, content FROM outline_conversation_messages
             WHERE conversation_id = $1
@@ -5196,6 +5439,7 @@ Continue the practice essay study session. Generate fact patterns only from outl
         """, conv_id)
 
         api_messages = [{"role": h["role"], "content": h["content"]} for h in history]
+        api_messages.append({"role": "user", "content": body.content})
 
         # Prompt caching: the system prompt (with the full outline) is stable
         # per conversation, and the full history is resent every turn. Cache
@@ -5209,29 +5453,53 @@ Continue the practice essay study session. Generate fact patterns only from outl
                 "cache_control": {"type": "ephemeral"},
             }]
 
+        max_tokens = 2000
+        system_blocks = [{
+            "type": "text",
+            "text": system_prompt,
+            "cache_control": {"type": "ephemeral"},
+        }]
+        pool_reservation = await reserve_anthropic_request(
+            api_key,
+            "byok" if is_byok else "site",
+            model,
+            max_tokens,
+            api_messages,
+            "Outline study message provider reservation",
+            system=system_blocks,
+            conn=conn,
+        )
+
         # Call Claude API
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "max_tokens": 2000,
-                    "system": [{
-                        "type": "text",
-                        "text": system_prompt,
-                        "cache_control": {"type": "ephemeral"},
-                    }],
-                    "messages": api_messages,
-                },
-                timeout=60.0,
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": max_tokens,
+                        "system": system_blocks,
+                        "messages": api_messages,
+                    },
+                    timeout=60.0,
+                )
+        except Exception as exc:
+            await handle_anthropic_provider_failure(
+                pool_reservation, exc, "Outline study message request failure",
+                conn=conn,
             )
+            raise HTTPException(status_code=502, detail="AI service error") from exc
 
         if resp.status_code != 200:
+            await handle_anthropic_provider_failure(
+                pool_reservation, RuntimeError("provider rejected request"),
+                "Outline study message rejected request", definite=True, conn=conn,
+            )
             raise HTTPException(status_code=502, detail=f"AI service error: {resp.status_code}")
 
         resp_data = resp.json()
@@ -5252,34 +5520,39 @@ Continue the practice essay study session. Generate fact patterns only from outl
             model=model,
         )
 
-        # Save AI response
-        await conn.execute("""
-            INSERT INTO outline_conversation_messages
-                (conversation_id, role, content, model, input_tokens, output_tokens, cost)
-            VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-        """, conv_id, ai_content, model, input_tokens, output_tokens, cost)
+        async def persist(finalize_conn):
+            await finalize_conn.execute("""
+                INSERT INTO outline_conversation_messages (conversation_id, role, content)
+                VALUES ($1, 'user', $2)
+            """, conv_id, body.content)
+            await finalize_conn.execute("""
+                INSERT INTO outline_conversation_messages
+                    (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+                VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+            """, conv_id, ai_content, model, input_tokens, output_tokens, cost)
+            await finalize_conn.execute(
+                "UPDATE outline_conversations SET updated_at = NOW() WHERE id = $1",
+                conv_id,
+            )
+            await finalize_conn.execute("""
+                INSERT INTO user_tiers (user_id, messages_today, last_message_date)
+                VALUES ($1, 1, CURRENT_DATE)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    messages_today = CASE
+                        WHEN user_tiers.last_message_date = CURRENT_DATE
+                        THEN user_tiers.messages_today + 1
+                        ELSE 1
+                    END,
+                    last_message_date = CURRENT_DATE,
+                    updated_at = NOW()
+            """, user_id)
 
-        # Update conversation timestamp
-        await conn.execute(
-            "UPDATE outline_conversations SET updated_at = NOW() WHERE id = $1",
-            conv_id,
-        )
-
-        # Update daily usage
-        await conn.execute("""
-            INSERT INTO user_tiers (user_id, messages_today, last_message_date)
-            VALUES ($1, 1, CURRENT_DATE)
-            ON CONFLICT (user_id) DO UPDATE SET
-                messages_today = CASE
-                    WHEN user_tiers.last_message_date = CURRENT_DATE
-                    THEN user_tiers.messages_today + 1
-                    ELSE 1
-                END,
-                last_message_date = CURRENT_DATE,
-                updated_at = NOW()
-        """, user_id)
-
-    await log_api_usage("outline_study", input_tokens, output_tokens, cost, "byok" if is_byok else "site")
+        async with conn.transaction():
+            await finalize_anthropic_on_connection(
+                conn, pool_reservation, cost, "outline_study", input_tokens,
+                output_tokens, "byok" if is_byok else "site",
+                "Outline study message actual provider cost", persist,
+            )
 
     return {
         "role": "assistant",
@@ -5688,11 +5961,6 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
     if not chat_api_key:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
-    # Check community pool for non-BYOK users
-    if not is_byok:
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
-
     async with db_pool.acquire() as conn:
         # Get or create user tier
         tier_row = await conn.fetchrow(
@@ -5741,7 +6009,7 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
             default_model = "claude-sonnet-4-6"
         else:
             default_model = "claude-haiku-4-5-20251001"
-        model = model_override or default_model
+        model = validate_configured_anthropic_model(model_override or default_model)
 
         # Create or get conversation
         conversation_id = msg.conversation_id
@@ -5762,18 +6030,6 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
             )
             if not convo or convo["user_id"] != user_id:
                 raise HTTPException(status_code=403, detail="Not your conversation")
-
-        # Save user message
-        await conn.execute("""
-            INSERT INTO messages (conversation_id, role, content)
-            VALUES ($1, 'user', $2)
-        """, conversation_id, msg.content)
-
-        # Update conversation timestamp
-        await conn.execute(
-            "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
-            conversation_id,
-        )
 
         # Build context: get notes text
         notes_context = ""
@@ -5815,12 +6071,12 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
         except Exception as e:
             print(f"FTS brief lookup failed: {e}")
 
-        # Get conversation history (last 20 messages)
+        # Keep the pending user turn in memory until durable finalization.
         history = await conn.fetch("""
             SELECT role, content FROM messages
             WHERE conversation_id = $1
             ORDER BY created_at DESC
-            LIMIT 20
+            LIMIT 19
         """, conversation_id)
         history = list(reversed(history))
 
@@ -5857,9 +6113,27 @@ Guidelines:
     api_messages = []
     for h in history:
         api_messages.append({"role": h["role"], "content": h["content"]})
+    api_messages.append({"role": "user", "content": msg.content})
+
+    max_tokens = 4096
+    pool_reservation = await reserve_anthropic_request(
+        chat_api_key,
+        "byok" if is_byok else "site",
+        model,
+        max_tokens,
+        api_messages,
+        "Study chat provider reservation",
+        system=system_blocks,
+    )
 
     async def stream_response():
-        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        try:
+            yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        except (asyncio.CancelledError, GeneratorExit):
+            await asyncio.shield(cancel_anthropic_request(
+                pool_reservation, "Study chat cancelled before provider request"
+            ))
+            raise
 
         full_response = ""
         input_tokens = 0
@@ -5879,7 +6153,7 @@ Guidelines:
                     },
                     json={
                         "model": model,
-                        "max_tokens": 4096,
+                        "max_tokens": max_tokens,
                         "system": system_blocks,
                         "messages": api_messages,
                         "stream": True,
@@ -5887,10 +6161,13 @@ Guidelines:
                     timeout=120.0,
                 ) as response:
                     if response.status_code != 200:
-                        error_body = ""
-                        async for chunk in response.aiter_text():
-                            error_body += chunk
-                        print(f"Study chat API error {response.status_code}: {error_body[:500]}")
+                        print(f"Study chat API error {response.status_code}")
+                        await handle_anthropic_provider_failure(
+                            pool_reservation,
+                            RuntimeError(f"API error {response.status_code}"),
+                            "Study chat rejected request",
+                            definite=True,
+                        )
                         yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
                         return
 
@@ -5924,9 +6201,17 @@ Guidelines:
                             usage = event.get("usage", {})
                             output_tokens = usage.get("output_tokens", 0)
 
+        except asyncio.CancelledError:
+            await audit_cancelled_anthropic_provider(
+                pool_reservation, "Study chat"
+            )
+            raise
         except Exception as e:
             print(f"Study chat stream error: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, "Study chat stream failure"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI stream failed'})}\n\n"
             return
 
         # Calculate cost (includes prompt-cache reads/writes; rates by model)
@@ -5940,41 +6225,61 @@ Guidelines:
         print(f"[cache] study_chat input={input_tokens} output={output_tokens} "
               f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
-        # Save assistant message, update usage
-        try:
-            async with db_pool.acquire() as conn:
-                await conn.execute("""
-                    INSERT INTO messages (conversation_id, role, content, model, input_tokens, output_tokens, cost)
-                    VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-                """, conversation_id, full_response, model, input_tokens, output_tokens, cost)
-
-                await conn.execute("""
-                    INSERT INTO user_tiers (user_id, messages_today, last_message_date, updated_at)
-                    VALUES ($1, 1, CURRENT_DATE, NOW())
-                    ON CONFLICT (user_id) DO UPDATE SET
-                        messages_today = CASE
-                            WHEN user_tiers.last_message_date = CURRENT_DATE
-                            THEN user_tiers.messages_today + 1
-                            ELSE 1
-                        END,
-                        last_message_date = CURRENT_DATE,
-                        updated_at = NOW()
-                """, user_id)
-
-                await conn.execute(
-                    "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
-                    conversation_id,
-                )
-
-            await log_api_usage(usage_type, input_tokens, output_tokens, cost, source="byok" if is_byok else "site")
-        except Exception as e:
-            print(f"Failed to save chat result: {e}")
-
-        # Final done event
         remaining = None
         if effective_limit is not None:
             remaining = max(0, effective_limit - (messages_today + 1))
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining, 'is_byok': is_byok})}\n\n"
+
+        async def persist(conn):
+            await conn.execute(
+                "INSERT INTO messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
+                conversation_id, msg.content,
+            )
+            await conn.execute("""
+                INSERT INTO messages (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+                VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+            """, conversation_id, full_response, model, input_tokens, output_tokens, cost)
+            await conn.execute("""
+                INSERT INTO user_tiers (user_id, messages_today, last_message_date, updated_at)
+                VALUES ($1, 1, CURRENT_DATE, NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                    messages_today = CASE
+                        WHEN user_tiers.last_message_date = CURRENT_DATE
+                        THEN user_tiers.messages_today + 1
+                        ELSE 1
+                    END,
+                    last_message_date = CURRENT_DATE,
+                    updated_at = NOW()
+            """, user_id)
+            await conn.execute(
+                "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
+                conversation_id,
+            )
+
+        async def finalize():
+            await asyncio.shield(finalize_anthropic_sse(
+                pool_reservation, cost, usage_type, input_tokens, output_tokens,
+                "byok" if is_byok else "site", "Study chat actual provider cost",
+                persist,
+            ))
+
+        try:
+            yield await terminal_sse_event(finalize, {
+                "type": "done",
+                "conversation_id": conversation_id,
+                "usage": {
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cost": round(cost, 6),
+                },
+                "tier": tier,
+                "messages_remaining": remaining,
+                "is_byok": is_byok,
+            })
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            print(f"Failed to finalize study chat result: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to save response'})}\n\n"
 
     return StreamingResponse(
         stream_response(),
@@ -6001,11 +6306,6 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
     chat_api_key = user_api_key or ANTHROPIC_API_KEY
     if not chat_api_key:
         raise HTTPException(status_code=503, detail="AI service not configured")
-
-    # Check community pool for non-BYOK users
-    if not is_byok:
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     async with db_pool.acquire() as conn:
         # Verify case exists and fetch data
@@ -6097,7 +6397,7 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
             default_model = "claude-sonnet-4-6"
         else:
             default_model = "claude-haiku-4-5-20251001"
-        model = model_override or default_model
+        model = validate_configured_anthropic_model(model_override or default_model)
 
         # Create or get conversation
         conversation_id = msg.conversation_id
@@ -6121,24 +6421,12 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
             if convo["case_id"] != case_id:
                 raise HTTPException(status_code=400, detail="Conversation does not belong to this case")
 
-        # Save user message
-        await conn.execute("""
-            INSERT INTO messages (conversation_id, role, content)
-            VALUES ($1, 'user', $2)
-        """, conversation_id, msg.content)
-
-        # Update conversation timestamp
-        await conn.execute(
-            "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
-            conversation_id,
-        )
-
-        # Get conversation history (last 20 messages)
+        # Keep the pending user turn in memory until durable finalization.
         history = await conn.fetch("""
             SELECT role, content FROM messages
             WHERE conversation_id = $1
             ORDER BY created_at DESC
-            LIMIT 20
+            LIMIT 19
         """, conversation_id)
         history = list(reversed(history))
 
@@ -6214,9 +6502,32 @@ Guidelines:
     api_messages = []
     for h in history:
         api_messages.append({"role": h["role"], "content": h["content"]})
+    api_messages.append({"role": "user", "content": msg.content})
+
+    max_tokens = 4096
+    case_system_blocks = [{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": {"type": "ephemeral"},
+    }]
+    pool_reservation = await reserve_anthropic_request(
+        chat_api_key,
+        "byok" if is_byok else "site",
+        model,
+        max_tokens,
+        api_messages,
+        "Case Ask provider reservation",
+        system=case_system_blocks,
+    )
 
     async def stream_response():
-        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        try:
+            yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        except (asyncio.CancelledError, GeneratorExit):
+            await asyncio.shield(cancel_anthropic_request(
+                pool_reservation, "Case Ask cancelled before provider request"
+            ))
+            raise
 
         full_response = ""
         input_tokens = 0
@@ -6228,15 +6539,11 @@ Guidelines:
             client = anthropic.AsyncAnthropic(api_key=chat_api_key)
             async with client.messages.stream(
                 model=model,
-                max_tokens=4096,
+                max_tokens=max_tokens,
                 # The system prompt (brief + opinion text + citation network) is
                 # stable for the whole conversation about this case — cache it so
                 # every follow-up turn reads it at ~10% of input price.
-                system=[{
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"},
-                }],
+                system=case_system_blocks,
                 messages=api_messages,
             ) as stream:
                 async for text in stream.text_stream:
@@ -6250,13 +6557,24 @@ Guidelines:
                 cache_read_tokens = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
                 cache_write_tokens = getattr(final_message.usage, "cache_creation_input_tokens", 0) or 0
 
+        except asyncio.CancelledError:
+            await audit_cancelled_anthropic_provider(
+                pool_reservation, "Case Ask"
+            )
+            raise
         except anthropic.APIStatusError as e:
-            print(f"Case ask API error {e.status_code}: {e.message}")
+            print(f"Case ask API error {e.status_code}")
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, "Case Ask rejected request"
+            )
             yield f"data: {json.dumps({'type': 'error', 'error': f'API error {e.status_code}'})}\n\n"
             return
         except Exception as e:
             print(f"Case ask stream error: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, "Case Ask stream failure"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI stream failed'})}\n\n"
             return
 
         # Calculate cost (includes prompt-cache reads/writes; rates by model)
@@ -6270,41 +6588,61 @@ Guidelines:
         print(f"[cache] case_ask input={input_tokens} output={output_tokens} "
               f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
-        # Final done event — always send before DB operations so frontend never hangs
         remaining = None
         if effective_limit is not None:
             remaining = max(0, effective_limit - (messages_today + 1))
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'usage': {'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)}, 'tier': tier, 'messages_remaining': remaining, 'is_byok': is_byok})}\n\n"
 
-        # Save assistant message, update usage (after done event)
+        async def persist(conn):
+            await conn.execute(
+                "INSERT INTO messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
+                conversation_id, msg.content,
+            )
+            await conn.execute("""
+                INSERT INTO messages (conversation_id, role, content, model, input_tokens, output_tokens, cost)
+                VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
+            """, conversation_id, full_response, model, input_tokens, output_tokens, cost)
+            await conn.execute("""
+                INSERT INTO user_tiers (user_id, messages_today, last_message_date, updated_at)
+                VALUES ($1, 1, CURRENT_DATE, NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                    messages_today = CASE
+                        WHEN user_tiers.last_message_date = CURRENT_DATE
+                        THEN user_tiers.messages_today + 1
+                        ELSE 1
+                    END,
+                    last_message_date = CURRENT_DATE,
+                    updated_at = NOW()
+            """, user_id)
+            await conn.execute(
+                "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
+                conversation_id,
+            )
+
+        async def finalize():
+            await asyncio.shield(finalize_anthropic_sse(
+                pool_reservation, cost, usage_type, input_tokens, output_tokens,
+                "byok" if is_byok else "site", "Case Ask actual provider cost",
+                persist,
+            ))
+
         try:
-            async with db_pool.acquire() as conn:
-                await conn.execute("""
-                    INSERT INTO messages (conversation_id, role, content, model, input_tokens, output_tokens, cost)
-                    VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-                """, conversation_id, full_response, model, input_tokens, output_tokens, cost)
-
-                await conn.execute("""
-                    INSERT INTO user_tiers (user_id, messages_today, last_message_date, updated_at)
-                    VALUES ($1, 1, CURRENT_DATE, NOW())
-                    ON CONFLICT (user_id) DO UPDATE SET
-                        messages_today = CASE
-                            WHEN user_tiers.last_message_date = CURRENT_DATE
-                            THEN user_tiers.messages_today + 1
-                            ELSE 1
-                        END,
-                        last_message_date = CURRENT_DATE,
-                        updated_at = NOW()
-                """, user_id)
-
-                await conn.execute(
-                    "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
-                    conversation_id,
-                )
-
-            await log_api_usage(usage_type, input_tokens, output_tokens, cost, source="byok" if is_byok else "site")
+            yield await terminal_sse_event(finalize, {
+                "type": "done",
+                "conversation_id": conversation_id,
+                "usage": {
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cost": round(cost, 6),
+                },
+                "tier": tier,
+                "messages_remaining": remaining,
+                "is_byok": is_byok,
+            })
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            print(f"Failed to save case ask result: {e}")
+            print(f"Failed to finalize case ask result: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to save response'})}\n\n"
 
     return StreamingResponse(
         stream_response(),
@@ -6588,6 +6926,8 @@ async def admin_update_user(
             if body.model_override == "":
                 sets.append("model_override = NULL")
             else:
+                if body.model_override not in ANTHROPIC_MODEL_PRICING:
+                    raise HTTPException(status_code=400, detail="Unsupported Anthropic model override")
                 sets.append(f"model_override = ${idx}")
                 params.append(body.model_override)
                 idx += 1
@@ -6881,7 +7221,7 @@ def _norm_case_name(s: Optional[str]) -> str:
 
 async def _rewrite_search_queries(
     client, anthropic_key: str, question: str
-) -> tuple[List[str], Dict[str, int]]:
+) -> tuple[List[str], Dict[str, int], Exception | None]:
     """Expand a student's conversational question into focused retrieval queries.
 
     Returns 1-4 search strings. The original question is always included as a
@@ -6890,6 +7230,7 @@ async def _rewrite_search_queries(
     """
     queries: List[str] = []
     usage = {"input_tokens": 0, "output_tokens": 0}
+    failure = None
     try:
         prompt = (
             "You turn a law student's question about an Evidence casebook into focused "
@@ -6923,13 +7264,14 @@ async def _rewrite_search_queries(
             if start != -1 and end != -1:
                 parsed = json.loads(text[start:end + 1])
                 queries = [q.strip() for q in parsed if isinstance(q, str) and q.strip()][:3]
-    except Exception:
+    except Exception as exc:
         queries = []
+        failure = exc
 
     # Always keep the original question as a fallback query, deduped.
     if question not in queries:
         queries.append(question)
-    return queries, usage
+    return queries, usage, failure
 
 
 TEXTBOOK_QA_SITE_RESERVATION = 0.25
@@ -6986,6 +7328,7 @@ async def ask_textbook(
     embedding_tokens = 0
     rewrite_usage = {"input_tokens": 0, "output_tokens": 0}
     answer_usage = {"input_tokens": 0, "output_tokens": 0}
+    provider_uncertain = False
 
     await reserve_daily_ai_request(db_pool, user_id, is_byok=is_byok)
     quota_reserved = True
@@ -7000,7 +7343,17 @@ async def ask_textbook(
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             # 1) Rewrite the conversational question into focused retrieval queries.
-            queries, rewrite_usage = await _rewrite_search_queries(client, anthropic_key, question)
+            queries, rewrite_usage, rewrite_failure = await _rewrite_search_queries(
+                client, anthropic_key, question
+            )
+            if (rewrite_failure and not is_byok and
+                    not _provider_failure_is_definite(rewrite_failure)):
+                provider_uncertain = True
+                await mark_pool_reservation_uncertain(
+                    db_pool,
+                    "Textbook Q&A rewrite; provider acceptance unknown",
+                    reservation_id,
+                )
 
             # 2) Embed all queries in one call (OpenAI accepts a list input).
             emb = await client.post(
@@ -7090,13 +7443,23 @@ async def ask_textbook(
                     f"the question, say so plainly.\n\n"
                     f"QUESTION: {question}\n\nTEXTBOOK PASSAGES:\n{context}"
                 )
-                ans = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
-                             "Content-Type": "application/json"},
-                    json={"model": "claude-opus-4-8", "max_tokens": 1200,
-                          "messages": [{"role": "user", "content": prompt}]},
-                )
+                try:
+                    ans = await client.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
+                                 "Content-Type": "application/json"},
+                        json={"model": "claude-opus-4-8", "max_tokens": 1200,
+                              "messages": [{"role": "user", "content": prompt}]},
+                    )
+                except Exception as exc:
+                    if not is_byok and not _provider_failure_is_definite(exc):
+                        provider_uncertain = True
+                        await mark_pool_reservation_uncertain(
+                            db_pool,
+                            "Textbook Q&A answer; provider acceptance unknown",
+                            reservation_id,
+                        )
+                    raise
                 if ans.status_code != 200:
                     raise HTTPException(status_code=502, detail="Answer service error.")
                 answer_data = ans.json()
@@ -7109,24 +7472,24 @@ async def ask_textbook(
                                if b.get("type") == "text"), "")
 
         embedding_cost = embedding_tokens * 0.02 / 1_000_000
-        rewrite_cost = (
-            rewrite_usage["input_tokens"] * 0.25
-            + rewrite_usage["output_tokens"] * 1.25
-        ) / 1_000_000
-        answer_cost = (
-            answer_usage["input_tokens"] * 5.0
-            + answer_usage["output_tokens"] * 25.0
-        ) / 1_000_000
+        rewrite_cost = anthropic_call_cost(
+            rewrite_usage["input_tokens"], rewrite_usage["output_tokens"],
+            model="claude-haiku-4-5-20251001",
+        )
+        answer_cost = anthropic_call_cost(
+            answer_usage["input_tokens"], answer_usage["output_tokens"],
+            model="claude-opus-4-8",
+        )
         anthropic_cost = rewrite_cost + answer_cost
         actual_site_cost = embedding_cost + (0.0 if is_byok else anthropic_cost)
 
-        await settle_pool_reservation(
-            db_pool,
-            reservation_amount,
-            actual_site_cost,
-            "Textbook Q&A actual provider cost",
-            reservation_id,
-        )
+        if not provider_uncertain:
+            await settle_pool_reservation(
+                db_pool,
+                actual_site_cost,
+                "Textbook Q&A actual provider cost",
+                reservation_id,
+            )
         pool_reserved = False
         await log_api_usage(
             "textbook_qa_embedding",
@@ -7147,27 +7510,27 @@ async def ask_textbook(
     except Exception:
         if pool_reserved:
             embedding_cost = embedding_tokens * 0.02 / 1_000_000
-            rewrite_cost = (
-                rewrite_usage["input_tokens"] * 0.25
-                + rewrite_usage["output_tokens"] * 1.25
-            ) / 1_000_000
-            answer_cost = (
-                answer_usage["input_tokens"] * 5.0
-                + answer_usage["output_tokens"] * 25.0
-            ) / 1_000_000
+            rewrite_cost = anthropic_call_cost(
+                rewrite_usage["input_tokens"], rewrite_usage["output_tokens"],
+                model="claude-haiku-4-5-20251001",
+            )
+            answer_cost = anthropic_call_cost(
+                answer_usage["input_tokens"], answer_usage["output_tokens"],
+                model="claude-opus-4-8",
+            )
             actual_site_cost = embedding_cost + (0.0 if is_byok else rewrite_cost + answer_cost)
-            try:
-                await settle_pool_reservation(
-                    db_pool,
-                    reservation_amount,
-                    actual_site_cost,
-                    "Textbook Q&A failed request adjustment",
-                    reservation_id,
-                )
-            except Exception as billing_error:
-                # Keep the conservative reservation in place rather than hiding
-                # the original provider error or risking an overdraft.
-                print(f"Failed to settle textbook Q&A reservation {reservation_id}: {billing_error}")
+            if not provider_uncertain:
+                try:
+                    await settle_pool_reservation(
+                        db_pool,
+                        actual_site_cost,
+                        "Textbook Q&A failed request adjustment",
+                        reservation_id,
+                    )
+                except Exception as billing_error:
+                    # Keep the conservative reservation in place rather than hiding
+                    # the original provider error or risking an overdraft.
+                    print(f"Failed to settle textbook Q&A reservation {reservation_id}: {billing_error}")
         if quota_reserved:
             try:
                 await release_daily_ai_request(db_pool, user_id)
@@ -7932,6 +8295,18 @@ Rules:
 - Target 15-30 total nodes for depth 3"""
 
     user_prompt = f"Create a mind map for: {body.topic}{subject_ctx}"
+    model = "claude-haiku-4-5-20251001"
+    max_tokens = 4096
+    messages = [{"role": "user", "content": user_prompt}]
+    pool_reservation = await reserve_anthropic_request(
+        ANTHROPIC_API_KEY,
+        "site",
+        model,
+        max_tokens,
+        messages,
+        "Mindmap generation provider reservation",
+        system=system_prompt,
+    )
 
     try:
         async with httpx.AsyncClient() as client:
@@ -7943,18 +8318,33 @@ Rules:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "claude-haiku-4-5-20251001",
-                    "max_tokens": 4096,
+                    "model": model,
+                    "max_tokens": max_tokens,
                     "system": system_prompt,
-                    "messages": [{"role": "user", "content": user_prompt}],
+                    "messages": messages,
                 },
                 timeout=30.0,
             )
 
         if response.status_code != 200:
+            await handle_anthropic_provider_failure(
+                pool_reservation, RuntimeError("provider rejected request"),
+                "Mindmap generation rejected request", definite=True,
+            )
             raise HTTPException(status_code=502, detail=f"AI service error: {response.status_code}")
 
         data = response.json()
+        usage = data.get("usage", {})
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+        cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
+        await settle_anthropic_request(
+            pool_reservation, cost, "Mindmap generation actual provider cost"
+        )
+        await log_api_usage(
+            "mindmap_generate", input_tokens, output_tokens, cost,
+            source="site", debit_pool_funds=False,
+        )
         raw_text = data["content"][0]["text"]
 
         # Parse JSON — handle potential markdown fences
@@ -7980,8 +8370,16 @@ Rules:
 
     except json.JSONDecodeError:
         raise HTTPException(status_code=502, detail="AI returned invalid JSON. Please try again.")
-    except httpx.TimeoutException:
+    except httpx.TimeoutException as exc:
+        await handle_anthropic_provider_failure(
+            pool_reservation, exc, "Mindmap generation timeout"
+        )
         raise HTTPException(status_code=504, detail="AI generation timed out. Please try again.")
+    except httpx.HTTPError as exc:
+        await handle_anthropic_provider_failure(
+            pool_reservation, exc, "Mindmap generation connection failure"
+        )
+        raise HTTPException(status_code=502, detail="AI generation failed.")
 
 
 @app.get("/api/v1/study/mindmaps/community")
@@ -8244,7 +8642,9 @@ async def get_node_context(conn, mindmap_id, node_id):
     return node, breadcrumb, children_texts, []
 
 
-async def generate_question_via_claude(node_text, breadcrumb, children_texts, mode, case_context="", rule_context=""):
+async def generate_question_via_claude(
+    node_text, breadcrumb, children_texts, mode, case_context="", rule_context="", *, conn=None
+):
     """Generate a study question using Claude API."""
     mode_instructions = {
         "quiz": "Ask a direct recall question about this concept. Be specific.",
@@ -8268,26 +8668,65 @@ Mode: {instruction}
 
 Generate ONE question only. No preamble."""
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 200,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-            timeout=30.0,
+    model = "claude-haiku-4-5-20251001"
+    max_tokens = 200
+    messages = [{"role": "user", "content": prompt}]
+    pool_reservation = await reserve_anthropic_request(
+        ANTHROPIC_API_KEY,
+        "site",
+        model,
+        max_tokens,
+        messages,
+        "Study question provider reservation",
+        conn=conn,
+    )
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "max_tokens": max_tokens,
+                    "messages": messages,
+                },
+                timeout=30.0,
+            )
+    except Exception as exc:
+        await handle_anthropic_provider_failure(
+            pool_reservation, exc, "Study question request failure", conn=conn
         )
+        return f"Explain the key aspects of: {node_text}"
 
     if response.status_code != 200:
+        await handle_anthropic_provider_failure(
+            pool_reservation, RuntimeError("provider rejected request"),
+            "Study question rejected request", definite=True, conn=conn,
+        )
         return f"Explain the key aspects of: {node_text}"
 
     result = response.json()
+    usage = result.get("usage", {})
+    input_tokens = usage.get("input_tokens", 0)
+    output_tokens = usage.get("output_tokens", 0)
+    cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
+    await settle_anthropic_request(
+        pool_reservation, cost, "Study question actual provider cost", conn=conn
+    )
+    if conn is None:
+        await log_api_usage(
+            "study_question_haiku", input_tokens, output_tokens, cost,
+            source="site", debit_pool_funds=False,
+        )
+    else:
+        await _record_api_usage(
+            conn, "study_question_haiku", input_tokens, output_tokens, cost, "site"
+        )
     for block in result.get("content", []):
         if block.get("type") == "text":
             return block["text"]
@@ -8392,7 +8831,8 @@ async def start_study_session(body: SessionStart, user: dict = Depends(require_a
         case_context, rule_context = await get_case_and_rule_context(conn, node)
 
         question = await generate_question_via_claude(
-            first_node["text"], breadcrumb, children_texts, "quiz", case_context, rule_context
+            first_node["text"], breadcrumb, children_texts, "quiz", case_context,
+            rule_context, conn=conn,
         )
 
         # Create session
@@ -8443,10 +8883,6 @@ async def session_respond(session_id: int, body: SessionRespond, user: dict = De
         raise HTTPException(status_code=503, detail="AI service not configured")
 
     user_id = user["id"]
-
-    # Check community pool (session respond always uses site key)
-    if not await check_pool_available(user_id):
-        raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     async with db_pool.acquire() as conn:
         session = await conn.fetchrow(
@@ -8501,9 +8937,26 @@ Your FINAL line must be ONLY one of these three words, nothing else:
 CORRECT
 PARTIAL
 INCORRECT"""
+    eval_model = "claude-haiku-4-5-20251001"
+    eval_max_tokens = 300
+    eval_messages = [{"role": "user", "content": eval_prompt}]
+    eval_reservation = await reserve_anthropic_request(
+        ANTHROPIC_API_KEY,
+        "site",
+        eval_model,
+        eval_max_tokens,
+        eval_messages,
+        "Study answer evaluation provider reservation",
+    )
 
     async def stream_response():
-        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        try:
+            yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        except (asyncio.CancelledError, GeneratorExit):
+            await asyncio.shield(cancel_anthropic_request(
+                eval_reservation, "Study evaluation cancelled before provider request"
+            ))
+            raise
 
         full_response = ""
         input_tokens = 0
@@ -8521,14 +8974,19 @@ INCORRECT"""
                         "Content-Type": "application/json",
                     },
                     json={
-                        "model": "claude-haiku-4-5-20251001",
-                        "max_tokens": 300,
-                        "messages": [{"role": "user", "content": eval_prompt}],
+                        "model": eval_model,
+                        "max_tokens": eval_max_tokens,
+                        "messages": eval_messages,
                         "stream": True,
                     },
                     timeout=60.0,
                 ) as response:
                     if response.status_code != 200:
+                        await handle_anthropic_provider_failure(
+                            eval_reservation,
+                            RuntimeError(f"API error {response.status_code}"),
+                            "Study evaluation rejected request", definite=True,
+                        )
                         yield f"data: {json.dumps({'type': 'error', 'error': f'API error {response.status_code}'})}\n\n"
                         return
 
@@ -8554,9 +9012,17 @@ INCORRECT"""
                         elif event_type == "message_delta":
                             output_tokens = event.get("usage", {}).get("output_tokens", 0)
 
+        except asyncio.CancelledError:
+            await audit_cancelled_anthropic_provider(
+                eval_reservation, "Study evaluation"
+            )
+            raise
         except Exception as e:
             print(f"Session respond stream error: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            await handle_anthropic_provider_failure(
+                eval_reservation, e, "Study evaluation stream failure"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI stream failed'})}\n\n"
             return
 
         # Step 2: Determine verdict
@@ -8587,6 +9053,12 @@ INCORRECT"""
             elif has_correct:
                 verdict = "CORRECT"
         print(f"[SESSION DEBUG] Verdict resolved: {verdict}")
+        cost = anthropic_call_cost(
+            input_tokens, output_tokens, model=eval_model
+        )
+        await settle_anthropic_request(
+            eval_reservation, cost, "Study evaluation actual provider cost"
+        )
 
         # Step 3: Update node_progress and session
         try:
@@ -8694,7 +9166,8 @@ INCORRECT"""
                     next_case_context, next_rule_context = await get_case_and_rule_context(conn, next_node_full)
 
                     next_question = await generate_question_via_claude(
-                        next_node["text"], next_breadcrumb, next_children, mode, next_case_context, next_rule_context
+                        next_node["text"], next_breadcrumb, next_children, mode,
+                        next_case_context, next_rule_context, conn=conn,
                     )
 
                     next_case_refs = json.loads(next_node_full["case_refs"]) if isinstance(next_node_full["case_refs"], str) else (next_node_full["case_refs"] or [])
@@ -8709,12 +9182,10 @@ INCORRECT"""
                     """, session_id, next_node["node_id"], next_question, mode,
                         new_streak, new_max_streak, mastered_count, total_correct, total_incorrect)
 
-                # Log usage
-                cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
-                try:
-                    await log_api_usage("study_session_haiku", input_tokens, output_tokens, cost)
-                except Exception:
-                    pass
+                await _record_api_usage(
+                    conn, "study_session_haiku", input_tokens, output_tokens,
+                    cost, "site",
+                )
 
         except Exception as e:
             print(f"Session respond DB error: {e}")
@@ -8775,7 +9246,8 @@ async def session_skip(session_id: int, user: dict = Depends(require_auth)):
         case_context, rule_context = await get_case_and_rule_context(conn, node)
 
         question = await generate_question_via_claude(
-            next_node["text"], breadcrumb, children_texts, session["mode"] or "quiz", case_context, rule_context
+            next_node["text"], breadcrumb, children_texts,
+            session["mode"] or "quiz", case_context, rule_context, conn=conn,
         )
 
         await conn.execute("""
@@ -9205,6 +9677,19 @@ async def delete_msj_library_doc(doc_id: int, user: dict = Depends(require_admin
 # MSJ Builder - AI Chat & Motion Generation
 # ============================================================================
 
+MSJ_CORE_CASES_QUERY = (
+    "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary "
+    "FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id "
+    "WHERE c.id = ANY($1::text[]) ORDER BY array_position($1::text[], c.id)"
+)
+MSJ_USER_CASES_QUERY = (
+    "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary "
+    "FROM msj_project_cases pc "
+    "JOIN cases c ON c.id = pc.case_id "
+    "LEFT JOIN ai_summaries s ON c.id = s.case_id "
+    "WHERE pc.project_id = $1 ORDER BY pc.id, c.id"
+)
+
 @app.post("/api/v1/msj/projects/{project_id}/chat")
 async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optional[str] = Header(None)):
     """AI chat for MSJ project refinement (streaming SSE)"""
@@ -9213,9 +9698,6 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
 
     # Get API key (BYOK or site)
     api_key, key_source = await get_anthropic_api_key(user_id)
-    if key_source == "site":
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     # Load project with documents
     async with db_pool.acquire() as conn:
@@ -9277,17 +9759,13 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
             core_case_ids.extend(OHIO_SJ_CASE_IDS)
 
         core_cases = await conn.fetch(
-            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
+            MSJ_CORE_CASES_QUERY,
             core_case_ids
         )
 
         # Load user-added cases for this project
         user_cases = await conn.fetch(
-            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary "
-            "FROM msj_project_cases pc "
-            "JOIN cases c ON c.id = pc.case_id "
-            "LEFT JOIN ai_summaries s ON c.id = s.case_id "
-            "WHERE pc.project_id = $1",
+            MSJ_USER_CASES_QUERY,
             project_id
         )
         all_approved_cases = list(core_cases) + list(user_cases)
@@ -9311,24 +9789,43 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": data.content})
 
+    model = "claude-sonnet-4-6"
+    max_tokens = 4096
+    system_blocks = [{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": {"type": "ephemeral"},
+    }]
+    pool_reservation = await reserve_anthropic_request(
+        api_key,
+        key_source,
+        model,
+        max_tokens,
+        messages,
+        "MSJ chat provider reservation",
+        system=system_blocks,
+    )
+
     async def stream_response():
-        yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation_id})}\n\n"
+        try:
+            yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation_id})}\n\n"
+        except (asyncio.CancelledError, GeneratorExit):
+            await asyncio.shield(cancel_anthropic_request(
+                pool_reservation, "MSJ chat cancelled before provider request"
+            ))
+            raise
 
         try:
             client = anthropic.AsyncAnthropic(api_key=api_key)
             full_text = ""
 
             async with client.messages.stream(
-                model="claude-sonnet-4-6",
-                max_tokens=4096,
+                model=model,
+                max_tokens=max_tokens,
                 # The system prompt (case info + extracted documents + library
                 # docs) is stable across the conversation — cache it so every
                 # follow-up turn reads it at ~10% of input price.
-                system=[{
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"},
-                }],
+                system=system_blocks,
                 messages=messages,
             ) as stream:
                 async for text in stream.text_stream:
@@ -9341,8 +9838,22 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
                 cache_read_tokens = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
                 cache_write_tokens = getattr(final_message.usage, "cache_creation_input_tokens", 0) or 0
 
+        except asyncio.CancelledError:
+            await audit_cancelled_anthropic_provider(
+                pool_reservation, "MSJ chat"
+            )
+            raise
+        except anthropic.APIStatusError as e:
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, "MSJ chat rejected request"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': f'API error {e.status_code}'})}\n\n"
+            return
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, "MSJ chat stream failure"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI stream failed'})}\n\n"
             return
 
         # Calculate cost (includes prompt-cache reads/writes)
@@ -9354,24 +9865,37 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
         print(f"[cache] msj_chat input={input_tokens} output={output_tokens} "
               f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
+        async def persist(conn):
+            await conn.execute(
+                "INSERT INTO msj_messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
+                conversation_id, data.content
+            )
+            await conn.execute(
+                "INSERT INTO msj_messages (conversation_id, role, content, model, input_tokens, output_tokens, cost) VALUES ($1, 'assistant', $2, $3, $4, $5, $6)",
+                conversation_id, full_text, model, input_tokens, output_tokens, cost
+            )
+            await conn.execute("UPDATE msj_conversations SET updated_at = NOW() WHERE id = $1", conversation_id)
+            await conn.execute("UPDATE msj_projects SET updated_at = NOW() WHERE id = $1", project_id)
 
-        # Save messages and log usage after done event
+        async def finalize():
+            await asyncio.shield(finalize_anthropic_sse(
+                pool_reservation, cost, "msj_chat", input_tokens, output_tokens,
+                key_source, "MSJ chat actual provider cost", persist,
+            ))
+
         try:
-            async with db_pool.acquire() as conn:
-                await conn.execute(
-                    "INSERT INTO msj_messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
-                    conversation_id, data.content
-                )
-                await conn.execute(
-                    "INSERT INTO msj_messages (conversation_id, role, content, model, input_tokens, output_tokens, cost) VALUES ($1, 'assistant', $2, $3, $4, $5, $6)",
-                    conversation_id, full_text, "claude-sonnet-4-6", input_tokens, output_tokens, cost
-                )
-                await conn.execute("UPDATE msj_conversations SET updated_at = NOW() WHERE id = $1", conversation_id)
-                await conn.execute("UPDATE msj_projects SET updated_at = NOW() WHERE id = $1", project_id)
-            await log_api_usage("msj_chat", input_tokens, output_tokens, cost, source=key_source)
+            yield await terminal_sse_event(finalize, {
+                "type": "done",
+                "conversation_id": conversation_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": round(cost, 6),
+            })
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            print(f"Failed to save MSJ chat: {e}")
+            print(f"Failed to finalize MSJ chat: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to save response'})}\n\n"
 
     return StreamingResponse(
         stream_response(),
@@ -9387,9 +9911,6 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
     user_id = user["id"]
 
     api_key, key_source = await get_anthropic_api_key(user_id)
-    if key_source == "site":
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     async with db_pool.acquire() as conn:
         project = await conn.fetchrow(
@@ -9425,23 +9946,16 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
             core_case_ids.extend(OHIO_SJ_CASE_IDS)
 
         core_cases = await conn.fetch(
-            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary FROM cases c LEFT JOIN ai_summaries s ON c.id = s.case_id WHERE c.id = ANY($1::text[])",
+            MSJ_CORE_CASES_QUERY,
             core_case_ids
         )
 
         # Load user-added cases for this project
         user_cases = await conn.fetch(
-            "SELECT c.id, c.title, c.reporter_cite, c.decision_date, s.summary "
-            "FROM msj_project_cases pc "
-            "JOIN cases c ON c.id = pc.case_id "
-            "LEFT JOIN ai_summaries s ON c.id = s.case_id "
-            "WHERE pc.project_id = $1",
+            MSJ_USER_CASES_QUERY,
             project_id
         )
         all_approved_cases = list(core_cases) + list(user_cases)
-
-        # Update status to generating
-        await conn.execute("UPDATE msj_projects SET status = 'generating', updated_at = NOW() WHERE id = $1", project_id)
 
     from msj_builder import build_msj_generation_prompt
     system_prompt, user_prompt = build_msj_generation_prompt(
@@ -9454,16 +9968,34 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
         core_cases=[(r["title"], r["reporter_cite"], r["summary"]) for r in all_approved_cases],
     )
 
+    model = "claude-sonnet-4-6"
+    max_tokens = 8192
+    generation_messages = [{"role": "user", "content": user_prompt}]
+    pool_reservation = await reserve_anthropic_request(
+        api_key,
+        key_source,
+        model,
+        max_tokens,
+        generation_messages,
+        "MSJ generation provider reservation",
+        system=system_prompt,
+    )
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE msj_projects SET status = 'generating', updated_at = NOW() WHERE id = $1",
+            project_id,
+        )
+
     async def stream_response():
         try:
             client = anthropic.AsyncAnthropic(api_key=api_key)
             full_text = ""
 
             async with client.messages.stream(
-                model="claude-sonnet-4-6",
-                max_tokens=8192,
+                model=model,
+                max_tokens=max_tokens,
                 system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
+                messages=generation_messages,
             ) as stream:
                 async for text in stream.text_stream:
                     full_text += text
@@ -9473,8 +10005,27 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
                 input_tokens = final_message.usage.input_tokens
                 output_tokens = final_message.usage.output_tokens
 
+        except asyncio.CancelledError:
+            await audit_cancelled_anthropic_provider(
+                pool_reservation, "MSJ generation"
+            )
+            raise
+        except anthropic.APIStatusError as e:
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, "MSJ generation rejected request"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': f'API error {e.status_code}'})}\n\n"
+            try:
+                async with db_pool.acquire() as conn:
+                    await conn.execute("UPDATE msj_projects SET status = 'draft', updated_at = NOW() WHERE id = $1", project_id)
+            except Exception:
+                pass
+            return
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, "MSJ generation stream failure"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI generation failed'})}\n\n"
             # Reset status on error
             try:
                 async with db_pool.acquire() as conn:
@@ -9483,27 +10034,39 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
                 pass
             return
 
-        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+        cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
 
-        yield f"data: {json.dumps({'type': 'done', 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
-
-        # Save generated motion
-        try:
+        async def persist(conn):
             motion_metadata = {
-                "model": "claude-sonnet-4-6",
+                "model": model,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost": round(cost, 6),
                 "generated_at": datetime.utcnow().isoformat(),
             }
-            async with db_pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE msj_projects SET generated_motion = $1, motion_metadata = $2, status = 'complete', updated_at = NOW() WHERE id = $3",
-                    full_text, json.dumps(motion_metadata), project_id
-                )
-            await log_api_usage("msj_generate", input_tokens, output_tokens, cost, source=key_source)
+            await conn.execute(
+                "UPDATE msj_projects SET generated_motion = $1, motion_metadata = $2, status = 'complete', updated_at = NOW() WHERE id = $3",
+                full_text, json.dumps(motion_metadata), project_id
+            )
+
+        async def finalize():
+            await asyncio.shield(finalize_anthropic_sse(
+                pool_reservation, cost, "msj_generate", input_tokens, output_tokens,
+                key_source, "MSJ generation actual provider cost", persist,
+            ))
+
+        try:
+            yield await terminal_sse_event(finalize, {
+                "type": "done",
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": round(cost, 6),
+            })
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            print(f"Failed to save MSJ generation: {e}")
+            print(f"Failed to finalize MSJ generation: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to save response'})}\n\n"
 
     return StreamingResponse(
         stream_response(),
@@ -9981,9 +10544,6 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
     user_id = user["id"]
 
     api_key, key_source = await get_anthropic_api_key(user_id)
-    if key_source == "site":
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     builder = _get_tool_builder(tool_type)
 
@@ -10044,24 +10604,43 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": data.content})
 
+    model = "claude-sonnet-4-6"
+    max_tokens = 4096
+    system_blocks = [{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": {"type": "ephemeral"},
+    }]
+    pool_reservation = await reserve_anthropic_request(
+        api_key,
+        key_source,
+        model,
+        max_tokens,
+        messages,
+        f"{tool_type} chat provider reservation",
+        system=system_blocks,
+    )
+
     async def stream_response():
-        yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation_id})}\n\n"
+        try:
+            yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation_id})}\n\n"
+        except (asyncio.CancelledError, GeneratorExit):
+            await asyncio.shield(cancel_anthropic_request(
+                pool_reservation, f"{tool_type} chat cancelled before provider request"
+            ))
+            raise
 
         try:
             client = anthropic.AsyncAnthropic(api_key=api_key)
             full_text = ""
 
             async with client.messages.stream(
-                model="claude-sonnet-4-6",
-                max_tokens=4096,
+                model=model,
+                max_tokens=max_tokens,
                 # The system prompt (case info + extracted documents + library
                 # docs) is stable across the conversation — cache it so every
                 # follow-up turn reads it at ~10% of input price.
-                system=[{
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"},
-                }],
+                system=system_blocks,
                 messages=messages,
             ) as stream:
                 async for text in stream.text_stream:
@@ -10074,8 +10653,22 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
                 cache_read_tokens = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
                 cache_write_tokens = getattr(final_message.usage, "cache_creation_input_tokens", 0) or 0
 
+        except asyncio.CancelledError:
+            await audit_cancelled_anthropic_provider(
+                pool_reservation, f"{tool_type} chat"
+            )
+            raise
+        except anthropic.APIStatusError as e:
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, f"{tool_type} chat rejected request"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': f'API error {e.status_code}'})}\n\n"
+            return
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, f"{tool_type} chat stream failure"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI stream failed'})}\n\n"
             return
 
         # Includes prompt-cache reads/writes
@@ -10087,23 +10680,38 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
         print(f"[cache] affidavit_chat input={input_tokens} output={output_tokens} "
               f"cache_read={cache_read_tokens} cache_write={cache_write_tokens}")
 
-        yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
+        async def persist(conn):
+            await conn.execute(
+                "INSERT INTO tool_messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
+                conversation_id, data.content
+            )
+            await conn.execute(
+                "INSERT INTO tool_messages (conversation_id, role, content, model, input_tokens, output_tokens, cost) VALUES ($1, 'assistant', $2, $3, $4, $5, $6)",
+                conversation_id, full_text, model, input_tokens, output_tokens, cost
+            )
+            await conn.execute("UPDATE tool_conversations SET updated_at = NOW() WHERE id = $1", conversation_id)
+            await conn.execute("UPDATE legal_projects SET updated_at = NOW() WHERE id = $1", project_id)
+
+        async def finalize():
+            await asyncio.shield(finalize_anthropic_sse(
+                pool_reservation, cost, f"{tool_type}_chat", input_tokens,
+                output_tokens, key_source, f"{tool_type} chat actual provider cost",
+                persist,
+            ))
 
         try:
-            async with db_pool.acquire() as conn:
-                await conn.execute(
-                    "INSERT INTO tool_messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
-                    conversation_id, data.content
-                )
-                await conn.execute(
-                    "INSERT INTO tool_messages (conversation_id, role, content, model, input_tokens, output_tokens, cost) VALUES ($1, 'assistant', $2, $3, $4, $5, $6)",
-                    conversation_id, full_text, "claude-sonnet-4-6", input_tokens, output_tokens, cost
-                )
-                await conn.execute("UPDATE tool_conversations SET updated_at = NOW() WHERE id = $1", conversation_id)
-                await conn.execute("UPDATE legal_projects SET updated_at = NOW() WHERE id = $1", project_id)
-            await log_api_usage(f"{tool_type}_chat", input_tokens, output_tokens, cost, source=key_source)
+            yield await terminal_sse_event(finalize, {
+                "type": "done",
+                "conversation_id": conversation_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": round(cost, 6),
+            })
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            print(f"Failed to save {tool_type} chat: {e}")
+            print(f"Failed to finalize {tool_type} chat: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to save response'})}\n\n"
 
     return StreamingResponse(
         stream_response(),
@@ -10121,9 +10729,6 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
     user_id = user["id"]
 
     api_key, key_source = await get_anthropic_api_key(user_id)
-    if key_source == "site":
-        if not await check_pool_available(user_id):
-            raise HTTPException(status_code=402, detail=POOL_EMPTY_DETAIL)
 
     builder = _get_tool_builder(tool_type)
 
@@ -10149,8 +10754,6 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
             tool_type, jurisdiction
         )
 
-        await conn.execute("UPDATE legal_projects SET status = 'generating', updated_at = NOW() WHERE id = $1", project_id)
-
     system_prompt, user_prompt = builder.build_affidavit_generation_prompt(
         case_info=case_info,
         form_data=form_data,
@@ -10158,16 +10761,34 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
         library_docs=[(ld["title"], ld["content"]) for ld in library_docs],
     )
 
+    model = "claude-sonnet-4-6"
+    max_tokens = 8192
+    generation_messages = [{"role": "user", "content": user_prompt}]
+    pool_reservation = await reserve_anthropic_request(
+        api_key,
+        key_source,
+        model,
+        max_tokens,
+        generation_messages,
+        f"{tool_type} generation provider reservation",
+        system=system_prompt,
+    )
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE legal_projects SET status = 'generating', updated_at = NOW() WHERE id = $1",
+            project_id,
+        )
+
     async def stream_response():
         try:
             client = anthropic.AsyncAnthropic(api_key=api_key)
             full_text = ""
 
             async with client.messages.stream(
-                model="claude-sonnet-4-6",
-                max_tokens=8192,
+                model=model,
+                max_tokens=max_tokens,
                 system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
+                messages=generation_messages,
             ) as stream:
                 async for text in stream.text_stream:
                     full_text += text
@@ -10177,8 +10798,27 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
                 input_tokens = final_message.usage.input_tokens
                 output_tokens = final_message.usage.output_tokens
 
+        except asyncio.CancelledError:
+            await audit_cancelled_anthropic_provider(
+                pool_reservation, f"{tool_type} generation"
+            )
+            raise
+        except anthropic.APIStatusError as e:
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, f"{tool_type} generation rejected request"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': f'API error {e.status_code}'})}\n\n"
+            try:
+                async with db_pool.acquire() as conn:
+                    await conn.execute("UPDATE legal_projects SET status = 'draft', updated_at = NOW() WHERE id = $1", project_id)
+            except Exception:
+                pass
+            return
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            await handle_anthropic_provider_failure(
+                pool_reservation, e, f"{tool_type} generation stream failure"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI generation failed'})}\n\n"
             try:
                 async with db_pool.acquire() as conn:
                     await conn.execute("UPDATE legal_projects SET status = 'draft', updated_at = NOW() WHERE id = $1", project_id)
@@ -10186,26 +10826,40 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
                 pass
             return
 
-        cost = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+        cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
 
-        yield f"data: {json.dumps({'type': 'done', 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'cost': round(cost, 6)})}\n\n"
-
-        try:
+        async def persist(conn):
             doc_metadata = {
-                "model": "claude-sonnet-4-6",
+                "model": model,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost": round(cost, 6),
                 "generated_at": datetime.utcnow().isoformat(),
             }
-            async with db_pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE legal_projects SET generated_document = $1, document_metadata = $2, status = 'complete', updated_at = NOW() WHERE id = $3",
-                    full_text, json.dumps(doc_metadata), project_id
-                )
-            await log_api_usage(f"{tool_type}_generate", input_tokens, output_tokens, cost, source=key_source)
+            await conn.execute(
+                "UPDATE legal_projects SET generated_document = $1, document_metadata = $2, status = 'complete', updated_at = NOW() WHERE id = $3",
+                full_text, json.dumps(doc_metadata), project_id
+            )
+
+        async def finalize():
+            await asyncio.shield(finalize_anthropic_sse(
+                pool_reservation, cost, f"{tool_type}_generate", input_tokens,
+                output_tokens, key_source,
+                f"{tool_type} generation actual provider cost", persist,
+            ))
+
+        try:
+            yield await terminal_sse_event(finalize, {
+                "type": "done",
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": round(cost, 6),
+            })
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            print(f"Failed to save {tool_type} generation: {e}")
+            print(f"Failed to finalize {tool_type} generation: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to save response'})}\n\n"
 
     return StreamingResponse(
         stream_response(),
