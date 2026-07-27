@@ -35,6 +35,7 @@ sys.path.insert(0, BACKEND)
 from opinion_passages import assess_opinion_boundaries
 from structured_briefs import (
     build_source_packet,
+    drop_uncitable_dissent,
     has_majority_source_material,
     validate_structured_summary,
 )
@@ -364,6 +365,7 @@ async def cmd_candidate_opinion(cid):
 
 
 def validate_candidate(candidate, passages):
+    drop_uncitable_dissent(candidate, passages)
     return validate_structured_summary(candidate, passages)
 
 

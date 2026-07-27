@@ -3,6 +3,8 @@ import unittest
 
 from structured_briefs import (
     build_source_packet,
+    build_structured_prompt,
+    drop_uncitable_dissent,
     generation_shape_report,
     has_majority_source_material,
     parse_structured_response,
@@ -163,6 +165,50 @@ class StructuredBriefTests(unittest.TestCase):
         errors, warnings = generation_shape_report(packet)
         self.assertEqual(errors, [])
         self.assertTrue(any("uncitable" in w for w in warnings))
+
+    def test_drops_dissent_claims_when_packet_has_no_dissent(self):
+        # Smith v. Arizona shape: Alito concurs in the judgment only, rejecting
+        # the majority's reasoning, and the model files it under dissent.
+        value = valid_summary()
+        claim = " ".join(["supported"] * 10)
+        value["dissent"] = [{"text": claim, "sources": ["op-concurrence"]}]
+        passages = self.passages + [
+            {"id": "op-concurrence", "opinion_part": "concurrence", "text": "I concur in the judgment."}
+        ]
+        drop_uncitable_dissent(value, passages)
+        self.assertEqual(value["dissent"], [])
+        self.assertEqual(validate_structured_summary(value, passages), [])
+
+    def test_keeps_miscited_dissent_when_packet_has_dissent(self):
+        # A real dissent exists, so the miscite is a near-miss the retry
+        # round-trip can correct — dropping it would silently lose the section.
+        value = valid_summary()
+        claim = " ".join(["supported"] * 10)
+        value["dissent"] = [{"text": claim, "sources": ["op-concurrence"]}]
+        passages = self.passages + [
+            {"id": "op-concurrence", "opinion_part": "concurrence", "text": "I concur."},
+            {"id": "op-dissent", "opinion_part": "dissent", "text": "I dissent."},
+        ]
+        drop_uncitable_dissent(value, passages)
+        self.assertEqual(len(value["dissent"]), 1)
+        self.assertIn(
+            "dissent[0] cites non-dissent passage",
+            validate_structured_summary(value, passages),
+        )
+
+    def test_prompt_states_dissent_absence_deterministically(self):
+        without = build_structured_prompt("A v. B", "SCOTUS", "2024-06-21", self.passages)
+        self.assertIn('"dissent" must be exactly []', without)
+        with_dissent = build_structured_prompt(
+            "A v. B", "SCOTUS", "2024-06-21",
+            self.passages + [{"id": "op-d", "opinion_part": "dissent", "text": "I dissent."}],
+        )
+        self.assertNotIn('"dissent" must be exactly []', with_dissent)
+        self.assertIn("Cite only (dissent) or (separate) passages for dissent.", with_dissent)
+
+    def test_prompt_always_bars_describing_concurrences(self):
+        prompt = build_structured_prompt("A v. B", "SCOTUS", "2024-06-21", self.passages)
+        self.assertIn("never describe one under dissent", prompt)
 
     def test_text_rendering_preserves_legacy_fallback(self):
         text = structured_summary_to_text(valid_summary())

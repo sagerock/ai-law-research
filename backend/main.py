@@ -33,6 +33,7 @@ from search_utils import case_title_terms
 from structured_briefs import (
     build_source_packet,
     build_structured_prompt,
+    drop_uncitable_dissent,
     has_majority_source_material,
     repair_unknown_sources,
     parse_structured_response,
@@ -2066,6 +2067,7 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
                 validation_errors = [f"response was not valid JSON: {error}"]
             else:
                 repair_unknown_sources(structured_summary, selected_passages)
+                drop_uncitable_dissent(structured_summary, selected_passages)
                 validation_errors = validate_structured_summary(structured_summary, selected_passages)
 
             if not validation_errors:

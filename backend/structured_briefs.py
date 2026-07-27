@@ -181,6 +181,34 @@ def repair_unknown_sources(candidate: dict, passages: list[dict]) -> None:
                     sources[index] = matches[0]
 
 
+def has_dissent_source_material(passages: list[dict]) -> bool:
+    """Return whether a packet contains anything a dissent claim may cite."""
+    return any(
+        passage.get("opinion_part") in {"dissent", "separate"}
+        for passage in passages
+    )
+
+
+def drop_uncitable_dissent(candidate: dict, passages: list[dict]) -> None:
+    """Empty the dissent section when the packet holds no dissent material.
+
+    An opinion concurring only in the judgment rejects the majority's reasoning
+    and so reads like a dissent — Alito's writing in Smith v. Arizona, joined by
+    the Chief Justice, is the type case. A content-reading model files it under
+    dissent and fails validation, twice, because feeding "cites non-dissent
+    passage" back does not change what the concurrence says. Concurrences are
+    excluded from briefs by design and the dissent section is optional, so
+    dropping those claims yields the brief the source actually supports instead
+    of a 502. The repair is deliberately narrow: when real dissent passages do
+    exist, a miscited claim is a near-miss the retry round-trip can fix.
+    """
+    if not isinstance(candidate, dict) or not isinstance(candidate.get("dissent"), list):
+        return
+    if has_dissent_source_material(passages):
+        return
+    candidate["dissent"] = []
+
+
 def build_source_packet(text: str, max_leading_chars: int = 65000, max_trailing_chars: int = 15000):
     content_hash, passages = build_opinion_passages(text)
     selected, chars = [], 0
@@ -206,6 +234,15 @@ def build_structured_prompt(case_name: str, court: str, date: str, passages: lis
         f'[{passage["id"]}] ({passage["opinion_part"]}) {passage["text"]}'
         for passage in passages
     )
+    # Whether a dissent exists is a fact about the packet's tags, not a judgment
+    # call about tone, so state it rather than leaving the model to infer it
+    # from a concurrence that happens to reject the majority's reasoning.
+    dissent_rules = (
+        """- Cite only (dissent) or (separate) passages for dissent.
+- A (separate) tag marks a separate writing whose type the source does not state. If its content is a dissent, describe it under dissent; never cite it for the majority sections."""
+        if has_dissent_source_material(passages)
+        else """- This packet contains no (dissent) or (separate) passages, so "dissent" must be exactly []."""
+    )
     return f"""Create a source-linked law-school case brief for {case_name} ({court}, {date}).
 
 Return JSON only, with exactly this shape:
@@ -224,9 +261,8 @@ Requirements:
 - Use 1-4 facts, exactly 1 issue, 1-2 holdings, 1-2 rules, 1-4 majority-reasoning claims, and 0-4 dissent claims.
 - Every claim must cite one or more passage IDs that directly support the complete claim.
 - Cite only opinion/majority passages for facts, issue, holding, rule, and majority reasoning.
-- Cite only dissent or (separate) passages for dissent.
-- A (separate) tag marks a separate writing whose type the source does not state. If its content is a dissent, describe it under dissent; never cite it for the majority sections.
-- Use an empty dissent array if the packet contains no dissent.
+{dissent_rules}
+- Passages tagged (concurrence) are excluded from these briefs by design. Never cite them in any section, and never describe one under dissent: an opinion concurring in the judgment may reject the majority's reasoning, but it is a concurrence, not a dissent.
 - Significance is concise editorial context and has no source IDs.
 - Do not invent facts, procedure, quotations, rules, or later history.
 
