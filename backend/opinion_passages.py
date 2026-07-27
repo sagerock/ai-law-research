@@ -8,7 +8,7 @@ import re
 
 ABBREVIATIONS = ("Mrs.", "Mr.", "Ms.", "Dr.", "Ch. J.", "J.", "Co.", "R.R.", "U.S.")
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
-PASSAGE_FORMAT_VERSION = "7"
+PASSAGE_FORMAT_VERSION = "8"
 CANONICAL_MARKER_RE = re.compile(r"\[\[COURTLISTENER_SUBOPINION\s+(.+)\]\]")
 EXTRACTOR_MARKER_RE = re.compile(
     r"={3,}\s*(Lead Opinion|Majority|Opinion|Plurality|Concurrence(?: in Part)?|Dissent)\s*={3,}",
@@ -58,10 +58,175 @@ LOWER_COURT_MAJORITY = re.compile(
 )
 
 
+# Typeset reporter text (U.S. Reports preliminary prints, state slip opinions)
+# arrives hard-wrapped at the column the typesetter used, so a sentence spans
+# many source lines and every line ends mid-clause. Blocks are then line-sized
+# rather than sentence-sized and passages cite fragments like "To ad-".
+# Unwrapping is gated on detection because most of the catalog stores one
+# paragraph — or the whole opinion — per line, where rejoining would be wrong.
+WRAP_MIN_LINES = 40
+WRAP_MAX_MEDIAN_WIDTH = 100
+WRAP_MIN_UNTERMINATED = 0.5
+# Above this share, blank lines are line spacing (double-spaced slip opinions),
+# not paragraph separators, so they must not end a block.
+WRAP_BLANK_SPACING_RATIO = 0.35
+LINE_TERMINALS = ('.', '!', '?', '"', "'", ':', ';', '”', '’')
+# A short line set this far in is centered — a section label ("OPINION", "II"),
+# not a wrapped clause. Block quotes indent perhaps half as far. These stay in
+# the text but end their block: glued onto the writing heading that follows
+# ("OPINION Justice Goldberg, for the Court.") they hide it from marker
+# detection and the opinion silently loses its majority boundary.
+CENTERED_INDENT = 20
+CENTERED_MAX_WIDTH = 60
+
+# Page furniture, recognized by content wherever it appears in a wrapped source.
+PAGE_FURNITURE_RE = re.compile(
+    r"""
+      Page\s+Proof\s+Pending\s+Publication   # preliminary-print watermark
+    | -\s*\d{1,4}\s*-                        # centered page number: -12-
+    """,
+    re.X | re.I,
+)
+# Section labels a reporter repeats under the running head of every page. Only
+# consulted directly beneath a page break, so "Syllabus" as a body word is safe.
+PAGE_HEADER_RE = re.compile(
+    r"""
+      Cite\s+as:.*
+    | (?:[A-Z][a-z]+\s+)?TERM,?\s*\d{4}.*
+    | Syllabus
+    | Counsel
+    | Per\s+Curiam
+    | Opinion\s+of\s+(?:the\s+Court|[A-Z][A-Za-z'.-]+,?\s*JJ?\.)
+    | Reporter'?s\s+Note
+    | [A-Z][A-Za-z'.\ -]{1,40},\s*(?:C\.\s*)?JJ?\.,\s*(?:concurring|dissenting)[^.]*
+    """,
+    re.X,
+)
+PAGE_BREAK = "\f"
+
+
+def _is_page_header(line: str) -> bool:
+    """Whether a page-break line is a running head rather than body text.
+
+    A page break lands mid-sentence as often as it lands between paragraphs, so
+    the text riding on it is usually real content ("\fmale opened the barbershop
+    door") and deleting it would be far worse than the fragmentation being
+    fixed. Running heads are distinguishable: centered or right-aligned, short,
+    shouted or drawn from the reporter's fixed label vocabulary, never ending a
+    sentence.
+    """
+    if len(line) - len(line.lstrip()) >= 20:
+        return True
+    value = line.strip()
+    if not value or len(value) > 80 or value.endswith("."):
+        return False
+    # Strip a leading or trailing page number: "782   SMITH v. ARIZONA".
+    value = re.sub(r"^\d{1,4}\s{2,}", "", value)
+    value = re.sub(r"\s{2,}\d{1,4}$", "", value).strip()
+    if not value:
+        return True
+    letters = [character for character in value if character.isalpha()]
+    if letters and sum(character.isupper() for character in letters) / len(letters) >= 0.6:
+        return True
+    return bool(PAGE_HEADER_RE.fullmatch(value))
+
+
+def looks_hard_wrapped(lines: list[str]) -> bool:
+    """Whether these lines were broken by a typesetter rather than an author."""
+    body = [line.strip() for line in lines if line.strip()]
+    if len(body) < WRAP_MIN_LINES:
+        return False
+    widths = sorted(len(line) for line in body)
+    if widths[len(widths) // 2] > WRAP_MAX_MEDIAN_WIDTH:
+        return False
+    unterminated = sum(1 for line in body if not line.endswith(LINE_TERMINALS))
+    return unterminated / len(body) > WRAP_MIN_UNTERMINATED
+
+
+def unwrap_typeset_lines(text: str) -> str:
+    """Rejoin typesetter-wrapped lines into blocks, dropping page furniture.
+
+    Left alone unless the source is detected as hard-wrapped, so the paragraph-
+    per-line and whole-opinion-per-line shapes that dominate the catalog keep
+    their existing segmentation exactly.
+    """
+    lines = text.split("\n")
+    if not looks_hard_wrapped(lines):
+        return text
+
+    blank_ratio = sum(1 for line in lines if not line.strip()) / max(len(lines), 1)
+    blank_separates = blank_ratio <= WRAP_BLANK_SPACING_RATIO
+
+    blocks: list[str] = []
+    current = ""
+
+    def flush() -> None:
+        nonlocal current
+        if current.strip():
+            blocks.append(current.strip())
+        current = ""
+
+    def append(fragment: str) -> None:
+        nonlocal current
+        if not current:
+            current = fragment
+        elif current.endswith("-"):
+            # Syllabic hyphenation is overwhelmingly the reason a justified line
+            # ends in a hyphen ("de-" / "fendant"), so the hyphen goes. A true
+            # compound broken at its hyphen ("cross-" / "examine") loses it too;
+            # accepted, since the alternative mangles far more words.
+            current = current[:-1] + fragment if fragment[:1].islower() else current + fragment
+        else:
+            current += " " + fragment
+
+    # A page break is padded with blank lines above and below its running head.
+    # Those blanks are typography, not paragraph breaks: letting them end a
+    # block strands the clause the page interrupted ("It re-").
+    in_page_break = False
+    for line in lines:
+        if not line.strip():
+            if blank_separates and not in_page_break:
+                flush()
+            continue
+        if PAGE_BREAK in line:
+            line = line.replace(PAGE_BREAK, "")
+            if not line.strip() or _is_page_header(line):
+                in_page_break = True
+                continue
+        elif in_page_break and PAGE_HEADER_RE.fullmatch(line.strip()):
+            # The label repeated beneath every running head, on its own line.
+            continue
+        in_page_break = False
+        stripped = line.strip()
+        if PAGE_FURNITURE_RE.fullmatch(stripped):
+            continue
+        if (
+            len(line) - len(line.lstrip()) >= CENTERED_INDENT
+            and len(stripped) <= CENTERED_MAX_WIDTH
+            and not stripped.endswith(LINE_TERMINALS)
+        ):
+            flush()
+            blocks.append(stripped)
+            continue
+        # Structural markers must survive as standalone blocks or the opinion
+        # boundaries they declare are lost inside a joined paragraph.
+        if (
+            CANONICAL_MARKER_RE.fullmatch(stripped)
+            or EXTRACTOR_MARKER_RE.fullmatch(stripped)
+        ):
+            flush()
+            blocks.append(stripped)
+            continue
+        append(stripped)
+    flush()
+    return "\n".join(blocks)
+
+
 def prepare_opinion_text(text: str) -> str:
     """Convert stored opinion HTML to text without losing block boundaries."""
     if "<" not in text or ">" not in text:
-        return LOWER_COURT_INLINE_HEADING.sub(r"\1\n\2\n", html.unescape(text))
+        prepared = unwrap_typeset_lines(html.unescape(text))
+        return LOWER_COURT_INLINE_HEADING.sub(r"\1\n\2\n", prepared)
     value = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", text)
     value = re.sub(
         r"(?i)</?(?:p|div|h[1-6]|blockquote|li|br|section|article|table|tr)[^>]*>",
@@ -70,9 +235,8 @@ def prepare_opinion_text(text: str) -> str:
     )
     value = re.sub(r"<[^>]+>", " ", value)
     lines = [normalize_opinion_text(line) for line in html.unescape(value).splitlines()]
-    return LOWER_COURT_INLINE_HEADING.sub(
-        r"\1\n\2\n", "\n".join(line for line in lines if line)
-    )
+    prepared = unwrap_typeset_lines("\n".join(line for line in lines if line))
+    return LOWER_COURT_INLINE_HEADING.sub(r"\1\n\2\n", prepared)
 
 
 def detect_opinion_marker(

@@ -4,6 +4,8 @@ from opinion_passages import (
     PASSAGE_FORMAT_VERSION,
     assess_opinion_boundaries,
     build_opinion_passages,
+    looks_hard_wrapped,
+    unwrap_typeset_lines,
 )
 
 
@@ -331,3 +333,121 @@ def test_labels_colon_terminated_circuit_dissent_heading():
         ("opinion", "The motion is DENIED."),
         ("dissent", "Separate reasoning."),
     ]
+
+
+def typeset_page(body_lines, page=780, name="SMITH v. ARIZONA", label="Opinion of the Court"):
+    """Render body lines the way a reporter's preliminary print stores them."""
+    return "\f{:<4}{:>30}\n\n{:>50}\n\n".format(page, name, label) + "\n".join(body_lines)
+
+
+def test_leaves_paragraph_per_line_sources_untouched():
+    # The dominant catalog shape: one paragraph (or the whole opinion) per line.
+    # Rejoining those would merge distinct paragraphs, so detection must decline
+    # and segmentation must come out byte-identical.
+    paragraphs = [
+        "Justice Kagan delivered the opinion of the Court.",
+        "The Confrontation Clause bars testimonial hearsay from an absent witness. " * 8,
+        "We therefore vacate the judgment below and remand for further proceedings. " * 8,
+    ] * 20
+    text = "\n".join(paragraphs)
+    assert not looks_hard_wrapped(text.split("\n"))
+    assert unwrap_typeset_lines(text) == text
+
+
+def test_detects_wrapping_only_in_typeset_sources():
+    typeset = ["The Sixth Amendment's Confrontation Clause guarantees a crimi-"] * 60
+    assert looks_hard_wrapped(typeset)
+    # Too few lines to judge, whatever their shape.
+    assert not looks_hard_wrapped(typeset[:10])
+    # Wide lines are authored paragraphs, not typesetter output.
+    assert not looks_hard_wrapped([line * 4 for line in typeset])
+
+
+def test_rejoins_typesetter_wrapped_sentences_and_hyphenation():
+    body = [
+        "   Justice Kagan delivered the opinion of the Court.",
+        "   The Sixth Amendment's Confrontation Clause guarantees a crimi-",
+        "nal defendant the right to confront the witnesses against him, and",
+        "that prohibition applies in full to forensic evidence offered by an",
+        "absent analyst whose findings the State puts before the jury.",
+    ]
+    _, passages = build_opinion_passages(typeset_page(body * 12))
+    texts = [p["text"] for p in passages]
+    assert any("criminal defendant the right to confront" in text for text in texts)
+    assert not any(text.endswith("-") for text in texts)
+    assert all(p["opinion_part"] == "majority" for p in passages)
+
+
+def test_drops_running_heads_watermarks_and_page_numbers():
+    body = [
+        "   The State does not escape the Confrontation Clause merely be-",
+        "cause the records came in to explain an expert's basis.",
+        "Page Proof Pending Publication",
+        "   We vacate the judgment of the Arizona Court of Appeals and re-",
+        "mand for further proceedings not inconsistent with this opinion.",
+        "                                      -3-",
+    ]
+    _, passages = build_opinion_passages(typeset_page(body * 12, label="Syllabus"))
+    texts = " ".join(p["text"] for p in passages)
+    assert "Page Proof" not in texts
+    assert "SMITH v. ARIZONA" not in texts
+    assert "Syllabus" not in texts
+    assert "-3-" not in texts
+    assert "because the records came in" in texts
+
+
+def test_page_break_carrying_body_text_keeps_the_text():
+    # A page break lands mid-sentence as often as between paragraphs; the text
+    # riding on it is content, not a running head, and must not be dropped.
+    body = ["   Waters complied with the demand, and although he was not an"] * 40
+    text = typeset_page(body) + "\n\feyewitness, he recalled hearing the victim exclaim."
+    _, passages = build_opinion_passages(text)
+    joined = " ".join(p["text"] for p in passages)
+    assert "eyewitness, he recalled hearing the victim exclaim." in joined
+
+
+def test_unwrapping_preserves_canonical_sub_opinion_markers():
+    # Markers declare the opinion boundaries; joined into a paragraph they stop
+    # matching and the source loses the parts it explicitly declares.
+    marker = '[[COURTLISTENER_SUBOPINION {"id":"1","part":"majority"}]]'
+    dissent = '[[COURTLISTENER_SUBOPINION {"id":"2","part":"dissent"}]]'
+    body = ["   The judgment of the court of appeals is hereby affirmed in"] * 40
+    text = marker + "\n" + typeset_page(body) + "\n" + dissent + "\n" + "\n".join(
+        ["   I would reverse because the statements were plainly testi-", "monial."]
+    )
+    _, passages = build_opinion_passages(text)
+    parts = {p["opinion_part"] for p in passages}
+    assert parts == {"majority", "dissent"}
+    assert any("testimonial." in p["text"] for p in passages)
+
+
+def test_centered_section_label_does_not_swallow_the_writing_heading():
+    # State v. Mosley shape: a centered "OPINION" label sits directly above the
+    # heading. Joined into it ("OPINION Justice Goldberg, for the Court.") the
+    # heading stops matching and the opinion loses its majority boundary.
+    body = ["   the defendant was convicted on all four counts after a retrial"] * 40
+    text = (
+        "                                  OPINION\n\n"
+        "      Justice Goldberg, for the Court. On the afternoon of August 13,\n"
+        "2014, a gunman entered the barbershop and opened fire.\n\n"
+        + "\n\n".join(body)
+    )
+    _, passages = build_opinion_passages(text)
+    assert any(p["opinion_part"] == "majority" for p in passages)
+    assert not any("for the Court" in p["text"] for p in passages)
+
+
+def test_double_spaced_slip_opinion_rejoins_across_blank_lines():
+    # Slip opinions are double-spaced, so blank lines are line spacing rather
+    # than paragraph breaks and must not end a block.
+    body = [
+        "      Derek Winslow and the victim had an acrimonious relationship,",
+        "leading Winslow to declare that he wanted the victim harmed, which in",
+        "street parlance evidently meant that he wanted him killed outright.",
+    ]
+    text = "\n\n".join(body * 14)
+    _, passages = build_opinion_passages(text)
+    assert any(
+        "acrimonious relationship, leading Winslow to declare" in p["text"]
+        for p in passages
+    )
