@@ -1818,8 +1818,20 @@ async def fetch_opinion(case_id: str):
 
 
 @app.post("/api/v1/cases/{case_id}/summarize")
-async def summarize_case(case_id: str, authorization: Optional[str] = Header(None)):
+async def summarize_case(
+    case_id: str,
+    force: bool = False,
+    authorization: Optional[str] = Header(None),
+):
     """Generate an AI-powered case brief summary"""
+
+    # Regenerating an existing brief spends from the shared Anthropic pool, so
+    # the bypass is admin-only: left open it would let anyone drain the pool by
+    # re-requesting the same case. Its purpose is to pick up a new
+    # PASSAGE_FORMAT_VERSION, whose better segmentation only reaches a case
+    # whose brief is generated again.
+    if force:
+        await require_admin(authorization)
 
     # Try to get user for BYOK
     current_user = await get_current_user(authorization)
@@ -1887,7 +1899,7 @@ async def summarize_case(case_id: str, authorization: Optional[str] = Header(Non
             case_id
         )
 
-        if cached and structured_cached:
+        if cached and structured_cached and not force:
             print(f"Returning cached source-linked summary for case {case_id}")
             return await get_case_summary(case_id, current_user)
 
