@@ -463,6 +463,42 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Source-brief yield: packet fix, repair-first burner, and the sonnet/opus experiment
+Owner: Claude
+Status: completed 2026-08-12
+Files: `backend/opinion_passages.py`, `backend/test_opinion_passages.py`,
+`citator/source_rebuild_burn.sh`, `citator/sunday_briefs.py`
+Summary: pointing the rebuild burner at Con Law (casebook 1499) exposed the pipeline's
+yield problem. Sonnet fresh generation went 0/8 at semantic review; opus went 4/12 (33%).
+Reading all ten early rejection notes showed three failure classes: (1) claims citing
+passages with no propositional content — star-page markers ("*518") and bare citation
+stubs — a supply defect, not a drafting one; (2) accurate-but-unsourced details (training
+knowledge leaking past source discipline); (3) genuine misreadings, the rarest (~3/10).
+Every rejected brief failed on 1-3 claims of ~16, with the rest supported, often verbatim.
+Fixes shipped, in priority order:
+- Passage builder (format v9→v10): star pagination stripped; citation-only sentences fold
+  into the sentence they support; section headings dropped; "Res." protected from splits.
+  After the fix, rejection notes contain no contentless-passage complaints — remaining
+  failures are claim-level re-sourcing, which triage repairs.
+- Burner cycles are now triage → gen → review. Repair-with-notes approves at ~2x fresh
+  generation (9/15 vs 90/282 observed), so it runs first. GEN_MODEL env picks the
+  generation model (default sonnet; the Sunday cron is unchanged). PRIORITY_CASEBOOK_ID
+  env aims a one-off run at a casebook without touching the cron.
+- Today's 16 rejections sit in the triage queue with precise reviewer notes; the next
+  burner run starts by repairing them.
+Worth knowing: candidate-save validates against persisted passages by content hash, so a
+format-version bump never strands an in-flight generation session. One-line dissent
+notices embedded in a lead opinion are part-tagged "opinion", not "dissent" — a dissent
+claim citing one fails validation (opus hit this on Poe and re-sourced around it).
+Next: decide whether Con Law generation stays on GEN_MODEL=opus (33% vs 0% is decisive on
+n=20, but post-fix sonnet has not been measured — cycle 4 on fixed packets went 2/3);
+whether to raise Sunday cycles to clear the 1499 backlog; and whether the semantic-review
+runbook should let the reviewer approve-with-edits for the accurate-but-unsourced class
+instead of round-tripping through triage.
+Deployment: none required — the passage builder ships with the next backend deploy; the
+burner and queue changes are host-local.
+Commit: `f4851c2` and this commit
+
 ### Constitutional Law cases grouped by doctrine
 Owner: Claude
 Status: completed 2026-08-12
