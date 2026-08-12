@@ -453,16 +453,18 @@ def test_double_spaced_slip_opinion_rejoins_across_blank_lines():
     )
 
 
-def test_citation_stays_in_one_passage():
-    # The defect this guards: a naive split turned one citation into four
-    # passages and briefs cited a passage whose entire text was "S."
+def test_citation_folds_into_the_proposition_it_supports():
+    # History of this guard: a naive split once turned one citation into four
+    # passages and briefs cited a passage whose entire text was "S." The first
+    # fix kept the citation intact but standalone — and briefs then cited a
+    # passage that asserted nothing, which semantic review rejects. A citation
+    # now travels with the proposition it backs.
     _, passages = build_opinion_passages(
         "The Clause bars testimonial hearsay. Crawford v. Washington, 541 U. S. "
         "36, 53-54 (2004). That rule applies to forensic evidence."
     )
     assert [p["text"] for p in passages] == [
-        "The Clause bars testimonial hearsay.",
-        "Crawford v. Washington, 541 U. S. 36, 53-54 (2004).",
+        "The Clause bars testimonial hearsay. Crawford v. Washington, 541 U. S. 36, 53-54 (2004).",
         "That rule applies to forensic evidence.",
     ]
 
@@ -472,8 +474,7 @@ def test_reporter_abbreviations_do_not_end_sentences():
         "See Ariz. Rev. Stat. Ann. No. 13-3407 (Supp. 2023). The statute applies."
     )
     assert [p["text"] for p in passages] == [
-        "See Ariz. Rev. Stat. Ann. No. 13-3407 (Supp. 2023).",
-        "The statute applies.",
+        "See Ariz. Rev. Stat. Ann. No. 13-3407 (Supp. 2023). The statute applies.",
     ]
 
 
@@ -501,3 +502,101 @@ def test_ordinary_sentence_boundaries_still_split():
         "It then entered judgment.",
         "We affirm.",
     ]
+
+
+def test_star_pagination_is_stripped_from_passage_text():
+    _, passages = build_opinion_passages(
+        "The court considered *518 the argument at length. It failed."
+    )
+    assert passages[0]["text"] == "The court considered the argument at length."
+
+
+def test_standalone_star_page_marker_never_becomes_a_passage():
+    _, passages = build_opinion_passages(
+        "The first proposition stands.\n*518\nThe second proposition follows."
+    )
+    assert [p["text"] for p in passages] == [
+        "The first proposition stands.",
+        "The second proposition follows.",
+    ]
+
+
+def test_citation_only_sentence_folds_into_the_sentence_it_supports():
+    _, passages = build_opinion_passages(
+        "Formal agreement between parties that collides with plausibility is "
+        "too fragile a foundation for jurisdiction. "
+        "Swift & Co. v. Hocking Valley R. Co., 243 U. S. 281, 289. "
+        "The Connecticut law has never been enforced."
+    )
+    assert len(passages) == 2
+    assert passages[0]["text"].endswith("243 U. S. 281, 289.")
+    assert passages[0]["text"].startswith("Formal agreement")
+    assert passages[1]["text"] == "The Connecticut law has never been enforced."
+
+
+def test_citation_opening_a_writing_joins_its_first_content_sentence():
+    _, passages = build_opinion_passages(
+        "The majority states its rule.\n"
+        "[Dissent by Harlan]\n"
+        "Poe v. Ullman, 367 U. S. 497, 522. The Court should reach the merits."
+    )
+    dissent = [p for p in passages if p["opinion_part"] == "dissent"]
+    assert len(dissent) == 1
+    assert dissent[0]["text"] == (
+        "Poe v. Ullman, 367 U. S. 497, 522. The Court should reach the merits."
+    )
+
+
+def test_prose_with_an_inline_citation_is_not_citation_only():
+    _, passages = build_opinion_passages(
+        "As we held in Baker v. Carr, 369 U. S. 186, the claim is justiciable. "
+        "The judgment is reversed."
+    )
+    assert len(passages) == 2
+    assert passages[0]["text"].startswith("As we held")
+
+
+def test_single_word_disposition_is_kept():
+    _, passages = build_opinion_passages("The judgment cannot stand. Reversed.")
+    assert [p["text"] for p in passages] == [
+        "The judgment cannot stand.",
+        "Reversed.",
+    ]
+
+
+def test_section_headings_are_dropped_not_folded():
+    _, passages = build_opinion_passages(
+        "The threshold question is standing.\nII\nOn the merits, the rule holds."
+    )
+    assert [p["text"] for p in passages] == [
+        "The threshold question is standing.",
+        "On the merits, the rule holds.",
+    ]
+
+
+def test_digitless_cross_reference_folds_backward():
+    _, passages = build_opinion_passages(
+        "The affidavits establish the injury. See ibid. The remedy follows."
+    )
+    assert [p["text"] for p in passages] == [
+        "The affidavits establish the injury. See ibid.",
+        "The remedy follows.",
+    ]
+
+
+def test_dispositions_survive_as_their_own_passages():
+    _, passages = build_opinion_passages(
+        "The decree cannot stand. It is so ordered."
+    )
+    assert [p["text"] for p in passages] == [
+        "The decree cannot stand.",
+        "It is so ordered.",
+    ]
+
+
+def test_senate_resolution_citation_does_not_split():
+    _, passages = build_opinion_passages(
+        "See S. Res. 98, 105th Cong., 1st Sess. (1997). The record confirms it."
+    )
+    assert len(passages) == 1
+    assert passages[0]["text"].endswith("The record confirms it.")

@@ -18,7 +18,7 @@ CITATION_ABBREVIATIONS = (
     "Ch", "Cir", "Cl", "Comm", "Const", "Corp", "Cr", "Ct", "Dall", "Dept",
     "Dist", "Div", "Ed", "Exch", "Gen", "How", "Ibid", "Id", "Inc", "Jur",
     "MR", "MRS", "Misc", "No", "Nos", "Op", "Pet", "Pt", "Reg", "Regs",
-    "Proc", "Pub", "Rev", "Rptr", "Serv", "Sess", "Stat", "Sup", "Supp",
+    "Proc", "Pub", "Res", "Rev", "Rptr", "Serv", "Sess", "Stat", "Sup", "Supp",
     "Tit", "Tr", "Univ", "Wall", "Wheat", "cert", "pp",
     # State and circuit abbreviations, for "Ariz. Rev. Stat. Ann." and reporters.
     "Ala", "Ariz", "Ark", "Cal", "Colo", "Conn", "Del", "Fla", "Ga", "Ill",
@@ -36,7 +36,23 @@ CITATION_ABBREVIATION_RE = re.compile(
     r"\b(?:[A-Za-z]|" + "|".join(CITATION_ABBREVIATIONS) + r")\.(?=\s)"
 )
 JUSTICE_PREFIX = r"(?:(?:The|Mr\.|Ms\.|Mrs\.)\s+)?(?:(?:Chief|Associate)\s+)?Justice\b"
-PASSAGE_FORMAT_VERSION = "9"
+PASSAGE_FORMAT_VERSION = "10"
+# Star pagination ("*518", "[**212]") marks where a reporter's page began. It is
+# typography, not text: left inline it becomes a passage's opening token, and a
+# marker that lands between sentences becomes an entire passage whose text is
+# "*518" — which the brief generator then cites as if it were evidence.
+STAR_PAGE_RE = re.compile(r"\[?\*{1,2}\d{1,4}\]?(?!\d)")
+# Words that carry no propositional content on their own because they are the
+# connective tissue of a citation sentence ("See, e.g., ...", "cert. denied").
+CITATION_CONNECTORS = frozenset({
+    "accord", "al", "also", "and", "ante", "at", "but", "cert", "cf", "co",
+    "compare", "contra", "corp", "curiam", "denied", "dismissed", "ed", "eg",
+    "et", "ex", "granted", "ibid", "id", "in", "inc", "ltd", "no", "of", "per",
+    "re", "reh'g", "rel", "see", "supra", "the", "v", "vs",
+    # Ordinal and series suffixes ("105th Cong.", "1st Sess.", "F. 2d") — the
+    # token regex reads them as standalone lowercase words.
+    "d", "nd", "rd", "st", "th",
+})
 CANONICAL_MARKER_RE = re.compile(r"\[\[COURTLISTENER_SUBOPINION\s+(.+)\]\]")
 EXTRACTOR_MARKER_RE = re.compile(
     r"={3,}\s*(Lead Opinion|Majority|Opinion|Plurality|Concurrence(?: in Part)?|Dissent)\s*={3,}",
@@ -389,7 +405,44 @@ def detect_opinion_marker(
 
 def normalize_opinion_text(text: str) -> str:
     text = text.translate(str.maketrans({"“": '"', "”": '"', "‘": "'", "’": "'", "—": "-"}))
+    text = STAR_PAGE_RE.sub(" ", text)
     return re.sub(r"\s+", " ", text.replace("&amp;", "&")).strip()
+
+
+def is_citation_only(sentence: str) -> bool:
+    """True when a sentence has no propositional content of its own.
+
+    The failure this prevents: sentence splitting strands a bare citation
+    ("Swift & Co. v. Hocking Valley R. Co., 243 U. S. 281, 289.") or a page
+    artifact as its own passage, the generator cites it, and semantic review
+    rejects the claim because the passage asserts nothing. A citation supports
+    the sentence it follows, so it belongs inside that sentence's passage.
+
+    Two shapes qualify. With a digit (a real citation), any lowercase
+    non-connector word marks prose and disqualifies — citations are made of
+    capitalized party names, reporter abbreviations, numbers, and connectors.
+    Without a digit, only pure cross-references qualify ("See ibid."): every
+    word must be a connector, which keeps dispositions ("Reversed.", "It is so
+    ordered.") as citable passages of their own.
+    """
+    tokens = [t.lower().strip("'’-") for t in re.findall(r"[A-Za-z][A-Za-z'’-]*", sentence)]
+    if not any(ch.isdigit() for ch in sentence):
+        return bool(tokens) and all(token in CITATION_CONNECTORS for token in tokens)
+    for original, token in zip(re.findall(r"[A-Za-z][A-Za-z'’-]*", sentence), tokens):
+        if original[0].islower() and token not in CITATION_CONNECTORS:
+            return False
+    return True
+
+
+# A centered section label ("II", "A", "1.") splits an opinion for the eye. As
+# a passage it is uncitable noise, and folded into a neighbor it corrupts the
+# neighbor's text, so it is dropped rather than merged. Prose is safe: a real
+# sentence containing only a roman-numeral word ("I dissent.") has other words.
+STRUCTURAL_HEADING_RE = re.compile(r"(?:[IVXLCDM]{1,7}|[A-H]|\d{1,2})\.?")
+
+
+def is_structural_heading(sentence: str) -> bool:
+    return bool(STRUCTURAL_HEADING_RE.fullmatch(sentence.strip()))
 
 
 def split_sentences(text: str) -> list[str]:
@@ -433,6 +486,32 @@ def build_opinion_passages(text: str, sentences_per_passage: int = 1) -> tuple[s
                 continue
             sentences.append((opinion_part, sentence))
         index += 1
+
+    # Fold citation-only sentences into the sentence they support. Backward
+    # into the preceding sentence of the same writing (a citation follows the
+    # proposition it backs); a citation opening a writing waits and joins the
+    # first content sentence; one that is its own entire writing is furniture.
+    folded: list[list[str]] = []
+    pending: list[str] = []
+    pending_part: str | None = None
+    for part, sentence in sentences:
+        if is_structural_heading(sentence):
+            continue
+        if is_citation_only(sentence):
+            if folded and folded[-1][0] == part:
+                folded[-1][1] += " " + sentence
+            elif pending_part in (None, part):
+                pending.append(sentence)
+                pending_part = part
+            else:
+                pending = [sentence]
+                pending_part = part
+        else:
+            if pending and pending_part == part:
+                sentence = " ".join(pending) + " " + sentence
+            pending, pending_part = [], None
+            folded.append([part, sentence])
+    sentences = [(part, sentence) for part, sentence in folded]
 
     passages = []
     passage_id_counts: dict[str, int] = {}

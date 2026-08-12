@@ -42,3 +42,5 @@
 7085923	929 chars, auto-skipped (candidate) 2026-07-20
 3347009	1746 chars, auto-skipped (candidate) 2026-07-20
 5901760	0 chars, auto-skipped (candidate) 2026-07-26
+4913804	not Zellmer v. Zellmer - stored opinion text is a 1920 WA liquor-forfeiture case (State v. Baisch), famous-name mismatch, CL data flaw, manual skip 2026-08-09
+7405473	0 chars, auto-skipped (candidate) 2026-08-09

@@ -56,7 +56,9 @@ SOURCE_PILOT_IDS = [
 ]
 SOURCE_PROVIDER = "claude"
 SOURCE_PACKET_CHARS = 80000
-PRIORITY_CASEBOOK_ID = 2467
+# Cheng Evidence by default. Override to aim a one-off batch at another casebook
+# without redirecting the standing Sunday cron: PRIORITY_CASEBOOK_ID=1499 ...
+PRIORITY_CASEBOOK_ID = int(os.getenv("PRIORITY_CASEBOOK_ID", "2467"))
 
 
 def skiplist():
