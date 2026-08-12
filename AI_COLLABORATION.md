@@ -463,6 +463,66 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Constitutional Law cases grouped by doctrine
+Owner: Claude
+Status: completed 2026-08-12
+Files: `scripts/classify_conlaw_topics.py`
+Summary: textbook 1499 rendered as one flat alphabetical list of 299 cases because `chapter`
+was null on every row. Rather than copy the book's chapter structure — the selection and
+arrangement is the part of a casebook most plausibly protected — the cases are grouped under
+Tortwell's own 13-topic doctrinal taxonomy, classified from each case's own holding using only
+the case name, citation, and decision date already in our database. `sort_order` is topic rank
+times 1000 plus alphabetical position, so groups render in teaching order (structure of
+government before individual rights) and each group reads alphabetically.
+`TextbookDetailClient.tsx` already groups when any case has a `chapter`, so no frontend change
+was needed. `legal_concepts` now holds 2-4 doctrine tags per case; nothing renders them yet.
+Production verified: 299/299 rows have a chapter, concept tags, and a distinct sort order, and
+the live API serves the 13 groups in order.
+Three things the next assistant should know about classifying with a model at this size: the
+model twice answered a 25-case batch with a single entry (the script halves the batch and
+retries), it title-cases connecting words past a schema enum — "Freedom Of Speech And The
+Press" — which silently dropped 11 cases from the first plan until topics were canonicalized,
+and `cases.id` is `text`, so coercing case IDs to int breaks the cache-reuse check. The run
+caches its classification to JSON, so re-grouping under a revised taxonomy costs an `--apply`
+and no tokens.
+Next: the taxonomy is worth a second look — Freedom of Speech and the Press holds 70 cases (a
+quarter of the book) and could split content-based/content-neutral, and Other Individual Rights
+holds 5 that are really Second Amendment plus incorporation. Separately, 210 of the 299 still
+have no AI brief; the list is navigable now, so that backlog is the bigger gap.
+Deployment: production data operation; no redeploy needed (the textbook detail cache turned
+over on its own TTL).
+Commit: `cdaa964`
+
+### Chemerinsky Constitutional Law 7th edition case-list verification
+Owner: Sol
+Status: completed 2026-08-11
+Files: `scripts/sync_chemerinsky_casebook.py`
+Summary: textbook 1499's Quimbee-derived mapping was replaced atomically with the 299
+principal cases marked in the licensed 2024 book's table of cases. The private table and
+page references were not copied into the repository or database. Four absent Supreme Court
+case rows (Biden, Counterman, Horne, and Ex parte McCardle) were imported, and three existing
+stubs (Janus, Bruen, and Slaughter-House) were hydrated through the canonical CourtListener
+assembler. CFPB v. CFSA and Lindke v. Freed were removed from this textbook mapping because
+they postdate the edition; their case rows were retained. The idempotent dry run resolves
+299/299 with no removals, and the live page renders 299 flat cases.
+Deployment: production data operation; frontend cache cleared by successful redeploy
+`943ad1e5-b982-4bcb-bbed-4da6b029630c` of existing commit `893424a`.
+Commit: not committed
+
+### Mills RECAP opinion import
+Owner: Sol
+Status: completed 2026-08-03
+Files: `scripts/import_mills_case.py`
+Summary: Mills v. City of St. Louis is RECAP-only, so its bespoke importer originally stored raw
+PDF text without canonical opinion-part metadata. Strict source preflight correctly rejected the
+unmarked, non-CourtListener-ID source before spending. The importer now declares document 37 as
+one verified majority writing and persists its matching content hash; the existing production row
+was repaired idempotently. Exact production preflight found 186 majority passages with no errors,
+and retrying generation created source-linked summary `1188` for $0.10455.
+Next: none.
+Deployment: n/a (offline data operation)
+Commit: not committed
+
 ### Systemic CourtListener opinion assembly and preflight
 Owner: Sol
 Status: shipped 2026-07-21
@@ -800,7 +860,7 @@ and AI study; these authenticated flows are covered by local automated checks bu
 exercised against a real production user session.
 Deployment: backend and frontend canonical release deployed successfully; sitemap fix in
 this commit
-Commit: this commit
+Commit: `cdaa964`
 
 Version 2 — the jurisdictional half (Claude, 2026-07-14): Sage observed the shipped
 outline was effectively his Civ Pro II course (the litigation process); the missing half
@@ -1046,7 +1106,7 @@ Commit: `38d9ba2`
 
 ### AI billing protection Round 2
 Owner: Sol
-Status: implemented locally; 127 tests pass
+Status: deployed; production migration repaired 2026-07-27; local fallback hardening pending commit/deploy
 Files: `backend/main.py`, `backend/ai_usage.py`, `backend/test_ai_usage.py`,
 `backend/test_stream_finalization.py`, `migrations/039_ai_reservation_idempotency.sql`
 Summary: migrated variable-prompt paths preflight and reserve bounded cost; textbook Q&A keeps its
@@ -1055,10 +1115,20 @@ chat/generation atomically persist output, usage, and settlement before SSE `don
 conversation writes are atomic too. Ledger markers make reserve/settle/cancel retries idempotent,
 and pending outline/study/case turns are not persisted on pool or token-count failure. MSJ prompt
 inputs are deterministic; pricing and overrides fail closed. BYOK provider behavior is unchanged.
-Next: review, commit, deploy backend, then smoke-test BYOK, pool-empty, cancellation, Case Ask,
-MSJ, and affidavit chat/generation.
-Deployment: not deployed
-Commit: not committed
+Production incident: generation for General Electric Co. v. Joiner (`118157`, canonical
+`522-us-136`) returned 500 after Claude completed because commit `05d51d3` deployed before
+migration 039 was applied. Settlement's partial-index `ON CONFLICT` therefore failed, rolling back
+the brief write and leaving reservation `240` open. Migration 039 was applied and its exact marker
+write passed a rollback-only production smoke test. Local defense-in-depth now writes terminal and
+uncertain markers with the existing advisory lock plus `INSERT ... WHERE NOT EXISTS`, so delayed
+index deployment cannot lose another paid response; the unique indexes remain the database guard.
+All 190 backend/citator tests pass. Do not refund the open reservation automatically: the provider
+completed but exact usage was lost, so retaining it follows the uncertain-outcome billing rule.
+Next: commit and deploy the local two-file fallback hardening. Smoke-test the remaining Round 2
+paths as previously planned; no second paid Joiner generation was triggered during this repair.
+Deployment: backend `1ced97e5-fb0a-419e-9acc-f57acd044d94` (`6691425`) successful; migration 039
+applied directly to production PostgreSQL and verified.
+Commit: Round 2 `05d51d3`; fallback hardening uncommitted
 
 ### Tortwell domain migration
 Owner: Sol
