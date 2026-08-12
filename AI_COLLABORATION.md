@@ -497,7 +497,7 @@ runbook should let the reviewer approve-with-edits for the accurate-but-unsource
 instead of round-tripping through triage.
 Deployment: none required — the passage builder ships with the next backend deploy; the
 burner and queue changes are host-local.
-Commit: `f4851c2` and this commit
+Commit: `f4851c2` and `ebfc742`
 
 ### Constitutional Law cases grouped by doctrine
 Owner: Claude
