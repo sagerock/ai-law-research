@@ -491,7 +491,7 @@ holds 5 that are really Second Amendment plus incorporation. Separately, 210 of 
 have no AI brief; the list is navigable now, so that backlog is the bigger gap.
 Deployment: production data operation; no redeploy needed (the textbook detail cache turned
 over on its own TTL).
-Commit: `cdaa964`
+Commit: `3ab5407`
 
 ### Chemerinsky Constitutional Law 7th edition case-list verification
 Owner: Sol
