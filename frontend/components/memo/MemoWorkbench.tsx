@@ -82,10 +82,17 @@ export default function MemoWorkbench({ project, onProjectUpdated }: Props) {
   const [generating, setGenerating] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const caseFileInput = useRef<HTMLInputElement>(null)
 
   const authorities = project.documents.filter((d) => d.doc_type === 'case' || d.doc_type === 'statute')
   const record = project.documents.filter((d) => d.doc_type !== 'case' && d.doc_type !== 'statute')
   const chart = useMemo(() => parseChart(project.generated_document), [project.generated_document])
+  const quoteProblems: string[] = (project.document_metadata as any)?.quote_problems || []
+  const isFlagged = (quote?: string) => {
+    if (!quote) return false
+    const squashed = quote.replace(/\s+/g, ' ').slice(0, 60)
+    return quoteProblems.some((p) => p.includes(squashed.slice(0, 40)))
+  }
 
   const authHeaders = { Authorization: `Bearer ${token}` }
 
@@ -108,14 +115,15 @@ export default function MemoWorkbench({ project, onProjectUpdated }: Props) {
     finally { setSaving(false) }
   }
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, typeOverride?: string) => {
     if (!token) return
+    const docType = typeOverride || uploadDocType
     setUploading(true); setNotice(null)
     try {
       const body = new FormData()
       body.append('file', file)
-      body.append('doc_type', uploadDocType)
-      body.append('category', uploadDocType === 'case' ? 'authority' : 'record')
+      body.append('doc_type', docType)
+      body.append('category', docType === 'case' || docType === 'statute' ? 'authority' : 'record')
       const res = await fetch(`${API_URL}/api/v1/tools/memo/projects/${project.id}/documents`, {
         method: 'POST', headers: authHeaders, body,
       })
@@ -271,6 +279,15 @@ export default function MemoWorkbench({ project, onProjectUpdated }: Props) {
               </li>
             ))}
           </ul>
+          <div className="flex items-center gap-2 mb-2">
+            <button onClick={() => caseFileInput.current?.click()} disabled={uploading}
+              className="flex items-center gap-2 px-3 py-2 border border-stone-300 rounded-lg text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50">
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload a case (PDF)
+            </button>
+            <input ref={caseFileInput} type="file" accept=".pdf,.docx,.txt" className="hidden"
+              onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], 'case')} />
+            <span className="text-xs text-stone-400">for cases not in Tortwell</span>
+          </div>
           <div className="flex items-center gap-2">
             <input className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm" placeholder="Search Tortwell cases…"
               value={caseQuery} onChange={(e) => setCaseQuery(e.target.value)}
@@ -319,6 +336,13 @@ export default function MemoWorkbench({ project, onProjectUpdated }: Props) {
 
         {!generating && chart && (
           <div className="space-y-4">
+            {quoteProblems.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
+                {quoteProblems.length} quote{quoteProblems.length > 1 ? 's' : ''} did not match the source verbatim —
+                marked below. Check each against the document before relying on it (the model may have
+                silently corrected a typo, or paraphrased).
+              </div>
+            )}
             {chart.issue_frame && <p className="text-sm text-stone-700 font-medium">{chart.issue_frame}</p>}
             {(chart.authorities || []).map((a, i) => (
               <div key={i} className="border border-stone-200 rounded-lg p-4">
@@ -328,12 +352,16 @@ export default function MemoWorkbench({ project, onProjectUpdated }: Props) {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SIDE_STYLES[a.side || ''] || 'bg-stone-100 text-stone-600'}`}>{a.side}</span>
                 </div>
                 {a.why && <p className="text-sm text-stone-600 mb-2">{a.why}</p>}
-                {(a.key_passages || []).map((p, j) => (
-                  <blockquote key={j} className="border-l-2 border-sage-200 pl-3 my-2 text-sm text-stone-700 italic">
-                    &ldquo;{p.quote}&rdquo;
-                    {p.use && <span className="block not-italic text-xs text-stone-500 mt-1">{p.use}</span>}
-                  </blockquote>
-                ))}
+                {(a.key_passages || []).map((p, j) => {
+                  const flagged = isFlagged(p.quote)
+                  return (
+                    <blockquote key={j} className={`border-l-2 pl-3 my-2 text-sm italic ${flagged ? 'border-amber-400 bg-amber-50 text-stone-800 py-1.5 pr-2 rounded-r' : 'border-sage-200 text-stone-700'}`}>
+                      &ldquo;{p.quote}&rdquo;
+                      {flagged && <span className="block not-italic text-xs font-medium text-amber-700 mt-1">⚠ Not verbatim in the source — verify before using</span>}
+                      {p.use && <span className="block not-italic text-xs text-stone-500 mt-1">{p.use}</span>}
+                    </blockquote>
+                  )
+                })}
                 {a.how_to_use_or_distinguish && (
                   <p className="text-sm text-stone-700 mt-2"><span className="font-medium">The move:</span> {a.how_to_use_or_distinguish}</p>
                 )}
