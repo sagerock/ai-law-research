@@ -463,6 +463,31 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Incident: Google sign-in silently broken for ~1 month (resolved 2026-08-17)
+Owner: Sage (fix) / Claude (diagnosis)
+Status: resolved 2026-08-17 ~14:22 UTC — verified by fresh session
+Summary: Google OAuth sign-in on tortwell.com failed with "Unable to exchange external
+code" from at latest 2026-07-16 (last successful Google sign-in) until today. Surfaced
+accidentally while wiring local-dev auth; first misread as a localhost redirect issue
+(adding http://localhost:3000/** to Supabase's redirect allow-list was needed for local
+dev, but was not this bug). Diagnosis: probing Google's authorize endpoint with the
+client ID returned a normal sign-in 302 — client alive, redirect URI authorized — which
+isolated the fault to the CLIENT SECRET held by Supabase, since the code exchange is the
+only step that uses it. Fix: new client secret minted in Google Cloud Console (project
+number 616248408875, project id law-study-group, under sage@sagerock.com) and pasted
+into Supabase Auth → Providers → Google. Root cause of the original secret mismatch
+undetermined (not investigated further once fixed). Blast radius: 3 Google identities;
+email/password sign-in unaffected throughout.
+Worth doing next: (1) an auth canary — Supabase's log-query API 500'd throughout the
+incident, and a monthly-broken login was invisible because sign-ins are rare; even a
+weekly config-liveness probe of the authorize endpoint would have caught this in days;
+(2) the Supabase auth logs backend error itself may be worth a support ticket; (3) the
+OAuth consent screen may still say "Law Study Group" — rebrand to Tortwell is cosmetic
+but user-visible on the Google prompt.
+Deployment: none (Supabase dashboard + Google Console config only).
+Commit: this entry only.
+
+
 ### Triage session 2026-08-17: 3 regenerations, all via passage-ID remap
 Owner: Claude
 Status: completed 2026-08-17 — 3/3 candidates saved
