@@ -495,7 +495,7 @@ Next: exercise end-to-end with the Jones materials; wire verify_chart_quotes int
 generate; decide whether memo chat needs a UI panel (the generic chat endpoint already
 accepts tool_type memo); chart export.
 Deployment: not deployed (local commit only)
-Commit: `fb13956`
+Commit: `79223db`
 
 ### Triage session 2026-08-16: passage-ID drift after v10, and a boundary-preflight regression
 Owner: Claude
