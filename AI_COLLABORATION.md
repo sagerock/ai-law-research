@@ -475,10 +475,14 @@ client ID returned a normal sign-in 302 — client alive, redirect URI authorize
 isolated the fault to the CLIENT SECRET held by Supabase, since the code exchange is the
 only step that uses it. Fix: new client secret minted in Google Cloud Console (project
 number 616248408875, project id law-study-group, under sage@sagerock.com) and pasted
-into Supabase Auth → Providers → Google. Root cause of the original secret mismatch
-undetermined (not investigated further once fixed). Blast radius: 3 Google identities;
+into Supabase Auth → Providers → Google. Root cause (Sage, 2026-08-18): he deleted the wrong client secret during an earlier
+GCP credentials cleanup — human error, not expiry or Google-side action. Blast radius: 3 Google identities;
 email/password sign-in unaffected throughout.
-Worth doing next: (1) an auth canary — Supabase's log-query API 500'd throughout the
+Done 2026-08-18: the auth canary now runs in sagerock/cron-monitor (job
+tortwell-google-oauth-canary, commit 023a59a there) — authorize-endpoint probe plus a
+secret-validity probe (invalid_grant-on-canary-code); reports 'partial' until
+GOOGLE_OAUTH_CLIENT_SECRET is set on the monitor's Railway service. Originally noted:
+(1) an auth canary — Supabase's log-query API 500'd throughout the
 incident, and a monthly-broken login was invisible because sign-ins are rare; even a
 weekly config-liveness probe of the authorize endpoint would have caught this in days;
 (2) the Supabase auth logs backend error itself may be worth a support ticket; (3) the
