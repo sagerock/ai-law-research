@@ -531,7 +531,27 @@ already staged/modified in the working tree when this session started).
 
 ### Memo Workbench rough-in (tool type #2)
 Owner: Claude
-Status: roughed in 2026-08-16; backend tested, frontend compiles, end-to-end unexercised
+Status: exercised end-to-end 2026-08-17 on the Jones project; local stack established
+Update 2026-08-17: full loop run three times against a NATIVE local stack (Docker
+Desktop's service wouldn't start headlessly; PostgreSQL 16 + pgvector now installed
+in the Ubuntu WSL directly — user legal_user/legal_pass, db legal_research, schema
+pulled from production via pg_dump --schema-only because migrations/ is incomplete
+relative to prod; backend runs `uvicorn main:app --port 8001` with a LOCAL-ONLY
+SUPABASE_JWT_SECRET and self-minted JWTs — no prod secrets involved; seed rows:
+profiles 'local-dev-sage-0001', pool_ledger +$10).
+Results: 8 documents uploaded and parsed, chart generated in ~100s for ~$0.17
+(sonnet-4-6, ~31k in / ~4.8k out), all 7 answer-key arguments from the hand-built
+Jones benchmark found, all 5 side calls correct. The loop caught two real defects:
+(1) extract_text_from_pdf scrambled two-column Westlaw/Lexis printouts (pdfplumber
+default interleaves columns line-by-line) — fixed with use_text_flow=True; affects
+every upload path (BriefCheck, MSJ), not just memo; (2) verify_chart_quotes needed
+typographic-punctuation and star-pagination normalization. The verifier's remaining
+flags are true positives (model silently corrected a reporter's typo "controls fand";
+paraphrased a Davis clause) — exactly the review UX intended. postprocess_generated
+is now wired into the generate endpoint, so every chart persists chart_parsed +
+quote_problems in document_metadata. Known open prompt issue: the chart still leans
+on probable cause despite scope_notes excluding it; one scope-rule iteration added,
+needs another pass.
 Files: `backend/memo_builder.py`, `backend/test_memo_builder.py`, tool-dispatch and
 link-case hunks in `backend/main.py`, `frontend/app/tools/memo/`,
 `frontend/components/memo/MemoWorkbench.tsx`

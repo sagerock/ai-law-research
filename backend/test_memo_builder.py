@@ -92,3 +92,26 @@ def test_quote_verification_normalizes_whitespace():
         ]
     }
     assert verify_chart_quotes(chart, DOCUMENTS) == []
+
+
+def test_quote_verification_tolerates_star_pagination():
+    docs = [(9, "case", "Niskanen", "with probable cause to suspect shoplifting *493 may detain the suspect in a reasonable manner.")]
+    chart = {"authorities": [{"title": "Niskanen", "source_doc": "[case #9]",
+        "key_passages": [{"quote": "probable cause to suspect shoplifting may detain the suspect", "use": "x"}]}]}
+    assert verify_chart_quotes(chart, docs) == []
+
+
+def test_quote_verification_flags_silent_typo_correction():
+    docs = [(9, "case", "Mullins", "the rationale of Lester controls fand there is no imprisonment as a matter of law.")]
+    chart = {"authorities": [{"title": "Mullins", "source_doc": "[case #9]",
+        "key_passages": [{"quote": "the rationale of Lester controls and there is no imprisonment", "use": "x"}]}]}
+    assert len(verify_chart_quotes(chart, docs)) == 1
+
+
+def test_postprocess_reports_parse_and_quote_audit():
+    from memo_builder import postprocess_generated
+    docs = [(1, "case", "A", "the holding is exactly this sentence.")]
+    good = '{"authorities": [{"title": "A", "source_doc": "[case #1]", "key_passages": [{"quote": "the holding is exactly this sentence.", "use": "x"}]}]}'
+    meta = postprocess_generated(good, docs)
+    assert meta == {"chart_parsed": True, "quote_problems": []}
+    assert postprocess_generated("not json", docs)["chart_parsed"] is False

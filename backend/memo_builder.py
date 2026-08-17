@@ -16,7 +16,13 @@ Builder contract (shared with affidavit_builder, dispatched by tool_type):
 """
 
 import json
+import re
 from typing import Optional
+
+# Reporter star pagination ("*493", "[**212]") is typography, not text: a quote
+# is verbatim whether or not it carries the page marker the reporter printed
+# mid-sentence. Same pattern opinion_passages strips at ingestion.
+STAR_PAGE_RE = re.compile(r"\[?\*{1,2}\d{1,4}\]?(?!\d)")
 
 # Documents whose text belongs to the factual record rather than the law.
 RECORD_DOC_TYPES = {"assignment", "transcript", "evidence", "other"}
@@ -157,6 +163,10 @@ def build_memo_generation_prompt(
         "- Where an authority cuts both ways, use side \"mixed\" and let key_passages show "
         "both edges.\n"
         "- record_gaps is for genuinely missing facts, not strategy advice.\n"
+        "- Honor the assignment's scope limits absolutely: if the assigning attorney "
+        "excluded an issue (for example probable cause), do not argue it, rest a "
+        "side judgment on it, or build a move around it - mention it only to note "
+        "it is outside scope.\n"
         "- No text before or after the JSON."
     )
     return system_prompt, user_prompt
@@ -185,7 +195,13 @@ def verify_chart_quotes(chart: dict, documents: list[tuple]) -> list[str]:
     source is not evidence. Whitespace is normalized on both sides before comparison.
     """
     def squash(value: str) -> str:
-        return " ".join((value or "").split())
+        # PDFs carry typographic quotes and dashes; models echo ASCII ones.
+        value = (value or "").translate(str.maketrans({
+            "\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'",
+            "\u2013": "-", "\u2014": "-", "\u00a0": " ",
+        }))
+        value = STAR_PAGE_RE.sub(" ", value)
+        return " ".join(value.split())
 
     texts_by_tag = {
         f"[{doc_type} #{doc_id}]": squash(text)
@@ -204,3 +220,17 @@ def verify_chart_quotes(chart: dict, documents: list[tuple]) -> list[str]:
                     f"\"{quote[:80]}...\""
                 )
     return problems
+
+
+def postprocess_generated(generated_text: str, documents: list[tuple]) -> dict:
+    """Metadata to persist alongside a generated chart: parse + quote audit.
+
+    Called by the generic generate endpoint when the builder defines it. The
+    problems list travels in document_metadata so the chart carries its own
+    audit; an unparseable chart is recorded rather than discarded.
+    """
+    chart = parse_memo_chart(generated_text)
+    if chart is None:
+        return {"chart_parsed": False, "quote_problems": []}
+    problems = verify_chart_quotes(chart, documents)
+    return {"chart_parsed": True, "quote_problems": problems}

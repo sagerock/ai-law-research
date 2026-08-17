@@ -2745,7 +2745,11 @@ def extract_text_from_pdf(content: bytes) -> str:
         if len(pdf.pages) > 300:
             raise ValueError("PDF page limit is 300")
         for page in pdf.pages:
-            page_text = page.extract_text()
+            # use_text_flow follows the PDF's internal text stream instead of
+            # x-position order. Westlaw/Lexis printouts are two-column; the
+            # default ordering interleaves the columns line by line, silently
+            # scrambling every uploaded case printout.
+            page_text = page.extract_text(use_text_flow=True)
             if page_text:
                 text += page_text + "\n"
                 if len(text) > 2_000_000:
@@ -10913,6 +10917,15 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
                 "cost": round(cost, 6),
                 "generated_at": datetime.utcnow().isoformat(),
             }
+            # Builder-specific audit (e.g. the memo chart's verbatim-quote check)
+            if hasattr(builder, "postprocess_generated"):
+                try:
+                    doc_metadata.update(builder.postprocess_generated(
+                        full_text,
+                        [(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
+                    ))
+                except Exception as audit_error:
+                    doc_metadata["audit_error"] = str(audit_error)
             await conn.execute(
                 "UPDATE legal_projects SET generated_document = $1, document_metadata = $2, status = 'complete', updated_at = NOW() WHERE id = $3",
                 full_text, json.dumps(doc_metadata), project_id
