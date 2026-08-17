@@ -10201,13 +10201,16 @@ async def export_msj_motion(project_id: int, user: dict = Depends(require_auth))
 # Generic Legal Document Builder Tools (affidavit, memo, complaint, etc.)
 # ============================================================================
 
-VALID_TOOL_TYPES = {"affidavit"}  # Add new tool types here as they're built
+VALID_TOOL_TYPES = {"affidavit", "memo"}  # Add new tool types here as they're built
 
 def _get_tool_builder(tool_type: str):
     """Import and return the builder module for a given tool type."""
     if tool_type == "affidavit":
         import affidavit_builder
         return affidavit_builder
+    if tool_type == "memo":
+        import memo_builder
+        return memo_builder
     raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
 
 
@@ -10457,6 +10460,80 @@ async def upload_tool_document(
     }
 
 
+class ToolLinkCase(BaseModel):
+    case_id: str
+
+
+@app.post("/api/v1/tools/{tool_type}/projects/{project_id}/link-case")
+async def link_tool_case(tool_type: str, project_id: int, data: ToolLinkCase, user: dict = Depends(require_auth)):
+    """Snapshot a Tortwell case's opinion text into a tool project as an authority.
+
+    The snapshot goes into tool_documents like an upload, so chat and generation see
+    it with no special handling — and the project keeps working even if the source
+    case is ever reimported.
+    """
+    if tool_type not in VALID_TOOL_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unknown tool type: {tool_type}")
+    user_id = user["id"]
+
+    async with db_pool.acquire() as conn:
+        project = await conn.fetchrow(
+            "SELECT id FROM legal_projects WHERE id = $1 AND user_id = $2 AND tool_type = $3",
+            project_id, user_id, tool_type
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        case_row = await conn.fetchrow(
+            "SELECT id, title, reporter_cite, content FROM cases WHERE id = $1",
+            data.case_id
+        )
+        if not case_row:
+            raise HTTPException(status_code=404, detail="Case not found")
+        already = await conn.fetchrow(
+            "SELECT id FROM tool_documents WHERE project_id = $1 AND filename = $2",
+            project_id, f"tortwell-{data.case_id}"
+        )
+        if already:
+            raise HTTPException(status_code=409, detail="Case is already linked to this project")
+
+    opinion = await load_opinion_text(
+        data.case_id, case_row["content"], read_opinion_from_s3, _fetch_opinion_text_from_cl
+    )
+    if not opinion.text or not opinion.text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="This case has no opinion text available; upload a printout instead."
+        )
+
+    doc_title = case_row["title"]
+    if case_row["reporter_cite"]:
+        doc_title = f"{doc_title}, {case_row['reporter_cite']}"
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO tool_documents (project_id, user_id, doc_type, title, filename, file_size, file_type, extracted_text, char_count, category)
+               VALUES ($1, $2, 'case', $3, $4, $5, 'tortwell', $6, $7, 'authority')
+               RETURNING id, doc_type, title, filename, file_size, file_type, char_count, category, sort_order, created_at""",
+            project_id, user_id, doc_title, f"tortwell-{data.case_id}",
+            len(opinion.text), opinion.text, len(opinion.text)
+        )
+        await conn.execute("UPDATE legal_projects SET updated_at = NOW() WHERE id = $1", project_id)
+
+    return {
+        "id": row["id"],
+        "doc_type": row["doc_type"],
+        "title": row["title"],
+        "filename": row["filename"],
+        "file_size": row["file_size"],
+        "file_type": row["file_type"],
+        "char_count": row["char_count"],
+        "category": row["category"],
+        "sort_order": row["sort_order"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "opinion_source": opinion.source,
+    }
+
+
 @app.delete("/api/v1/tools/{tool_type}/projects/{project_id}/documents/{doc_id}")
 async def delete_tool_document(tool_type: str, project_id: int, doc_id: int, user: dict = Depends(require_auth)):
     """Remove a document from a tool project"""
@@ -10591,7 +10668,7 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
             tool_type, jurisdiction
         )
 
-    system_prompt = builder.build_affidavit_system_prompt(
+    system_prompt = getattr(builder, f"build_{tool_type}_system_prompt")(
         case_info=case_info,
         form_data=form_data,
         documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],
@@ -10754,7 +10831,7 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
             tool_type, jurisdiction
         )
 
-    system_prompt, user_prompt = builder.build_affidavit_generation_prompt(
+    system_prompt, user_prompt = getattr(builder, f"build_{tool_type}_generation_prompt")(
         case_info=case_info,
         form_data=form_data,
         documents=[(d["id"], d["doc_type"], d["title"], d["extracted_text"]) for d in docs],

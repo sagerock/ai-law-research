@@ -463,6 +463,40 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Memo Workbench rough-in (tool type #2)
+Owner: Claude
+Status: roughed in 2026-08-16; backend tested, frontend compiles, end-to-end unexercised
+Files: `backend/memo_builder.py`, `backend/test_memo_builder.py`, tool-dispatch and
+link-case hunks in `backend/main.py`, `frontend/app/tools/memo/`,
+`frontend/components/memo/MemoWorkbench.tsx`
+Summary: second tool type on the generic legal-tools chassis (the ToolProjectCreate
+comment always anticipated "memo"). Deliberately NOT a memo writer — Sage's direction:
+collect the scenario, the record (transcripts), and the authorities, and help analyze
+which cases help or hurt the client. Generation produces a CASE CHART (per-authority
+helps/hurts/mixed with verbatim passages, fact comparisons, how-to-use-or-distinguish,
+record gaps, suggested order) as JSON; the chat system prompt declines to draft the memo
+and says why; closed-universe mode confines analysis to project authorities. Authorities
+arrive by upload (doc_type 'case'/'statute') or the new
+POST /tools/{type}/projects/{id}/link-case, which snapshots a Tortwell case's opinion
+text (postgres → S3 → CourtListener) into tool_documents so downstream handling is
+uniform. main.py now dispatches builder functions by convention
+(build_{tool_type}_system_prompt / _generation_prompt) instead of hardcoded affidavit
+names. memo_builder ships parse_memo_chart and verify_chart_quotes (brief-pipeline
+verbatim discipline) — tested but NOT yet wired into the generate endpoint.
+8 new tests; 208 pass; tsc clean.
+Untested end-to-end: generate SSE with a real project, link-case against production,
+frontend in a browser (DrvFs dev-server pain — see wsl-drvfs-dev-server memory). Test
+corpus: the Jones/Super Hawk closed-universe memo (assigning memo + 2 depos + 4 cases +
+R.C. 2935.041, /mnt/d/Downloads).
+Context: the closed-world special case of Research Mode (see memo-benchmark memory and
+the research-mode sketch); ships first because a memo project brings its own universe —
+no embeddings or citator coverage required.
+Next: exercise end-to-end with the Jones materials; wire verify_chart_quotes into
+generate; decide whether memo chat needs a UI panel (the generic chat endpoint already
+accepts tool_type memo); chart export.
+Deployment: not deployed (local commit only)
+Commit: `fb13956`
+
 ### Triage session 2026-08-16: passage-ID drift after v10, and a boundary-preflight regression
 Owner: Claude
 Status: open — needs engineering attention on the second item
