@@ -466,6 +466,15 @@ async def cmd_triage_list(n):
                  AND NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
                                  WHERE k.case_id = f.case_id AND k.provider = $1
                                    AND k.review_status IN ('approved', 'pending'))
+                 -- A source-preflight refusal is a source problem a triage rewrite
+                 -- cannot fix (runbook step 5). Rotate the case out for the same
+                 -- 6-day window candidate-list uses, so refused sources stop
+                 -- clogging the head of every session's queue while they await
+                 -- human attention or canonical re-ingestion.
+                 AND NOT EXISTS (SELECT 1 FROM structured_summary_failures pf
+                                 WHERE pf.case_id = f.case_id AND pf.provider = $1
+                                   AND pf.stage = 'source_preflight'
+                                   AND pf.created_at > NOW() - INTERVAL '6 days')
                GROUP BY f.case_id, c.title
                HAVING COUNT(*) < 2
                ORDER BY MAX(f.created_at)

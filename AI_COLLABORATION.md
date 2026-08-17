@@ -499,7 +499,20 @@ Commit: `79223db`
 
 ### Triage session 2026-08-16: passage-ID drift after v10, and a boundary-preflight regression
 Owner: Claude
-Status: open — needs engineering attention on the second item
+Status: investigated and resolved 2026-08-16 — verdict: not a v10 regression; queue bug fixed
+Resolution (Claude, same day): reproduced both named cases against the pre-v10 module
+(`git show f4851c2~1`) — Parker (1453074) and Daimler (2649076) are refused IDENTICALLY
+by v9 and v10, so the boundary assessment did not get stricter. The actual cause: these
+candidates were generated 2026-07-12, nine days before strict source preflight shipped
+(2026-07-21) — the gate is correctly refusing sources that were never held to its
+standard. The real defect was in the queue: triage-list's two-strike rule counted only
+semantic_review failures, so preflight-refused cases never rotated out and every session
+re-attempted them (hence Parker's six same-day failure rows). Fixed by excluding cases
+with a source_preflight failure in the last 6 days, mirroring candidate-list's window;
+the live queue now serves 10 workable cases. The refused cases still need canonical
+CourtListener re-ingestion (the Chemerinsky-handoff assembler path) to gain sub-opinion
+markers — that remains human-scheduled work, per runbook step 5. The passage-ID remap
+guidance in TRIAGE-BRIEFS.md stands unchanged.
 Files: `citator/sunday_briefs.py`, `citator/TRIAGE-BRIEFS.md`, `backend/opinion_passages.py`
 Summary: ran a normal `TRIAGE-BRIEFS.md` pass and hit two problems the runbook didn't
 anticipate.
