@@ -463,6 +463,72 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Triage session 2026-08-17: 3 regenerations, all via passage-ID remap
+Owner: Claude
+Status: completed 2026-08-17 — 3/3 candidates saved
+Ran `TRIAGE-BRIEFS.md` with a fresh 3-regeneration budget. All three queue items were
+generated before their opinion's v9→v10 rebuild, so every save needed the full remap
+(pulling old passages from `opinion_passages` under the candidate's original content_hash,
+`difflib`-matching against the fresh packet, verifying by exact-substring check before
+swapping IDs) — not just the flagged claim's citations, all of them:
+- **Byrd v. Blue Ridge Rural Electric Cooperative (105689)**: three claims flagged.
+  facts[2] asserted the Fourth Circuit "reversed the judgment for Byrd and directed entry
+  of judgment for Blue Ridge" but cited passages about the unrelated Adams millinery-store
+  case — the claim itself was true and directly stated in the packet, just cited wrong;
+  re-sourced to the actual disposition passage and dropped an unsupported "relying on South
+  Carolina's own allocation" clause the record didn't back. majority_reasoning[2]'s Herron
+  "before Erie" / "constitutional provision" language and rule[0]'s "form or mode ... need
+  not automatically be followed" language were both genuinely stated in the opinion, just
+  under different passage IDs than the ones cited — both re-sourced, no wording changed.
+  9 of 28 cited IDs were stale and remapped.
+- **Conley v. Gibson (105573)**: single flagged claim (holding[0]'s "complaint was not
+  properly dismissed" outcome lacked a source stating the outcome, citing only the
+  no-set-of-facts standard). Fixed by attaching the reversal passage and the "adequately
+  set forth a claim" passage the note pointed to. Heaviest drift of the session: 17 of 28
+  cited IDs were stale, including two 3-way sentence-fragment merges from the old passage
+  format.
+- **Greenman v. Yuba Power Products (1168887)**: single flagged claim
+  (majority_reasoning[2]'s "sound commercial rule between immediate parties" clause was
+  unsupported — the note named the exact adjacent sentence in the Prosser quote that states
+  it). Fixed by adding that sentence's passage as a source. 9 of 20 cited IDs were stale.
+Files touched: none (three `candidate-save` writes to the DB only; no code changes).
+Deployment: none.
+Commit: N/A — documentation-only addition here (plus whatever unrelated changes were
+already staged/modified in the working tree when this session started).
+
+### Triage session 2026-08-16 (third pass): 3 regenerations, all via passage-ID remap
+Owner: Claude
+Status: completed 2026-08-16 — 3/3 candidates saved
+Ran `TRIAGE-BRIEFS.md` with a fresh 3-regeneration budget. First queue item (Jordan,
+cheng-ev-jordan-edny-2024) and the next (Rodriguez, cheng-ev-rodriguez-2022) both hit
+`candidate-opinion`'s "source has no verifiable opinion-part boundaries" refusal —
+reported per runbook step 5, not counted against the limit. The next three all fetched
+cleanly but every one carried stale passage IDs from the v9→v10 rebuild (same failure
+mode as the two sessions logged above), remapped via `difflib` against each candidate's
+original content_hash before fixing the flagged claim:
+- **City of Cleburne v. Cleburne Living Center (111507)**: majority_reasoning[3] claimed
+  Council concern over "proximity to a junior high school" without a supporting citation
+  — re-sourced by adding a passage that states this directly (it existed in the packet,
+  just wasn't cited). rule[0] asserted the general rule yields to "a fundamental right,
+  in which case courts apply strict or intermediate scrutiny," unsupported by either
+  cited passage — generalized to only the race/alienage/national-origin exception the
+  passages actually state. 6 of 22 cited IDs were stale and remapped.
+- **Romer v. Evans (118027)**: facts[0] named "Aspen, Boulder, and Denver" ordinances
+  without a passage naming any city — re-sourced with a passage that names all three.
+  facts[1] asserted Amendment 2 was "self-executing... which the parties treated as" —
+  the amendment's own text (in the packet) literally says it "shall be in all respects
+  self-executing"; rewrote to quote that instead of attributing it to the parties. 17 of
+  29 cited IDs were stale (the heaviest drift of any case triaged so far) and remapped.
+- **Wickard v. Filburn (103716)**: facts[1] stated the "11.1-acre allotment" but the
+  cited passage only gave the 23-acre sowing/11.9-acre-excess/239-bushel figures, not the
+  allotment; re-sourced by adding the passage that states the 11.1-acre allotment
+  directly (a separate sentence earlier in the opinion, not an arithmetic inference). 7 of
+  23 cited IDs were stale and remapped.
+Files touched: none (three `candidate-save` writes to the DB only; no code changes).
+Deployment: none.
+Commit: N/A — documentation-only addition here (plus whatever unrelated changes were
+already staged/modified in the working tree when this session started).
+
 ### Memo Workbench rough-in (tool type #2)
 Owner: Claude
 Status: roughed in 2026-08-16; backend tested, frontend compiles, end-to-end unexercised
@@ -552,6 +618,55 @@ anticipate.
   text genuinely lost its part markers.
 Deployment: none — documentation and one runbook clarification only.
 Commit: none yet (uncommitted at session end).
+
+### Triage session 2026-08-16 (second pass): 3 regenerations via passage-ID remap
+Owner: Claude
+Status: completed 2026-08-16 — 3/3 candidates saved, queue rotation fix confirmed separately
+Ran `TRIAGE-BRIEFS.md` starting from a stale local view (before `aeb89c4` landed from a
+concurrent session on this same machine — see the "Session collision" note in the dev-root
+CLAUDE.md). Hit the identical wall documented in the entry above: `candidate-opinion`
+refused every one of the first 10 queue items with the same two boundary-preflight errors
+(Parker 1453074, Daimler 2649076, Obergefell 2812209, Biaggi 545489, Cosby 10315392, Gordon
+277392, Rothlisberger 2621346, Elfgeeh 1386819, Grand Jury Proceedings 732430, McCray
+7830390, Meza 273618 — 11 refused total across both sessions' attempts). None of these
+count against the 3-regeneration limit (no candidate written). Working further down the
+queue (items 11+, past what the two-strike/preflight-window queue bug had been silently
+recycling) turned up 3 fetchable packets, each hit by the same stale-passage-ID drift from
+the v9→v10 rebuild described above — remapped by pulling each candidate's original
+content_hash from `opinion_passages`, `difflib`-matching stale IDs against the fresh
+packet, and verifying full text (not just similarity score) before substituting:
+- **Trammel v. United States (110212)**: rejected claim named three privileges
+  (priest-penitent/attorney-client/physician-patient) and a "protect only confidential
+  communications" comparison not in its cited passages; generalized to the actually-quoted
+  "no other testimonial privilege sweeps so broadly." 22 of 30 cited passage IDs were stale
+  and remapped (3 old IDs merged into 1 new passage in one case).
+- **Monger v. Cessna Aircraft Co. (8957550)**: rejected claim characterized Exhibit 40 as
+  "criticizing Cessna for past failures to identify safety problems" — passages support
+  only that it might show improper FAA approval of the 210-J fuel system; rewrote to match.
+  11 of 34 cited IDs were stale.
+- **Michael H. v. Gerald D. (112295)**: two rejected claims (facts[2]'s "held Victoria out
+  as his daughter" cohabitation detail, sourced only in a dissent passage; facts[0]'s
+  wife-only two-year rebuttal window, omitting the natural-father-affidavit precondition).
+  Both were re-sourceable: the majority's own fact recitation independently states Michael
+  lived with Carole and Victoria and held her out as his daughter during an "ensuing eight
+  months" period (ordinals 31-32, split across two passages by an "St. / Thomas" line
+  break) — not just in White's dissent. 15 of 48 cited IDs were stale. Discovered a new
+  failure mode along the way: one previously-approved claim (majority_reasoning[2], about
+  Justice O'Connor and Kennedy declining to join footnote 6) cited a byline passage
+  (op-3377454a98e8aca5) that is genuinely absent from the fresh packet — not merged
+  elsewhere, just gone (packet `is_partial_packet: true`, 429/1139 passages selected;
+  likely dropped in selection given how much of this case is dissent/concurrence). Also,
+  `validate_structured_summary`'s `MAJORITY_SOURCE_SECTIONS` check
+  (`backend/structured_briefs.py:120-125`) rejects `majority_reasoning` claims that cite
+  `concurrence`-part passages — the original (rejected-for-other-reasons) candidate had
+  apparently cited concurrence passages under `majority_reasoning` without this tripping,
+  which only makes sense if the v9 pass labeled that content `opinion`/`majority` rather
+  than `concurrence`. Fixed by dropping the claim (majority_reasoning's floor is 1; three
+  remained) rather than guessing at a rewrite — the point survives in `significance`,
+  which needs no passage support.
+Files touched: none (three `candidate-save` writes to the DB only; no code changes).
+Deployment: none.
+Commit: N/A — no file changes to commit from this entry; documentation-only addition here.
 
 ### Source-brief yield: packet fix, repair-first burner, and the sonnet/opus experiment
 Owner: Claude
