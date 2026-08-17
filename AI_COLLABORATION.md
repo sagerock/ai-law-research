@@ -463,6 +463,49 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Triage session 2026-08-16: passage-ID drift after v10, and a boundary-preflight regression
+Owner: Claude
+Status: open — needs engineering attention on the second item
+Files: `citator/sunday_briefs.py`, `citator/TRIAGE-BRIEFS.md`, `backend/opinion_passages.py`
+Summary: ran a normal `TRIAGE-BRIEFS.md` pass and hit two problems the runbook didn't
+anticipate.
+- **Stale citations across a format-version bump.** The three rejected candidates fixed
+  this session (Seiler 481390, Jaffee 118042, In re Grand Jury Subpoena Miller 7914180)
+  were generated 2026-07-12, before the passage-format v9→v10 rebuild (see the completed
+  handoff below). Re-fetching each source packet today showed 4-12 of their ~30-35 cited
+  passage IDs no longer exist under the current content_hash — v10 folds star-pagination
+  and citation-only fragments into neighboring sentences, which merges or reshapes some
+  passage boundaries even though the underlying opinion text is unchanged. `candidate-save`
+  validates sources against the *current* content_hash's passages, so a triage fix that
+  only edits the flagged claim's text (per the runbook's literal steps) will fail
+  validation on every OTHER claim that happens to cite a since-merged passage — this isn't
+  edge case, it hit 2 of 2 cases checked with non-trivial citation counts. Worked around it
+  by pulling the old candidate's passages from `opinion_passages` under its original
+  content_hash (still present, just under an old hash), matching each stale passage's text
+  against the current packet (`difflib` ratio + manual verification — exact-substring
+  matches were reliable, low-score matches needed eyeballing because two near-identical
+  passages can appear in both `majority` and `dissent` parts), and remapping IDs before
+  editing the flagged text. `TRIAGE-BRIEFS.md` should probably get a step for this — it
+  currently assumes the packet handed back by `candidate-opinion` cites cleanly against
+  the old candidate's IDs, which is only true when no format-version rebuild happened
+  in between.
+- **Boundary preflight is currently refusing most of the triage queue.** Of the 10 oldest
+  rejected cases, `candidate-opinion` refused 7 outright: "source has no verifiable
+  opinion-part boundaries" (5 cases) or "source has separate opinions but no explicit
+  majority boundary" (Daimler AG v. Bauman, 2649076). `structured_summary_failures` shows
+  the boundary error already logged 6 times today for Parker v. Twentieth Century-Fox Film
+  Corp. (1453074) alone, from what looks like other automated attempts, so this isn't a
+  one-off. These cases' briefs previously existed (they reached semantic review and were
+  rejected on content grounds, not source grounds), so something about the v10 boundary
+  assessment is now stricter than what originally ingested them. Left these for human
+  attention per the runbook's step 5 rather than guessing at a fix; did not count them
+  against the 3-regeneration session limit since no write was attempted. Worth checking
+  whether `assess_opinion_boundaries`'s `require_explicit=True` path (backend/opinion_passages.py:615)
+  got measurably stricter in the v10 change, or whether these specific opinions' stored
+  text genuinely lost its part markers.
+Deployment: none — documentation and one runbook clarification only.
+Commit: none yet (uncommitted at session end).
+
 ### Source-brief yield: packet fix, repair-first burner, and the sonnet/opus experiment
 Owner: Claude
 Status: completed 2026-08-12

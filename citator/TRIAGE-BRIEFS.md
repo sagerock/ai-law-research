@@ -39,7 +39,24 @@ goes back through the same review gate; nothing you do here bypasses review.
 
        /home/sage/.venvs/lawdata/bin/python /mnt/d/dev/ai-law-research/citator/sunday_briefs.py candidate-save <id> <scratch-file> "<model-id> (triage)" <content_hash>
 
+   **If the candidate is old, its passage IDs may be stale.** `candidate-save` validates
+   every cited `op-...` ID against the *current* content_hash's passages, not the hash the
+   rejected candidate was written against. A passage-format rebuild (see AI_COLLABORATION.md
+   for the v9→v10 change) can merge or reshape passage boundaries even when the opinion
+   text itself is unchanged, silently orphaning old IDs. If `candidate-opinion`'s content_hash
+   differs from the rejected candidate's original content_hash, check every cited ID against
+   the fresh packet before saving — don't assume only the flagged claim's citations need
+   touching. Stale IDs can be remapped by pulling the old passages from `opinion_passages`
+   under the candidate's original content_hash (still retained under its own hash) and
+   matching text against the new packet; verify matches by reading full text, not just a
+   similarity score, since near-duplicate passages can live in different opinion parts
+   (e.g. majority vs. dissent).
+
 5. If the rejection note says the packet is the WRONG CASE or the opinion text is
-   defective, do not regenerate — report it for human attention and move on.
+   defective, do not regenerate — report it for human attention and move on. This also
+   covers cases where `candidate-opinion` itself refuses with a source-preflight error
+   (e.g. "no verifiable opinion-part boundaries") — that's a source problem, not something
+   a triage rewrite can fix, and it doesn't count against the 3-regeneration limit since no
+   candidate was written.
 
 After the batch, report: each case, what the rejection said, what you changed, save result.
