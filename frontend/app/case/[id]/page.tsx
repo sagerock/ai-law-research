@@ -9,7 +9,7 @@ interface PageProps {
 async function resolveSlug(slug: string): Promise<{ case_id: string; canonical_slug: string } | null> {
   try {
     const response = await fetch(`${API_URL}/api/v1/cases/resolve/${slug}`, {
-      next: { revalidate: 86400 }
+      cache: 'no-store', // same reasoning as lib/case-data.ts
     })
     if (!response.ok) return null
     return response.json()

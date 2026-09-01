@@ -14,6 +14,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const slugStr = slug.join('/')
   const resolved = await resolveSlug(slugStr)
   if (!resolved) return { title: 'Case Not Found' }
+  // Non-canonical slug: the page below redirects, so don't fetch the full opinion
+  // for metadata nobody will see (crawlers hit these constantly).
+  if (slugStr !== resolved.canonical_slug) return {}
 
   const caseData = await getCase(resolved.case_id)
   if (!caseData) return { title: 'Case Not Found' }
