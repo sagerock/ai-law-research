@@ -165,6 +165,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set())
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [opinionFetching, setOpinionFetching] = useState(false)
+  const [localCaseData, setLocalCaseData] = useState(caseData)
   const [copied, setCopied] = useState(false)
   const [copiedCitation, setCopiedCitation] = useState(false)
   const [highlightedPassage, setHighlightedPassage] = useState<string | null>(null)
@@ -176,6 +177,13 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   // The API exposes only approved candidates here; never bypass review via the legacy column.
   const structuredCandidates = caseSummary?.structured_candidates || []
   const activeStructuredCandidate = structuredCandidates[0] || null
+  const fullOpinionUnavailable =
+    localCaseData.metadata?.source_text_status === 'verified_docket_entry_only' &&
+    localCaseData.metadata?.full_order_available === false
+  const sourceDocumentNumber = localCaseData.metadata?.document_number
+  const sourceDocumentLabel = sourceDocumentNumber ? `Filing ${sourceDocumentNumber}` : 'the filing'
+  const sourceDocumentRequested = Boolean(localCaseData.metadata?.recap_prayer_id)
+  const courtListenerUrl = localCaseData.source_url || `https://www.courtlistener.com/?q=id%3A${caseId}&type=o`
 
   // Collection back-navigation context
   const collectionId = searchParams.get('collection')
@@ -569,7 +577,6 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   }
 
   const [summaryError, setSummaryError] = useState<string | null>(null)
-  const [localCaseData, setLocalCaseData] = useState(caseData)
 
   const generateSummary = async () => {
     setSummaryLoading(true)
@@ -841,7 +848,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   )}
                 </button>
                 <a
-                  href={`https://www.courtlistener.com/?q=id%3A${caseId}&type=o`}
+                  href={courtListenerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center px-4 py-2 bg-sage-700 hover:bg-sage-600 text-white rounded-lg"
@@ -938,7 +945,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </span>
                   )}
                 </h2>
-                {((!caseSummary && !localCaseData.is_stub) || (caseSummary && structuredCandidates.length === 0)) && (
+                {!fullOpinionUnavailable && ((!caseSummary && !localCaseData.is_stub) || (caseSummary && structuredCandidates.length === 0)) && (
                   <button
                     onClick={generateSummary}
                     disabled={summaryLoading}
@@ -958,6 +965,27 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                   </button>
                 )}
               </div>
+
+              {fullOpinionUnavailable && !caseSummary && (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-medium">AI brief unavailable until the full order is available</p>
+                  <p className="mt-1 text-amber-800">
+                    Tortwell currently has only the verified docket entry for {sourceDocumentLabel}.
+                    {sourceDocumentRequested
+                      ? ' We requested the full document through RECAP and will enable generation after it arrives.'
+                      : ' A source-linked brief requires the full opinion text.'}
+                  </p>
+                  <a
+                    href={courtListenerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center font-medium text-amber-900 underline"
+                  >
+                    View the CourtListener docket entry
+                    <ExternalLink className="ml-1 h-3.5 w-3.5" />
+                  </a>
+                </div>
+              )}
 
               {summaryError === 'pool_empty' && (
                 <p className="mb-4 text-sm text-red-600">

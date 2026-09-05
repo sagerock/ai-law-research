@@ -1994,6 +1994,35 @@ async def fetch_opinion(case_id: str):
             "chars": len(opinion.text), "source": opinion.source}
 
 
+def unavailable_opinion_detail(metadata: Any) -> Optional[str]:
+    """Explain why a docket-only record cannot support a sourced brief."""
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(metadata, dict):
+        return None
+    if (
+        metadata.get("source_text_status") != "verified_docket_entry_only"
+        or metadata.get("full_order_available") is not False
+    ):
+        return None
+
+    document_number = metadata.get("document_number")
+    document_label = f"Filing {document_number}" if document_number else "this filing"
+    request_note = (
+        " Tortwell has requested the document through RECAP."
+        if metadata.get("recap_prayer_id")
+        else ""
+    )
+    return (
+        f"The full order for {document_label} is not available from CourtListener yet, "
+        "so Tortwell cannot generate a source-linked AI brief."
+        + request_note
+    )
+
+
 @app.post("/api/v1/cases/{case_id}/summarize")
 async def summarize_case(
     case_id: str,
@@ -2133,6 +2162,13 @@ async def summarize_case(
             case_data["metadata"] = json.loads(case_data["metadata"])
         except json.JSONDecodeError:
             case_data["metadata"] = {}
+
+    unavailable_detail = unavailable_opinion_detail(case_data.get("metadata"))
+    if unavailable_detail:
+        raise HTTPException(
+            status_code=409,
+            detail=unavailable_detail,
+        )
 
     content = case_data.get("content", "")
     print(f"Using {opinion.source} opinion content: {len(content)} characters")
