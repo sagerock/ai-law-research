@@ -30,6 +30,12 @@ CITATION_ABBREVIATIONS = (
 # ("the right . . . to be confronted"), which a naive split reads as three
 # sentence boundaries and turns into passages whose whole text is ".".
 SPACED_ELLIPSIS_RE = re.compile(r"\.(?:\s+\.){1,3}")
+# Reporter footnotes sometimes attach a bare symbol after the punctuation that
+# ends a sentence ("Washington.* Justice Kavanaugh delivered ...").  The
+# symbol is citation furniture, but leaving it in place hides the sentence
+# boundary from the splitter and can make a majority heading part of the
+# preceding counsel paragraph.
+FOOTNOTE_SENTENCE_END_RE = re.compile(r"(?<=[.!?])\*+(?=\s)")
 # A single letter standing alone before a period is an initial or a reporter
 # abbreviation ("v.", "U. S.", "L. Ed.", "N. E. 2d"), never a word.
 CITATION_ABBREVIATION_RE = re.compile(
@@ -447,6 +453,7 @@ def is_structural_heading(sentence: str) -> bool:
 
 def split_sentences(text: str) -> list[str]:
     protected = normalize_opinion_text(text)
+    protected = FOOTNOTE_SENTENCE_END_RE.sub("", protected)
     for abbreviation in ABBREVIATIONS:
         protected = protected.replace(abbreviation, abbreviation.replace(".", "<DOT>"))
     protected = SPACED_ELLIPSIS_RE.sub(

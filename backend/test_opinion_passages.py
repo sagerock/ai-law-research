@@ -90,6 +90,29 @@ Second dissent sentence."""
     ]
 
 
+def test_labels_majority_heading_after_star_footnote_boundary():
+    # Diamond Alternative Energy, LLC v. EPA, 606 U.S. 100 (2025), joins the
+    # counsel footnote symbol directly to the preceding period. The majority
+    # heading must still begin a new sentence and writing.
+    text = (
+        '[[COURTLISTENER_SUBOPINION {"id":"11243417","type":"010combined",'
+        '"part":"opinion","author":null}]]\n'
+        "Counsel included Nicholas W. Brown of Washington.* "
+        "Justice Kavanaugh delivered the opinion of the Court. "
+        "The fuel producers have standing. It is so ordered. "
+        "Justice Sotomayor, dissenting. I would dismiss the writ."
+    )
+    _, passages = build_opinion_passages(text)
+    assert [(p["opinion_part"], p["text"]) for p in passages] == [
+        ("opinion", "Counsel included Nicholas W. Brown of Washington."),
+        ("majority", "The fuel producers have standing."),
+        ("majority", "It is so ordered."),
+        ("dissent", "I would dismiss the writ."),
+    ]
+    assessment = assess_opinion_boundaries(text, passages, require_explicit=True)
+    assert assessment.ok
+
+
 def test_dissent_reference_inside_opinion_does_not_change_part():
     _, passages = build_opinion_passages(
         "[by Smith]\nThe court cited an earlier view.\n(White, J., dissenting).\nThe majority continued."
