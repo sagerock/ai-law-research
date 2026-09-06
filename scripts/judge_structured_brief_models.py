@@ -42,6 +42,27 @@ def judge_prompt(
     passages: list[dict[str, Any]],
     candidates: dict[str, dict[str, Any]],
 ) -> str:
+    labels = list(candidates)
+    evaluation_template = {
+        "scores": {dimension: 1 for dimension in RUBRIC},
+        "specific_errors": [
+            {
+                "claim": "brief quotation or paraphrase",
+                "problem": "...",
+                "source_ids": ["..."],
+            }
+        ],
+        "strengths": ["..."],
+    }
+    result_template = {
+        "case_title": "...",
+        "evaluations": {
+            label: evaluation_template
+            for label in labels
+        },
+        "ranking": labels,
+        "ranking_reason": "...",
+    }
     source_packet = [
         {
             "id": passage.get("id"),
@@ -61,27 +82,8 @@ dissent attribution, and claims in the uncited significance paragraph.
 Score each candidate from 1 (poor) to 5 (excellent) on every rubric dimension:
 {json.dumps(RUBRIC, indent=2)}
 
-Return JSON with this exact top-level shape:
-{{
-  "case_title": "...",
-  "evaluations": {{
-    "A": {{
-      "scores": {{
-        "legal_accuracy": 1,
-        "citation_support": 1,
-        "opinion_attribution": 1,
-        "writing": 1,
-        "teaching_value": 1
-      }},
-      "specific_errors": [
-        {{"claim": "brief quotation or paraphrase", "problem": "...", "source_ids": ["..."]}}
-      ],
-      "strengths": ["..."]
-    }}
-  }},
-  "ranking": ["A", "B", "C"],
-  "ranking_reason": "..."
-}}
+Return JSON with exactly these candidate labels and this top-level shape:
+{json.dumps(result_template, indent=2)}
 
 Give concrete errors rather than general impressions. Do not infer the models from
 their style. Do not include markdown or text outside the JSON.
@@ -100,6 +102,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--judge-model", default=DEFAULT_JUDGE)
     parser.add_argument("--seed", type=int, default=20260906)
+    parser.add_argument("--max-output-tokens", type=int, default=12_000)
     args = parser.parse_args()
 
     load_env(ROOT / ".env")
@@ -128,7 +131,7 @@ def main() -> int:
         raw, usage, provider = call_model(
             args.judge_model,
             judge_prompt(detail.get("title") or case_id, passages, candidates),
-            max_output_tokens=12_000,
+            max_output_tokens=args.max_output_tokens,
         )
         judgment = parse_json_response(raw)
         judgments.append({

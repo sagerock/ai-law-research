@@ -266,6 +266,12 @@ def main() -> int:
         metavar="CASE:MODEL",
         help="Evaluate only the listed case/model pairs",
     )
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=8_000,
+        help="Provider output-token allowance; includes Gemini thinking tokens",
+    )
     parser.add_argument("--output", type=Path, default=ROOT / "tmp" / "model-evals")
     args = parser.parse_args()
 
@@ -313,7 +319,11 @@ def main() -> int:
             "source_shape_warnings": shape_warnings,
         }
         try:
-            raw, usage, provider = call_model(model, prompt)
+            raw, usage, provider = call_model(
+                model,
+                prompt,
+                max_output_tokens=args.max_output_tokens,
+            )
             latency = time.perf_counter() - started
             record.update({
                 "raw_response": raw,
