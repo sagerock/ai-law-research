@@ -125,6 +125,22 @@ def extract_openai_text(response: dict[str, Any]) -> str:
     raise RuntimeError("OpenAI response contained no output text")
 
 
+def extract_gemini_text(response: dict[str, Any]) -> str:
+    parts = (
+        response.get("candidates", [{}])[0]
+        .get("content", {})
+        .get("parts", [])
+    )
+    text = "".join(
+        str(part.get("text") or "")
+        for part in parts
+        if isinstance(part, dict)
+    )
+    if text:
+        return text
+    raise RuntimeError("Gemini response contained no output text")
+
+
 def call_model(
     model: str,
     prompt: str,
@@ -187,6 +203,40 @@ def call_model(
         }, {
             "status": data.get("status"),
             "incomplete_details": data.get("incomplete_details"),
+        }
+
+    if model.startswith("gemini-"):
+        key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not key:
+            raise RuntimeError("GEMINI_API_KEY is not configured")
+        response = httpx.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+            headers={
+                "x-goog-api-key": key,
+                "content-type": "application/json",
+            },
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "maxOutputTokens": max_output_tokens,
+                    "responseMimeType": "application/json",
+                },
+            },
+            timeout=300,
+        )
+        response.raise_for_status()
+        data = response.json()
+        usage = data.get("usageMetadata") or {}
+        candidates = data.get("candidates") or [{}]
+        output_tokens = int(usage.get("candidatesTokenCount", 0))
+        output_tokens += int(usage.get("thoughtsTokenCount", 0))
+        return extract_gemini_text(data), {
+            "input_tokens": int(usage.get("promptTokenCount", 0)),
+            "output_tokens": output_tokens,
+        }, {
+            "finish_reason": candidates[0].get("finishReason"),
+            "thoughts_tokens": int(usage.get("thoughtsTokenCount", 0)),
+            "cached_content_tokens": int(usage.get("cachedContentTokenCount", 0)),
         }
 
     raise RuntimeError(f"Unsupported model provider for {model}")
