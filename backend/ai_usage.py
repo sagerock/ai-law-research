@@ -206,10 +206,11 @@ async def mark_ai_request_finalized_on_connection(
     await conn.execute(
         """INSERT INTO pool_ledger
            (amount, entry_type, description, reference_id, created_by)
-           VALUES (0, 'ai_reservation_finalized', $1, $2, 'system')
-           ON CONFLICT (reference_id)
-               WHERE entry_type = 'ai_reservation_finalized' AND reference_id IS NOT NULL
-           DO NOTHING""",
+           SELECT 0, 'ai_reservation_finalized', $1, $2, 'system'
+           WHERE NOT EXISTS (
+               SELECT 1 FROM pool_ledger
+               WHERE reference_id = $2 AND entry_type = 'ai_reservation_finalized'
+           )""",
         description,
         reference_id,
     )
@@ -313,10 +314,11 @@ async def mark_pool_reservation_uncertain_on_connection(
     await conn.execute(
         """INSERT INTO pool_ledger
            (amount, entry_type, description, reference_id, created_by)
-           VALUES (0, 'ai_reservation_uncertain', $1, $2, 'system')
-           ON CONFLICT (reference_id)
-               WHERE entry_type = 'ai_reservation_uncertain' AND reference_id IS NOT NULL
-           DO NOTHING""",
+           SELECT 0, 'ai_reservation_uncertain', $1, $2, 'system'
+           WHERE NOT EXISTS (
+               SELECT 1 FROM pool_ledger
+               WHERE reference_id = $2 AND entry_type = 'ai_reservation_uncertain'
+           )""",
         description,
         reference_id,
     )

@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from ai_usage import (
     anthropic_call_cost,
     anthropic_reservation_cost,
+    mark_ai_request_finalized_on_connection,
+    mark_pool_reservation_uncertain_on_connection,
     reserve_daily_ai_request,
     reserve_pool_funds,
     settle_pool_reservation_on_connection,
@@ -293,3 +295,24 @@ def test_concurrent_settle_and_cancel_apply_exactly_one_terminal_transition():
     assert len(adjustments) == 1
     assert any(adjustments[0]["amount"] == pytest.approx(value)
                for value in (0.18, 0.25))
+
+
+def test_terminal_markers_do_not_require_unique_indexes():
+    class ConnectionWithoutMarkerIndexes:
+        def __init__(self):
+            self.queries = []
+
+        async def execute(self, query, *args):
+            if "ON CONFLICT" in query:
+                raise AssertionError("marker writes must work before index migration")
+            self.queries.append((query, args))
+
+    async def scenario():
+        conn = ConnectionWithoutMarkerIndexes()
+        await mark_ai_request_finalized_on_connection(conn, "request-1", "actual")
+        await mark_pool_reservation_uncertain_on_connection(conn, "uncertain", "request-2")
+        return conn.queries
+
+    queries = asyncio.run(scenario())
+    assert len(queries) == 2
+    assert all("WHERE NOT EXISTS" in query for query, _ in queries)

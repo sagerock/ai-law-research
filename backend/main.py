@@ -2039,10 +2039,12 @@ async def summarize_case(
     if force:
         await require_admin(authorization)
 
-    # Try to get user for BYOK
+    # Resolve the user before reading the cache so ratings can be included in
+    # the response. Do not resolve an API key until after the cache check: an
+    # approved batch candidate is already a complete source-linked brief and
+    # must not depend on the paid generation pool being available.
     current_user = await get_current_user(authorization)
     user_id = current_user["id"] if current_user else None
-    api_key, key_source = await get_anthropic_api_key(user_id)
 
     # Get the case from database and related cases
     async with db_pool.acquire() as conn:
@@ -2100,9 +2102,15 @@ async def summarize_case(
             case_id
         )
 
-        if cached and structured_cached and not force:
+        # Approved structured candidates are the canonical brief displayed by
+        # the case page. Some batch-generated candidates intentionally have no
+        # legacy ai_summaries row, so requiring both records caused the page to
+        # launch a redundant generation and sometimes surface a validation 502.
+        if structured_cached and not force:
             print(f"Returning cached source-linked summary for case {case_id}")
             return await get_case_summary(case_id, current_user)
+
+    api_key, key_source = await get_anthropic_api_key(user_id)
 
     case_data = dict(row)
     case_data["content"] = case_data.pop("opinion_content", None) or case_data.get("content")

@@ -16,6 +16,7 @@ import CaseAskAI from '@/components/CaseAskAI'
 import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 import { getCaseArt } from '@/lib/caseArt'
 import { track } from '@/lib/analytics'
+import { hasDisplayableBrief } from '@/lib/caseSummary'
 
 export interface CaseDetail {
   id: string
@@ -40,7 +41,7 @@ export interface CaseDetail {
 }
 
 interface CaseSummary {
-  summary: string
+  summary: string | null
   cost: number
   citing_cases: Array<CaseReference>
   cited_cases: Array<CaseReference>
@@ -483,7 +484,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
         setThumbsDown(data.ratings.thumbs_down)
         setSummaryRating(data.ratings.user_rating)
       }
-      if (data.cached && data.summary) {
+      if (data.cached && hasDisplayableBrief(data)) {
         setCaseSummary(data)
         console.log('Loaded cached summary')
         if (briefViewTrackedRef.current !== caseId) {
@@ -1100,7 +1101,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         return result
                       }
 
-                      return caseSummary.summary.split('\n').map((line, idx) => {
+                      return (caseSummary.summary || '').split('\n').map((line, idx) => {
                       const trimmed = line.trim()
                       // Horizontal rule
                       if (trimmed.match(/^-{3,}$/) || trimmed.match(/^\*{3,}$/)) {
@@ -1304,7 +1305,9 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
 
                   {/* Referenced Legal Texts */}
                   {(() => {
-                    const refs = extractLegalTextRefs(caseSummary.summary)
+                    const refs = caseSummary.summary
+                      ? extractLegalTextRefs(caseSummary.summary)
+                      : []
                     if (refs.length === 0) return null
                     const rules = refs.filter(r => r.type === 'rule')
                     const statutes = refs.filter(r => r.type === 'statute')
