@@ -459,6 +459,13 @@ counts still apply. On-demand `max_tokens` rose 4000 → 8000 for headroom. On-d
 validation failures now land in `structured_summary_failures` (error prefixed
 `on_demand:`); before, only Railway logs showed them.
 
+CourtListener `100trialcourt` opinions map to part `opinion`, not `other` (2026-09-26).
+A district court's opinion is the court's own ruling. As `other`, every federal trial-court
+case failed preflight with "no majority material" (all 10 such on-demand 503s, 09-08 to
+09-25). `detect_opinion_marker` also reads stored `100trialcourt` markers labeled `other`
+as `opinion`, so the ~206 already-stored texts work without a refetch. The batch venv
+(`~/.venvs/lawdata`) now has `httpx` and `beautifulsoup4` for the CourtListener fallback.
+
 ## Open Questions
 
 Genuine design questions left for the next assistant. If you can resolve one (with
@@ -497,6 +504,11 @@ with an existing decision, add your case here instead of silently changing the c
   limit handling for ~890 cases and a decision on whether to also backfill `cases.content`
   site-wide or just the queue. See seventh Sunday session under Current Handoffs for the
   diagnostic script and full per-case output.
+  **Fixed 2026-09-26 (Claude), lazily per case:** `candidate-opinion` now falls back to the
+  marker-assembled CourtListener fetch when DB and S3 text fail preflight, as the summarize
+  endpoint already did, and writes it back to `cases.content` under the same
+  `content_hash` guard. No bulk backfill; Sage chose not to regenerate the backlog now.
+  Dry run: 20/20 previously refused cases pass preflight.
 
 ## Current Handoffs
 

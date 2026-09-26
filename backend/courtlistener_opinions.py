@@ -29,7 +29,8 @@ TYPE_TO_PART = {
     "070rehearing": "other",
     "080onthemerits": "majority",
     "090onmotiontostrike": "other",
-    "100trialcourt": "other",
+    # A trial-court opinion is the court's own ruling, not ancillary material.
+    "100trialcourt": "opinion",
 }
 PRIMARY_TYPES = frozenset({"015unamimous", "020lead", "025plurality", "080onthemerits"})
 

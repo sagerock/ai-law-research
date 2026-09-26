@@ -21,7 +21,7 @@ Priority: (1) the 30 citator landmarks, (2) curated 1L cases (by casebook count)
 (3) nothing yet — expand when tiers 1-2 run dry. Cost is logged as $0 with
 source='subscription' so the transparency dashboard reflects reality.
 """
-import asyncio, asyncpg, boto3, json, os, re, sys
+import asyncio, asyncpg, boto3, hashlib, json, os, re, sys
 
 HERE = os.path.dirname(__file__)
 CURATED = "/mnt/d/backups/ai-law-research/data/1L_core_cases.json"
@@ -32,6 +32,7 @@ SKIPLIST = os.path.join(HERE, "data", "briefs_skiplist.txt")
 MIN_OPINION = 2500  # chars; below this it's a procedural order, not an opinion
 BACKEND = os.path.join(os.path.dirname(HERE), "backend")
 sys.path.insert(0, BACKEND)
+from courtlistener_opinions import fetch_courtlistener_document
 from opinion_passages import assess_opinion_boundaries
 from structured_briefs import (
     build_source_packet,
@@ -75,15 +76,39 @@ LANDMARKS = [
 ]
 
 
-def prod_url():
-    if os.getenv("PROD_DATABASE_URL") or os.getenv("DATABASE_URL"):
-        return os.getenv("PROD_DATABASE_URL") or os.getenv("DATABASE_URL")
+def env_file_value(name):
     for path in ("/mnt/d/dev/ai-law-research/backend/.env", "/mnt/d/dev/ai-law-research/.env"):
         if os.path.exists(path):
             for line in open(path):
-                if line.startswith("PROD_DATABASE_URL="):
+                if line.startswith(f"{name}="):
                     return line.split("=", 1)[1].strip().strip('"').strip("'")
-    raise SystemExit("PROD_DATABASE_URL not found")
+    return None
+
+
+def prod_url():
+    url = (os.getenv("PROD_DATABASE_URL") or os.getenv("DATABASE_URL")
+           or env_file_value("PROD_DATABASE_URL"))
+    if not url:
+        raise SystemExit("PROD_DATABASE_URL not found")
+    return url
+
+
+async def fetch_marked_opinion(cid):
+    """Marker-assembled CourtListener text, as the site's summarize endpoint uses.
+
+    Bulk-imported content has no sub-opinion markers, so strict preflight
+    refuses it; the live API assembly is the only source that adds them.
+    """
+    if not str(cid).isdigit():
+        return None
+    try:
+        document = await fetch_courtlistener_document(
+            cid, os.getenv("COURTLISTENER_API_KEY") or env_file_value("COURTLISTENER_API_KEY")
+        )
+    except Exception as exc:
+        print(f"CourtListener fetch failed for {cid}: {exc}", file=sys.stderr)
+        return None
+    return document.text if document else None
 
 
 def curated_ids():
@@ -299,7 +324,9 @@ async def cmd_candidate_list(n):
 async def cmd_candidate_opinion(cid):
     conn = await asyncpg.connect(prod_url())
     try:
-        text = await conn.fetchval("SELECT content FROM cases WHERE id = $1", cid)
+        text, original_hash = await conn.fetchrow(
+            "SELECT content, content_hash FROM cases WHERE id = $1", cid
+        ) or (None, None)
         source = "database" if text else None
         if not text or len(text) < MIN_OPINION:
             alternate_text, alternate_source = await asyncio.to_thread(read_full_opinion, cid)
@@ -330,6 +357,21 @@ async def cmd_candidate_opinion(cid):
                 if not alternate[-1]:
                     text, source = alternate_text, alternate_source
                     content_hash, passages, selected, assessment, preflight_errors = alternate
+        if preflight_errors:
+            marked_text = await fetch_marked_opinion(cid)
+            if marked_text:
+                marked = preflight(marked_text)
+                if not marked[-1]:
+                    text, source = marked_text, "courtlistener"
+                    content_hash, passages, selected, assessment, preflight_errors = marked
+                    # Same guarded write as the summarize endpoint, so the case
+                    # page serves the text these passages were built from.
+                    await conn.execute(
+                        """UPDATE cases SET content = $1, content_hash = $2, updated_at = NOW()
+                           WHERE id = $3 AND content_hash IS NOT DISTINCT FROM $4""",
+                        text, hashlib.sha256(text.encode("utf-8")).hexdigest(), cid,
+                        original_hash,
+                    )
         if preflight_errors:
             error = "; ".join(preflight_errors)
             await record_candidate_failure(
@@ -600,6 +642,10 @@ def main():
     if len(sys.argv) < 2:
         print(__doc__); sys.exit(1)
     cmd = sys.argv[1]
+    # A flag like --help is not a case ID; the opinion commands would
+    # otherwise auto-skiplist it as a missing opinion.
+    if cmd in {"-h", "--help"} or any(arg.startswith("-") for arg in sys.argv[2:3]):
+        print(__doc__); sys.exit(0 if cmd in {"-h", "--help"} else 1)
     if cmd == "list":
         asyncio.run(cmd_list(int(sys.argv[2]) if len(sys.argv) > 2 else 25))
     elif cmd == "opinion":

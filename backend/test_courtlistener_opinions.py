@@ -7,6 +7,7 @@ from courtlistener_opinions import (
     fetch_courtlistener_document,
 )
 from opinion_passages import assess_opinion_boundaries, build_opinion_passages
+from structured_briefs import build_source_packet
 
 
 def part(type_code, text, opinion_id, author=None, ordering_key=None):
@@ -39,6 +40,32 @@ def test_single_dissent_keeps_its_type_marker():
     assert document is not None
     assert '"type":"040dissent"' in document.text
     assert '"part":"dissent"' in document.text
+
+
+def test_trial_court_opinion_passes_strict_preflight():
+    document = assemble_sub_opinions(
+        "13", [part("100trialcourt", "The court grants the motion. " * 100, "6")]
+    )
+    assert document is not None
+    assert '"part":"opinion"' in document.text
+    _, passages, _ = build_source_packet(document.text)
+    assessment = assess_opinion_boundaries(
+        document.text, passages, min_chars=2500, require_explicit=True
+    )
+    assert assessment.errors == ()
+
+
+def test_stored_trial_court_marker_labeled_other_reads_as_opinion():
+    document = assemble_sub_opinions(
+        "14", [part("100trialcourt", "The court grants the motion. " * 100, "7")]
+    )
+    legacy = document.text.replace('"part":"opinion"', '"part":"other"')
+    _, passages, _ = build_source_packet(legacy)
+    assert {passage["opinion_part"] for passage in passages} == {"opinion"}
+    assessment = assess_opinion_boundaries(
+        legacy, passages, min_chars=2500, require_explicit=True
+    )
+    assert assessment.errors == ()
 
 
 def test_combined_record_is_used_when_components_have_no_primary_writing():

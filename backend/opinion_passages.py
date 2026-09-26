@@ -309,6 +309,9 @@ def detect_opinion_marker(
         except (json.JSONDecodeError, TypeError):
             return "other", 1
         part = metadata.get("part")
+        if metadata.get("type") == "100trialcourt" and part == "other":
+            # Text stored before trial-court opinions mapped to "opinion".
+            part = "opinion"
         return (part if part in {"opinion", "majority", "concurrence", "dissent", "other"} else "other"), 1
 
     extractor = EXTRACTOR_MARKER_RE.fullmatch(block)
