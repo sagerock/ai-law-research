@@ -65,8 +65,6 @@ def generation_shape_report(passages: list[dict]) -> tuple[list[str], list[str]]
     errors = [
         f"generation-shape: {error}"
         for error in validate_structured_summary(candidate, passages)
-        # The synthetic filler intentionally ignores the word budget.
-        if "must contain 400-800 words" not in error
     ]
 
     uncitable = sum(
@@ -135,16 +133,9 @@ def validate_structured_summary(candidate: dict, passages: list[dict]) -> list[s
     significance = candidate.get("significance")
     if not isinstance(significance, str) or not significance.strip() or re.search(r"op-[0-9a-f]", significance):
         errors.append("significance must be unsourced editorial text")
-    words = len(re.findall(r"\b\w+\b", " ".join(
-        [
-            claim.get("text", "")
-            for section in SECTION_LIMITS
-            for claim in candidate.get(section, [])
-            if isinstance(claim, dict)
-        ] + ([significance] if isinstance(significance, str) else [])
-    )))
-    if not 400 <= words <= 800:
-        errors.append(f"candidate must contain 400-800 words, got {words}")
+    # No word budget: a brief runs as long as the case needs. A fixed 400-800
+    # band rejected multi-opinion cases like United States v. Guest for going
+    # a few words over (removed at Sage's direction 2026-09-26).
     return errors
 
 
@@ -257,7 +248,7 @@ Return JSON only, with exactly this shape:
 }}
 
 Requirements:
-- Write 400-800 words total.
+- Write as much as a complete, useful brief needs and no more. Be concise; a case with several separate opinions may need more room than a short one.
 - Use 1-4 facts, exactly 1 issue, 1-2 holdings, 1-2 rules, 1-4 majority-reasoning claims, and 0-4 dissent claims.
 - Every claim must cite one or more passage IDs that directly support the complete claim.
 - Cite only opinion/majority passages for facts, issue, holding, rule, and majority reasoning.

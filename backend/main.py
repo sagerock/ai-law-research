@@ -2243,7 +2243,9 @@ async def summarize_case(
         input_tokens = 0
         output_tokens = 0
         model = "claude-opus-4-8"
-        max_tokens = 4000
+        # Headroom for long multi-opinion briefs now that there is no word
+        # budget; a JSON brief truncated at the ceiling fails to parse.
+        max_tokens = 8000
         for attempt in range(2):
             attempt_reservation = await reserve_anthropic_request(
                 api_key,
@@ -2340,7 +2342,20 @@ async def summarize_case(
             )})
 
         if validation_errors:
-            raise HTTPException(status_code=502, detail="Invalid source-linked brief: " + "; ".join(validation_errors))
+            error = "; ".join(validation_errors)
+            # Record on-demand failures alongside the batch's so they are
+            # visible without digging through Railway logs.
+            try:
+                async with db_pool.acquire() as conn:
+                    await conn.execute(
+                        """INSERT INTO structured_summary_failures
+                           (case_id, provider, content_hash, stage, error)
+                           VALUES ($1, 'claude', $2, 'validation', $3)""",
+                        case_id, content_hash, ("on_demand: " + error)[:4000],
+                    )
+            except Exception as exc:
+                print(f"Could not record validation failure for {case_id}: {exc}")
+            raise HTTPException(status_code=502, detail="Invalid source-linked brief: " + error)
         summary = structured_summary_to_text(structured_summary)
 
         # Calculate cost (accumulated across attempts)

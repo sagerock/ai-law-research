@@ -450,16 +450,23 @@ dimensions (Admin → Custom definitions, scope `Event`): `search_type`, `result
 `method`, `trigger`, `placement`, `mindmap_id`.
 Shipping the code and seeing an empty report is the expected failure if this step is skipped.
 
+Structured briefs have **no word budget** (Sage, 2026-09-26): "the summary should be whatever
+is necessary to give a good summary." The 400–800 band was removed from
+`validate_structured_summary` and the prompt. Why: United States v. Guest (107201) 502'd
+on-demand at 843 then 807 words, and the cap was the most common first-attempt failure
+(9 of 13, 2026-09-07 to 09-26), hitting multi-opinion cases hardest. Per-section claim
+counts still apply. On-demand `max_tokens` rose 4000 → 8000 for headroom. On-demand
+validation failures now land in `structured_summary_failures` (error prefixed
+`on_demand:`); before, only Railway logs showed them.
+
 ## Open Questions
 
 Genuine design questions left for the next assistant. If you can resolve one (with
 evidence), do so and move the conclusion into Architecture Decisions; if you disagree
 with an existing decision, add your case here instead of silently changing the code.
 
-- `validate_structured_summary` enforces a 400–800 word band and fixed per-section claim
-  limits for every case. Is one band right for both short procedural opinions and long
-  cases with substantial dissents, or should limits scale with opinion length? (Raised
-  2026-07-12 by Claude while unifying the validators; no evidence gathered yet.)
+- ~~`validate_structured_summary` enforces a 400–800 word band...~~ **RESOLVED 2026-09-26
+  by Sage: no word budget.** See Architecture Decisions.
 - ~~Boundary-preflight refusal rate hit 100%... needing code investigation~~ **RESOLVED
   2026-08-30 (seventh Sunday session).** Root cause found by instrumenting
   `assess_opinion_boundaries` directly against four freshly-refused cases: every one has

@@ -42,6 +42,11 @@ class StructuredBriefTests(unittest.TestCase):
         errors = validate_structured_summary(value, self.passages)
         self.assertTrue(any("unknown sources" in error for error in errors))
 
+    def test_accepts_long_brief_without_word_budget(self):
+        value = valid_summary()
+        value["majority_reasoning"][0]["text"] = " ".join(["supported"] * 900)
+        self.assertEqual(validate_structured_summary(value, self.passages), [])
+
     def test_repairs_source_id_with_extra_trailing_character(self):
         passages = [{"id": "op-050f959b963a1792", "opinion_part": "opinion", "text": "S."}]
         value = valid_summary()
