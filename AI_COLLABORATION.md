@@ -512,6 +512,26 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Louisiana v. Callais (2026) imported; Shelby County v. Holder repaired (2026-09-26)
+Owner: Claude
+Status: completed and verified in production
+Sage's Con Law reading pairs these cases. `scripts/import_callais_2026.py` (idempotent, `--dry-run`)
+imported the Apr. 29, 2026 merits decision as `10850261` (`146 S. Ct. 1131`, the cite from Sage's
+Westlaw excerpt; no U.S. page yet), hydrated through `fetch-opinion`. The "Revisions: 5/04/26" cluster
+`10852760` differs only in the syllabus argument dates, so it was not imported. The existing `10618593`
+row, the June 27, 2025 reargument order that had held the `louisiana-v-callais` name slug, was
+retitled "Louisiana v. Callais (order restoring case for reargument)".
+Shelby (`931614`) carried only `133 S. Ct. 2612`, so "570 U.S. 529" found nothing. Its
+`reporter_cite` now leads with the U.S. cite, and `133-sct-2612` still resolves. Its S3 slip-opinion
+text had no sub-opinion markers, so every majority passage was generic `opinion` and generation failed
+validation ("dissent[0] cites non-dissent passage"). The canonical CourtListener assembly is now stored
+in `cases.content` with its hash (289 majority, 427 dissent passages). Briefs were generated as
+summary `1301` (Callais) and `1302` (Shelby), costing $0.26 each.
+Open: 334 Supreme Court rows still carry only an S. Ct. cite and fail U.S.-cite search. Other S3-only
+slip opinions probably hit the same validation failure.
+Also fixed: legacy `GET /cases/{id}/citator` returned 500 for every case (it selected the nonexistent
+`citations.snippet` and `c2.*`, including full content). The frontend does not call it.
+
 ### Triage session 2026-09-20: 3 regenerations, all clean content_hash — no remap needed
 Owner: Claude
 Status: completed 2026-09-20 — 3/3 candidates saved (pending fresh review)

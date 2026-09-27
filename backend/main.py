@@ -1471,7 +1471,8 @@ async def get_citator(case_id: str):
         # Get citing cases
         citing = await conn.fetch(
             """
-            SELECT c2.*, ct.signal, ct.snippet
+            SELECT c2.id, c2.title, c2.reporter_cite, c2.decision_date,
+                   ct.signal, ct.context_span AS snippet
             FROM citations ct
             JOIN cases c2 ON ct.source_case_id = c2.id
             WHERE ct.target_case_id = $1
