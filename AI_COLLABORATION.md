@@ -512,6 +512,31 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27: 6 reviewed, 1 approved, 5 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Bristol-Myers Squibb v. Superior Court (2294163, the
+California breast-implant limitations case). Held, with the failing claims named in each saved note:
+- **Parker v. Twentieth Century-Fox (1453074, triage)**: significance asserts "Sullivan's
+  fact-intensive dissent"; the candidate has no dissent section and no cited passage mentions one.
+- **Daimler AG v. Bauman (2649076, triage)**: issue[0]'s passages never state the question posed;
+  facts[0] says "Daimler AG's predecessor" with no passage stating that relationship.
+- **Obergefell v. Hodges (2812209, triage)**: majority_reasoning[3] and [2] rest on sentences
+  that are not cited; facts[0] "consolidated" and facts[2] "a Michigan couple" are unsourced.
+- **Derdiarian v. Felix Contracting (5684475)**: facts[3] calls Lawton "plaintiff's traffic-safety
+  expert" but the passages say only "According to Lawton"; majority_reasoning[2] cites "such
+  dereliction" without its antecedent.
+- **Parvi v. City of Kingston (5632396)**: dissent[0] names "Chief Judge Breitel"; no cited
+  passage names the dissent's author.
+The three triage candidates are second rejections, so under the two-strike rule they are now
+humans-only. Standard applied: a specific that no cited passage anywhere in the candidate
+supports is a hold; a specific supported only by a passage cited under a different claim was
+noted but did not by itself block (the one approval has such a note). Dominant failure is still
+unsourced specifics: author names, party identities, and antecedents split into an uncited
+neighboring passage.
+Files touched: AI_COLLABORATION.md (this entry).
+Deployment: none.
+
 ### Collection notes keep their line breaks; Con Law Week 6 collection repairs (2026-09-27)
 Owner: Claude
 Status: completed
