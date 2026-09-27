@@ -512,6 +512,28 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (second run): 5 reviewed, 2 approved, 3 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after five candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Commonwealth v. Cosby (10315392, triage) and Kirby v.
+Foster (4104630). Held, with the failing claims named in each saved note:
+- **United States v. Biaggi (545489, triage)**: facts[0] calls Section 8(a) a "minority set-aside
+  program" that the Defense contracts came through; facts[1] credits "Biaggi and other lobbyists"
+  where the passage says only "its lobbyists and lawyers"; facts[3] lists the kinds of challenges
+  raised on appeal. No cited passage states any of the three.
+- **Gordon v. United States (277392, triage)**: one-character misquote only. rule[1] quotes
+  "far outweighs"; the passage reads "far outweigh." Every claim is otherwise supported, so this
+  is the cheapest human clear in the held set.
+- **Lucky Brand Dungarees v. Marcel Fashions (4753847)**: majority_reasoning[3] names Marcel's
+  authorities (judgment enforcement, collateral attack, Beloit v. Morgan); the cited passages say
+  only "these authorities."
+Biaggi and Gordon are second rejections, so under the two-strike rule they are now humans-only.
+Same standard as the first run today. Worth a decision from Sage: whether an inflected quote
+("outweigh" → "outweighs") should hold a candidate, since the runbook's verbatim rule has no
+tolerance and a second strike is permanent.
+Files touched: AI_COLLABORATION.md (this entry).
+Deployment: none.
+
 ### Semantic review session 2026-09-27: 6 reviewed, 1 approved, 5 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
