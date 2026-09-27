@@ -903,7 +903,7 @@ function LibraryPageContent() {
                                         </div>
                                       </div>
                                       {!isEditing && c.notes && (
-                                        <p className="text-sm text-stone-600 mt-1 italic break-words overflow-hidden">{c.notes}</p>
+                                        <p className="text-sm text-stone-600 mt-1 italic break-words overflow-hidden whitespace-pre-line">{c.notes}</p>
                                       )}
                                       {isEditing && (
                                         <div className="mt-2">
@@ -995,7 +995,7 @@ function LibraryPageContent() {
                                         </div>
                                       </div>
                                       {!isEditing && lt.notes && (
-                                        <p className="text-sm text-stone-600 mt-1 italic break-words overflow-hidden">{lt.notes}</p>
+                                        <p className="text-sm text-stone-600 mt-1 italic break-words overflow-hidden whitespace-pre-line">{lt.notes}</p>
                                       )}
                                       {isEditing && (
                                         <div className="mt-2">
@@ -1084,7 +1084,7 @@ function LibraryPageContent() {
                           </button>
                         </div>
                         {bookmark.notes && (
-                          <p className="text-sm text-stone-600 mt-2 pt-2 border-t border-stone-100 italic">
+                          <p className="text-sm text-stone-600 mt-2 pt-2 border-t border-stone-100 italic whitespace-pre-line">
                             {bookmark.notes}
                           </p>
                         )}

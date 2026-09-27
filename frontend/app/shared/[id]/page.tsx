@@ -193,7 +193,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                             )}
                           </div>
                           {caseItem.notes && (
-                            <p className="mt-3 text-sm text-stone-600 italic border-l-2 border-sage-200 pl-3">
+                            <p className="mt-3 text-sm text-stone-600 italic border-l-2 border-sage-200 pl-3 whitespace-pre-line">
                               {caseItem.notes}
                             </p>
                           )}
@@ -231,7 +231,7 @@ export default async function SharedCollectionPage({ params }: PageProps) {
                             <p className="text-sm text-stone-400 mt-1">{lt.citation}</p>
                           )}
                           {lt.notes && (
-                            <p className="mt-3 text-sm text-stone-600 italic border-l-2 border-sage-200 pl-3">
+                            <p className="mt-3 text-sm text-stone-600 italic border-l-2 border-sage-200 pl-3 whitespace-pre-line">
                               {lt.notes}
                             </p>
                           )}

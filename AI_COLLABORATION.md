@@ -512,6 +512,19 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Collection notes keep their line breaks; Con Law Week 6 collection repairs (2026-09-27)
+Owner: Claude
+Status: completed
+Collection, legal-text, and bookmark notes rendered in plain `<p>` elements, so every newline
+collapsed into a space and multi-part notes ran together. Added `whitespace-pre-line` to the five
+note paragraphs in `frontend/app/shared/[id]/page.tsx` and `frontend/app/library/page.tsx`.
+Collection 15 (Con Law): the assigned *Pennhurst* (1981, 451 U.S. 1, cluster `110458`) was imported
+as a stub, hydrated through `fetch-opinion`, and swapped into the slot that held the 1984 Eleventh
+Amendment decision (`111094`). The five Module 06(G) Tenth Amendment cases were appended (positions
+78–82). Record and idempotent re-apply: `scripts/import_conlaw_week06_2026.py`. Notes for Week 6 cases
+use single newlines between parts; the 66 older collection-15 notes still use blank lines.
+Deployment: frontend via GitHub `main` auto-deploy.
+
 ### Louisiana v. Callais (2026) imported; Shelby County v. Holder repaired (2026-09-26)
 Owner: Claude
 Status: completed and verified in production
