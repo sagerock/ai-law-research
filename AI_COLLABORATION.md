@@ -542,6 +542,19 @@ IDs named in the notes. Nothing was generated or saved from it.
 Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
 Deployment: none.
 
+### Sunday source-brief generation 2026-09-27 (eighth run): 3 candidates saved, 1 queue case refused
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
+Saved: People v. Decina (5669157, hash 9f6ee38b81c8, majority + partial dissent), Branzburg v. Hayes (108611, hash
+9d2045e75fc5, partial packet; dissent passages are mostly notes, two dissent claims only), Barron v. Mayor of Baltimore
+(85827, hash e4c176a219fd, single opinion; packet has no underlying facts, so Facts are procedural only).
+Refused: Windsor v. United States (109153): `candidate-opinion` refused ("separate opinions but no explicit majority
+boundary"). Not saved, not skiplisted; it dropped out of `candidate-list` on the next call, so check whether it needs a
+boundary fix.
+Failures: none in saves. Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (seventh run): 3 candidates saved
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
