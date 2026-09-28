@@ -512,6 +512,35 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (thirteenth run): 6 reviewed, 6 approved, 0 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published: Angel v. Murray (2303115, triage), People v.
+Rizzo (1349311, triage), Lefkowitz v. Great Minneapolis Surplus Store (1289586, triage), Groves v.
+John Wunder Co. (3536897), James Baird Co. v. Gimbel Bros. (1510721), Neri v. Retail Marine Corp.
+(5679138). A 6/6 batch is the runbook's signal to re-check the standard. Same standard as the
+twelve earlier runs: a specific supported nowhere in the candidate holds, one supported only under
+a different claim is noted. The three triage candidates cured exactly what their notes named. For
+the three new ones I read the surrounding packet passages on the borderline claims before
+approving. The judgment calls below are in the saved notes, and a human who disagrees should pull
+the brief:
+- **Groves majority_reasoning[2]** ends "so the land's value does not limit recovery"; its own two
+  passages do not say that. Passages cited under rule[1] and holding[0] do.
+- **Groves facts[3]** attributes the $12,160 value to the trial court's findings; the passage
+  states it as fact right after the "was found" cost sentence.
+- **Baird holding[0]** says "judgment for defendant"; only uncited op-e3248621495c70f5 says so
+  outright. I treated it as entailed by cited passages (plaintiff sued, no contract, affirmed).
+  This is the closest call in the batch.
+- **Neri majority_reasoning[2]** states the Hawkland treatise illustration in the court's voice;
+  the adopting sentence (op-84330124e08b7a66) is uncited.
+- **Angel significance** calls voluntariness, unanticipated circumstances, and fairness "the
+  three-part test"; the opinion's numbered three are timing, unanticipated circumstances, and
+  fairness, with voluntariness separate. All are established by rule[1].
+Ops note: I ran `candidate-opinion` read-only on Groves, Baird, and Neri to read context around
+cited passages. Nothing was generated or saved from it.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (sixth run): 3 candidates saved
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
