@@ -512,6 +512,20 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Sunday source-brief generation 2026-09-27 (second run): 3 candidates saved, 2 queue cases skipped
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending`, awaiting a fresh review session
+Saved on first try: Connecticut v. Doehr (112615, hash 9815c5e95ecc, majority/concurrence packet, no
+dissent), Miller v. California (108838, hash d0fcff2ad52d, with dissent section), Howard v. Federal Crop
+Insurance Corp. (338519, hash 0886a5c5c296, single-opinion packet). Skipped, not saved: Buckley v. Valeo
+(109380) — `candidate-opinion` refused ("separate opinions but no explicit majority boundary"); United
+States v. Nixon (19845) — the packet is a 2000 Fifth Circuit mail-fraud opinion (Jimmy Nixon), the wrong
+case. Nixon is still first in `candidate-list`, so it will block `candidate-list 1` for the next session
+until it is fixed or excluded; the runbook has no skip command, so I took the next entries from
+`candidate-list 4`. Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (eighth run): 6 reviewed, 6 approved, 0 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
