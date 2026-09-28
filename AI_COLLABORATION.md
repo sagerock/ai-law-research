@@ -512,6 +512,29 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (fifth run): 6 reviewed, 2 approved, 4 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Liberty Mutual Insurance v. Wetzel (109403, triage) and
+Hoffman v. Red Owl Stores (2161398). Held, with every failing claim named in each saved note:
+- **United States v. Peoni (1485475, triage)**: facts[1] says Regno resold "to Dorsey, also in the
+  Bronx"; the cited passage truncates at "sold the same bills to one," and nothing cited places that
+  sale. holding[0]'s "or sold them to a second possessor" sits past a passage that ends at "or."
+- **Tunkl v. Regents (1149237, triage)**: holding[0] says the release "is invalid under Civil Code
+  section 1668"; the cited passages say only that the contract affects the public interest and that
+  the judgment is reversed. rule[1] cites the list items without the sentence that introduces them.
+- **United States v. Newbold (1141)**: rule[0] concludes the disposition "carries no precedential
+  weight," but no cited passage says this opinion is unpublished, and "not binding" is narrower.
+  facts[0]'s "civil action brought by the United States" comes from the caption, not a passage.
+- **Angel v. Murray (2303115)**: facts[3] says "Taxpayers sued"; the passage says "Alfred L. Angel
+  and others." One-claim hold.
+Peoni and Tunkl are second rejections, so under the two-strike rule they are now humans-only. Both
+are re-sourcing fixes, not wrong claims: the supporting text is in the passage right after the
+cited one. Why that keeps happening: passages split mid-sentence at commas and citation periods,
+so a claim drawn from one sentence needs both halves cited. Same standard as the four earlier runs.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (fourth run): 6 reviewed, 1 approved, 5 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
