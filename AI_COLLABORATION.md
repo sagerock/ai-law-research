@@ -512,6 +512,37 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (twelfth run): 6 reviewed, 3 approved, 3 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published, all three triage regenerations: Dobbs v.
+Jackson Women's Health (6481357), NCNB Texas National Bank v. Johnson (6143), United States v.
+Newbold (1141). Each cured exactly what its rejection note named. Held, with every failing claim
+named in each saved note:
+- **Pierson v. Post (5618666)**: significance says Livingston J. wrote separately for the hunter
+  and frames a "labor and near-success" alternative; no sourced section establishes a separate
+  opinion (Dissent is empty). majority_reasoning[0]'s "ancient writers" is only in uncited
+  op-a1133fa4e2eb9639, and its cited passage starts mid-citation with no subject.
+- **Brown & Root v. NLRB (31513)**: majority_reasoning[3] says the no-commitment statements were
+  "proposal statements about hiring a significant number"; the cited passage says only "Brown &
+  Root's statements." One-claim hold; op-436bfde384c0cd54 or op-ab9fcecd130a4a3a cures it.
+- **Walker v. Harrison (2409469)**: majority_reasoning[3] states the bank's reliance and its
+  date-of-hearing theory, found only in uncited op-52b214b0713a0795 and op-a2ac3397a4ec5cfa;
+  facts[1]'s "clerk's" is only in uncited op-ea64542c3f3038a8.
+All three holds are first rejections, so each gets its one triage pass. Same standard as the
+eleven earlier runs. Brown & Root and Walker are citation-only cures. Why Pierson differs: its
+cure inside the current packet is to cut the Livingston material from significance, because all 71
+passages are labeled `majority` (Livingston's opinion is ordinals 44-70) and validation will not
+let a regeneration cite them under Dissent. A real dissent section needs the boundary fixed first.
+I confirmed no cited Pierson passage is past ordinal 43, so no majority claim leans on the dissent.
+Judgment calls recorded in the approve notes: Dobbs facts[2] "District Court" and
+majority_reasoning[2] "such a right" rely on context cited under other claims; NCNB facts[3]
+expands "Bank Holding Act" to "Bank Holding Company Act".
+Ops note: I ran `candidate-opinion` read-only on the three held cases to find the uncited passage
+IDs named in the notes. Nothing was generated or saved from it.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (fifth run): 3 candidates saved, 2 queue cases skipped
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
