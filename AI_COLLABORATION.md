@@ -512,6 +512,32 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (tenth run): 6 reviewed, 2 approved, 4 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published: Derdiarian v. Felix Contracting (5684475,
+triage) and United States ex rel. Coastal Steel Erectors v. Algernon Blair (311461). Held, with
+every failing claim named in each saved note:
+- **People v. Chun (2506956, triage)**: rule[0] and majority_reasoning[3] say "implied malice";
+  the cited passages say only "the physical component" and "conscious-disregard-for-life malice."
+  rule[0]'s "because" also has no cited support tying the physical component to felony murder.
+- **Parvi v. City of Kingston (5632396, triage)**: majority_reasoning[0] says lack of consent was
+  established, but no cited passage mentions consent. One-claim hold.
+- **Klocek v. Gateway (2503865)**: facts[2] says "Paragraph 10 of the Standard Terms"; the cited
+  passages are the clause text with no attribution. rule[0]'s "acceptance or confirmation" is uncited.
+- **Seaver v. Ransom (3607257)**: facts[0] says "their house"; an uncited passage says the house
+  was hers, and the brief's own holding turns on what Beman took under her will. One-claim hold.
+Chun and Parvi are second rejections, so under the two-strike rule they are now humans-only. Same
+standard as the nine earlier runs. Every hold except Seaver's is a citation-only cure, and each note
+names the passage IDs. Why Chun and Parvi are worth a human look first: triage cured everything
+their first notes named, and the second strike is a gap the first review passed, so adding two
+citations each publishes them (Chun: op-511a9c06a9ae675c, op-4617750284abf5d1; Parvi:
+op-d4cbfb87ddd2a424, op-4b5c239fd1dbf813).
+One judgment call is recorded in an approve note: Coastal Steel majority_reasoning[1] states in the
+court's voice a proposition the passage attributes to the Tenth Circuit.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (third run): 3 candidates saved, 1 queue case skipped
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending`, awaiting a fresh review session
