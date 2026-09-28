@@ -512,6 +512,31 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (seventh run): 6 reviewed, 1 approved, 5 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Austin Instrument v. Loral (5678730). Held, with every
+failing claim named in each saved note:
+- **Temple v. Synthes (112500, triage)**: facts[1] and issue[0] call the state-court suit a
+  "malpractice" suit; the passages give those grounds only for the administrative proceeding.
+- **Iqbal v. Ashcroft (30747, triage; the Fifth Circuit asylum case)**: majority_reasoning[3] says
+  the country-conditions argument "was not properly before the court." The opinion only names the
+  remedy (motion to reopen) and never says that, in any of its 25 passages.
+- **Machuca Gonzalez v. Chrysler (28432, triage)**: majority_reasoning[0] describes Piper as
+  "Scottish plaintiffs suing American manufacturers" with no passage on the Piper parties cited;
+  majority_reasoning[3] says "his mother" where the opinion says only "the driver (Gonzalez's wife)."
+- **Hawkins v. McGee (3574015)**: majority_reasoning[3] cites "It represented a part of the price"
+  without the passage that says "It" is the pain of the operation. One-claim hold.
+- **Leonard v. Pepsico (2579076)**: majority_reasoning[1] names Carbolic Smoke Ball, which no cited
+  passage mentions; facts[1] puts the teenager in the jet without the cockpit passage.
+Temple, Iqbal, and Gonzalez are second rejections, so under the two-strike rule they are now
+humans-only. Same standard as the six earlier runs. Why these three differ from most earlier
+second strikes: their failures are wording the opinion never uses (malpractice suit, not properly
+before the court, mother), so the cure is editing the claim, not adding a citation. Hawkins and
+Leonard are citation-only cures, and each note names the passage ID.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (sixth run): 6 reviewed, 1 approved, 5 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
