@@ -512,6 +512,38 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (fourth run): 6 reviewed, 1 approved, 5 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: MacMunn v. Eli Lilly Co. (2580870). Held, with every
+failing claim named in each saved note:
+- **Ricketts v. Scothorn (6769658, triage)**: rule[1] says courts enforced gift notes "on estoppel
+  principles rather than" as consideration. The cited passage says those decisions were "generally
+  put on the ground" of consideration; estoppel is this court's own view of the "true reason."
+  facts[0]'s "John C." has no cited support (the note passage truncates at "J. 0.").
+- **Childress v. Taylor (569096, triage)**: rule[1] gives the editor/researcher concern as the reason
+  for the copyrightability requirement. The cited passages use it for the separate intent
+  requirement, and one says an editor's revisions include "copyrightable expression."
+  majority_reasoning[1]'s "unsuccessful" negotiations "over authorship and billing" are unsourced.
+- **Osborn v. Bank of United States (85451, triage)**: facts[1] has Harper delivering money to
+  "state treasury officers Currie and then Sullivan," both keeping it "segregated"; the passages
+  say "either to Currie or Osborn" and one unidentified answer says "untouched." facts[0]'s "Ralph"
+  and the $100,000 charge as the law's own term are unsourced; majority_reasoning[2] lacks the
+  naturalized-citizen antecedent.
+- **Dobbs v. Jackson Women's Health (6481357)**: majority_reasoning[1] names "the equal protection
+  theory offered by some amici"; the cited passages say only "this theory." One-claim hold.
+- **NCNB Texas National Bank v. Johnson (6143)**: majority_reasoning[1]'s "endorsed note" rests on
+  "this evidence" with no antecedent cited; facts[0]'s "shareholder Fred Anderson" is unsourced;
+  significance lists rulings (collateral sale, appellate jurisdiction, attorney's fees) that no
+  sourced section establishes.
+Ricketts, Childress, and Osborn are second rejections, so under the two-strike rule they are now
+humans-only. Same standard as the three earlier runs today. Two patterns worth acting on in the
+generation runbook: (1) party first names and roles come from trained knowledge, not the packet
+(John C. Ricketts, Ralph Osborn, Fred Anderson), and (2) "this brief omits..." sentences in
+significance assert opinion content the brief never sources (Dobbs, NCNB).
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (third run): 6 reviewed, 2 approved, 4 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
@@ -539,6 +571,34 @@ or conceded point (a party's assertion, a lower court's view) in the court's own
 antecedent sits in an adjacent uncited passage.
 Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
 Deployment: none.
+
+### Triage session 2026-09-27: 3 regenerations saved, 2 source-preflight refusals skipped
+Owner: Claude
+Status: completed 2026-09-27 — 3/3 candidates saved (pending fresh review)
+Ran `TRIAGE-BRIEFS.md`. **All three saved cases had a stale content_hash** (the rejected candidate
+was written against the pre-v10 passage format), so every cited ID was checked against the fresh
+packet and orphaned ones were remapped by text match against the old passages (read from
+`opinion_passages` under the old hash). Only the claim the note named was substantively changed.
+- **State v. Rothlisberger (2621346)**: facts[1]'s "thirty-day advance notice" clause was not in its
+  cited passages. Re-sourced by adding op-cbc2e2ae2e41a54f (objection: expert testimony "required
+  the State to give the defense thirty days' advance notice") and op-8395faab2ceea7f7 ("the State did
+  not give the requisite advance notice"). 5 stale IDs remapped, claim text untouched.
+- **McCray v. State Farm (7830390)**: facts[3]'s coverage denial and breach suit were cited to a
+  summary-judgment-motion passage. Re-sourced to op-73e18c16244bc9b3 ("After State Farm denied
+  coverage because the policy had been canceled, the McCrays sued State Farm alleging breach of
+  contract") and dropped op-8b00506ea277727c. 8 stale IDs remapped; two of them were passages
+  the new build merged (rule[0]/[1] now share op-82a4c1b330b66003).
+- **Secretary of HEW v. Meza (273618)**: facts[2] said a California court "declared him dead" in
+  December 1961; the passage says only that Lucy petitioned then. The packet's next passage,
+  op-c8f804472908a622, says the petition was granted January 3, 1962. Rewrote the clause to
+  petition in December 1961, granted January 3, 1962, and added that ID. 8 stale IDs remapped
+  (including passages the new build split in two, e.g. the 20 C.F.R. 404.705 quotation).
+- **Skipped, source preflight refused `candidate-opinion` (not counted): United States v. Elfgeeh
+  (1386819)**, "separate opinions but no explicit majority boundary"; **In Re Grand Jury Proceedings
+  (732430)**, "no verifiable opinion-part boundaries." Their rejection notes are unaddressed and both
+  need human attention or a marker-assembled source re-ingest.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none. Commit: none.
 
 ### Semantic review session 2026-09-27 (second run): 5 reviewed, 2 approved, 3 held — queue clear
 Owner: Claude
