@@ -512,6 +512,19 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Sunday source-brief generation 2026-09-27 (third run): 3 candidates saved, 1 queue case skipped
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending`, awaiting a fresh review session
+Saved on first try: United States ex rel. Coastal Steel Erectors v. Algernon Blair (311461, hash
+cc1ce03ded94, single-opinion packet), Klocek v. Gateway (2503865, hash 0404c3cbd720, majority-only
+packet, briefed on the Gateway arbitration ruling), Seaver v. Ransom (3607257, hash 03e13838fb59,
+majority-only packet; the packet notes dissenters but has no dissent text, so Dissent is empty).
+Skipped, not saved: United States v. Nixon (19845) — packet is still the 2000 Fifth Circuit mail-fraud
+opinion (Jimmy Nixon), the wrong case; it is still first in `candidate-list` and blocks `candidate-list 1`
+until it is fixed or excluded. Took the next entries from `candidate-list 5`. Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (ninth run): 6 reviewed, 2 approved, 4 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
