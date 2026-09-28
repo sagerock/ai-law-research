@@ -512,6 +512,26 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Rejected-brief triage 2026-09-27 (second run): 3 regenerations saved as `pending`
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved (limit 3), awaiting a fresh review session
+Ran `TRIAGE-BRIEFS.md`. All three content hashes matched the rejected candidates, so no passage remaps.
+Each fix touched only what the note named; claims the reviewer called supported were left as-is.
+- **Dobbs v. Jackson Women's Health (6481357)**: majority_reasoning[1] attributed the equal protection theory
+  to amici without citing the introducing passage. Added op-ef15273fb7c1e235. Cut the significance sentence
+  about what the brief omits.
+- **NCNB Texas National Bank v. Johnson (6143)**: majority_reasoning[1] now cites op-7e034db2de16d159 (the
+  evidence list incl. indorsed note); facts[0] adds op-e54b3ca0e5f87fb5 (Anderson a shareholder); holding[1]
+  adds the counterclaim/district-court passages that give "So does this court" an antecedent. Cut the
+  significance "omits..." sentence.
+- **United States v. Newbold (1141)**: rule[0] re-sourced to the UNPUBLISHED header and per curiam passages and
+  trimmed to "not binding precedent"; facts[0] dropped "civil action brought by the United States";
+  holding[0] cites the Fourth Circuit header; "written materials" restored to "materials before the court";
+  significance no longer calls it "routine unpublished".
+These were each case's one triage attempt; a second rejection makes them humans-only.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (eleventh run): 6 reviewed, 3 approved, 3 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
