@@ -512,6 +512,17 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Sunday source-brief generation 2026-09-27 (seventh run): 3 candidates saved
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
+Saved: Van Wagner Advertising Corp. v. S & M Enterprises (2592179, hash 1a6b909aaab2, majority only), Ardente v. Horan
+(1963787, hash bc76f41b1744, majority only), United States v. Norman (32654, hash d10cfec262a0, majority only).
+Note: Norman is an unpublished Fifth Circuit per curiam sentencing disposition (consolidated with Hall and Hamburg), thin as
+a casebook source; the reviewer may reasonably hold it.
+Failures: none. Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (thirteenth run): 6 reviewed, 6 approved, 0 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
