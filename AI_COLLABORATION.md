@@ -512,6 +512,25 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Rejected-brief triage 2026-09-27: 3 regenerations saved as `pending`
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved (limit 3), awaiting a fresh review session
+Ran `TRIAGE-BRIEFS.md`. All three content hashes matched the rejected candidates, so no passage remaps.
+Each fix touched only what the note named; claims the reviewer called supported were left as-is.
+- **Lucky Brand v. Marcel (4753847)**: majority_reasoning[3] named "judgment enforcement, collateral attack,
+  and Beloit v. Morgan" but cited only "these authorities" passages. Re-sourced to op-649469e9ec8a4337,
+  op-287125bb05e3f929, op-6bb71fdb11007251. Also re-sourced facts[2] (early release defense) to
+  op-9a169bcba7f87247/op-555fee421549eb6c, and cut "unanimous" and "left open whether..." from significance.
+- **Benn v. Thomas (1244600)**: majority_reasoning[1] inverted op-0595f74dd860ba73 ("jury could have found no
+  liability"); rewritten as the concession the passage makes. majority_reasoning[3] now cites the
+  defendant's argument (op-abfcff410adedeb6); majority_reasoning[0] cites op-0de0ecde9fae2f7d.
+- **McQuirter v. State (1801433)**: facts[2] said "two officers" for one witness's testimony; rewritten around
+  Strickland (Atmore jail, Brewton repeat), Seals's corroboration, and Bryars's separate statement.
+  facts[1] dropped "neighbor" (not in any passage) and now cites op-a667998abb50295d; facts[3] cites op-9b12c3ae1d3bc291.
+These were each case's one triage attempt; a second rejection makes them humans-only.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (tenth run): 6 reviewed, 2 approved, 4 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
