@@ -512,6 +512,34 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (sixth run): 6 reviewed, 1 approved, 5 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Piesco v. Koch (659320, triage). Held, with every failing
+claim named in each saved note:
+- **The T.J. Hooper (1542549, triage)**: majority_reasoning[2] says other tugmasters "who received
+  the Arlington reports chose to seek shelter at the Breakwater"; the cited passages start at "All
+  this" and never state it. holding[0] gives one reason for both barges (pumps could not keep pace),
+  but a passage cited under facts[1] says No. 17's pumps failed "for quite another reason."
+- **Walden v. Fiore (2654532, triage)**: majority_reasoning[2] says the Court distinguished Calder
+  v. Jones; no cited passage names Calder or draws the distinction. rule[0]'s "relationship among
+  the defendant, the forum, and the litigation" and majority_reasoning[3]'s "while they resided in
+  Nevada" are also uncited.
+- **People v. Rizzo (1349311)**: facts[0] "Michigan State Police trooper" and facts[1] "through the
+  open driver's side window" are in uncited passages only.
+- **Lefkowitz v. Great Minneapolis Surplus Store (1289586)**: majority_reasoning[1] and [0] attribute
+  the "unilateral offer" argument and the authorities to the defendant; the attributing sentences
+  are uncited.
+- **Sherwood v. Walker (3532643)**: four facts claims carry uncited specifics (King's cattle-yard,
+  defendants as breeders, Graham's role, the justice's court).
+T.J. Hooper and Walden are second rejections, so under the two-strike rule they are now
+humans-only. Same standard as the five earlier runs. Every hold except T.J. Hooper's holding[0] is
+a re-sourcing gap, and each note names the uncited passage ID that would cure it. Why this matters
+for the generation runbook: facts sections keep paraphrasing the opinion's opening paragraphs while
+citing only one or two sentences from them, so role and place details ride along unsourced.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (fifth run): 6 reviewed, 2 approved, 4 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
