@@ -512,6 +512,36 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (fourteenth run): 6 reviewed, 4 approved, 2 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published: Sherwood v. Walker (3532643, triage), Hawkins
+v. McGee (3574015, triage), Leonard v. Pepsico (2579076, triage), Ardente v. Horan (1963787). The
+three triage candidates cured exactly what their notes named. Held, with every failing claim named
+in each saved note:
+- **Van Wagner Advertising v. S & M Enterprises (2592179)**: facts[3]'s "After a nonjury trial" is
+  only in uncited op-9eff07c44467dd7a. significance's "aligned with Restatement (Second) of
+  Contracts section 360" is only in uncited op-60d125565f2f3e0c; the cited passages mention only
+  section 364.
+- **United States v. Norman (32654)**: significance calls the opinion unpublished, summary-calendar,
+  and non-precedent; those are only in uncited op-d5192c9774b11615 and the Rule 47.5 footnote
+  (op-dc0a5b9a3f9756fe, op-f2860769dcc8bfee). facts[0]'s "consolidated cases" is only in uncited
+  caption passages op-b22eb7f89949ba58 and op-f17290ebd7709a3e.
+Both holds are first rejections, so each gets its one triage pass, and both are citation-only
+cures. Same standard as the thirteen earlier runs: a specific supported nowhere in the candidate
+holds, one supported only under a different claim is noted. Why Norman was held on support and not
+on thinness: the generation entry flagged it as a weak casebook source, but the runbook allows
+holds for support only, and its ten other claims are supported.
+Judgment calls recorded in the approve notes: Sherwood facts[2] states the shared belief as fact
+while its own passage frames it as defendants' evidence (the court's statement is cited under
+issue[0]); Leonard majority_reasoning[1]'s "rather than performance of a specified act" is a
+contrast drawn from two cited passages; Ardente facts[1]'s "difficult to replace" request is in a
+passage cited under facts[2].
+Ops note: I ran `candidate-opinion` read-only on Van Wagner and Norman to find the uncited passage
+IDs named in the notes. Nothing was generated or saved from it.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (seventh run): 3 candidates saved
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
