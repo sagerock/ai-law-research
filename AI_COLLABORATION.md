@@ -512,6 +512,17 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Sunday source-brief generation 2026-09-27: 3 candidates saved, no failures
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending`, awaiting a fresh review session
+Ran `SUNDAY-SOURCE-BRIEFS.md`, all first-try saves: Mitchill v. Lath (3617659, hash ed4e89de4df2, with
+dissent section), Britton v. Turner (8531446, hash 646e1969c8a0, no dissent), Lenawee County Board of
+Health v. Messerly (1614330, hash 29289f68f81d, single-opinion packet). Applied the review notes' patterns:
+cited both halves of mid-sentence passage splits, kept party first names and roles out unless a passage
+states them, and kept "this brief omits" statements out of significance. Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (seventh run): 6 reviewed, 1 approved, 5 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
