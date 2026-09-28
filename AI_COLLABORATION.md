@@ -512,6 +512,34 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (third run): 6 reviewed, 2 approved, 4 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md` on the three triage regenerations and three new Sunday-batch
+candidates. Approved: State v. Rothlisberger (2621346, triage) and Burdick v. Superior Court
+(2770126). Held, with the failing claims named in each saved note:
+- **McCray v. State Farm (7830390, triage)**: facts[2] states as fact that State Farm mailed the
+  August 30 notice to the McCrays and Regions Bank. Mailing is the question the court sends to the
+  jury; the only cited support is the State Farm supervisor's affidavit statement, and the opinion
+  says State Farm "claimed to have mailed" it. facts[1]'s signed payment plan is uncited.
+- **Secretary of HEW v. Meza (273618, triage)**: majority_reasoning[2] says the hearing examiner
+  "addressed only the 1948 disappearance." The cited passage is the District Court's view, and the
+  opinion then says "However, the hearing examiner did consider the 1954 disappearance."
+- **Benn v. Thomas (1244600)**: majority_reasoning[1] says the jury "could have found no liability"
+  under the instructions as given; the cited passage says the jury "might have found the defendant
+  liable" under them. The claim inverts a concession.
+- **McQuirter v. State (1801433)**: facts[2] says "Two police officers testified" to the statements,
+  but both cited passages are Chief Strickland's testimony alone.
+McCray and Meza are second rejections, so under the two-strike rule they are now humans-only. In
+both, triage fixed exactly the claim the first note named and the second review failed a different
+claim. Why that matters: a first-review note that lists only the worst failure leaves the rest for
+the second strike, so hold notes here list every failing claim found, not just the first.
+Pattern in all four holds: the claim is accurate to the opinion's topic but states an attributed
+or conceded point (a party's assertion, a lower court's view) in the court's own voice, or its
+antecedent sits in an adjacent uncited passage.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (second run): 5 reviewed, 2 approved, 3 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after five candidates (limit was 8)
