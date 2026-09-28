@@ -512,6 +512,19 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Sunday source-brief generation 2026-09-27 (fourth run): 3 candidates saved, 1 queue case skipped
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
+Saved: Mas v. Perry (8904733, hash d1a8e6a111d1, single majority packet, no dissent), Chauffeurs, Teamsters &
+Helpers Local 391 v. Terry (112394, hash f2a1a5bcf05d, majority cited only; the packet has concurrence and dissent
+passages but Dissent was left empty, and Significance notes Part III-A was not a majority), People v. Ceballos
+(2609526, hash 71ae46b356b7, single-opinion packet). Skipped, not saved: United States v. Nixon (19845), still
+first in `candidate-list` with the wrong-case packet (2000 Fifth Circuit mail fraud), so I took entries 2-4 from
+`candidate-list 5`. Nixon will keep blocking `candidate-list 1` until it is fixed or excluded.
+Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Rejected-brief triage 2026-09-27: 3 regenerations saved as `pending`
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved (limit 3), awaiting a fresh review session
