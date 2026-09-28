@@ -512,6 +512,35 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (ninth run): 6 reviewed, 2 approved, 4 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published: Carter v. Hinkle (6925878, triage) and Miller
+v. California (108838). Held, with every failing claim named in each saved note:
+- **Richardson v. Chapman (2195023, triage)**: majority_reasoning[0] and [3] call the benchmark
+  "Professor Linke's present-cash-value estimate"; the cited passages say only "the higher figure
+  presented in the testimony." The July note had already flagged "present-cash-value" as unsourced.
+  majority_reasoning[1]'s "facial scarring" is uncited, and "no prospect of recovery" is in no
+  majority passage at all.
+- **Wagner v. International Railway (3607799, triage)**: majority_reasoning[2] says the hat was
+  "found on a beam"; the cited passage says only "the finding of the hat." One-claim hold.
+- **Connecticut v. Doehr (112615)**: majority_reasoning[1] cites "this confusion" and "the issue"
+  without the passages that say they mean probable cause and the alleged assault. One-claim hold.
+- **Howard v. Federal Crop Insurance (338519)**: majority_reasoning[2] and significance name the
+  Restatement, which no cited passage mentions; majority_reasoning[1]'s "on which FCIC relied" is
+  unsourced.
+Richardson and Wagner are second rejections, so under the two-strike rule they are now
+humans-only. Same standard as the eight earlier runs. Every hold except Richardson's "no prospect
+of recovery" is a citation-only cure, and each note names the passage ID. Why Wagner is worth a
+human look first: triage cured the claim the July note named, and the second strike is a detail
+the July review passed, so one added citation (op-3fc1f78d1e21ed65) publishes it.
+Two judgment calls are recorded in the approve notes: Carter majority_reasoning[2] cites the trial
+court's quoted sentence on legislative inaction, and Miller dissent[0]'s "three-pronged" and
+"as vague as its predecessors" lean on passages cited under dissent[2].
+Ops note: one `review-save` hit an asyncpg connect timeout; nothing was written and the retry saved.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (second run): 3 candidates saved, 2 queue cases skipped
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending`, awaiting a fresh review session
