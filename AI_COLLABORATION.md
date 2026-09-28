@@ -512,6 +512,20 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Sunday source-brief generation 2026-09-27 (fifth run): 3 candidates saved, 2 queue cases skipped
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
+Saved: Pierson v. Post (5618666, hash b2e710d4c4c9; the packet tags Livingston J.'s dissent as `majority`, so Dissent
+was left empty and Significance mentions it without IDs), Brown & Root, Inc. v. NLRB (31513, hash f9221fcac78e,
+majority plus dissent cited), Walker v. Harrison (2409469, hash 58c94e58b3dd, single-opinion packet).
+Skipped, not saved: United States v. Nixon (19845), wrong-case packet (5th Cir. 2000 Jimmy Nixon fraud appeal); I added
+it to `citator/data/briefs_skiplist.txt` as a manual skip so it stops blocking `candidate-list 1` (same convention as the
+Zellmer entry). Also skipped: the DOJ "Legal Guidance ... Adarand" memo (4342450), which `candidate-opinion` refused
+("separate opinions but no explicit majority boundary") and which then dropped out of the queue.
+Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry), citator/data/briefs_skiplist.txt. Scratch under /tmp only.
+Deployment: none.
+
 ### Rejected-brief triage 2026-09-27 (second run): 3 regenerations saved as `pending`
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved (limit 3), awaiting a fresh review session

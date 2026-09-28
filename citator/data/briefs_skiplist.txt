@@ -44,3 +44,4 @@
 5901760	0 chars, auto-skipped (candidate) 2026-07-26
 4913804	not Zellmer v. Zellmer - stored opinion text is a 1920 WA liquor-forfeiture case (State v. Baisch), famous-name mismatch, CL data flaw, manual skip 2026-08-09
 7405473	0 chars, auto-skipped (candidate) 2026-08-09
+19845	not United States v. Nixon (1974) - stored opinion text is 5th Cir. 2000 unpublished per curiam US v. Jimmy Nixon (fraud/money laundering), famous-name mismatch, manual skip 2026-09-27
