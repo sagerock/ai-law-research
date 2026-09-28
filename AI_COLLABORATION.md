@@ -512,6 +512,34 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (eleventh run): 6 reviewed, 3 approved, 3 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published, all three triage regenerations: Lucky Brand v.
+Marcel (4753847), Benn v. Thomas (1244600), McQuirter v. State (1801433). Each cured exactly what
+its rejection note named. Held, with every failing claim named in each saved note:
+- **Mas v. Perry (8904733)**: significance says the court "also observed, beyond its holding," that
+  hearing one spouse's claim with the other's is sensible. No sourced section establishes it; the
+  observation is only in uncited op-c28a8bb6b0853a9e and op-9d569474f1a8a217. Significance-only hold.
+- **Chauffeurs Local 391 v. Terry (112394)**: majority_reasoning[0], [1], [2] state Part III-A
+  reasoning as the Court's ("The Court found the trust analogy far more persuasive"). Every passage
+  they cite is in III-A, which the cited opening passage says is not the opinion of the Court.
+- **People v. Ceballos (2609526)**: issue[0], majority_reasoning[0], [1], [2] carry specifics found
+  only in uncited passages (the "had he been present" contention, what the exception is, "even if
+  the exception applied," and subdivision 4's text).
+All three holds are first rejections, so each gets its one triage pass. Same standard as the ten
+earlier runs. Mas and Ceballos are citation-only cures and the notes name the passage IDs. Why
+Terry differs: its cure is wording, since the passages support what was said but not who said it.
+Significance already discloses that III-A lacked a majority, which is why this was a judgment call;
+I held because the claims sit under majority reasoning and name the Court.
+Parser note: Terry's Part III-A passages (ordinals 43-85) are labeled `majority`, so validation
+cannot catch plurality reasoning cited as the Court's.
+Judgment calls recorded in the approve notes: Lucky Brand's "second round"/"third round" labels are
+an ordering inference from cited passages; Benn facts[2] cites "this request" passages and relies
+on the issue passage to identify the request.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (fourth run): 3 candidates saved, 1 queue case skipped
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
