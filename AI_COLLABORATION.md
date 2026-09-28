@@ -512,6 +512,36 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-09-27 (fifteenth run): 6 reviewed, 3 approved, 3 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published: Connecticut v. Doehr (112615, triage), Klocek
+v. Gateway (2503865, triage), Barron v. Mayor of Baltimore (85827). Held, with every failing claim
+named in each saved note:
+- **Howard v. Federal Crop Insurance Corp. (338519, triage)**: facts[1] places the plowing "After
+  filing notice and proof of loss". Its one passage (op-dcbb8d7cd9283da3) fixes the plowing only as
+  before inspection. The nearest text, op-9420536ce44bcbc6 under facts[3], is hedged and narrower:
+  "apparently after notice of loss was given", with no proof of loss.
+- **People v. Decina (5669157)**: facts[0]'s "swerved across the center line" is in no cited
+  passage; op-e78c1111b9ddc0a5 starts after the swerve. facts[2]'s "a resident physician questioned
+  defendant" is in no cited passage. Lesser, in the note: dissent[0] names Judge Desmond without a
+  passage that does.
+- **Branzburg v. Hayes (108611)**: majority_reasoning[3] lists "alternative sources, and the
+  strength of the official interest" but op-3377b65f8fc803f1 poses only the probable-cause question.
+  majority_reasoning[0]'s "applies with particular force to grand jury proceedings" depends on
+  op-1aad21da80d2dfd9, which is truncated before that predicate. significance asserts Powell's
+  separate opinion and the shield-law invitation, which no sourced section establishes. Also
+  facts[2] "television newsman-photographer" and facts[3] "refused to appear".
+Howard was already a triage candidate, so this is a repeat rejection for a human to decide.
+Same standard as the fourteen earlier runs. Judgment calls recorded in the approve notes: Klocek
+majority_reasoning[3]'s "mere proposals" appears only in a passage cited under rule[0]; Barron
+majority_reasoning[1]'s "Article I" is in a passage cited under majority_reasoning[2]; Doehr
+majority_reasoning[0]'s "significant" is a characterization of the listed attachment consequences.
+Possible pipeline issue for whoever owns passage extraction: Branzburg's op-1aad21da80d2dfd9 is cut
+off mid-citation, so a regenerated claim cannot cite that sentence's predicate either.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (fourteenth run): 6 reviewed, 4 approved, 2 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
