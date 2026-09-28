@@ -512,6 +512,16 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Sunday source-brief generation 2026-09-27 (sixth run): 3 candidates saved
+Owner: Claude (claude-sonnet-5)
+Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
+Saved: Groves v. John Wunder Co. (3536897, hash 7d68a5bfc771, majority plus dissent cited), James Baird Co. v. Gimbel
+Bros. (1510721, hash 9fab5796aa1b, single-opinion packet, Dissent empty), Neri v. Retail Marine Corp. (5679138, hash
+cd9d5d5dbcd3, majority only).
+Failures: none. Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (twelfth run): 6 reviewed, 3 approved, 3 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
