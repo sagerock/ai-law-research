@@ -512,6 +512,25 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (eighteenth run): 6 reviewed, 2 approved, 4 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Gruen v. Gruen (5688364, triage), Jacque v. Steenberg Homes
+(1877286, triage). Held, with each failing claim and its passage IDs named in the saved note:
+- **United States v. Jones (538, triage)**: facts[2] says the earlier recantation motion "was denied";
+  op-474e1e918b1b02a0 says only that it was filed. Narrow hold.
+- **People v. Beeman (1247976)**: facts[1] adds Gray/Burk "pled guilty" and "his relative's home" (not in
+  passages); facts[2] says Beeman "took the jewelry," but op-3143fa2d59166f76 says he offered to sell it.
+- **United States v. Jewell (334191)**: dissent[0] names "Judge Kennedy, for four judges" and "would
+  reverse," which no cited passage says; holding[0] says the instruction "was proper," which neither
+  cited passage says.
+- **Commonwealth v. Welansky (6571142)**: facts[2] "hospital since November 16" is not in the cited
+  fragment; facts[0] "Boston" is unsourced.
+`candidate-opinion` was not run, so no cures were searched for. All four holds look curable by a
+citation or a short trim.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (seventeenth run): 6 reviewed, 1 approved, 5 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
