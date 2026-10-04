@@ -634,6 +634,19 @@ Failures: none in saves. Nothing reviewed by this session.
 Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
 Deployment: none.
 
+### Sunday source-brief generation 2026-10-04 (ninth run): 3 candidates saved, 1 queue case refused
+Owner: Claude (claude-sonnet-5-5)
+Status: completed; 3/3 saved as `pending`, awaiting a fresh review session
+Saved: Nanakuli Paving & Rock Co. v. Shell Oil Co. (8924868, hash 43798c6ddb7f, partial packet; briefed from the
+opinion's summary section only), Stambovsky v. Ackley (6068674, hash 8222de8224ae, majority + dissent), Crabtree v.
+Elizabeth Arden Sales Corp. (5637024, hash ef1c9efc9a59, single opinion).
+Refused: United States v. Strouse (27196): `candidate-opinion` refused ("separate opinions but no explicit majority
+boundary"). Not saved; it dropped out of `candidate-list` on the next call, so check whether it needs a boundary fix.
+Failures: Stambovsky's first `candidate-save` hit a transient prod DB connect TimeoutError; the unchanged retry saved.
+Nothing reviewed by this session.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Sunday source-brief generation 2026-09-27 (seventh run): 3 candidates saved
 Owner: Claude (claude-sonnet-5)
 Status: completed; 3/3 saved as `pending` on first try, awaiting a fresh review session
