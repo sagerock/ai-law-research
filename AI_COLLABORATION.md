@@ -512,6 +512,32 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (sixteenth run): 6 reviewed, 3 approved, 3 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved and published: Walker v. Harrison (2409469, triage), Van
+Wagner Advertising v. S & M Enterprises (2592179, triage), United States v. Norman (32654, triage).
+Van Wagner and Norman were both held in an earlier run; their triage regenerations now pass. Held,
+with every failing claim and the passage IDs that would fix it named in each saved note:
+- **Gruen v. Gruen (5688364)**: facts[1] "substitute gift letter that omitted the reservation"
+  (op-2b074900f6e661a8 quotes only its opening line); facts[3] "for a declaration"; majority_reasoning[1]
+  gives the Young v Young statement's content, but op-e6a0f8ec29537a0f says only "The statement was
+  dictum"; majority_reasoning[3] "nature of the property and circumstances" is not in op-09aaa26b0d18c27a.
+- **Jacque v. Steenberg Homes (1877286)**: rule[0] states what the Barnard rule is, but both
+  passages only name it; facts[1] "on the morning of delivery"; majority_reasoning[3] "brazen,
+  deceitful" (op-4c454b7db35e32ed says only that reprehensibility supports a substantial award).
+- **Javins v. First National Realty (8896568)**: majority_reasoning[1] says what the consumer
+  protection cases hold, but op-8f24521e8aa6e05a only names them; majority_reasoning[0] "no-repair
+  rule" and "agrarian", while op-6b0a03a190420088 says only "the old rule".
+All three holds are first rejections, so each gets its one triage pass, and all are citation-only
+cures. Same standard as the fifteen earlier runs. Judgment calls recorded in the approve notes:
+Van Wagner issue[0]'s damages/hardship framing and Norman issue[0]'s safety-valve ineligibility are
+each supported only under another claim; Walker majority_reasoning[2] joins the court's two grounds
+for the October 15 signing date with "since" where the opinion says "Moreover".
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only. `candidate-opinion` was run
+on Gruen, Jacque, and Javins to find uncited cures (it re-persists the same passage set).
+Deployment: none.
+
 ### Semantic review session 2026-09-27 (fifteenth run): 6 reviewed, 3 approved, 3 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
