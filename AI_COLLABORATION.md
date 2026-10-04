@@ -512,6 +512,29 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (seventeenth run): 6 reviewed, 1 approved, 5 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: People v. Decina (5669157, triage). Held, with each
+failing claim and its passage IDs named in the saved note:
+- **Branzburg v. Hayes (108611, triage)**: significance-only. "Its narrow majority left the question
+  open" asserts the vote margin and "left open" content that no sourced section supports, and it is
+  in tension with holding[0]. Powell's concurrence is not sourced.
+- **McDougald v. Garber (5689474, triage)**: majority_reasoning[2] says the paradox "reflects a desire
+  to punish." op-f1789875b7d7c996 attributes that desire to "the temptation," and no cited passage
+  says what the temptation is.
+- **Prah v. Maretti (1585688)**: majority_reasoning[0] lists the three policies, but the passages say
+  only "three policy considerations." op-90934316a8596c14 is the opinion's caption line.
+- **Ploof v. Putnam (6705877)**: facts[3] puts "as though he had done it himself" into the trial
+  instruction. That language is the Supreme Court's own holding (op-fda666cb5393bb16).
+- **Moore v. Regents (2608931)**: majority_reasoning[2] says the statute "governs disposal of excised
+  tissue," but op-a6e0dccc6c60a3b3 doesn't identify the statute. A narrow hold.
+`candidate-opinion` was not run, so no cures were searched for. Every hold except Branzburg looks
+curable by a citation or a short trim. The 1/6 approval rate is low compared with recent runs; the
+standard is the same as the earlier sixteen runs (Moore is the strictest call).
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (sixteenth run): 6 reviewed, 3 approved, 3 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
