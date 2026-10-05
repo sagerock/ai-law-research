@@ -512,6 +512,30 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (twenty-first run): 6 reviewed, 1 approved, 5 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Crabtree v. Elizabeth Arden (5637024, triage). Held, with each
+failing claim and its passage IDs named in the saved note:
+- **Stambovsky v. Ackley (6068674, triage)**: majority_reasoning[1] says "inspection and title search";
+  op-060ff9e2575a848f says only "the search."
+- **People v. Beeman (1247976, triage)**: dissent[0] names Justice Richardson, whom no cited passage
+  names; facts[2] says he "told the others," but op-04cf59fa01228e4b puts the statements to Burk alone.
+- **Oppenheimer v. Oppenheim, Appel, Dixon (2003766)**: majority_reasoning[2] names Maxton and Jungmann;
+  no cited passage names either case.
+- **Ortelere v. Teachers' Retirement Board (5677295)**: rule[1] drops op-30bf75989acb3f80's
+  no-knowledge/fair-terms condition on termination of avoidance; dissent[0] "Judge Jasen" and "letter ...
+  to the retirement board," facts[0] "member of the Teachers' Retirement System," and majority_reasoning[3]
+  "because the trial court applied the traditional rules" are unsourced.
+- **Atlantic Marine v. W.D. Tex. (2644673)**: majority_reasoning[0] "Section 1391 alone governs" where
+  the passages say "generally governed by" § 1391 and "the federal venue provisions" alone; facts[3]
+  "denied mandamus" where op-0c7b996b7e317e81 says only "denied ... petition."
+Stambovsky and Beeman are already triage outputs, so these are second rejections. All five holds look
+curable by citation or short trims. Same standard as earlier runs: issue[0]/holding premises supported
+only under another claim were recorded as judgment calls in the notes, not failures.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (twentieth run): 6 reviewed, 4 approved, 2 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
