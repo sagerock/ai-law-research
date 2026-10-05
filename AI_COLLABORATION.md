@@ -512,6 +512,21 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (twenty-fourth run): 5 reviewed, 3 approved, 2 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after five candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Kendall v. Ernest Pestana (1282333, triage), Nahrstedt v. Lakeside
+Village (1188976, triage), and Pearson v. Dodd (284726). Held, with each failing claim and its passage IDs
+named in the saved note:
+- **United States v. Rusk (10319, triage)**: rule[1] states "a collateral consequence of a sanction is not
+  part of the sanction itself" as a rule. The only passage says Rusk "cites no authority" for the converse.
+- **Murphy v. Steeplechase (3595079)**: holding[0] says the defendant "was not liable", but the disposition
+  is reversal with a new trial. majority_reasoning[3] "defective padding" and "earlier accidents" are
+  unsourced. facts[3] puts the railing allegation in the complaint; the passage says bill of particulars.
+All holds look curable by trims or corrected wording. Rusk is a triage output, so this is a second rejection.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (twenty-third run): 6 reviewed, 2 approved, 4 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
