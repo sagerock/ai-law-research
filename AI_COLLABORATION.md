@@ -512,6 +512,21 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (twentieth run): 6 reviewed, 4 approved, 2 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Prah v. Maretti (1585688, triage), Ploof v. Putnam (6705877,
+triage; the 1910 respondeat-superior appeal, which the significance section identifies correctly), Moore v.
+Regents (2608931, triage), Cotnam v. Wisdom (6668608). Held, with each failing claim and its passage IDs
+named in the saved note:
+- **American Standard v. Schectman (5985441)**: majority_reasoning[1] says "Peevyhouse did not apply," but
+  no cited passage names Peevyhouse (op-5568a4ba381d6a69 is truncated at "(cf.").
+- **Transatlantic Financing v. United States (272453)**: facts[2] calls Potosky "a Government employee";
+  op-48805e5150f6f92f says only "Potosky advised Beckmann." This is a narrow hold.
+Both holds look curable by a short trim.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (nineteenth run): 4 reviewed, 2 approved, 2 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after four candidates (limit was 8)
