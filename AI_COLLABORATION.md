@@ -512,6 +512,32 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (twenty-second run): 6 reviewed, 1 approved, 5 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Transatlantic Financing v. United States (272453, triage). Held,
+with each failing claim and its passage IDs named in the saved note:
+- **American Standard v. Schectman (5985441, triage)**: rule[1] "only where" turns op-b3f10849809a041d's
+  descriptive "courts have measured" into an exclusive test, which the opinion's incidental-covenant
+  category cuts against. majority_reasoning[1] drops op-2f42ee33c80bd090's "completion would be
+  disproportionately costly" condition.
+- **Oppenheimer v. Oppenheim, Appel, Dixon (2003766, triage)**: the last run's Maxton/Jungmann gap is
+  now cited. New hold: holding[0]'s "because ... express condition precedent ... not literally
+  satisfied" sits on bare-conclusion passages, and op-39ae42716ab43083 also grounds the result in the
+  absence of forfeiture. This is stricter than the earlier runs' judgment-call convention for holding
+  premises. Also flagged: facts[0] "defendant's tenant work" is unattributed in the source.
+- **Kendall v. Ernest Pestana (1282333)**: majority_reasoning[2] "approval clause is not clearly an
+  unambiguous grant of absolute discretion" is unsourced. significance asserts that the court left
+  residential leases and negotiated absolute-discretion clauses open.
+- **Nahrstedt v. Lakeside Village (1188976)**: facts[2] "not a nuisance"; op-40adf81ec42df5f2 says
+  "not allowed free run of the project's common areas."
+- **Neponsit v. Emigrant Industrial Savings Bank (3614216)**: facts[0] "developed a residential tract"
+  and facts[3] "motion for judgment on the pleadings" are not in the cited passages.
+All five holds look curable by trims or added citations. American Standard and Oppenheimer are triage
+outputs, so these are second rejections.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (twenty-first run): 6 reviewed, 1 approved, 5 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
