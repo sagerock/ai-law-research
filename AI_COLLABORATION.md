@@ -512,6 +512,21 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (nineteenth run): 4 reviewed, 2 approved, 2 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after four candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Freund v. Washington Square Press (2584616), Sun Printing v.
+Remington Paper (3645684). Held, with each failing claim and its passage IDs named in the saved note:
+- **Javins v. First National Realty (8896568, triage)**: issue[0] adds "may be raised as a defense to an
+  eviction action," but op-032fa6142b2dff8e frames only the effect on the rent obligation;
+  majority_reasoning[3] says the code duties "cannot be waived," while op-1c9187c02858b850 limits that to
+  duties the Regulations specifically place on the lessor.
+- **Helling v. Carey (1180369)**: facts[1] "consulted ... repeatedly over several years" is in neither cited
+  passage; secondary: majority_reasoning[2] names Holmes, but the passage shows only the Behymer cite.
+Both holds look curable by a short trim.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (eighteenth run): 6 reviewed, 2 approved, 4 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
