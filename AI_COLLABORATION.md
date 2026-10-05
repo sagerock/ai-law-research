@@ -512,6 +512,27 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Semantic review session 2026-10-04 (twenty-third run): 6 reviewed, 2 approved, 4 held — queue clear
+Owner: Claude
+Status: completed; review queue empty after six candidates (limit was 8)
+Ran `SOURCE-BRIEF-REVIEW.md`. Approved: Atlantic Marine v. U.S. Dist. Ct. (2644673, triage) and Sommer v.
+Kridel (2358055). Held, with each failing claim and its passage IDs named in the saved note:
+- **Ortelere v. Teachers' Retirement Board (5677295, triage)**: majority_reasoning[3] "while under
+  psychiatric care" is not in its cited passages. Secondary: holding[0] rests on the court quoting draft
+  Restatement § 18C and does not cite the court's own notice statement (op-81d9df60523ea213).
+- **Clark v. Arizona (145624, triage)**: majority_reasoning[0] labels the dropped test "M'Naghten", but
+  the passage doesn't name it. Secondary: holding[0]'s test description relies on issue[0]'s passage.
+- **Kingston v. Chicago & N.W. Ry. (8230867)**: majority_reasoning[0] "Wisconsin" Cook decision is
+  unsourced. Significance also appears to misstate Anderson v. Minneapolis, St. P. & S.S.M. Ry. as the
+  opposite-result case; Cook was the no-liability case. Regeneration should fix this.
+- **Snyder v. Phelps (205789)**: dissent[1] narrows "sufficiency of the evidence" to "severity or
+  outrageousness elements"; facts[3] "reversed" where the passage says "agreed". Unsourced details:
+  "Marine Lance Corporal", "Snyder's father", and "public land" in majority_reasoning[2].
+All four holds look curable by trims or added citations, except Kingston's significance error, which needs
+a content correction. Ortelere and Clark are triage outputs, so these are second rejections.
+Files touched: AI_COLLABORATION.md (this entry). Scratch under /tmp only.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (twenty-second run): 6 reviewed, 1 approved, 5 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after six candidates (limit was 8)
