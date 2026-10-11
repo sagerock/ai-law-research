@@ -512,6 +512,25 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Topic tags pilot: Con Law collection 15 (2026-10-11)
+Owner: Claude
+Status: draft tags awaiting Sage's review; nothing imported, no schema yet
+Sage asked whether cases could carry topic tags, eventually across all cases. Decision so far: tags come
+only from a fixed per-subject taxonomy (`data/topics/con_law.json`, 13 topics matching casebook 1499's
+`classify_conlaw_topics.py` headings, 81 doctrines with stable slugs), never free-form, because
+free-form AI tags sprawl into near-duplicates. Each case gets one primary doctrine plus up to three
+secondary. `scripts/tag_collection_topics.py` reads the public collection, course notes, and cached
+briefs from the production API, tags with Opus 5.5 under a JSON schema enum, and writes
+`data/topics/review/collection-15.{json,md}`. The JSON is read-only: it never touches the database.
+The first pass exposed taxonomy gaps (associational standing, Thirteenth Amendment, abstention), which
+were added before the second pass. Result: 98 cases, 84 high / 9 medium / 5 low confidence. The
+low-confidence cases are the ones without briefs. Known data issue: McCulloch appears twice in
+collection 15 (`1320585` and duplicate `85272`).
+Next: Sage corrects the review file; then decide storage (likely a `case_topics` table keyed by case
++ doctrine slug with source/reviewed flags) and the UI (group/filter on `/shared/[id]`, topic pages).
+Files: `data/topics/con_law.json`, `data/topics/review/collection-15.*`, `scripts/tag_collection_topics.py`.
+Deployment: none.
+
 ### Semantic review session 2026-10-04 (twenty-fourth run): 5 reviewed, 3 approved, 2 held — queue clear
 Owner: Claude
 Status: completed; review queue empty after five candidates (limit was 8)

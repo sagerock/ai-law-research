@@ -1,0 +1,1412 @@
+{
+  "collection_id": "15",
+  "collection_name": "Con Law",
+  "taxonomy": "data/topics/con_law.json",
+  "model": "claude-opus-5-5",
+  "status": "unreviewed",
+  "cases": [
+    {
+      "case_id": "88442",
+      "title": "United States v. Klein",
+      "year": "1872",
+      "position": 0,
+      "has_brief": true,
+      "primary": "separation-of-powers-judicial-independence",
+      "secondary": [
+        "congressional-control-of-jurisdiction",
+        "pardon-power"
+      ],
+      "rationale": "The Court held the 1870 proviso unconstitutional because it prescribed a rule of decision in pending cases, crossing from legislative into judicial power, even though framed as a withdrawal of jurisdiction, and also because it impaired the effect of the President's pardon.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "3195998",
+      "title": "Bank Markazi v. Peterson",
+      "year": "2016",
+      "position": 1,
+      "has_brief": true,
+      "primary": "separation-of-powers-judicial-independence",
+      "secondary": [
+        "treaty-and-foreign-affairs-power"
+      ],
+      "rationale": "The Court held that \u00a7 8772, though it named a pending case by docket number, did not usurp the judicial power under Klein because it supplied new substantive standards for the District Court to apply rather than directing a result under old law.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "112716",
+      "title": "Robertson v. Seattle Audubon Society",
+      "year": "1992",
+      "position": 2,
+      "has_brief": true,
+      "primary": "separation-of-powers-judicial-independence",
+      "secondary": [],
+      "rationale": "The Court held that subsection (b)(6)(A) of the Northwest Timber Compromise validly amended the applicable environmental law rather than directing results in the pending spotted-owl cases, so it did not violate the Klein rule against legislative interference with judicial decisions.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "117916",
+      "title": "Plaut v. Spendthrift Farm, Inc.",
+      "year": "1995",
+      "position": 3,
+      "has_brief": true,
+      "primary": "separation-of-powers-judicial-independence",
+      "secondary": [
+        "advisory-opinions"
+      ],
+      "rationale": "The Court held \u00a7 27A(b) unconstitutional because Article III's separation of legislative and judicial power bars Congress from retroactively requiring federal courts to reopen final judgments; the course note also uses the case as a type of forbidden advisory opinion.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "110335",
+      "title": "United States v. Sioux Nation of Indians",
+      "year": "1980",
+      "position": 4,
+      "has_brief": true,
+      "primary": "separation-of-powers-judicial-independence",
+      "secondary": [
+        "takings",
+        "political-question"
+      ],
+      "rationale": "The course note assigns the case as a contrast with Plaut on legislative interference with judgments, and the Court held that Congress's mere waiver of the res judicata effect of a prior judgment favoring the United States does not violate separation of powers, distinguishing Klein; it also held that the 1877 Act effected a Fifth Amendment taking requiring just compensation.",
+      "confidence": "medium",
+      "gap": "Federal Indian law / congressional plenary power over tribal property"
+    },
+    {
+      "case_id": "111258",
+      "title": "Allen v. Wright",
+      "year": "1984",
+      "position": 5,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "standing-injury-in-fact",
+        "standing-generalized-grievances"
+      ],
+      "rationale": "The Court held the parents lacked standing because the stigma and 'right to lawful government conduct' theories were not judicially cognizable injuries, and the cognizable injury (diminished integrated education) was not fairly traceable to the IRS's tax exemptions given the speculative chain of independent third-party decisions.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "145749",
+      "title": "Massachusetts v. Environmental Protection Agency",
+      "year": "2007",
+      "position": 6,
+      "has_brief": true,
+      "primary": "standing-states-and-government",
+      "secondary": [
+        "standing-injury-in-fact",
+        "standing-causation-redressability",
+        "standing-statutory-and-congressional-power"
+      ],
+      "rationale": "The Court held that Massachusetts, as a sovereign entitled to 'special solicitude' and holding a procedural right under the Clean Air Act, satisfied injury (loss of coastal land), causation (U.S. vehicle emissions' meaningful contribution), and redressability (incremental reduction suffices).",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "110916",
+      "title": "City of Los Angeles v. Lyons",
+      "year": "1983",
+      "position": 7,
+      "has_brief": true,
+      "primary": "standing-injury-in-fact",
+      "secondary": [
+        "remedies-and-scope-of-relief",
+        "mootness"
+      ],
+      "rationale": "The Court held Lyons lacked standing to seek an injunction because his past chokehold did not show a real and immediate threat of future injury, though he could pursue damages; it also held equitable relief unavailable absent irreparable injury and rejected the capable-of-repetition-yet-evading-review exception.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "112747",
+      "title": "Lujan v. Defenders of Wildlife",
+      "year": "1992",
+      "position": 8,
+      "has_brief": true,
+      "primary": "standing-injury-in-fact",
+      "secondary": [
+        "standing-causation-redressability",
+        "standing-statutory-and-congressional-power",
+        "standing-generalized-grievances"
+      ],
+      "rationale": "The Court held the members' vague 'some day' plans to revisit foreign habitats were not an actual or imminent injury, doubted redressability because non-party agencies funded the projects, and rejected the idea that the ESA citizen-suit provision could convert a generalized grievance into an Article III injury.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "821306",
+      "title": "Clapper v. Amnesty International USA",
+      "year": "2013",
+      "position": 9,
+      "has_brief": true,
+      "primary": "standing-injury-in-fact",
+      "secondary": [
+        "standing-causation-redressability"
+      ],
+      "rationale": "The Court held respondents lacked standing because their feared interception under \u00a7 1881a was too speculative to be 'certainly impending,' that they could not manufacture standing through self-inflicted countermeasure costs, and alternatively that any interception was not fairly traceable to \u00a7 1881a given the Government's other surveillance methods.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "84759",
+      "title": "Marbury v. Madison",
+      "year": "1803",
+      "position": 10,
+      "has_brief": true,
+      "primary": "judicial-review",
+      "secondary": [
+        "congressional-control-of-jurisdiction",
+        "remedies-and-scope-of-relief",
+        "appointments-and-removal"
+      ],
+      "rationale": "The Court held that Section 13 of the Judiciary Act, by adding to the Supreme Court's original jurisdiction beyond Article III, was void, and grounded the courts' power to refuse enforcement of unconstitutional statutes in the written Constitution, the judicial oath, and the Supremacy Clause.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "10618550",
+      "title": "Trump v. CASA, Inc.",
+      "year": "2025",
+      "position": 11,
+      "has_brief": true,
+      "primary": "remedies-and-scope-of-relief",
+      "secondary": [
+        "congressional-control-of-jurisdiction",
+        "standing-states-and-government"
+      ],
+      "rationale": "The Court held that universal injunctions likely exceed the equitable authority Congress granted federal courts in the Judiciary Act of 1789, limiting relief to what is necessary to give complete relief to each plaintiff with standing, without reaching the merits of the birthright-citizenship order.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "88034",
+      "title": "Ex Parte McCardle",
+      "year": "1869",
+      "position": 12,
+      "has_brief": true,
+      "primary": "congressional-control-of-jurisdiction",
+      "secondary": [
+        "separation-of-powers-judicial-independence"
+      ],
+      "rationale": "The Court dismissed McCardle's pending habeas appeal because the 1868 act repealing its appellate jurisdiction was a valid exception under Article III's Exceptions and Regulations Clause, and it declined to inquire into Congress's motives.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "107731",
+      "title": "Flast v. Cohen",
+      "year": "1968",
+      "position": 13,
+      "has_brief": true,
+      "primary": "standing-taxpayer",
+      "secondary": [
+        "standing-generalized-grievances",
+        "establishment-clause"
+      ],
+      "rationale": "The Court held that federal taxpayers have Article III standing under a two-part nexus test (a challenge to an exercise of the taxing and spending power, plus a claim that it violates a specific limitation on that power such as the Establishment Clause), carving an exception to Frothingham.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "3203762",
+      "title": "Spokeo, Inc. v. Robins",
+      "year": "2016",
+      "position": 14,
+      "has_brief": true,
+      "primary": "standing-injury-in-fact",
+      "secondary": [
+        "standing-statutory-and-congressional-power"
+      ],
+      "rationale": "The Court vacated because the Ninth Circuit analyzed only particularization and not the independent concreteness requirement of injury in fact, holding that a bare statutory (FCRA) violation divorced from concrete harm does not satisfy Article III even though Congress may elevate intangible harms.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "4861817",
+      "title": "Uzuegbunam v. Preczewski",
+      "year": "2021",
+      "position": 15,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "mootness",
+        "remedies-and-scope-of-relief"
+      ],
+      "rationale": "The Court held that a request for nominal damages satisfies Article III redressability for a completed violation of a legal right, which kept the claim live after the injunctive claim became moot; this follows the holding rather than the module's 'generalized grievances and taxpayer standing' heading, a doctrine the opinion does not address.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "4894912",
+      "title": "TransUnion LLC v. Ramirez",
+      "year": "2021",
+      "position": 16,
+      "has_brief": false,
+      "primary": "standing-statutory-and-congressional-power",
+      "secondary": [
+        "standing-injury-in-fact",
+        "standing-generalized-grievances",
+        "standing-taxpayer"
+      ],
+      "rationale": "Per the course note, the Court held that only class members whose misleading credit reports were disclosed to third parties suffered a concrete harm analogous to defamation, so Congress's creation of a statutory cause of action under the FCRA could not by itself confer standing on the rest of the class.",
+      "confidence": "low",
+      "gap": ""
+    },
+    {
+      "case_id": "145704",
+      "title": "Hein v. Freedom From Religion Foundation, Inc.",
+      "year": "2007",
+      "position": 17,
+      "has_brief": true,
+      "primary": "standing-taxpayer",
+      "secondary": [
+        "standing-generalized-grievances",
+        "establishment-clause"
+      ],
+      "rationale": "The plurality held that federal taxpayers lack standing under the Flast v. Cohen exception to challenge, on Establishment Clause grounds, discretionary Executive Branch spending from general appropriations, because that spending was not expressly authorized or mandated by Congress and so lacks the required logical nexus to congressional taxing and spending power.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "214467",
+      "title": "Arizona Christian School Tuition Organization v. Winn",
+      "year": "2011",
+      "position": 18,
+      "has_brief": false,
+      "primary": "standing-taxpayer",
+      "secondary": [
+        "standing-generalized-grievances",
+        "establishment-clause"
+      ],
+      "rationale": "Per the course note, the Court held that Arizona's tuition tax credits are not government expenditures for purposes of the Flast v. Cohen exception, so the taxpayers challenging them under the Establishment Clause lacked standing.",
+      "confidence": "low",
+      "gap": ""
+    },
+    {
+      "case_id": "109301",
+      "title": "Warth v. Seldin",
+      "year": "1975",
+      "position": 19,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "standing-third-party",
+        "standing-associational",
+        "standing-taxpayer"
+      ],
+      "rationale": "The Court held the low-income plaintiffs lacked standing because their inability to obtain Penfield housing stemmed from housing-market economics and developers' independent choices, so there was no substantial probability that striking the zoning would redress their injury; it also rejected the taxpayers' and associations' claims on third-party-rights and associational grounds.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109923",
+      "title": "Duke Power Co. v. Carolina Environmental Study Group, Inc.",
+      "year": "1978",
+      "position": 20,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "standing-injury-in-fact",
+        "economic-substantive-due-process",
+        "ripeness"
+      ],
+      "rationale": "The Court found standing because the District Court's finding that the McGuire and Catawba plants likely would not be built or operated without the Price-Anderson liability cap supplied the causal link to appellees' environmental injuries (thermal pollution and radiation), and it then upheld the cap as rational economic regulation under the Fifth Amendment's due process and equal protection components.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "8991786",
+      "title": "Linda R. S. v. Richard D.",
+      "year": "1973",
+      "position": 21,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "standing-injury-in-fact"
+      ],
+      "rationale": "The Court held the mother lacked standing because prosecuting the father under Article 602 would likely result only in his jailing, making any resulting support payments speculative, so there was no direct nexus between her injury and the nonenforcement she challenged.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "10776830",
+      "title": "Diamond Alternative Energy, LLC v. Environmental Protection Agency",
+      "year": "2025",
+      "position": 22,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "standing-injury-in-fact"
+      ],
+      "rationale": "The Court held the fuel producers had Article III standing because commonsense economic inferences and record evidence showed that invalidating EPA's approval of California's regulations would likely cause automakers to sell more gasoline vehicles, redressing the producers' injury, even though the producers were not the direct objects of the regulation.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109462",
+      "title": "Simon v. Eastern Kentucky Welfare Rights Organization",
+      "year": "1976",
+      "position": 23,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "standing-associational"
+      ],
+      "rationale": "The Court held the indigent plaintiffs lacked standing because their denials of hospital care were not fairly traceable to the IRS ruling and it was speculative that reversing the ruling would lead independent third-party hospitals, not before the court, to serve them.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "4892571",
+      "title": "California v. Texas",
+      "year": "2021",
+      "position": 24,
+      "has_brief": true,
+      "primary": "standing-causation-redressability",
+      "secondary": [
+        "standing-states-and-government",
+        "advisory-opinions"
+      ],
+      "rationale": "The Court held that neither the individual nor the state plaintiffs had standing because, with the penalty zeroed out, no injury was fairly traceable to enforcement of the unenforceable \u00a75000A(a), and a declaratory judgment alone would amount to an advisory opinion.",
+      "confidence": "high",
+      "gap": "Severability (listed in the course note but not reached by the Court and not in the doctrine list)"
+    },
+    {
+      "case_id": "109530",
+      "title": "Singleton v. Wulff",
+      "year": "1976",
+      "position": 25,
+      "has_brief": true,
+      "primary": "standing-third-party",
+      "secondary": [
+        "standing-injury-in-fact"
+      ],
+      "rationale": "The Court held that physicians denied Medicaid reimbursement had Article III injury and could assert their patients' abortion rights, based on the close doctor-patient relationship and genuine obstacles to the women suing themselves; the brief shows both factors were found present, so it does not support the course note's claim that only one is needed.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109570",
+      "title": "Craig v. Boren",
+      "year": "1976",
+      "position": 26,
+      "has_brief": true,
+      "primary": "standing-third-party",
+      "secondary": [
+        "sex-classifications",
+        "mootness"
+      ],
+      "rationale": "The course note assigns Craig in a third-party standing module, and the brief confirms the Court held that the beer vendor Whitener could assert her male customers' equal protection rights because the statute operated directly on vendors; the Court also announced intermediate scrutiny for gender classifications.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "136984",
+      "title": "Elk Grove Unified School District v. Newdow",
+      "year": "2004",
+      "position": 27,
+      "has_brief": true,
+      "primary": "standing-third-party",
+      "secondary": [],
+      "rationale": "The Court held Newdow lacked prudential standing because his claim derived from his relationship with his daughter, state law denied him next-friend status, and his interests potentially conflicted with hers, so it never reached the Establishment Clause merits.",
+      "confidence": "high",
+      "gap": "Domestic-relations limit on federal jurisdiction (prudential standing based on disputed family-law status)"
+    },
+    {
+      "case_id": "105152",
+      "title": "Barrows v. Jackson",
+      "year": "1953",
+      "position": 28,
+      "has_brief": true,
+      "primary": "standing-third-party",
+      "secondary": [
+        "state-action",
+        "race-classifications",
+        "contracts-clause"
+      ],
+      "rationale": "The course note assigns the case for third-party standing, and the Court let a white covenantor sued for damages assert the equal protection rights of absent non-Caucasian buyers who could not effectively present their own grievance, while also holding that damages enforcement of a racial covenant is state action and rejecting the Contract Clause claim because that clause reaches only legislation.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "9010885",
+      "title": "Gilmore v. Utah",
+      "year": "1976",
+      "position": 29,
+      "has_brief": true,
+      "primary": "standing-third-party",
+      "secondary": [],
+      "rationale": "The Court terminated the stay sought by Gilmore's mother because Gilmore had competently made a knowing and intelligent waiver of his federal rights, leaving no basis for a third party to litigate on his behalf. The dissents' argument that he could not waive the Eighth Amendment question frames the next-friend standing problem.",
+      "confidence": "high",
+      "gap": "Eighth Amendment / cruel and unusual punishment (raised in the dissents)"
+    },
+    {
+      "case_id": "4764452",
+      "title": "June Medical Services L. L. C. v. Russo",
+      "year": "2020",
+      "position": 30,
+      "has_brief": true,
+      "primary": "standing-third-party",
+      "secondary": [
+        "reproductive-rights"
+      ],
+      "rationale": "The course note assigns June Medical for third-party standing, and the Court held that the third-party standing limit is prudential, that Louisiana waived its objection by conceding standing, and that providers may assert their patients' rights; it also struck down Act 620 as an undue burden on abortion access.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "106282",
+      "title": "Poe v. Ullman",
+      "year": "1961",
+      "position": 31,
+      "has_brief": true,
+      "primary": "ripeness",
+      "secondary": [
+        "fundamental-rights-method",
+        "family-and-marriage"
+      ],
+      "rationale": "The plurality dismissed the appeals because Connecticut's decades-long nonenforcement of its contraception ban meant there was no real threat of prosecution and hence no controversy of sufficient immediacy, while Harlan's dissent substantially addressed the merits of marital privacy under Fourteenth Amendment due process.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "107451",
+      "title": "Abbott Laboratories v. Gardner",
+      "year": "1967",
+      "position": 32,
+      "has_brief": true,
+      "primary": "ripeness",
+      "secondary": [],
+      "rationale": "The Court held the drug makers' pre-enforcement challenge to the FDA labeling rule ripe under a two-part test\u2014fitness of a purely legal issue for decision and hardship from forcing a choice between costly compliance and serious penalties.",
+      "confidence": "high",
+      "gap": "Statutory preclusion of judicial review and the APA presumption of reviewability (administrative law)"
+    },
+    {
+      "case_id": "104374",
+      "title": "United Public Workers of America v. Mitchell",
+      "year": "1947",
+      "position": 33,
+      "has_brief": true,
+      "primary": "ripeness",
+      "secondary": [
+        "advisory-opinions",
+        "public-employee-and-student-speech"
+      ],
+      "rationale": "The Court held that the employees who merely wished to engage in political activity, absent a completed violation or definite threat of enforcement, presented no justiciable controversy and sought an advisory opinion, while Poole's claim, based on an actual charge for a completed act, was justiciable and his Hatch Act challenge failed on the merits.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109117",
+      "title": "Regional Rail Reorganization Act Cases",
+      "year": "1974",
+      "position": 34,
+      "has_brief": true,
+      "primary": "ripeness",
+      "secondary": [
+        "takings",
+        "process-due"
+      ],
+      "rationale": "The course note assigns the case for ripeness, and the Court held the conveyance-taking claims ripe because implementation would lead inexorably to an irreversible conveyance, while valuation questions were premature; most of the opinion, though, resolves whether a Tucker Act remedy provides adequate just compensation for the alleged takings.",
+      "confidence": "medium",
+      "gap": "Bankruptcy Clause uniformity requirement"
+    },
+    {
+      "case_id": "108546",
+      "title": "Lake Carriers' Assn. v. MacMullan",
+      "year": "1972",
+      "position": 35,
+      "has_brief": true,
+      "primary": "ripeness",
+      "secondary": [
+        "abstention"
+      ],
+      "rationale": "The Court held the challenge ripe because Michigan's insistence that vessel owners promptly install sewage storage devices coerced present, costly compliance despite delayed prosecution, but it affirmed Pullman abstention so state courts could construe the ambiguous statute.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "2678466",
+      "title": "Susan B. Anthony List v. Driehaus",
+      "year": "2014",
+      "position": 36,
+      "has_brief": true,
+      "primary": "standing-injury-in-fact",
+      "secondary": [
+        "ripeness"
+      ],
+      "rationale": "Although the course note assigns the case for ripeness, the Court held that petitioners' credible threat of enforcement (a prior probable-cause finding, the fact that anyone may file complaints, and the State's refusal to disavow enforcement) was an Article III injury in fact, and it treated the prudential ripeness factors as easily satisfied.",
+      "confidence": "medium",
+      "gap": ""
+    },
+    {
+      "case_id": "10049656",
+      "title": "303 Creative LLC v. Elenis",
+      "year": "2023",
+      "position": 37,
+      "has_brief": true,
+      "primary": "compelled-speech",
+      "secondary": [
+        "ripeness"
+      ],
+      "rationale": "The course note assigns the case for ripeness and the credible-threat test for pre-enforcement review, but the brief shows the Court's holding turns entirely on the Free Speech Clause: Colorado may not use CADA to compel a website designer to create expressive designs conveying messages she disagrees with. Following the holding, compelled speech is primary, and ripeness is kept as secondary for students filtering by the note's topic.",
+      "confidence": "medium",
+      "gap": ""
+    },
+    {
+      "case_id": "107919",
+      "title": "Moore v. Ogilvie",
+      "year": "1969",
+      "position": 38,
+      "has_brief": true,
+      "primary": "mootness",
+      "secondary": [
+        "voting-rights",
+        "fundamental-rights-equal-protection",
+        "redistricting-and-gerrymandering"
+      ],
+      "rationale": "The course note assigns the case for mootness, and the brief confirms the Court held the post-election challenge not moot because the signature-distribution burden is 'capable of repetition, yet evading review'; on the merits it held that the rule violates equal protection under one-person, one-vote principles and overruled MacDougall v. Green.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "108713",
+      "title": "Roe v. Wade",
+      "year": "1973",
+      "position": 39,
+      "has_brief": true,
+      "primary": "mootness",
+      "secondary": [
+        "reproductive-rights",
+        "fundamental-rights-method"
+      ],
+      "rationale": "The course note assigns Roe for its holding that a challenge to an abortion ban is not mooted by the end of the plaintiff's pregnancy, because pregnancy is 'capable of repetition, yet evading review.' The brief omits that threshold ruling and covers only the merits holding that Fourteenth Amendment privacy encompasses the abortion decision, which is tagged as secondary.",
+      "confidence": "medium",
+      "gap": ""
+    },
+    {
+      "case_id": "109012",
+      "title": "DeFunis v. Odegaard",
+      "year": "1974",
+      "position": 40,
+      "has_brief": true,
+      "primary": "mootness",
+      "secondary": [],
+      "rationale": "The Court held the case moot because DeFunis, in his final quarter, would graduate regardless of the merits, and it rejected both the voluntary-cessation and capable-of-repetition-yet-evading-review exceptions, so it never reached the equal protection challenge to race-conscious admissions.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "118329",
+      "title": "Friends of the Earth, Inc. v. Laidlaw Environmental Services (TOC), Inc.",
+      "year": "2000",
+      "position": 41,
+      "has_brief": true,
+      "primary": "mootness",
+      "secondary": [
+        "standing-causation-redressability",
+        "standing-injury-in-fact"
+      ],
+      "rationale": "The Court held that Laidlaw's post-suit compliance did not moot FOE's civil-penalty claim because a defendant claiming voluntary cessation bears the heavy burden of showing the violations could not reasonably be expected to recur. It also held that civil penalties redress citizen plaintiffs by deterring ongoing and future violations, and that members' curtailed recreational use of the river was injury in fact.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "110228",
+      "title": "United States Parole Commission v. Geraghty",
+      "year": "1980",
+      "position": 42,
+      "has_brief": true,
+      "primary": "mootness",
+      "secondary": [],
+      "rationale": "The Court held that a class action does not become moot when the named plaintiff's substantive claim expires after certification was denied, because he retains a personal stake in appealing the denial of class certification.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "10850133",
+      "title": "First Choice Women's Resource Centers, Inc. v. Davenport",
+      "year": "2026",
+      "position": 43,
+      "has_brief": false,
+      "primary": "standing-injury-in-fact",
+      "secondary": [
+        "mootness",
+        "ripeness",
+        "expressive-association"
+      ],
+      "rationale": "According to the course note's summary (no Tortwell brief exists), the Court held that New Jersey's donor-information subpoena could inflict present Article III injury by chilling association before any enforcement, and that narrowing the subpoena after suit did not moot the case; although the case sits in a mootness module, the central holding as summarized concerns injury in fact.",
+      "confidence": "low",
+      "gap": ""
+    },
+    {
+      "case_id": "106366",
+      "title": "Baker v. Carr",
+      "year": "1962",
+      "position": 44,
+      "has_brief": true,
+      "primary": "political-question",
+      "secondary": [
+        "redistricting-and-gerrymandering",
+        "standing-injury-in-fact",
+        "voting-rights"
+      ],
+      "rationale": "The Court held that an equal protection challenge to Tennessee's legislative malapportionment is justiciable rather than a political question, and in doing so announced the six political-question factors, including textual commitment and judicially manageable standards.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "107969",
+      "title": "Powell v. McCormack",
+      "year": "1969",
+      "position": 45,
+      "has_brief": true,
+      "primary": "political-question",
+      "secondary": [
+        "mootness",
+        "judicial-review",
+        "remedies-and-scope-of-relief"
+      ],
+      "rationale": "The Court held that Powell's exclusion was a justiciable question rather than a nonjusticiable political question, reading Art. I, Section 5's textual commitment to judge 'qualifications' as limited to age, citizenship, and residency; it also held the case was not moot because the back-salary claim remained live.",
+      "confidence": "high",
+      "gap": "Speech or Debate Clause immunity; congressional qualifications and exclusion/expulsion (Art. I, Sections 2 and 5)"
+    },
+    {
+      "case_id": "112803",
+      "title": "Nixon v. United States",
+      "year": "1993",
+      "position": 46,
+      "has_brief": true,
+      "primary": "political-question",
+      "secondary": [],
+      "rationale": "The Court held that Nixon's challenge to the Senate's use of a committee to hear impeachment evidence is a nonjusticiable political question, because the Impeachment Trial Clause textually commits the 'sole Power to try' to the Senate and 'try' supplies no judicially manageable limit.",
+      "confidence": "high",
+      "gap": "Impeachment process (Art. I, \u00a73, cl. 6)"
+    },
+    {
+      "case_id": "4633469",
+      "title": "Rucho v. Common Cause",
+      "year": "2019",
+      "position": 47,
+      "has_brief": true,
+      "primary": "political-question",
+      "secondary": [
+        "redistricting-and-gerrymandering"
+      ],
+      "rationale": "The Court held that partisan gerrymandering claims are nonjusticiable political questions because no judicially discoverable and manageable standards exist, and it vacated the judgments with instructions to dismiss for lack of jurisdiction.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "110198",
+      "title": "Goldwater Et Al. v. Carter, President of the United States, Et Al.",
+      "year": "1979",
+      "position": 48,
+      "has_brief": true,
+      "primary": "political-question",
+      "secondary": [
+        "ripeness",
+        "presidential-power-foreign-affairs",
+        "treaty-and-foreign-affairs-power"
+      ],
+      "rationale": "The Court vacated and remanded with directions to dismiss without a majority rationale; four Justices (Rehnquist) treated the President's unilateral termination of the Taiwan treaty as a nonjusticiable political question, Powell concurred on ripeness grounds absent a congressional-executive impasse, and Brennan would have reached the merits on the President's recognition power.",
+      "confidence": "medium",
+      "gap": ""
+    },
+    {
+      "case_id": "626209",
+      "title": "Zivotofsky Ex Rel. Zivotofsky v. Clinton",
+      "year": "2012",
+      "position": 49,
+      "has_brief": true,
+      "primary": "political-question",
+      "secondary": [
+        "judicial-review",
+        "presidential-power-foreign-affairs"
+      ],
+      "rationale": "The Court held that the political question doctrine does not bar review of Zivotofsky's claim under \u00a7214(d), because deciding whether a statute is constitutional is a familiar judicial task, citing Marbury, and is not textually committed to another branch or lacking manageable standards.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "1320585",
+      "title": "McCulloch v. Maryland",
+      "year": "1819",
+      "position": 50,
+      "has_brief": true,
+      "primary": "necessary-and-proper",
+      "secondary": [
+        "federal-supremacy-intergovernmental-immunity"
+      ],
+      "rationale": "The Court held that Congress could charter the Bank as an appropriate means of executing its enumerated powers under the Necessary and Proper Clause, and that Maryland's tax on the Bank was an unconstitutional state tax on a federal instrument under the Supremacy Clause.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "85412",
+      "title": "Gibbons v. Ogden",
+      "year": "1824",
+      "position": 51,
+      "has_brief": true,
+      "primary": "commerce-clause-pre-1937",
+      "secondary": [
+        "preemption-implied-conflict",
+        "dormant-commerce-clause",
+        "federal-supremacy-intergovernmental-immunity"
+      ],
+      "rationale": "Marshall held that the commerce power extends to navigation and reaches intercourse among the states beyond state boundaries, and that New York's steamboat monopoly had to yield under the Supremacy Clause because it obstructed Gibbons's federal coasting license.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "809122",
+      "title": "National Federation of Independent Business v. Sebelius",
+      "year": "2012",
+      "position": 52,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [
+        "necessary-and-proper",
+        "taxing-power",
+        "spending-power"
+      ],
+      "rationale": "The course note assigns the case for the Commerce power, and the brief reports the holding that the Commerce and Necessary and Proper Clauses do not authorize compelling individuals to buy insurance (the activity/inactivity line), while the mandate was upheld under the taxing power and the Medicaid expansion was held coercive under the Spending Clause.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "85272",
+      "title": "M'culloch v. State of Maryland",
+      "year": "1819",
+      "position": 53,
+      "has_brief": true,
+      "primary": "necessary-and-proper",
+      "secondary": [
+        "federal-supremacy-intergovernmental-immunity"
+      ],
+      "rationale": "The Court held that Congress could charter the Bank as an appropriate means under the Necessary and Proper Clause ('let the end be legitimate'), and that Maryland's tax on the Bank's branch was invalid because the supremacy of federal law bars states from taxing federal instrumentalities.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "102662",
+      "title": "Carter v. Carter Coal Co.",
+      "year": "1936",
+      "position": 54,
+      "has_brief": true,
+      "primary": "commerce-clause-pre-1937",
+      "secondary": [
+        "taxing-power"
+      ],
+      "rationale": "The Court held that the Act's labor provisions exceeded the commerce power because mining is local production whose effect on interstate commerce is only indirect, and it treated the 15 percent 'excise tax' as a coercive penalty that falls with those provisions rather than a valid exercise of the taxing power.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "94079",
+      "title": "United States v. E. C. Knight Co.",
+      "year": "1895",
+      "position": 55,
+      "has_brief": true,
+      "primary": "commerce-clause-pre-1937",
+      "secondary": [],
+      "rationale": "The Court held that manufacturing precedes and is distinct from commerce, so a sugar-refining monopoly affected interstate commerce only indirectly and could not be reached under the Sherman Act and the commerce power.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "102474",
+      "title": "A. L. A. Schechter Poultry Corp. v. United States",
+      "year": "1935",
+      "position": 56,
+      "has_brief": true,
+      "primary": "commerce-clause-pre-1937",
+      "secondary": [
+        "nondelegation"
+      ],
+      "rationale": "The course note assigns Schechter for the Restrictive Era direct/indirect-effects rule, and the Court held that the defendants' slaughtering and local sales, occurring after the poultry came to rest in Brooklyn, were beyond Congress's commerce power; it also independently held NIRA \u00a7 3 an unconstitutional delegation of legislative power.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "99190",
+      "title": "Hammer v. Dagenhart",
+      "year": "1918",
+      "position": 57,
+      "has_brief": true,
+      "primary": "commerce-clause-pre-1937",
+      "secondary": [
+        "tenth-amendment-anti-commandeering"
+      ],
+      "rationale": "The Court held 5-4 that the Keating-Owen Act's ban on interstate shipment of child-labor goods exceeded the commerce power because production is not commerce and the goods were harmless, invading powers reserved to the states under the Tenth Amendment.",
+      "confidence": "high",
+      "gap": "Dual federalism / Tenth Amendment as an independent limit on enumerated powers (distinct from anti-commandeering)"
+    },
+    {
+      "case_id": "102804",
+      "title": "National Labor Relations Board v. Jones & Laughlin Steel Corp.",
+      "year": "1937",
+      "position": 58,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [
+        "commerce-clause-pre-1937"
+      ],
+      "rationale": "The Court upheld the NLRA as applied because intrastate labor relations at Jones & Laughlin's integrated plant had a close and substantial relation to interstate commerce, rejecting the direct/indirect and production/commerce limits of Schechter and Carter Coal.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "103442",
+      "title": "United States v. Darby",
+      "year": "1941",
+      "position": 59,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [
+        "tenth-amendment-anti-commandeering",
+        "necessary-and-proper"
+      ],
+      "rationale": "Darby upheld the FLSA's ban on interstate shipment of substandard-labor goods and its wage-hour rules for production workers under the Commerce Clause, overruling Hammer v. Dagenhart, and called the Tenth Amendment a 'truism' that imposes no independent limit.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "103716",
+      "title": "Wickard v. Filburn",
+      "year": "1942",
+      "position": 60,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [],
+      "rationale": "The unanimous Court held that Congress may regulate wheat grown for home consumption because such activity, aggregated with that of others similarly situated, substantially affects interstate commerce, rejecting the old direct/indirect and production formulas.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "106950",
+      "title": "Heart of Atlanta Motel, Inc. v. United States",
+      "year": "1965",
+      "position": 61,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [
+        "state-action"
+      ],
+      "rationale": "The Court upheld Title II of the Civil Rights Act of 1964 as a valid exercise of the commerce power because racial discrimination by a motel serving interstate travelers substantially burdens interstate commerce, regardless of Congress's moral motive.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "106951",
+      "title": "Katzenbach v. McClung",
+      "year": "1964",
+      "position": 62,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [],
+      "rationale": "The Court upheld Title II as applied to Ollie's Barbecue because Congress had a rational basis to find that restaurant discrimination, aggregated under Wickard, substantially affects interstate commerce through reduced food purchases and restricted travel.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "117927",
+      "title": "United States v. Lopez",
+      "year": "1995",
+      "position": 63,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [],
+      "rationale": "The Court held that \u00a7 922(q) exceeds Congress's Commerce Clause power because gun possession in a school zone is not economic activity substantially affecting interstate commerce, is not part of a larger economic regulatory scheme, and lacks a jurisdictional element.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "118363",
+      "title": "United States v. Morrison",
+      "year": "2000",
+      "position": 64,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [
+        "section-5-enforcement",
+        "state-action"
+      ],
+      "rationale": "The Court held Congress lacked Commerce Clause power to enact VAWA's civil remedy because gender-motivated violence is noneconomic and cannot be aggregated, even with extensive findings, and separately held \u00a7 5 of the Fourteenth Amendment reaches only state action, not private individuals.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "799995",
+      "title": "Gonzales v. Raich",
+      "year": "2005",
+      "position": 65,
+      "has_brief": true,
+      "primary": "commerce-clause-modern",
+      "secondary": [
+        "necessary-and-proper"
+      ],
+      "rationale": "The Court held 6-3 that the Commerce Clause, under Wickard's aggregation principle, lets Congress apply the CSA to intrastate, noncommercial medical marijuana because that activity is part of an economic class substantially affecting the interstate market, while Scalia's concurrence rested on the Necessary and Proper Clause.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "102580",
+      "title": "United States v. Butler",
+      "year": "1936",
+      "position": 66,
+      "has_brief": true,
+      "primary": "spending-power",
+      "secondary": [
+        "taxing-power",
+        "tenth-amendment-anti-commandeering"
+      ],
+      "rationale": "Butler adopted the Hamiltonian view that Congress may tax and spend for the general welfare beyond its other enumerated powers, but held the AAA's processing tax and benefit payments invalid as a means to regulate agricultural production reserved to the states under the Tenth Amendment.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "102843",
+      "title": "Steward MacHine Co. v. Davis",
+      "year": "1937",
+      "position": 67,
+      "has_brief": true,
+      "primary": "taxing-power",
+      "secondary": [
+        "spending-power",
+        "tenth-amendment-anti-commandeering"
+      ],
+      "rationale": "The Court upheld the Social Security Act's excise tax on employers as a valid exercise of the taxing power that may reach employment as a relation of common right, and held that the 90 per cent credit for state unemployment contributions was permissible inducement, not unconstitutional coercion of the states.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "111939",
+      "title": "South Dakota v. Dole",
+      "year": "1987",
+      "position": 68,
+      "has_brief": true,
+      "primary": "spending-power",
+      "secondary": [
+        "tenth-amendment-anti-commandeering"
+      ],
+      "rationale": "The Court upheld \u00a7 158's withholding of 5% of highway funds from states with a drinking age under 21, applying its four-part spending-power test (general welfare, unambiguous conditions, relatedness, no independent constitutional bar) plus the anti-coercion limit.",
+      "confidence": "high",
+      "gap": "Twenty-first Amendment state alcohol power"
+    },
+    {
+      "case_id": "110458",
+      "title": "Pennhurst State School and Hospital v. Halderman",
+      "year": "1981",
+      "position": 69,
+      "has_brief": true,
+      "primary": "spending-power",
+      "secondary": [
+        "section-5-enforcement"
+      ],
+      "rationale": "The Court held that \u00a7 6010 imposed no enforceable conditions on Pennsylvania because Spending Clause legislation operates like a contract, and Congress must state grant conditions unambiguously so that states can knowingly accept them; it also declined to infer that Congress acted under \u00a7 5 of the Fourteenth Amendment.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "90897",
+      "title": "Civil Rights Cases",
+      "year": "1883",
+      "position": 70,
+      "has_brief": true,
+      "primary": "section-5-enforcement",
+      "secondary": [
+        "state-action",
+        "thirteenth-amendment-enforcement"
+      ],
+      "rationale": "The course note assigns the case in the module on the power to enforce the Reconstruction Amendments. The Court held that the 1875 Act's public-accommodations sections exceeded Congress's power under both amendments: Section 5 permits only corrective legislation against state action, and Section 2 of the Thirteenth Amendment does not reach private discrimination as a badge of slavery.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "107748",
+      "title": "Jones v. Alfred H. Mayer Co.",
+      "year": "1968",
+      "position": 71,
+      "has_brief": true,
+      "primary": "thirteenth-amendment-enforcement",
+      "secondary": [
+        "state-action",
+        "race-classifications"
+      ],
+      "rationale": "The Court held that \u00a7 1982 bars purely private racial discrimination in property sales and is a valid exercise of Congress's Thirteenth Amendment \u00a7 2 power to rationally determine and eliminate the badges and incidents of slavery.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109509",
+      "title": "Runyon v. McCrary",
+      "year": "1976",
+      "position": 72,
+      "has_brief": true,
+      "primary": "thirteenth-amendment-enforcement",
+      "secondary": [
+        "expressive-association",
+        "family-and-marriage"
+      ],
+      "rationale": "The Court held that 42 U.S.C. \u00a7 1981 reaches private schools' racially motivated refusals to contract, following Jones. It upheld the statute as a valid exercise of Congress's Thirteenth Amendment power, and rejected the schools' free-association, parental-rights, and privacy defenses.",
+      "confidence": "high",
+      "gap": "Statutory interpretation of civil rights statutes (\u00a7 1981 scope, limitations borrowing, attorneys' fees)"
+    },
+    {
+      "case_id": "107201",
+      "title": "United States v. Guest",
+      "year": "1966",
+      "position": 73,
+      "has_brief": true,
+      "primary": "state-action",
+      "secondary": [
+        "section-5-enforcement",
+        "vagueness-and-overbreadth"
+      ],
+      "rationale": "The course note assigns Guest for Section 5 power over private parties, but the majority held that equal-protection rights under \u00a7 241 require state involvement and found the alleged false arrests 'with official connivance' sufficient state action; the six-Justice \u00a7 5 view appears only in the separate opinions (later treated as dicta in Morrison), so state action is primary, with Section 5 enforcement and the vagueness ruling as secondary.",
+      "confidence": "medium",
+      "gap": "Constitutional right of interstate travel (protected against private conspiracies under \u00a7 241)"
+    },
+    {
+      "case_id": "107256",
+      "title": "Katzenbach v. Morgan",
+      "year": "1966",
+      "position": 74,
+      "has_brief": true,
+      "primary": "section-5-enforcement",
+      "secondary": [
+        "voting-rights",
+        "necessary-and-proper"
+      ],
+      "rationale": "The Court held that \u00a7 4(e) of the Voting Rights Act was a proper exercise of Congress's \u00a7 5 power to enforce the Fourteenth Amendment under a McCulloch 'plainly adapted' standard, even without a judicial finding that New York's English literacy requirement itself violated equal protection.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "118140",
+      "title": "City of Boerne v. Flores",
+      "year": "1997",
+      "position": 75,
+      "has_brief": true,
+      "primary": "section-5-enforcement",
+      "secondary": [
+        "free-exercise",
+        "judicial-review"
+      ],
+      "rationale": "The Court held RFRA exceeded Congress's Section 5 enforcement power as applied to the states because Section 5 is remedial and requires 'congruence and proportionality' between the injury and the means, which RFRA's universal, open-ended compelling-interest mandate lacked.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "10850261",
+      "title": "Louisiana v. Callais",
+      "year": "2026",
+      "position": 76,
+      "has_brief": true,
+      "primary": "section-5-enforcement",
+      "secondary": [
+        "redistricting-and-gerrymandering",
+        "voting-rights",
+        "race-classifications"
+      ],
+      "rationale": "The Court construed VRA \u00a72 to impose liability only on a strong inference of intentional discrimination so as to keep it within Congress's Fifteenth Amendment enforcement power, and on that reading held that \u00a72 did not require District 6, so SB8 failed strict scrutiny as a racial gerrymander.",
+      "confidence": "medium",
+      "gap": ""
+    },
+    {
+      "case_id": "931614",
+      "title": "Shelby County v. Holder",
+      "year": "2013",
+      "position": 77,
+      "has_brief": true,
+      "primary": "section-5-enforcement",
+      "secondary": [
+        "voting-rights"
+      ],
+      "rationale": "The Court held that Section 4(b)'s coverage formula exceeded Congress's power to enforce the Fourteenth and Fifteenth Amendments because its 'current burdens' were not justified by 'current needs' and it departed from equal sovereignty among the States without a basis in current conditions; the case is assigned in the course module on enforcing those Amendments against the states.",
+      "confidence": "high",
+      "gap": "Equal sovereignty of the states (federalism principle)"
+    },
+    {
+      "case_id": "111308",
+      "title": "Garcia v. San Antonio Metropolitan Transit Authority",
+      "year": "1985",
+      "position": 78,
+      "has_brief": true,
+      "primary": "tenth-amendment-anti-commandeering",
+      "secondary": [
+        "commerce-clause-modern"
+      ],
+      "rationale": "Garcia overruled National League of Cities' 'traditional governmental functions' Tenth Amendment limit and held that Congress may apply the FLSA under its commerce power to a municipal transit authority, leaving states to rely on the political process for protection.",
+      "confidence": "high",
+      "gap": "Tenth Amendment limits on generally applicable federal laws regulating states (the National League of Cities/Garcia line), as distinct from anti-commandeering"
+    },
+    {
+      "case_id": "112768",
+      "title": "New York v. United States",
+      "year": "1992",
+      "position": 79,
+      "has_brief": true,
+      "primary": "tenth-amendment-anti-commandeering",
+      "secondary": [
+        "spending-power",
+        "commerce-clause-modern"
+      ],
+      "rationale": "The Court held that Congress may encourage but not compel states to enact or administer a federal regulatory program, striking down the take-title provision as commandeering while upholding the monetary incentives (conditional spending) and access incentives (commerce power).",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "118148",
+      "title": "Printz v. United States",
+      "year": "1997",
+      "position": 80,
+      "has_brief": true,
+      "primary": "tenth-amendment-anti-commandeering",
+      "secondary": [
+        "presidential-power-domestic",
+        "necessary-and-proper"
+      ],
+      "rationale": "The Court held 5-4 that the Brady Act's interim commands to chief law enforcement officers were unconstitutional because Congress may not compel state executive officers to administer or enforce a federal regulatory program, extending New York v. United States; the majority also relied on the President's control of law execution, and the dissent relied on the Necessary and Proper Clause.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "118327",
+      "title": "Reno v. Condon",
+      "year": "2000",
+      "position": 81,
+      "has_brief": true,
+      "primary": "tenth-amendment-anti-commandeering",
+      "secondary": [
+        "commerce-clause-modern"
+      ],
+      "rationale": "The Court unanimously held that the DPPA does not commandeer the States under New York and Printz, because it regulates the States as owners and sellers of DMV databases rather than requiring them to regulate private parties. It also held the Act a valid commerce-power regulation of personal information as an article in interstate commerce.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "4497655",
+      "title": "Murphy v. National Collegiate Athletic Assn.",
+      "year": "2018",
+      "position": 82,
+      "has_brief": true,
+      "primary": "tenth-amendment-anti-commandeering",
+      "secondary": [
+        "preemption-express",
+        "remedies-and-scope-of-relief"
+      ],
+      "rationale": "The Court held that PASPA's ban on states authorizing sports gambling violates the anticommandeering rule because it directly dictates what state legislatures may and may not enact; it rejected the provision as valid preemption because it regulates only states, not private actors, and refused to sever the rest of the statute.",
+      "confidence": "high",
+      "gap": "Severability of unconstitutional statutory provisions"
+    },
+    {
+      "case_id": "118458",
+      "title": "Lorillard Tobacco Co. v. Reilly",
+      "year": "2001",
+      "position": 83,
+      "has_brief": true,
+      "primary": "preemption-express",
+      "secondary": [
+        "commercial-speech"
+      ],
+      "rationale": "The Court held that the FCLAA's express preemption provision bars Massachusetts' outdoor and point-of-sale cigarette advertising regulations because they are requirements 'based on smoking and health' imposed 'with respect to' cigarette advertising, rejecting a location/content distinction despite the presumption against preemption; it also applied Central Hudson to the smokeless tobacco and cigar restrictions.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "10880244",
+      "title": "Monsanto Co. v. Durnell",
+      "year": "2026",
+      "position": 84,
+      "has_brief": true,
+      "primary": "preemption-express",
+      "secondary": [
+        "preemption-implied-conflict"
+      ],
+      "rationale": "The Court held that FIFRA's express preemption clause, 7 U.S.C. \u00a7136v(b), preempts Durnell's failure-to-warn claim because requiring a cancer warning would impose a labeling requirement 'in addition to or different from' the EPA-approved label, extending Riegel to FIFRA; the dissent also rejected Monsanto's impossibility argument, which the course note lists as a topic.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "106601",
+      "title": "Florida Lime & Avocado Growers, Inc. v. Paul",
+      "year": "1963",
+      "position": 85,
+      "has_brief": false,
+      "primary": "preemption-implied-conflict",
+      "secondary": [
+        "preemption-field",
+        "dormant-commerce-clause"
+      ],
+      "rationale": "The course note assigns the case for conflict preemption and impossibility of dual compliance; Florida Lime is the canonical source of the 'physical impossibility' test, under which federal avocado maturity standards did not preempt California's stricter oil-content rule because growers could comply with both.",
+      "confidence": "low",
+      "gap": ""
+    },
+    {
+      "case_id": "110919",
+      "title": "Pacific Gas & Electric Co. v. State Energy Resources Conservation & Development Commission",
+      "year": "1983",
+      "position": 86,
+      "has_brief": true,
+      "primary": "preemption-field",
+      "secondary": [
+        "preemption-implied-conflict",
+        "ripeness"
+      ],
+      "rationale": "The Court held that the Atomic Energy Act occupies the field of nuclear safety but that California's waste-disposal moratorium (\u00a7 25524.2), resting on an avowed economic purpose, falls outside that field and does not conflict with federal law; it also held the \u00a7 25524.2 challenge ripe and the \u00a7 25524.1(b) challenge unripe.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "803270",
+      "title": "Arizona v. United States",
+      "year": "2012",
+      "position": 87,
+      "has_brief": true,
+      "primary": "preemption-field",
+      "secondary": [
+        "preemption-implied-conflict",
+        "treaty-and-foreign-affairs-power",
+        "ripeness"
+      ],
+      "rationale": "The Court held Section 3 field-preempted because Congress occupied the field of alien registration, and held Sections 5(C) and 6 preempted as obstacles to federal objectives, so the case is taught for both field and conflict/obstacle preemption.",
+      "confidence": "high",
+      "gap": "Federal immigration and naturalization power"
+    },
+    {
+      "case_id": "4632952",
+      "title": "Tennessee Wine and Spirits Retailers Assn. v. Thomas",
+      "year": "2019",
+      "position": 88,
+      "has_brief": true,
+      "primary": "dormant-commerce-clause",
+      "secondary": [],
+      "rationale": "The Court held that Tennessee's 2-year durational-residency requirement for retail liquor licenses facially discriminates against nonresident economic actors in violation of the dormant Commerce Clause and is not saved by Section 2 of the Twenty-first Amendment because its predominant effect is protectionist.",
+      "confidence": "high",
+      "gap": "Twenty-first Amendment state alcohol regulatory authority"
+    },
+    {
+      "case_id": "86696",
+      "title": "Cooley v. Board of Wardens of Port of Philadelphia Ex Rel. Soc. for Relief of Distressed Pilots",
+      "year": "1852",
+      "position": 89,
+      "has_brief": true,
+      "primary": "dormant-commerce-clause",
+      "secondary": [
+        "commerce-clause-pre-1937"
+      ],
+      "rationale": "The Court held that pilotage regulation is commerce but, under the 'selective exclusiveness' test, a local subject states may regulate absent congressional action, so Pennsylvania's pilotage law survived the dormant Commerce Clause.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109916",
+      "title": "City of Philadelphia v. New Jersey",
+      "year": "1978",
+      "position": 90,
+      "has_brief": true,
+      "primary": "dormant-commerce-clause",
+      "secondary": [],
+      "rationale": "The Court held New Jersey's ban on importing out-of-state waste violated the Commerce Clause because it facially discriminated against articles of commerce based solely on origin, triggering a virtually per se rule of invalidity.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "117855",
+      "title": "West Lynn Creamery, Inc. v. Healy",
+      "year": "1994",
+      "position": 91,
+      "has_brief": true,
+      "primary": "dormant-commerce-clause",
+      "secondary": [],
+      "rationale": "The Court held that Massachusetts' milk pricing order, which paired an assessment on all fluid milk sales with a subsidy paid only to in-state dairy farmers, operated like a protective tariff and unconstitutionally discriminated against interstate commerce under the negative Commerce Clause.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109703",
+      "title": "Hunt v. Washington State Apple Advertising Commission",
+      "year": "1977",
+      "position": 92,
+      "has_brief": true,
+      "primary": "dormant-commerce-clause",
+      "secondary": [
+        "standing-associational"
+      ],
+      "rationale": "The Court held that North Carolina's facially neutral ban on displaying state apple grades discriminated against interstate commerce in practical effect, and that the State failed to justify it given available nondiscriminatory alternatives; it also announced the three-part test for associational standing, applying it to the Washington commission.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "109896",
+      "title": "Exxon Corp. v. Governor of Maryland",
+      "year": "1978",
+      "position": 93,
+      "has_brief": true,
+      "primary": "dormant-commerce-clause",
+      "secondary": [
+        "preemption-implied-conflict",
+        "economic-substantive-due-process"
+      ],
+      "rationale": "The Court held that Maryland's ban on refiner-operated gas stations did not discriminate against or impermissibly burden interstate commerce because the Commerce Clause protects the interstate market, not particular interstate firms; it also rejected Robinson-Patman/Sherman Act conflict preemption and a substantive due process challenge.",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "110380",
+      "title": "Minnesota v. Clover Leaf Creamery Co.",
+      "year": "1981",
+      "position": 94,
+      "has_brief": true,
+      "primary": "dormant-commerce-clause",
+      "secondary": [
+        "rational-basis"
+      ],
+      "rationale": "Assigned in the dormant Commerce Clause module, the case holds that Minnesota's plastic-milk-container ban regulates evenhandedly and its incidental burden on interstate commerce is not clearly excessive under Pike balancing, while also upholding the classification under deferential rational-basis equal protection review.",
+      "confidence": "medium",
+      "gap": ""
+    },
+    {
+      "case_id": "145902",
+      "title": "Wyeth v. Levine",
+      "year": "2009",
+      "position": 95,
+      "has_brief": true,
+      "primary": "preemption-implied-conflict",
+      "secondary": [],
+      "rationale": "The Court held that FDA approval of Phenergan's label did not preempt Levine's state failure-to-warn claim, rejecting both impossibility preemption (the CBE regulation let Wyeth strengthen the warning unilaterally) and obstacle preemption (Congress did not intend to displace state tort suits).",
+      "confidence": "high",
+      "gap": ""
+    },
+    {
+      "case_id": "219510",
+      "title": "PLIVA, Inc. v. Mensing",
+      "year": "2011",
+      "position": 96,
+      "has_brief": false,
+      "primary": "preemption-implied-conflict",
+      "secondary": [],
+      "rationale": "Per the course note, PLIVA is assigned for impossibility preemption: federal law requires generic drug makers to use the same label as the brand-name drug, so a state-law duty to strengthen warnings is one they cannot satisfy without violating federal law, and the state failure-to-warn claims are preempted.",
+      "confidence": "low",
+      "gap": ""
+    },
+    {
+      "case_id": "9068915",
+      "title": "Mut. Pharm. Co. v. Bartlett",
+      "year": "2013",
+      "position": 97,
+      "has_brief": true,
+      "primary": "preemption-implied-conflict",
+      "secondary": [],
+      "rationale": "The Court held that New Hampshire's design-defect claim was impliedly pre-empted because Mutual could not both strengthen sulindac's warning under state law and keep the label identical to the brand-name drug's as federal law requires, and it rejected the First Circuit's 'stop-selling' rationale.",
+      "confidence": "high",
+      "gap": ""
+    }
+  ]
+}

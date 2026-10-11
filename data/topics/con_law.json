@@ -1,0 +1,396 @@
+{
+  "subject": "Constitutional Law",
+  "status": "draft for Sage's review (2026-10-11); not imported anywhere",
+  "note": "Tortwell's own doctrinal taxonomy. Top-level topics match scripts/classify_conlaw_topics.py (casebook 1499). Doctrine slugs are stable IDs; labels can be reworded freely.",
+  "topics": [
+    {
+      "topic": "Judicial Power and Justiciability",
+      "doctrines": [
+        {
+          "slug": "judicial-review",
+          "label": "Judicial review"
+        },
+        {
+          "slug": "congressional-control-of-jurisdiction",
+          "label": "Congressional control of federal jurisdiction"
+        },
+        {
+          "slug": "separation-of-powers-judicial-independence",
+          "label": "Legislative interference with judicial decisions"
+        },
+        {
+          "slug": "advisory-opinions",
+          "label": "Advisory opinions"
+        },
+        {
+          "slug": "standing-injury-in-fact",
+          "label": "Standing: injury in fact"
+        },
+        {
+          "slug": "standing-causation-redressability",
+          "label": "Standing: causation and redressability"
+        },
+        {
+          "slug": "standing-taxpayer",
+          "label": "Standing: taxpayer standing"
+        },
+        {
+          "slug": "standing-third-party",
+          "label": "Standing: third-party standing"
+        },
+        {
+          "slug": "standing-associational",
+          "label": "Standing: associational and organizational standing"
+        },
+        {
+          "slug": "standing-generalized-grievances",
+          "label": "Standing: generalized grievances"
+        },
+        {
+          "slug": "standing-states-and-government",
+          "label": "Standing: states and government plaintiffs"
+        },
+        {
+          "slug": "standing-statutory-and-congressional-power",
+          "label": "Standing: congressionally created rights and injuries"
+        },
+        {
+          "slug": "ripeness",
+          "label": "Ripeness"
+        },
+        {
+          "slug": "mootness",
+          "label": "Mootness"
+        },
+        {
+          "slug": "political-question",
+          "label": "Political question doctrine"
+        },
+        {
+          "slug": "abstention",
+          "label": "Abstention"
+        },
+        {
+          "slug": "remedies-and-scope-of-relief",
+          "label": "Remedies and scope of relief"
+        }
+      ]
+    },
+    {
+      "topic": "Federal Legislative Power",
+      "doctrines": [
+        {
+          "slug": "necessary-and-proper",
+          "label": "Necessary and Proper Clause"
+        },
+        {
+          "slug": "commerce-clause-pre-1937",
+          "label": "Commerce Clause: foundations and pre-1937 limits"
+        },
+        {
+          "slug": "commerce-clause-modern",
+          "label": "Commerce Clause: modern scope"
+        },
+        {
+          "slug": "taxing-power",
+          "label": "Taxing power"
+        },
+        {
+          "slug": "spending-power",
+          "label": "Spending power and conditional grants"
+        },
+        {
+          "slug": "treaty-and-foreign-affairs-power",
+          "label": "Treaty and foreign affairs power"
+        },
+        {
+          "slug": "war-powers-congress",
+          "label": "Congressional war powers"
+        }
+      ]
+    },
+    {
+      "topic": "Federal Executive Power and Separation of Powers",
+      "doctrines": [
+        {
+          "slug": "presidential-power-domestic",
+          "label": "Presidential power in domestic affairs"
+        },
+        {
+          "slug": "presidential-power-foreign-affairs",
+          "label": "Presidential power in foreign affairs"
+        },
+        {
+          "slug": "appointments-and-removal",
+          "label": "Appointments and removal"
+        },
+        {
+          "slug": "nondelegation",
+          "label": "Nondelegation"
+        },
+        {
+          "slug": "legislative-veto-and-presentment",
+          "label": "Bicameralism, presentment, and legislative veto"
+        },
+        {
+          "slug": "executive-privilege-and-immunity",
+          "label": "Executive privilege and immunity"
+        },
+        {
+          "slug": "pardon-power",
+          "label": "Pardon power"
+        }
+      ]
+    },
+    {
+      "topic": "Federalism and Limits on State Power",
+      "doctrines": [
+        {
+          "slug": "federal-supremacy-intergovernmental-immunity",
+          "label": "Federal supremacy and intergovernmental immunity"
+        },
+        {
+          "slug": "tenth-amendment-anti-commandeering",
+          "label": "Tenth Amendment, state autonomy, and anti-commandeering"
+        },
+        {
+          "slug": "state-sovereign-immunity",
+          "label": "State sovereign immunity (Eleventh Amendment)"
+        },
+        {
+          "slug": "preemption-express",
+          "label": "Preemption: express"
+        },
+        {
+          "slug": "preemption-implied-conflict",
+          "label": "Preemption: conflict and impossibility"
+        },
+        {
+          "slug": "preemption-field",
+          "label": "Preemption: field"
+        },
+        {
+          "slug": "dormant-commerce-clause",
+          "label": "Dormant Commerce Clause"
+        },
+        {
+          "slug": "market-participant",
+          "label": "Market participant exception"
+        },
+        {
+          "slug": "article-iv-privileges-and-immunities",
+          "label": "Article IV Privileges and Immunities"
+        }
+      ]
+    },
+    {
+      "topic": "The Reconstruction Amendments and State Action",
+      "doctrines": [
+        {
+          "slug": "state-action",
+          "label": "State action"
+        },
+        {
+          "slug": "thirteenth-amendment-enforcement",
+          "label": "Thirteenth Amendment and its enforcement power"
+        },
+        {
+          "slug": "section-5-enforcement",
+          "label": "Fourteenth and Fifteenth Amendment enforcement power"
+        },
+        {
+          "slug": "voting-rights",
+          "label": "Voting rights"
+        },
+        {
+          "slug": "incorporation",
+          "label": "Incorporation of the Bill of Rights"
+        },
+        {
+          "slug": "privileges-or-immunities",
+          "label": "Fourteenth Amendment Privileges or Immunities"
+        }
+      ]
+    },
+    {
+      "topic": "Economic Liberties, Takings, and the Contracts Clause",
+      "doctrines": [
+        {
+          "slug": "economic-substantive-due-process",
+          "label": "Economic substantive due process"
+        },
+        {
+          "slug": "takings",
+          "label": "Takings"
+        },
+        {
+          "slug": "contracts-clause",
+          "label": "Contracts Clause"
+        }
+      ]
+    },
+    {
+      "topic": "Substantive Due Process and Privacy",
+      "doctrines": [
+        {
+          "slug": "reproductive-rights",
+          "label": "Reproductive rights"
+        },
+        {
+          "slug": "family-and-marriage",
+          "label": "Family, marriage, and parental rights"
+        },
+        {
+          "slug": "intimacy-and-sexual-autonomy",
+          "label": "Intimacy and sexual autonomy"
+        },
+        {
+          "slug": "end-of-life-and-bodily-integrity",
+          "label": "End of life and bodily integrity"
+        },
+        {
+          "slug": "fundamental-rights-method",
+          "label": "Identifying fundamental rights"
+        }
+      ]
+    },
+    {
+      "topic": "Equal Protection",
+      "doctrines": [
+        {
+          "slug": "rational-basis",
+          "label": "Rational basis review"
+        },
+        {
+          "slug": "race-classifications",
+          "label": "Race classifications"
+        },
+        {
+          "slug": "affirmative-action",
+          "label": "Race-conscious remedies and affirmative action"
+        },
+        {
+          "slug": "sex-classifications",
+          "label": "Sex classifications"
+        },
+        {
+          "slug": "discriminatory-intent",
+          "label": "Discriminatory purpose and disparate impact"
+        },
+        {
+          "slug": "other-classifications",
+          "label": "Other classifications (alienage, legitimacy, disability, sexual orientation)"
+        },
+        {
+          "slug": "fundamental-rights-equal-protection",
+          "label": "Fundamental rights under equal protection"
+        },
+        {
+          "slug": "redistricting-and-gerrymandering",
+          "label": "Redistricting and gerrymandering"
+        }
+      ]
+    },
+    {
+      "topic": "Procedural Due Process",
+      "doctrines": [
+        {
+          "slug": "protected-interests",
+          "label": "Protected property and liberty interests"
+        },
+        {
+          "slug": "process-due",
+          "label": "What process is due"
+        }
+      ]
+    },
+    {
+      "topic": "Freedom of Speech and the Press",
+      "doctrines": [
+        {
+          "slug": "content-based-vs-neutral",
+          "label": "Content-based and content-neutral regulation"
+        },
+        {
+          "slug": "incitement-and-threats",
+          "label": "Incitement and true threats"
+        },
+        {
+          "slug": "unprotected-and-low-value-speech",
+          "label": "Unprotected and low-value speech"
+        },
+        {
+          "slug": "public-forum",
+          "label": "Public forum"
+        },
+        {
+          "slug": "government-speech-and-funding",
+          "label": "Government speech and funding conditions"
+        },
+        {
+          "slug": "compelled-speech",
+          "label": "Compelled speech"
+        },
+        {
+          "slug": "commercial-speech",
+          "label": "Commercial speech"
+        },
+        {
+          "slug": "campaign-finance",
+          "label": "Campaign finance"
+        },
+        {
+          "slug": "public-employee-and-student-speech",
+          "label": "Public employee and student speech"
+        },
+        {
+          "slug": "prior-restraint-and-press",
+          "label": "Prior restraint and the press"
+        },
+        {
+          "slug": "expressive-conduct",
+          "label": "Expressive conduct"
+        },
+        {
+          "slug": "vagueness-and-overbreadth",
+          "label": "Vagueness and overbreadth"
+        }
+      ]
+    },
+    {
+      "topic": "Freedom of Association and Assembly",
+      "doctrines": [
+        {
+          "slug": "expressive-association",
+          "label": "Expressive association"
+        }
+      ]
+    },
+    {
+      "topic": "The Religion Clauses",
+      "doctrines": [
+        {
+          "slug": "establishment-clause",
+          "label": "Establishment Clause"
+        },
+        {
+          "slug": "free-exercise",
+          "label": "Free Exercise Clause"
+        }
+      ]
+    },
+    {
+      "topic": "Other Individual Rights",
+      "doctrines": [
+        {
+          "slug": "second-amendment",
+          "label": "Second Amendment"
+        },
+        {
+          "slug": "other-rights",
+          "label": "Other individual rights"
+        }
+      ]
+    }
+  ]
+}
