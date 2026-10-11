@@ -164,15 +164,35 @@
         },
         {
           "slug": "preemption-implied-conflict",
-          "label": "Preemption: conflict and impossibility"
+          "label": "Preemption: conflict (impossibility)"
+        },
+        {
+          "slug": "preemption-obstacle",
+          "label": "Preemption: obstacle (impediment to federal purposes)"
         },
         {
           "slug": "preemption-field",
           "label": "Preemption: field"
         },
         {
-          "slug": "dormant-commerce-clause",
-          "label": "Dormant Commerce Clause"
+          "slug": "dcc-foundations",
+          "label": "Dormant Commerce Clause: foundations and rationale"
+        },
+        {
+          "slug": "dcc-facial-discrimination",
+          "label": "Dormant Commerce Clause: facially discriminatory laws"
+        },
+        {
+          "slug": "dcc-purpose-or-effect",
+          "label": "Dormant Commerce Clause: facially neutral laws with discriminatory purpose or effect"
+        },
+        {
+          "slug": "dcc-pike-balancing",
+          "label": "Dormant Commerce Clause: nondiscriminatory burdens (Pike balancing)"
+        },
+        {
+          "slug": "dcc-government-favoritism",
+          "label": "Dormant Commerce Clause: laws favoring state or local government"
         },
         {
           "slug": "market-participant",

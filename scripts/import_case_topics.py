@@ -102,7 +102,32 @@ async def apply(conn, taxonomy: dict, review: dict, dry_run: bool) -> None:
             """,
             new_tags,
         )
-        print(f"doctrines upserted: {len(doctrines)}")
+        # Doctrines dropped from the taxonomy (e.g. a doctrine split in two) go away, but
+        # only once nothing points at them; a reviewed tag on one stops the import.
+        obsolete = await conn.fetch(
+            """
+            DELETE FROM topic_doctrines d
+            WHERE d.subject = $1 AND d.id <> ALL($2::text[])
+              AND NOT EXISTS (SELECT 1 FROM case_topics ct WHERE ct.doctrine_id = d.id)
+            RETURNING d.id
+            """,
+            taxonomy["subject"], [row[0] for row in doctrines],
+        )
+        still_used = await conn.fetch(
+            """
+            SELECT DISTINCT ct.doctrine_id FROM case_topics ct
+            JOIN topic_doctrines d ON d.id = ct.doctrine_id
+            WHERE d.subject = $1 AND d.id <> ALL($2::text[])
+            """,
+            taxonomy["subject"], [row[0] for row in doctrines],
+        )
+        if still_used:
+            raise RuntimeError(
+                "doctrines removed from the taxonomy are still tagged: "
+                + ", ".join(r["doctrine_id"] for r in still_used)
+            )
+        print(f"doctrines upserted: {len(doctrines)}; removed: "
+              f"{', '.join(r['id'] for r in obsolete) or 'none'}")
         print(f"cases tagged: {len(replaceable)} (skipped as reviewed: {len(reviewed)})")
         print(f"tags inserted: {len(new_tags)}; previous AI tags removed: {deleted.split()[-1]}")
     except BaseException:

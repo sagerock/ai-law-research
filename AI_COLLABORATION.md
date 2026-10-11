@@ -530,13 +530,28 @@ importer through `railway ssh -s Backend -- env DRY_RUN=0 python - < bundle.py` 
 docstring). Migration 040 was applied before the code deploy (the 039 lesson).
 UI: `components/SharedCollectionItems.tsx` adds a "Browse by topic" chip filter and per-case tag chips,
 with a note that tags are AI-assigned and under review. The API tolerates a missing table.
-Result: 98 cases, 244 tags; 84 high / 9 medium / 5 low confidence (the five lack briefs). Known
+First pass: 98 cases, 244 tags; 84 high / 9 medium / 5 low confidence (the five lack briefs). Known
 issues: TransUnion has a wrong taxpayer-standing secondary; McCulloch appears twice in collection 15
 (`1320585` and duplicate `85272`).
-Next: Sage's corrections (set `reviewed_at` on fixed rows); then other collections/subjects and topic
+Week 8 refinement (same day, Sage's request after comparing to his Week 8 outline): preemption now
+has express / conflict (impossibility) / obstacle / field, and the single dormant Commerce Clause
+doctrine was split into foundations, facial discrimination, purpose-or-effect, Pike balancing, and
+laws favoring government (mirroring Modules 08(C)/(D)); 86 doctrines. The five casebook-notes cases
+from his outline (Riegel 145831, Whiting 217515, Hines 103438, Carbone 1087961, United Haulers
+145739) were added to collection 15 with schedule-format notes
+(`scripts/import_conlaw_week08_notes_cases_2026.py`); Hines's NULL cite/court were filled from
+CourtListener. The 22 affected cases were re-tagged with `--with-opinion`: the model reads the full
+opinion and must quote a sentence, which is checked against the text (all 22 verified). Monsanto's
+conflict secondary was removed by hand (the majority declined to reach impossibility). The importer
+now drops doctrines removed from the taxonomy once untagged. Now 103 cases, 265 tags.
+Found in passing: 23 of the 103 collection-15 opinions are stored with the legacy exact-50k truncation
+(e.g. Lorillard, PG&E, Arizona, Exxon, West Lynn, Bartlett, Whiting), so their case pages show cut-off
+text; the tagger and the Qdrant sync repair it in memory only. Not fixed in the database yet.
+Qdrant sync for the five new cases failed twice on an SSL handshake timeout; rerun it.
+Next: rerun the Qdrant sync; repair truncated opinions; Sage's corrections (set `reviewed_at` on fixed rows); then other collections/subjects and topic
 pages.
 Files: `migrations/040_case_topics.sql`, `data/topics/`, `scripts/tag_collection_topics.py`,
-`scripts/import_case_topics.py`, `backend/main.py` (shared endpoint), `frontend/components/
+`scripts/import_case_topics.py`, `scripts/import_conlaw_week08_notes_cases_2026.py`, `backend/main.py` (shared endpoint), `frontend/components/
 SharedCollectionItems.tsx`, `frontend/lib/collectionTopics.ts`, `frontend/app/shared/[id]/page.tsx`.
 Deployment: migration 040 + 244 tags applied to production 2026-10-11; code via push to `main`.
 

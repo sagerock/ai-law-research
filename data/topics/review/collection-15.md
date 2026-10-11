@@ -1,6 +1,6 @@
 # Topic tags for review: Con Law
 
-98 cases. Grouped by primary doctrine, in taxonomy order. Low-confidence tags and taxonomy gaps are listed first.
+103 cases. Grouped by primary doctrine, in taxonomy order. Low-confidence tags and taxonomy gaps are listed first.
 
 ## Check these first
 
@@ -22,10 +22,8 @@
 - **Shelby County v. Holder** (high; gap: Equal sovereignty of the states (federalism principle)): Fourteenth and Fifteenth Amendment enforcement power
 - **Garcia v. San Antonio Metropolitan Transit Authority** (high; gap: Tenth Amendment limits on generally applicable federal laws regulating states (the National League of Cities/Garcia line), as distinct from anti-commandeering): Tenth Amendment, state autonomy, and anti-commandeering
 - **Murphy v. National Collegiate Athletic Assn.** (high; gap: Severability of unconstitutional statutory provisions): Tenth Amendment, state autonomy, and anti-commandeering
-- **Florida Lime & Avocado Growers, Inc. v. Paul** (low): Preemption: conflict and impossibility
-- **Arizona v. United States** (high; gap: Federal immigration and naturalization power): Preemption: field
-- **Tennessee Wine and Spirits Retailers Assn. v. Thomas** (high; gap: Twenty-first Amendment state alcohol regulatory authority): Dormant Commerce Clause
-- **PLIVA, Inc. v. Mensing** (low): Preemption: conflict and impossibility
+- **Arizona v. United States** (medium; gap: Federal immigration power (Naturalization Clause and inherent sovereign power over aliens)): Preemption: obstacle (impediment to federal purposes)
+- **Tennessee Wine and Spirits Retailers Assn. v. Thomas** (high; gap: Twenty-first Amendment, Section 2 (state alcohol regulatory power)): Dormant Commerce Clause: facially discriminatory laws
 
 ## Judicial Power and Justiciability
 
@@ -177,8 +175,9 @@
 
 ### Commerce Clause: foundations and pre-1937 limits
 
-- **Gibbons v. Ogden** (1824) [high]. Also: Preemption: conflict and impossibility, Dormant Commerce Clause, Federal supremacy and intergovernmental immunity
-  Marshall held that the commerce power extends to navigation and reaches intercourse among the states beyond state boundaries, and that New York's steamboat monopoly had to yield under the Supremacy Clause because it obstructed Gibbons's federal coasting license.
+- **Gibbons v. Ogden** (1824) [high]. Also: Preemption: conflict (impossibility), Dormant Commerce Clause: foundations and rationale, Federal supremacy and intergovernmental immunity
+  Marshall defined 'commerce' broadly as intercourse that includes navigation and reaches into state interiors when it concerns more than one state, then held New York's steamboat monopoly void because it collided with the federal coasting license, which is supreme under Article VI.
+  > Commerce, undoubtedly, is traffic, but it is something more: it is intercourse.
 - **Carter v. Carter Coal Co.** (1936) [high]. Also: Taxing power
   The Court held that the Act's labor provisions exceeded the commerce power because mining is local production whose effect on interstate commerce is only indirect, and it treated the 15 percent 'excise tax' as a coercive penalty that falls with those provisions rather than a valid exercise of the taxing power.
 - **United States v. E. C. Knight Co.** (1895) [high]
@@ -236,49 +235,92 @@
 - **Reno v. Condon** (2000) [high]. Also: Commerce Clause: modern scope
   The Court unanimously held that the DPPA does not commandeer the States under New York and Printz, because it regulates the States as owners and sellers of DMV databases rather than requiring them to regulate private parties. It also held the Act a valid commerce-power regulation of personal information as an article in interstate commerce.
 - **Murphy v. National Collegiate Athletic Assn.** (2018) [high]. Also: Preemption: express, Remedies and scope of relief
-  The Court held that PASPA's ban on states authorizing sports gambling violates the anticommandeering rule because it directly dictates what state legislatures may and may not enact; it rejected the provision as valid preemption because it regulates only states, not private actors, and refused to sever the rest of the statute.
+  The Court held that PASPA's prohibition on state authorization and licensing of sports gambling violates the anticommandeering rule because Congress cannot issue direct orders to state legislatures, whether to enact or to refrain from enacting laws, and it distinguished valid preemption as regulation of private actors.
+  > The PASPA provision at issue here—prohibiting state authorization of sports gambling—violates the anticom­mandeering rule.
 
 ### Preemption: express
 
-- **Lorillard Tobacco Co. v. Reilly** (2001) [high]. Also: Commercial speech
-  The Court held that the FCLAA's express preemption provision bars Massachusetts' outdoor and point-of-sale cigarette advertising regulations because they are requirements 'based on smoking and health' imposed 'with respect to' cigarette advertising, rejecting a location/content distinction despite the presumption against preemption; it also applied Central Hudson to the smokeless tobacco and cigar restrictions.
-- **Monsanto Co. v. Durnell** (2026) [high]. Also: Preemption: conflict and impossibility
-  The Court held that FIFRA's express preemption clause, 7 U.S.C. §136v(b), preempts Durnell's failure-to-warn claim because requiring a cancer warning would impose a labeling requirement 'in addition to or different from' the EPA-approved label, extending Riegel to FIFRA; the dissent also rejected Monsanto's impossibility argument, which the course note lists as a topic.
+- **Lorillard Tobacco Co. v. Reilly** (2001) [high]. Also: Commercial speech, Expressive conduct
+  The Court held that the FCLAA's express pre-emption provision, read in light of the presumption against pre-emption, displaces Massachusetts' outdoor and point-of-sale cigarette advertising regulations, and then applied Central Hudson to strike down the smokeless tobacco and cigar advertising restrictions while upholding the sales-practice rules under O'Brien.
+  > Accordingly, we hold that the Attorney General's outdoor and point-of-sale advertising regulations targeting cigarettes are preempted by the FCLAA.
+- **Monsanto Co. v. Durnell** (2026) [high]
+  The Court held that FIFRA's express preemption clause, §136v(b), bars Durnell's Missouri failure-to-warn claim because requiring a cancer warning would impose a labeling requirement 'in addition to or different from' the EPA-approved label, which counts as a requirement 'under' FIFRA; the majority expressly declined to reach implied (impossibility) preemption, which only the dissent addresses.
+  > FIFRA therefore expressly preempts Durnell’s claim.
+- **Riegel v. Medtronic, Inc.** (2008) [high]
+  The Court held that the MDA's express preemption clause, 21 U.S.C. § 360k(a), bars state common-law tort claims challenging the design or labeling of FDA premarket-approved devices because those duties are state 'requirements'; Justice Ginsburg dissents on that reading.
+  > Contextual examination of the Act convinces me that § 360k(a)’s inclusion of the term “requirement” should not prompt a sweeping preemption of mine-run claims for relief under state tort law.
+- **Chamber of Commerce of United States of America v. Whiting** (2011) [high]. Also: Preemption: obstacle (impediment to federal purposes)
+  The Court held that Arizona's law suspending or revoking business licenses of employers who knowingly hire unauthorized aliens falls within IRCA's saving clause for "licensing and similar laws" and so is not expressly preempted; it also rejected obstacle-preemption challenges to both the licensing sanctions and the E-Verify mandate.
+  > We hold that Arizona’s licensing law falls well within the confines of the authority Congress chose to leave to the States and therefore is not expressly preempted.
 
-### Preemption: conflict and impossibility
+### Preemption: conflict (impossibility)
 
-- **Florida Lime & Avocado Growers, Inc. v. Paul** (1963) [low]. Also: Preemption: field, Dormant Commerce Clause
-  The course note assigns the case for conflict preemption and impossibility of dual compliance; Florida Lime is the canonical source of the 'physical impossibility' test, under which federal avocado maturity standards did not preempt California's stricter oil-content rule because growers could comply with both.
-- **Wyeth v. Levine** (2009) [high]
-  The Court held that FDA approval of Phenergan's label did not preempt Levine's state failure-to-warn claim, rejecting both impossibility preemption (the CBE regulation let Wyeth strengthen the warning unilaterally) and obstacle preemption (Congress did not intend to displace state tort suits).
-- **PLIVA, Inc. v. Mensing** (2011) [low]
-  Per the course note, PLIVA is assigned for impossibility preemption: federal law requires generic drug makers to use the same label as the brand-name drug, so a state-law duty to strengthen warnings is one they cannot satisfy without violating federal law, and the state failure-to-warn claims are preempted.
-- **Mut. Pharm. Co. v. Bartlett** (2013) [high]
-  The Court held that New Hampshire's design-defect claim was impliedly pre-empted because Mutual could not both strengthen sulindac's warning under state law and keep the label identical to the brand-name drug's as federal law requires, and it rejected the First Circuit's 'stop-selling' rationale.
+- **Florida Lime & Avocado Growers, Inc. v. Paul** (1963) [high]. Also: Preemption: field, Preemption: obstacle (impediment to federal purposes), Dormant Commerce Clause: facially neutral laws with discriminatory purpose or effect
+  The Court held California's 8% oil-content avocado standard was not preempted by federal marketing orders because dual compliance was not physically impossible (growers could leave fruit on trees longer) and Congress showed no clear intent to occupy the field, while remanding the Commerce Clause burden/discrimination claim for a new trial.
+  > A holding of federal exclusion of state law is inescapable and requires no inquiry into congressional design where compliance with both federal and state regulations is a *143 physical impossibility for one engaged in interstate commerce, cf. Union Bridge Co. v. United States, 204 U. S. 364, 399-401 ; Morgan v. Virginia, 328 U. S. 373 ; Bibb v. Navajo Freight Lines, Inc., 359 U. S. 520 .
+- **PLIVA, Inc. v. Mensing** (2011) [high]
+  The Court held that state failure-to-warn claims against generic drug makers are preempted under impossibility preemption because federal law required generic labels to match the brand-name label, so the manufacturers could not independently do what state law required.
+  > Thus, it was impossible for the Manufacturers to comply with both their state-law duty to change the label and their federal-law duty to keep the label the same.
+- **Mut. Pharm. Co. v. Bartlett** (2013) [high]. Also: Preemption: obstacle (impediment to federal purposes)
+  The Court held New Hampshire's warning-based design-defect claim impliedly pre-empted because it was impossible for Mutual to satisfy a state-law duty to strengthen sulindac's label while obeying the federal bar on unilateral generic label changes, and it rejected the 'stop-selling' rationale as incompatible with impossibility pre-emption.
+  > In the instant case, it was impossible for Mutual to comply with both its state-law duty to strengthen the warnings on sulindac's label and its federal-law duty not to alter sulindac's label.
+
+### Preemption: obstacle (impediment to federal purposes)
+
+- **Arizona v. United States** (2012) [medium]. Also: Preemption: field, Ripeness
+  The Court held §§ 5(C) and 6 of S.B. 1070 preempted as obstacles to the purposes of federal immigration law and § 3 preempted because Congress occupied the field of alien registration, while declining to enjoin § 2(B) before state courts construed it.
+  > It follows that a state law to the contrary is an obstacle to the regulatory system Congress chose.
+- **Wyeth v. Levine** (2009) [high]. Also: Preemption: conflict (impossibility)
+  The course note assigns Wyeth as an impediment (obstacle) preemption case, and the Court held that Levine's failure-to-warn claim did not obstruct congressional purposes because the FDCA's history shows Congress did not intend to preempt state tort suits; it also rejected impossibility preemption because the CBE regulation let Wyeth strengthen its warning unilaterally.
+  > Its silence on the issue, coupled with its certain awareness of the prevalence of state tort litigation, is powerful evidence that Congress did not intend FDA oversight to be the exclusive means of ensuring drug safety and effectiveness.
 
 ### Preemption: field
 
-- **Pacific Gas & Electric Co. v. State Energy Resources Conservation & Development Commission** (1983) [high]. Also: Preemption: conflict and impossibility, Ripeness
-  The Court held that the Atomic Energy Act occupies the field of nuclear safety but that California's waste-disposal moratorium (§ 25524.2), resting on an avowed economic purpose, falls outside that field and does not conflict with federal law; it also held the § 25524.2 challenge ripe and the § 25524.1(b) challenge unripe.
-- **Arizona v. United States** (2012) [high]. Also: Preemption: conflict and impossibility, Treaty and foreign affairs power, Ripeness
-  The Court held Section 3 field-preempted because Congress occupied the field of alien registration, and held Sections 5(C) and 6 preempted as obstacles to federal objectives, so the case is taught for both field and conflict/obstacle preemption.
+- **Pacific Gas & Electric Co. v. State Energy Resources Conservation & Development Commission** (1983) [medium]. Also: Preemption: obstacle (impediment to federal purposes), Preemption: conflict (impossibility), Ripeness
+  The Court held that the Atomic Energy Act occupies the field of nuclear safety but leaves states their traditional economic authority, so California's moratorium, accepted as economically motivated, falls outside the occupied field; it also rejected the impossibility-conflict and obstacle arguments and found the § 25524.2 challenge ripe but the § 25524.1(b) challenge unripe.
+  > Accordingly, the statute lies outside the occupied field of nuclear safety regulation.
+- **Hines v. Davidowitz** (1941) [medium]. Also: Preemption: obstacle (impediment to federal purposes), Treaty and foreign affairs power
+  The Court held Pennsylvania's alien registration law unenforceable because Congress, acting in the foreign-affairs-sensitive area of immigration, created a single integrated and all-embracing federal registration system. That is field preemption as the course note frames it, though the opinion also states the famous 'obstacle to the accomplishment and execution of the full purposes and objectives of Congress' test.
+  > Having the constitutional authority so to do, it has provided a standard for alien registration in a single integrated and all-embracing system in order to obtain the information deemed to be desirable in connection with aliens.
 
-### Dormant Commerce Clause
+### Dormant Commerce Clause: foundations and rationale
 
-- **Tennessee Wine and Spirits Retailers Assn. v. Thomas** (2019) [high]
-  The Court held that Tennessee's 2-year durational-residency requirement for retail liquor licenses facially discriminates against nonresident economic actors in violation of the dormant Commerce Clause and is not saved by Section 2 of the Twenty-first Amendment because its predominant effect is protectionist.
-- **Cooley v. Board of Wardens of Port of Philadelphia Ex Rel. Soc. for Relief of Distressed Pilots** (1852) [high]. Also: Commerce Clause: foundations and pre-1937 limits
-  The Court held that pilotage regulation is commerce but, under the 'selective exclusiveness' test, a local subject states may regulate absent congressional action, so Pennsylvania's pilotage law survived the dormant Commerce Clause.
-- **City of Philadelphia v. New Jersey** (1978) [high]
-  The Court held New Jersey's ban on importing out-of-state waste violated the Commerce Clause because it facially discriminated against articles of commerce based solely on origin, triggering a virtually per se rule of invalidity.
-- **West Lynn Creamery, Inc. v. Healy** (1994) [high]
-  The Court held that Massachusetts' milk pricing order, which paired an assessment on all fluid milk sales with a subsidy paid only to in-state dairy farmers, operated like a protective tariff and unconstitutionally discriminated against interstate commerce under the negative Commerce Clause.
+- **Cooley v. Board of Wardens of Port of Philadelphia Ex Rel. Soc. for Relief of Distressed Pilots** (1852) [high]. Also: Dormant Commerce Clause: facially discriminatory laws, Commerce Clause: foundations and pre-1937 limits
+  The course note files Cooley under facially discriminatory state laws, but the holding adopts 'selective exclusiveness': the commerce grant bars state regulation only of subjects national in nature, so Pennsylvania may regulate local pilotage absent conflicting federal law. That is a foundational dormant Commerce Clause ruling, not a discrimination analysis.
+  > Whatever subjects of this power are in their nature national, or admit only of one uniform system, or plan of regulation, may justly be said to be of such a nature as to require exclusive legislation by Congress.
+
+### Dormant Commerce Clause: facially discriminatory laws
+
+- **Tennessee Wine and Spirits Retailers Assn. v. Thomas** (2019) [high]. Also: Dormant Commerce Clause: foundations and rationale
+  The Court held that Tennessee's 2-year durational-residency requirement for liquor retailers facially discriminates against nonresidents, fails the narrow-tailoring test because nondiscriminatory alternatives exist, and is not saved by Section 2 of the Twenty-first Amendment, after reaffirming at length the historical rationale for the dormant Commerce Clause.
+  > Since the 2-year residency requirement discriminates on its face against nonresidents, it could not be sustained if it applied across the board to all those seeking to operate any retail business in the State.
+- **City of Philadelphia v. New Jersey** (1978) [high]. Also: Dormant Commerce Clause: foundations and rationale
+  The Court struck down New Jersey's ban on out-of-state waste as a facially discriminatory, protectionist barrier subject to a virtually per se rule of invalidity, rejecting the quarantine-law defense because no reason apart from origin justified treating out-of-state waste differently.
+  > Both on its face and in its plain effect, ch. 363 violates this principle of nondiscrimination.
+
+### Dormant Commerce Clause: facially neutral laws with discriminatory purpose or effect
+
+- **West Lynn Creamery, Inc. v. Healy** (1994) [high]. Also: Dormant Commerce Clause: facially discriminatory laws
+  The Court struck down Massachusetts' milk pricing order because, although its assessment applied evenhandedly to all milk, coupling it with a subsidy paid only to in-state farmers gave it the purpose and effect of a protective tariff; the course note files the case under facially discriminatory laws, but the holding concerns a facially neutral scheme judged by its practical operation.
+  > Its avowed purpose and its undisputed effect are to enable higher cost Massachusetts dairy farmers to compete with lower cost dairy farmers in other States.
 - **Hunt v. Washington State Apple Advertising Commission** (1977) [high]. Also: Standing: associational and organizational standing
-  The Court held that North Carolina's facially neutral ban on displaying state apple grades discriminated against interstate commerce in practical effect, and that the State failed to justify it given available nondiscriminatory alternatives; it also announced the three-part test for associational standing, applying it to the Washington commission.
-- **Exxon Corp. v. Governor of Maryland** (1978) [high]. Also: Preemption: conflict and impossibility, Economic substantive due process
-  The Court held that Maryland's ban on refiner-operated gas stations did not discriminate against or impermissibly burden interstate commerce because the Commerce Clause protects the interstate market, not particular interstate firms; it also rejected Robinson-Patman/Sherman Act conflict preemption and a substantive due process challenge.
-- **Minnesota v. Clover Leaf Creamery Co.** (1981) [medium]. Also: Rational basis review
-  Assigned in the dormant Commerce Clause module, the case holds that Minnesota's plastic-milk-container ban regulates evenhandedly and its incidental burden on interstate commerce is not clearly excessive under Pike balancing, while also upholding the classification under deferential rational-basis equal protection review.
+  The Court held that North Carolina's facially neutral ban on state apple grades discriminated against Washington apples in practical effect, shifting to the State a burden it failed to meet on local benefits and nondiscriminatory alternatives; it also announced the three-part test for associational standing.
+  > As the District Court correctly found, the challenged statute has the practical effect of not only burdening interstate sales of Washington apples, but also discriminating against them.
+- **Exxon Corp. v. Governor of Maryland** (1978) [high]. Also: Dormant Commerce Clause: nondiscriminatory burdens (Pike balancing), Economic substantive due process, Preemption: conflict (impossibility)
+  The Court held that Maryland's facially neutral ban on refiner-operated gas stations did not discriminate against interstate commerce in effect, even though its burden fell entirely on out-of-state firms, because the Commerce Clause protects the interstate market rather than particular interstate firms; it also rejected the undue-burden, substantive due process, and Robinson-Patman preemption claims.
+  > The fact that the burden of a state regulation falls on some interstate companies does not, by itself, establish a claim of discrimination against interstate commerce.
+- **Minnesota v. Clover Leaf Creamery Co.** (1981) [medium]. Also: Dormant Commerce Clause: nondiscriminatory burdens (Pike balancing), Rational basis review
+  The Court rejected the claim that Minnesota's plastic-milk-container ban was protectionist in purpose or effect, finding it evenhanded and so applying Pike balancing (burden not clearly excessive); it also upheld the classification under deferential rational-basis equal protection review.
+  > A nondiscriminatory regulation serving substantial state purposes is not invalid simply because it causes some business to shift from a predominantly out-of-state industry to a predominantly in-state industry.
+- **C & a Carbone, Inc. v. Town of Clarkstown** (1994) [high]. Also: Dormant Commerce Clause: nondiscriminatory burdens (Pike balancing), Dormant Commerce Clause: laws favoring state or local government
+  The majority held that Clarkstown's facially neutral flow control ordinance, by requiring all solid waste to be processed at a single designated local transfer station, discriminates against interstate commerce in practical effect, like earlier local processing requirements, and is invalid absent a showing that no nondiscriminatory alternative exists. O'Connor's concurrence would instead strike it down under Pike balancing, and Souter's dissent argues that favoring a municipal facility is not protectionist.
+  > Though the Clarkstown ordinance may not in explicit terms seek to regulate interstate commerce, it does so nonetheless by its practical effect and design.
+
+### Dormant Commerce Clause: laws favoring state or local government
+
+- **United Haulers Ass'n v. Oneida-Herkimer Solid Waste Management Authority** (2007) [high]. Also: Dormant Commerce Clause: facially neutral laws with discriminatory purpose or effect, Dormant Commerce Clause: nondiscriminatory burdens (Pike balancing)
+  The Court held that flow control ordinances favoring a publicly owned waste facility, while treating all private businesses alike, do not discriminate against interstate commerce; a plurality then upheld them under Pike balancing. The course note files the case under facially neutral laws with discriminatory purpose or effect, but the holding turns on favoritism toward local government.
+  > Because the question is now squarely presented on the facts of the case before us, we decide that such flow control ordinances do not discriminate against interstate commerce for purposes of the dormant Commerce Clause.
 
 ## The Reconstruction Amendments and State Action
 
