@@ -1,0 +1,385 @@
+{
+ "note": "Cases whose AI briefs were generated from opinion text cut at 50,000 chars (repaired 2026-10-11). Regenerate from the full text.",
+ "cases": [
+  {
+   "case_id": "107451",
+   "title": "Abbott Laboratories v. Gardner",
+   "structured": true
+  },
+  {
+   "case_id": "102474",
+   "title": "A. L. A. Schechter Poultry Corp. v. United States",
+   "structured": true
+  },
+  {
+   "case_id": "792219",
+   "title": "Andretti v. Borla Performance Industries",
+   "structured": true
+  },
+  {
+   "case_id": "803270",
+   "title": "Arizona v. United States",
+   "structured": true
+  },
+  {
+   "case_id": "109267",
+   "title": "Blue Chip Stamps v. Manor Drug Stores",
+   "structured": false
+  },
+  {
+   "case_id": "91573",
+   "title": "Boyd v. United States",
+   "structured": true
+  },
+  {
+   "case_id": "1669089",
+   "title": "Boyles v. Kerr",
+   "structured": false
+  },
+  {
+   "case_id": "110053",
+   "title": "Broadcast Music, Inc. v. Columbia Broadcasting System, Inc.",
+   "structured": true
+  },
+  {
+   "case_id": "496754",
+   "title": "Brunswick Corporation v. Spinit Reel Company",
+   "structured": true
+  },
+  {
+   "case_id": "107684",
+   "title": "Bruton v. United States",
+   "structured": true
+  },
+  {
+   "case_id": "118227",
+   "title": "Bryan v. United States",
+   "structured": false
+  },
+  {
+   "case_id": "219509",
+   "title": "Bullcoming v. New Mexico",
+   "structured": true
+  },
+  {
+   "case_id": "2061792",
+   "title": "Burke v. Harman",
+   "structured": true
+  },
+  {
+   "case_id": "108189",
+   "title": "California v. Green",
+   "structured": true
+  },
+  {
+   "case_id": "852330",
+   "title": "Camm v. State",
+   "structured": true
+  },
+  {
+   "case_id": "110916",
+   "title": "City of Los Angeles v. Lyons",
+   "structured": true
+  },
+  {
+   "case_id": "90897",
+   "title": "Civil Rights Cases",
+   "structured": true
+  },
+  {
+   "case_id": "821306",
+   "title": "Clapper v. Amnesty International USA",
+   "structured": true
+  },
+  {
+   "case_id": "134724",
+   "title": "Crawford v. Washington",
+   "structured": true
+  },
+  {
+   "case_id": "145641",
+   "title": "Davis v. Washington",
+   "structured": true
+  },
+  {
+   "case_id": "136984",
+   "title": "Elk Grove Unified School District v. Newdow",
+   "structured": true
+  },
+  {
+   "case_id": "109896",
+   "title": "Exxon Corp. v. Governor of Maryland",
+   "structured": true
+  },
+  {
+   "case_id": "2592380",
+   "title": "Flushing National Bank v. Municipal Assistance Corp.",
+   "structured": true
+  },
+  {
+   "case_id": "112731",
+   "title": "Foucha v. Louisiana",
+   "structured": false
+  },
+  {
+   "case_id": "118329",
+   "title": "Friends of the Earth, Inc. v. Laidlaw Environmental Services (TOC), Inc.",
+   "structured": true
+  },
+  {
+   "case_id": "145781",
+   "title": "Giles v. California",
+   "structured": true
+  },
+  {
+   "case_id": "109703",
+   "title": "Hunt v. Washington State Apple Advertising Commission",
+   "structured": true
+  },
+  {
+   "case_id": "99248",
+   "title": "International News Service v. Associated Press",
+   "structured": false
+  },
+  {
+   "case_id": "220342",
+   "title": "J. McIntyre Machinery, Ltd. v. Nicastro",
+   "structured": false
+  },
+  {
+   "case_id": "85404",
+   "title": "Johnson & Graham's Lessee v. McIntosh",
+   "structured": false
+  },
+  {
+   "case_id": "107256",
+   "title": "Katzenbach v. Morgan",
+   "structured": true
+  },
+  {
+   "case_id": "104040",
+   "title": "Korematsu v. United States",
+   "structured": false
+  },
+  {
+   "case_id": "118271",
+   "title": "Kumho Tire Co. v. Carmichael",
+   "structured": true
+  },
+  {
+   "case_id": "118458",
+   "title": "Lorillard Tobacco Co. v. Reilly",
+   "structured": true
+  },
+  {
+   "case_id": "109693",
+   "title": "Manson v. Brathwaite",
+   "structured": true
+  },
+  {
+   "case_id": "145749",
+   "title": "Massachusetts v. Environmental Protection Agency",
+   "structured": true
+  },
+  {
+   "case_id": "111620",
+   "title": "Matsushita Electric Industrial Co., Ltd. v. Zenith Radio Corporation",
+   "structured": false
+  },
+  {
+   "case_id": "85272",
+   "title": "M'culloch v. State of Maryland",
+   "structured": true
+  },
+  {
+   "case_id": "145853",
+   "title": "Melendez-Diaz v. Massachusetts",
+   "structured": true
+  },
+  {
+   "case_id": "8443471",
+   "title": "Meyer v. Uber Technologies, Inc.",
+   "structured": true
+  },
+  {
+   "case_id": "2959736",
+   "title": "Michigan v. Bryant",
+   "structured": true
+  },
+  {
+   "case_id": "110380",
+   "title": "Minnesota v. Clover Leaf Creamery Co.",
+   "structured": true
+  },
+  {
+   "case_id": "149289",
+   "title": "Morrison v. National Australia Bank Ltd.",
+   "structured": false
+  },
+  {
+   "case_id": "9068915",
+   "title": "Mut. Pharm. Co. v. Bartlett",
+   "structured": true
+  },
+  {
+   "case_id": "809122",
+   "title": "National Federation of Independent Business v. Sebelius",
+   "structured": false
+  },
+  {
+   "case_id": "112768",
+   "title": "New York v. United States",
+   "structured": true
+  },
+  {
+   "case_id": "110707",
+   "title": "North Haven Board of Education v. Bell",
+   "structured": true
+  },
+  {
+   "case_id": "109303",
+   "title": "O'Connor v. Donaldson",
+   "structured": false
+  },
+  {
+   "case_id": "118074",
+   "title": "Old Chief v. United States",
+   "structured": false
+  },
+  {
+   "case_id": "85451",
+   "title": "Osborn v. Bank of United States",
+   "structured": true
+  },
+  {
+   "case_id": "110919",
+   "title": "Pacific Gas & Electric Co. v. State Energy Resources Conservation & Development Commission",
+   "structured": true
+  },
+  {
+   "case_id": "2721744",
+   "title": "Patterson v. Domino's Pizza, LLC",
+   "structured": true
+  },
+  {
+   "case_id": "109924",
+   "title": "Penn Central Transportation Co. v. New York City",
+   "structured": false
+  },
+  {
+   "case_id": "2123530",
+   "title": "People v. Aaron",
+   "structured": false
+  },
+  {
+   "case_id": "620671",
+   "title": "Perry v. New Hampshire",
+   "structured": true
+  },
+  {
+   "case_id": "8810720",
+   "title": "Pruitt v. Allied Chemical Corp.",
+   "structured": true
+  },
+  {
+   "case_id": "118027",
+   "title": "Romer v. Evans",
+   "structured": false
+  },
+  {
+   "case_id": "110507",
+   "title": "Schad v. Borough of Mount Ephraim",
+   "structured": true
+  },
+  {
+   "case_id": "499428",
+   "title": "Secretary of Labor, United States Department of Labor v. Michael Lauritzen and Marilyn Lauritzen, Individually and Doing Business as Lauritzen Farms",
+   "structured": true
+  },
+  {
+   "case_id": "130152",
+   "title": "Sell v. United States",
+   "structured": false
+  },
+  {
+   "case_id": "2263467",
+   "title": "So. Burl. Cty. NAACP v. Tp. of Mt. Laurel",
+   "structured": false
+  },
+  {
+   "case_id": "3203762",
+   "title": "Spokeo, Inc. v. Robins",
+   "structured": true
+  },
+  {
+   "case_id": "405929",
+   "title": "Stanley M. Diefenthal and Elka F. Diefenthal v. Civil Aeronautics Board and Eastern Airlines, Inc., Stanley M. Diefenthal and Elka F. Diefenthal v. Civil Aeronautics Board",
+   "structured": false
+  },
+  {
+   "case_id": "127910",
+   "title": "State Farm Mutual Automobile Insurance v. Campbell",
+   "structured": false
+  },
+  {
+   "case_id": "564982",
+   "title": "Step-Saver Data Systems, Inc. v. Wyse Technology and the Software Link, Inc",
+   "structured": true
+  },
+  {
+   "case_id": "102843",
+   "title": "Steward MacHine Co. v. Davis",
+   "structured": true
+  },
+  {
+   "case_id": "105533",
+   "title": "Sweezy v. New Hampshire Ex Rel. Wyman",
+   "structured": false
+  },
+  {
+   "case_id": "104374",
+   "title": "United Public Workers of America v. Mitchell",
+   "structured": true
+  },
+  {
+   "case_id": "334191",
+   "title": "United States v. Charles Demore Jewell",
+   "structured": false
+  },
+  {
+   "case_id": "667589",
+   "title": "United States v. Nigel D. Ince",
+   "structured": true
+  },
+  {
+   "case_id": "103352",
+   "title": "United States v. Socony-Vacuum Oil Co.",
+   "structured": true
+  },
+  {
+   "case_id": "219618",
+   "title": "Wal-Mart Stores, Inc. v. Dukes",
+   "structured": false
+  },
+  {
+   "case_id": "426378",
+   "title": "Warner Bros. Inc. v. American Broadcasting Companies, Inc.",
+   "structured": true
+  },
+  {
+   "case_id": "117855",
+   "title": "West Lynn Creamery, Inc. v. Healy",
+   "structured": true
+  },
+  {
+   "case_id": "802772",
+   "title": "Williams v. Illinois",
+   "structured": true
+  },
+  {
+   "case_id": "2265723",
+   "title": "Woolley v. Hoffmann-La Roche, Inc.",
+   "structured": true
+  }
+ ]
+}

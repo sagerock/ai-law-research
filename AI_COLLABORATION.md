@@ -528,7 +528,10 @@ some cuts land inside inline base64 images, so a complete clean-text opinion can
 the cut-off copy. A candidate qualifies if it is longer than the old copy's readable text or contains
 the old copy's last words and continues 300+ characters past them. The 33 kept are mostly cuts that
 clipped only the final lines or the footnotes, where the clean text lacks footnotes the old copy had.
-Follow-up for Sage: 77 of these cases have cached AI briefs written from the cut-off text.
+Follow-up (deferred by Sage 2026-10-11, usage limits): 76 cases have AI briefs written from the cut-off
+text, 53 of them also structured; list in `data/briefs_to_regenerate_50k.json`. Prose briefs read the first
+18k + last 2k chars, so their "ending" was mid-opinion; structured briefs never saw past the cut. Source
+links still resolve (checked 3). Check the structured pipeline's billing before rerunning.
 Files: `citator/repair_truncated_opinions.py`, `scripts/import_with_opinions.py`.
 Deployment: S3 data only; no code deploy needed (the backend reads S3 per request).
 
