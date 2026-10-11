@@ -148,8 +148,8 @@ async def search_and_import_case(conn, search_query: str):
             if full_text:
                 # Remove excessive whitespace
                 full_text = ' '.join(full_text.split())
-                # Limit to reasonable size
-                full_text = full_text[:50000]  # ~50KB of text
+                # No length cap: a 50,000-char cap here cut off 7,198 stored opinions,
+                # repaired 2026-10-11 by citator/repair_truncated_opinions.py.
 
             content = full_text or snippet or f"{case_name_full}. {court}."
 

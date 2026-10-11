@@ -512,6 +512,26 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### 50k-truncated opinions repaired site-wide (2026-10-11)
+Owner: Claude
+Status: done; 33 left as-is (listed in the workdir log), 77 briefs were generated from cut-off text
+Root cause: `scripts/import_with_opinions.py` stored `full_text[:50000]` (HTML included); those texts
+were later migrated to S3 unchanged. 7,198 objects in `lawstudygroup-opinions/opinions/` were exactly
+50,000 characters, nearly all casebook cases. The cap is removed.
+`citator/repair_truncated_opinions.py` (phases find/stitch/apply/verify) stitched full text from the
+local CourtListener Parquet corpus (`/mnt/d/backups/ai-law-research/data/courtlistener/`, still
+present after the dev-tree move), backed up every old object to `opinions-backup-50k/<id>.txt`
+(the bucket has no versioning; that prefix is the undo), uploaded, and hash-checked each read-back.
+Replaced 7,165 (7,163 from the local corpus, 2 from the CourtListener API).
+Why the acceptance test is not just length: the old copies are HTML with headers and footnotes, and
+some cuts land inside inline base64 images, so a complete clean-text opinion can measure shorter than
+the cut-off copy. A candidate qualifies if it is longer than the old copy's readable text or contains
+the old copy's last words and continues 300+ characters past them. The 33 kept are mostly cuts that
+clipped only the final lines or the footnotes, where the clean text lacks footnotes the old copy had.
+Follow-up for Sage: 77 of these cases have cached AI briefs written from the cut-off text.
+Files: `citator/repair_truncated_opinions.py`, `scripts/import_with_opinions.py`.
+Deployment: S3 data only; no code deploy needed (the backend reads S3 per request).
+
 ### Topic tags: Con Law collection 15 live (2026-10-11)
 Owner: Claude
 Status: live on `/shared/15`; AI tags unreviewed (Sage chose to publish first and correct after)
@@ -546,9 +566,9 @@ conflict secondary was removed by hand (the majority declined to reach impossibi
 now drops doctrines removed from the taxonomy once untagged. Now 103 cases, 265 tags.
 Found in passing: 23 of the 103 collection-15 opinions are stored with the legacy exact-50k truncation
 (e.g. Lorillard, PG&E, Arizona, Exxon, West Lynn, Bartlett, Whiting), so their case pages show cut-off
-text; the tagger and the Qdrant sync repair it in memory only. Not fixed in the database yet.
+text. Repaired site-wide the same day (see the next entry).
 Qdrant sync for the five new cases failed twice on an SSL handshake timeout; rerun it.
-Next: rerun the Qdrant sync; repair truncated opinions; Sage's corrections (set `reviewed_at` on fixed rows); then other collections/subjects and topic
+Next: rerun the Qdrant sync; Sage's corrections (set `reviewed_at` on fixed rows); then other collections/subjects and topic
 pages.
 Files: `migrations/040_case_topics.sql`, `data/topics/`, `scripts/tag_collection_topics.py`,
 `scripts/import_case_topics.py`, `scripts/import_conlaw_week08_notes_cases_2026.py`, `backend/main.py` (shared endpoint), `frontend/components/
