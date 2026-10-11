@@ -1,6 +1,7 @@
 {
   "subject": "Constitutional Law",
-  "status": "draft for Sage's review (2026-10-11); not imported anywhere",
+  "subject_slug": "con-law",
+  "status": "AI-tagged, published 2026-10-11 for a look on the site; corrections pending Sage's review",
   "note": "Tortwell's own doctrinal taxonomy. Top-level topics match scripts/classify_conlaw_topics.py (casebook 1499). Doctrine slugs are stable IDs; labels can be reworded freely.",
   "topics": [
     {

@@ -512,24 +512,33 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
-### Topic tags pilot: Con Law collection 15 (2026-10-11)
+### Topic tags: Con Law collection 15 live (2026-10-11)
 Owner: Claude
-Status: draft tags awaiting Sage's review; nothing imported, no schema yet
-Sage asked whether cases could carry topic tags, eventually across all cases. Decision so far: tags come
-only from a fixed per-subject taxonomy (`data/topics/con_law.json`, 13 topics matching casebook 1499's
-`classify_conlaw_topics.py` headings, 81 doctrines with stable slugs), never free-form, because
-free-form AI tags sprawl into near-duplicates. Each case gets one primary doctrine plus up to three
-secondary. `scripts/tag_collection_topics.py` reads the public collection, course notes, and cached
-briefs from the production API, tags with Opus 5.5 under a JSON schema enum, and writes
-`data/topics/review/collection-15.{json,md}`. The JSON is read-only: it never touches the database.
-The first pass exposed taxonomy gaps (associational standing, Thirteenth Amendment, abstention), which
-were added before the second pass. Result: 98 cases, 84 high / 9 medium / 5 low confidence. The
-low-confidence cases are the ones without briefs. Known data issue: McCulloch appears twice in
-collection 15 (`1320585` and duplicate `85272`).
-Next: Sage corrects the review file; then decide storage (likely a `case_topics` table keyed by case
-+ doctrine slug with source/reviewed flags) and the UI (group/filter on `/shared/[id]`, topic pages).
-Files: `data/topics/con_law.json`, `data/topics/review/collection-15.*`, `scripts/tag_collection_topics.py`.
-Deployment: none.
+Status: live on `/shared/15`; AI tags unreviewed (Sage chose to publish first and correct after)
+Sage asked whether cases could carry topic tags, eventually across all cases. Decisions: tags come
+only from a fixed per-subject taxonomy (`data/topics/con_law.json`: 13 topics matching casebook
+1499's `classify_conlaw_topics.py` headings, 81 doctrines with stable slugs), never free-form,
+because free-form AI tags sprawl into near-duplicates. Each case gets one primary doctrine plus up to
+three secondary; filtering matches either. Doctrine ids are namespaced (`con-law:ripeness`) so other
+subjects can reuse slugs like "takings".
+Pipeline: `scripts/tag_collection_topics.py` (public API inputs: course notes + cached briefs; Opus
+5.5 under a JSON-schema enum) writes `data/topics/review/collection-15.{json,md}`;
+`scripts/import_case_topics.py` loads it into `topic_doctrines` / `case_topics` (migration 040). The
+importer replaces AI tags but skips any case with a reviewed tag (`reviewed_at` set), so hand
+corrections survive re-runs. The production Postgres has no public proxy now; run migrations and the
+importer through `railway ssh -s Backend -- env DRY_RUN=0 python - < bundle.py` (see the script's
+docstring). Migration 040 was applied before the code deploy (the 039 lesson).
+UI: `components/SharedCollectionItems.tsx` adds a "Browse by topic" chip filter and per-case tag chips,
+with a note that tags are AI-assigned and under review. The API tolerates a missing table.
+Result: 98 cases, 244 tags; 84 high / 9 medium / 5 low confidence (the five lack briefs). Known
+issues: TransUnion has a wrong taxpayer-standing secondary; McCulloch appears twice in collection 15
+(`1320585` and duplicate `85272`).
+Next: Sage's corrections (set `reviewed_at` on fixed rows); then other collections/subjects and topic
+pages.
+Files: `migrations/040_case_topics.sql`, `data/topics/`, `scripts/tag_collection_topics.py`,
+`scripts/import_case_topics.py`, `backend/main.py` (shared endpoint), `frontend/components/
+SharedCollectionItems.tsx`, `frontend/lib/collectionTopics.ts`, `frontend/app/shared/[id]/page.tsx`.
+Deployment: migration 040 + 244 tags applied to production 2026-10-11; code via push to `main`.
 
 ### Semantic review session 2026-10-04 (twenty-fourth run): 5 reviewed, 3 approved, 2 held — queue clear
 Owner: Claude

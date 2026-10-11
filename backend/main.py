@@ -3472,6 +3472,29 @@ async def get_shared_collection(collection_id: str):
             ORDER BY cc.position ASC, cc.added_at DESC
         """, coll_id)
 
+        # Doctrine tags (migration 040); primary first, then taxonomy order
+        topics_by_case: dict[str, list[dict]] = {}
+        try:
+            topic_rows = await conn.fetch("""
+                SELECT ct.case_id, ct.is_primary, d.id, d.label, d.topic,
+                       d.topic_rank, d.sort_order
+                FROM case_topics ct
+                JOIN topic_doctrines d ON d.id = ct.doctrine_id
+                WHERE ct.case_id = ANY($1::text[])
+                ORDER BY ct.is_primary DESC, d.sort_order
+            """, [c["id"] for c in cases])
+        except asyncpg.exceptions.UndefinedTableError:
+            topic_rows = []
+        for t in topic_rows:
+            topics_by_case.setdefault(t["case_id"], []).append({
+                "id": t["id"],
+                "label": t["label"],
+                "topic": t["topic"],
+                "topic_rank": t["topic_rank"],
+                "sort_order": t["sort_order"],
+                "is_primary": t["is_primary"],
+            })
+
         # Get legal texts in collection
         legal_texts = await conn.fetch("""
             SELECT clt.notes, clt.position,
@@ -3497,7 +3520,8 @@ async def get_shared_collection(collection_id: str):
                 "reporter_cite": c["reporter_cite"],
                 "court_name": c["court_name"],
                 "notes": c["notes"],
-                "position": c["position"] if c["position"] is not None else 0
+                "position": c["position"] if c["position"] is not None else 0,
+                "topics": topics_by_case.get(c["id"], []),
             }
             for c in cases
         ],
