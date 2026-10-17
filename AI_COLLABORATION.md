@@ -549,6 +549,19 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Claude Opus 5.5 for briefs and brief variants (2026-10-17)
+Owner: Claude
+Status: live (5f0af32). Detailed source-linked briefs and the Simplified/Bullets writer and
+fidelity review moved from Opus 4.8 to `claude-opus-5-5` ($4/$20). Opus 5.5 always thinks
+(billed as output, counted in max_tokens), so max_tokens is 16k and effort is explicit:
+writer `low` (tested: same pass rate as medium, half the output; ~7.5 cents/case), review and
+detailed briefs `high` (Hines v. Davidowitz: 36 s, $0.20). Requests opt into
+`fallbacks: "default"` (beta `server-side-fallback-2026-07-01`); a refusal that survives the
+fallback is a 502, never parsed. Cost comes from `usage.iterations` after a fallback, and
+reservations price the costliest permitted target (Opus 4.8), keeping the bounded-reservation
+rule. Helpers: `anthropic_headers/body/result_usage/result_text` in `backend/main.py`.
+Not migrated: three other Opus 4.8 call sites near line 7850 (outside the brief work).
+
 ### Simplified / Bullets brief tabs (2026-10-17)
 Owner: Claude
 Status: live. Migration 041 applied to production before the code push; tabs verified on
