@@ -14,7 +14,7 @@ import hashlib
 import json
 import re
 
-VARIANT_PROMPT_VERSION = "v1"
+VARIANT_PROMPT_VERSION = "v2"
 
 SECTIONS = ("facts", "issue", "holding", "rule", "majority_reasoning", "dissent")
 SECTION_LABELS = {
@@ -114,7 +114,11 @@ away.
 
 BULLETS: 5-8 one-line points, each at most 30 words. "label" is one of: Facts, Issue,
 Holding, Rule, Reasoning, Outcome, Dissent. Include at least Holding, Rule, and Outcome.
-Outcome states the disposition, including any part vacated or remanded. Each bullet's
+Outcome states the disposition, including any part vacated or remanded.
+Bullets are for exam review, so unlike Simplified they keep the court's own doctrinal
+terms and tests word for word (for example "clearly excessive", "virtually per se
+invalid", "substantial reason"), each with a short plain explanation if it needs one.
+Keep the elements of a multi-part test; do not paraphrase a test into vaguer words. Each bullet's
 "from" may cite only claims from its label's section (Outcome cites holding claims).
 {dissent_rule}
 
