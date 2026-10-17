@@ -167,6 +167,8 @@ POST /api/v1/search                 # Search cases (query, search_type, limit)
 GET  /api/v1/cases/{id}             # Get case details
 GET  /api/v1/cases/{id}/summary     # Get cached AI summary
 POST /api/v1/cases/{id}/summarize   # Generate new AI summary (uses Claude)
+GET  /api/v1/cases/{id}/brief-variants  # Cached Simplified/Bullets versions of the approved brief
+POST /api/v1/cases/{id}/brief-variants  # Generate them (rewrite + fidelity review; force is admin-only)
 GET  /api/v1/cases/{id}/citations   # Get citing/cited cases
 GET  /api/v1/cases/{id}/citator     # Get citation treatment badge
 POST /api/v1/briefcheck             # Analyze uploaded brief

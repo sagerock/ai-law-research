@@ -92,6 +92,29 @@ interface StructuredSummary {
   significance: string
 }
 
+interface VariantLine {
+  text: string
+  sources: string[]
+}
+
+interface BriefVariants {
+  status: 'ready' | 'not_generated' | 'stale' | 'unavailable'
+  simplified?: Record<'facts' | 'issue' | 'holding' | 'rule' | 'majority_reasoning' | 'dissent', VariantLine[]>
+  bullets?: Array<VariantLine & { label: string }>
+  topic?: { label: string; topic: string } | null
+}
+
+type BriefView = 'detailed' | 'simplified' | 'bullets'
+
+const BRIEF_SECTIONS = [
+  ['facts', 'Facts'],
+  ['issue', 'Issue'],
+  ['holding', 'Holding'],
+  ['rule', 'Rule'],
+  ['majority_reasoning', 'Reasoning'],
+  ['dissent', 'Dissent'],
+] as const
+
 interface CaseReference {
   id: string
   title?: string
@@ -201,6 +224,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const [reportStatus, setReportStatus] = useState<'idle' | 'sent' | 'error'>('idle')
   const [reportSubmitting, setReportSubmitting] = useState(false)
 
+  // Simplified / Bullets tabs: rewrites of the approved brief, generated on first open
+  const [briefView, setBriefView] = useState<BriefView>('detailed')
+  const [briefVariants, setBriefVariants] = useState<BriefVariants | null>(null)
+  const [variantsLoading, setVariantsLoading] = useState(false)
+  const [variantsError, setVariantsError] = useState<string | null>(null)
+
   // Library feature state
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
@@ -292,6 +321,99 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
       ))}
     </span>
   )
+
+  // A simplified line merges several detailed claims, so it can carry many passages.
+  // One tag that steps through them keeps the plain-English view uncluttered.
+  const [variantSourceStep, setVariantSourceStep] = useState<Record<string, number>>({})
+  const renderCompactSources = (sources: string[], label: string, key: string) => {
+    if (sources.length <= 1) return renderSourceButtons(sources, label)
+    const step = variantSourceStep[key] ?? 0
+    return (
+      <span className="ml-1.5 inline-flex items-center align-middle">
+        <button
+          type="button"
+          onClick={() => {
+            showOpinionPassage(sources[step])
+            setVariantSourceStep(current => ({ ...current, [key]: (step + 1) % sources.length }))
+          }}
+          className="inline-flex items-center whitespace-nowrap rounded-md border border-honey-300 bg-honey-100 px-1.5 text-[11px] font-semibold text-honey-700 hover:bg-honey-300/60 focus:outline-none focus:ring-2 focus:ring-honey-500"
+          aria-label={`View opinion source ${step + 1} of ${sources.length} for ${label}`}
+          title="Jump to a supporting passage; tap again for the next one"
+        >
+          {`source ${step + 1}/${sources.length}`}
+        </button>
+      </span>
+    )
+  }
+
+  const fetchBriefVariants = async (): Promise<BriefVariants | null> => {
+    const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-variants`)
+    return response.ok ? response.json() : null
+  }
+
+  // Generation (rewrite + fidelity review, up to three rounds) can outlast the
+  // gateway; the server keeps going, so poll for the saved result like summaries do.
+  const waitForBriefVariants = async () => {
+    for (let poll = 0; poll < 24; poll++) {
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      const data = await fetchBriefVariants().catch(() => null)
+      if (data?.status === 'ready') return data
+    }
+    return null
+  }
+
+  const loadBriefVariants = async () => {
+    if (variantsLoading || briefVariants?.status === 'ready') return
+    setVariantsLoading(true)
+    setVariantsError(null)
+    try {
+      const cached = await fetchBriefVariants()
+      if (cached?.status === 'ready' || cached?.status === 'unavailable') {
+        setBriefVariants(cached)
+        return
+      }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      const response = await fetch(`${API_URL}/api/v1/cases/${caseId}/brief-variants`, {
+        method: 'POST',
+        headers,
+      }).catch(() => null)
+      if (response?.ok) {
+        setBriefVariants(await response.json())
+        return
+      }
+      const errorData = response ? await response.json().catch(() => ({})) : {}
+      if (response?.status === 402) {
+        setVariantsError('The community AI pool is empty, so this version can’t be written right now.')
+        return
+      }
+      if (!response || (response.status >= 500 && !errorData.detail)) {
+        const saved = await waitForBriefVariants()
+        if (saved) {
+          setBriefVariants(saved)
+          return
+        }
+      }
+      setVariantsError(
+        response?.status === 502
+          ? 'We couldn’t write a version that passed our accuracy check. The detailed brief is still accurate.'
+          : errorData.detail || 'Couldn’t load this version. Try again in a moment.'
+      )
+    } finally {
+      setVariantsLoading(false)
+    }
+  }
+
+  const selectBriefView = (view: BriefView) => {
+    setBriefView(view)
+    if (view !== 'detailed') loadBriefVariants()
+  }
+
+  useEffect(() => {
+    setBriefView('detailed')
+    setBriefVariants(null)
+    setVariantsError(null)
+  }, [caseId])
 
   useEffect(() => () => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
@@ -1009,15 +1131,98 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </p>
                   )}
                   {activeStructuredCandidate ? (
-                    <div className="space-y-6">
+                    <div className="space-y-5">
+                    <div role="tablist" aria-label="Brief version" className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-0.5 text-sm">
                       {([
-                        ['facts', 'Facts'],
-                        ['issue', 'Issue'],
-                        ['holding', 'Holding'],
-                        ['rule', 'Rule'],
-                        ['majority_reasoning', 'Reasoning'],
-                        ['dissent', 'Dissent'],
-                      ] as const).map(([sectionKey, label]) => (
+                        ['detailed', 'Detailed'],
+                        ['simplified', 'Simplified'],
+                        ['bullets', 'Bullets'],
+                      ] as const).map(([view, label]) => (
+                        <button
+                          key={view}
+                          type="button"
+                          role="tab"
+                          aria-selected={briefView === view}
+                          onClick={() => selectBriefView(view)}
+                          className={`rounded-md px-3 py-1 font-medium transition-colors ${briefView === view ? 'bg-white text-ink shadow-sm' : 'text-stone-500 hover:text-ink'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {briefView !== 'detailed' ? (
+                      <div className="space-y-5">
+                        {variantsLoading && (
+                          <p className="flex items-center gap-2 text-sm text-stone-500">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Writing the {briefView === 'simplified' ? 'simplified version' : 'bullet points'} and checking each line against the detailed brief. This can take a minute the first time.
+                          </p>
+                        )}
+                        {variantsError && !variantsLoading && (
+                          <div className="space-y-2 text-sm">
+                            <p className="text-red-600">{variantsError}</p>
+                            <button type="button" onClick={loadBriefVariants} className="font-medium text-sage-700 underline">
+                              Try again
+                            </button>
+                          </div>
+                        )}
+                        {briefVariants?.status === 'unavailable' && !variantsLoading && (
+                          <p className="text-sm text-stone-500">This case doesn&apos;t have a reviewed source-linked brief to simplify yet.</p>
+                        )}
+                        {briefVariants?.status === 'ready' && briefView === 'simplified' && briefVariants.simplified && (
+                          <div className="space-y-6">
+                            {BRIEF_SECTIONS.map(([sectionKey, label]) => {
+                              const lines = briefVariants.simplified?.[sectionKey] || []
+                              if (lines.length === 0) return null
+                              return (
+                                <section key={sectionKey}>
+                                  <div className="mb-3 flex items-center gap-2.5">
+                                    <span className={`font-display text-xs font-bold uppercase tracking-[0.12em] text-white px-2.5 py-1 rounded-md ${sectionKey === 'holding' ? 'bg-honey-600' : 'bg-sage-600'}`}>
+                                      {label}
+                                    </span>
+                                    <div className="h-px flex-1 bg-stone-200" />
+                                  </div>
+                                  <div className={sectionKey === 'holding'
+                                    ? 'space-y-2 rounded-xl border border-honey-300 bg-honey-100 px-4 py-3.5'
+                                    : 'space-y-2'}>
+                                    {lines.map((line, lineIndex) => (
+                                      <p key={lineIndex} className={`leading-relaxed ${sectionKey === 'holding' ? 'font-medium text-ink' : 'text-stone-700'}`}>
+                                        {line.text}
+                                        {renderCompactSources(line.sources, label, `${sectionKey}-${lineIndex}`)}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </section>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {briefVariants?.status === 'ready' && briefView === 'bullets' && briefVariants.bullets && (
+                          <ul className="space-y-2.5">
+                            {briefVariants.topic && (
+                              <li className="leading-relaxed text-stone-700">
+                                <span className="font-semibold text-ink">Topic: </span>
+                                {briefVariants.topic.topic} — {briefVariants.topic.label}
+                              </li>
+                            )}
+                            {briefVariants.bullets.map((bullet, bulletIndex) => (
+                              <li key={bulletIndex} className="leading-relaxed text-stone-700">
+                                <span className="font-semibold text-ink">{bullet.label}: </span>
+                                {bullet.text}
+                                {renderCompactSources(bullet.sources, bullet.label, `bullet-${bulletIndex}`)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {briefVariants?.status === 'ready' && (
+                          <p className="text-xs italic text-stone-500">
+                            AI-written from the detailed brief and checked line by line against it. Plain wording can lose precision, so use the Detailed tab for exact rules{briefVariants.topic && briefView === 'bullets' ? '; topic tags are AI-assigned and under review' : ''}.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                    <div className="space-y-6">
+                      {BRIEF_SECTIONS.map(([sectionKey, label]) => (
                         <section key={sectionKey}>
                           <div className="mb-3 flex items-center gap-2.5">
                             <span className={`font-display text-xs font-bold uppercase tracking-[0.12em] text-white px-2.5 py-1 rounded-md ${sectionKey === 'holding' ? 'bg-honey-600' : 'bg-sage-600'}`}>
@@ -1047,6 +1252,8 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                         <p className="leading-relaxed text-stone-700">{activeStructuredCandidate.summary.significance}</p>
                         <p className="mt-1 text-xs italic text-stone-500">Editorial synthesis; not presented as language from the opinion.</p>
                       </section>
+                    </div>
+                    )}
                     </div>
                   ) : (
                   <div className="prose prose-sm max-w-none space-y-4">

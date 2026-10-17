@@ -40,6 +40,17 @@ from structured_briefs import (
     structured_summary_to_text,
     validate_structured_summary,
 )
+from brief_variants import (
+    VARIANT_PROMPT_VERSION,
+    attach_sources,
+    build_fidelity_prompt,
+    build_variant_prompt,
+    correction_message,
+    parse_fidelity_response,
+    parse_variant_response,
+    source_digest,
+    validate_variants,
+)
 from ai_usage import (
     ANTHROPIC_MODEL_PRICING,
     POOL_EMPTY_DETAIL,
@@ -2445,6 +2456,247 @@ async def summarize_case(
     except Exception as e:
         print(f"Error generating summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Simplified and bullet-point brief versions (backend/brief_variants.py)
+# ============================================================================
+
+BRIEF_VARIANT_MODEL = "claude-sonnet-4-6"
+BRIEF_VARIANT_MAX_TOKENS = 4000
+# Fidelity review runs on the stronger model: it is the load-bearing check.
+BRIEF_VARIANT_REVIEW_MODEL = "claude-opus-4-8"
+BRIEF_VARIANT_REVIEW_MAX_TOKENS = 2000
+BRIEF_VARIANT_ATTEMPTS = 3
+
+
+async def _approved_detailed_brief(conn, case_id: str):
+    """The approved source-linked brief the case page shows, or None."""
+    row = await conn.fetchrow(
+        """SELECT provider, summary FROM structured_summary_candidates
+           WHERE case_id = $1 AND review_status = 'approved'
+           ORDER BY CASE provider WHEN 'claude' THEN 1 WHEN 'openai' THEN 2 ELSE 3 END
+           LIMIT 1""",
+        case_id,
+    )
+    if not row:
+        return None
+    summary = row["summary"]
+    if isinstance(summary, str):
+        summary = json.loads(summary)
+    return row["provider"], summary
+
+
+async def _brief_variant_response(conn, case_id: str) -> dict:
+    detailed = await _approved_detailed_brief(conn, case_id)
+    topic = None
+    try:
+        topic_row = await conn.fetchrow(
+            """SELECT d.label, d.topic FROM case_topics ct
+               JOIN topic_doctrines d ON d.id = ct.doctrine_id
+               WHERE ct.case_id = $1 AND ct.is_primary
+               LIMIT 1""",
+            case_id,
+        )
+        if topic_row:
+            topic = {"label": topic_row["label"], "topic": topic_row["topic"]}
+    except asyncpg.exceptions.UndefinedTableError:
+        pass
+    if not detailed:
+        return {"status": "unavailable", "topic": topic}
+    try:
+        row = await conn.fetchrow(
+            """SELECT source_digest, simplified, bullets, model, created_at
+               FROM brief_variants WHERE case_id = $1""",
+            case_id,
+        )
+    except asyncpg.exceptions.UndefinedTableError:
+        row = None
+    if not row:
+        return {"status": "not_generated", "topic": topic}
+    if row["source_digest"] != source_digest(detailed[1]):
+        return {"status": "stale", "topic": topic}
+    simplified = row["simplified"]
+    bullets = row["bullets"]
+    return {
+        "status": "ready",
+        "simplified": json.loads(simplified) if isinstance(simplified, str) else simplified,
+        "bullets": json.loads(bullets) if isinstance(bullets, str) else bullets,
+        "model": row["model"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "topic": topic,
+    }
+
+
+@app.get("/api/v1/cases/{case_id}/brief-variants")
+async def get_brief_variants(case_id: str):
+    """Cached Simplified and Bullets versions of the case's approved brief."""
+    async with db_pool.acquire() as conn:
+        return await _brief_variant_response(conn, case_id)
+
+
+@app.post("/api/v1/cases/{case_id}/brief-variants")
+async def generate_brief_variants(
+    case_id: str,
+    force: bool = False,
+    authorization: Optional[str] = Header(None),
+):
+    """Rewrite the approved detailed brief as Simplified and Bullets versions.
+
+    The model sees only the approved brief, cites its claims by reference, and the
+    server derives every line's passage sources from those claims, so a variant can
+    never cite a passage the reviewed brief did not.
+    """
+    if force:
+        await require_admin(authorization)
+    current_user = await get_current_user(authorization)
+
+    async with db_pool.acquire() as conn:
+        current = await _brief_variant_response(conn, case_id)
+        detailed = await _approved_detailed_brief(conn, case_id)
+        title = await conn.fetchval("SELECT title FROM cases WHERE id = $1", case_id)
+    if title is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if current["status"] == "ready" and not force:
+        return current
+    if not detailed:
+        raise HTTPException(
+            status_code=409,
+            detail="Simplified versions need an approved source-linked brief first.",
+        )
+    provider, summary = detailed
+    digest = source_digest(summary)
+
+    api_key, key_source = await get_anthropic_api_key(
+        current_user["id"] if current_user else None
+    )
+    model = validate_configured_anthropic_model(BRIEF_VARIANT_MODEL)
+    review_model = validate_configured_anthropic_model(BRIEF_VARIANT_REVIEW_MODEL)
+    messages = [{"role": "user", "content": build_variant_prompt(title, summary)}]
+    usage_totals = {"input": 0, "output": 0, "cost": 0.0}
+    candidate = None
+    errors: list = []
+
+    async def call(call_model: str, max_tokens: int, call_messages: list, label: str) -> str:
+        reservation = await reserve_anthropic_request(
+            api_key, key_source, call_model, max_tokens, call_messages,
+            f"{label} provider reservation",
+        )
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={"model": call_model, "max_tokens": max_tokens, "messages": call_messages},
+                    timeout=90.0,
+                )
+        except Exception as exc:
+            await handle_anthropic_provider_failure(reservation, exc, f"{label} request failure")
+            raise
+        if response.status_code != 200:
+            await handle_anthropic_provider_failure(
+                reservation, RuntimeError("provider rejected request"),
+                f"{label} rejected request", definite=True,
+            )
+            raise HTTPException(
+                status_code=500, detail=f"Anthropic API error ({response.status_code})"
+            )
+        result = response.json()
+        usage = result.get("usage", {})
+        call_input = usage.get("input_tokens", 0)
+        call_output = usage.get("output_tokens", 0)
+        call_cost = anthropic_call_cost(call_input, call_output, model=call_model)
+        usage_totals["input"] += call_input
+        usage_totals["output"] += call_output
+        usage_totals["cost"] += call_cost
+        await settle_anthropic_request(reservation, call_cost, f"{label} actual provider cost")
+        text = next(
+            (block.get("text") for block in result.get("content", []) if block.get("type") == "text"),
+            None,
+        )
+        if not text:
+            raise HTTPException(status_code=500, detail="Could not extract text from Claude response")
+        return text
+
+    try:
+        for attempt in range(BRIEF_VARIANT_ATTEMPTS):
+            response_text = await call(model, BRIEF_VARIANT_MAX_TOKENS, messages, "Brief variants")
+            fidelity_failure = False
+            try:
+                candidate = parse_variant_response(response_text)
+            except (json.JSONDecodeError, TypeError, ValueError) as error:
+                candidate = None
+                errors = [f"response was not valid JSON: {error}"]
+            else:
+                errors = validate_variants(candidate, summary)
+            if not errors:
+                # A separate call judges meaning; the writer is the worst judge of its own lines.
+                review_text = await call(
+                    review_model, BRIEF_VARIANT_REVIEW_MAX_TOKENS,
+                    [{"role": "user", "content": build_fidelity_prompt(title, summary, candidate)}],
+                    "Brief variants fidelity review",
+                )
+                try:
+                    errors = parse_fidelity_response(review_text)
+                except (json.JSONDecodeError, ValueError) as error:
+                    errors = [f"fidelity review was unreadable: {error}"]
+                    break
+                fidelity_failure = True
+            if not errors:
+                break
+            print(f"Brief variants attempt {attempt + 1} for {case_id} failed: {'; '.join(errors)}")
+            messages.append({"role": "assistant", "content": response_text})
+            messages.append({"role": "user", "content": correction_message(errors, fidelity_failure)})
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="AI service timeout")
+
+    input_tokens = usage_totals["input"]
+    output_tokens = usage_totals["output"]
+    cost = usage_totals["cost"]
+    if errors:
+        await log_api_usage(
+            "brief_variants", input_tokens, output_tokens, cost, source=key_source,
+            debit_pool_funds=False,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Could not produce a faithful simplified brief: " + "; ".join(errors),
+        )
+
+    published = attach_sources(candidate, summary)
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO brief_variants
+               (case_id, source_provider, source_digest, simplified, bullets, model,
+                prompt_version, input_tokens, output_tokens, cost, key_source, created_at)
+               VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9, $10, $11, NOW())
+               ON CONFLICT (case_id) DO UPDATE SET
+                   source_provider = EXCLUDED.source_provider,
+                   source_digest = EXCLUDED.source_digest,
+                   simplified = EXCLUDED.simplified,
+                   bullets = EXCLUDED.bullets,
+                   model = EXCLUDED.model,
+                   prompt_version = EXCLUDED.prompt_version,
+                   input_tokens = EXCLUDED.input_tokens,
+                   output_tokens = EXCLUDED.output_tokens,
+                   cost = EXCLUDED.cost,
+                   key_source = EXCLUDED.key_source,
+                   created_at = NOW()""",
+            case_id, provider, digest, json.dumps(published["simplified"]),
+            json.dumps(published["bullets"]), model, VARIANT_PROMPT_VERSION,
+            input_tokens, output_tokens, cost, key_source,
+        )
+        response_data = await _brief_variant_response(conn, case_id)
+    await log_api_usage(
+        "brief_variants", input_tokens, output_tokens, cost, source=key_source,
+        debit_pool_funds=False,
+    )
+    return response_data
+
 
 @app.post("/api/v1/briefcheck")
 async def check_brief(file: UploadFile = File(...)):

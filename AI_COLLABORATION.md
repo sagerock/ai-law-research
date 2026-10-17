@@ -240,6 +240,32 @@ plus focus-visible rings on the new chips. Verified zero horizontal overflow at 
 and 390px on both pages. Dev-environment note: Turbopack HMR does not detect file
 changes on /mnt/d (WSL2 DrvFs) — restart the dev server to see frontend edits.
 
+### Simplified and Bullets brief versions (2026-10-17)
+
+The case page's approved source-linked brief now has Detailed / Simplified / Bullets tabs
+(Sage's request after comparing Quimbee's Classic / Simplified / Bullets views; he had been
+asking Case Ask AI "please simplify this case" on ~100 cases). Design and why:
+- A variant rewrites the approved brief, never the opinion. The model cites brief claims by
+  reference (`holding[1]`) and the server derives passage sources from them, so a variant
+  cannot cite a passage the reviewed brief did not, and cannot re-sort majority and dissent
+  (the failure that broke Reeves's brief generation the same day). Rejected: generating from
+  the opinion, which repeats every risk the brief gate exists for, at far higher cost.
+- Deterministic gate (`backend/brief_variants.py`): issue, holding, and rule claims must all be
+  covered (a dropped partial remand changes the law); facts, reasoning, and dissent need one
+  line each, since dropping supporting detail is the simplification. Word limits; bullet labels
+  from a fixed list, each citing only its own section; Holding, Rule, Outcome required.
+- Fidelity gate: a separate Opus call compares each line with the claims it cites and flags
+  only "wrong" severity (a student would misstate the case). Up to three rounds; a retry
+  rewrites only flagged lines. Why: structure cannot catch meaning drift, and the first trial
+  produced a garbled dissent line ("the ordinance, not interstate commerce, is not what kept
+  its milk out") and "the Court upheld Proposition 12" for an affirmed dismissal. Trial on
+  Dean Milk, Kassel, Pork Producers, Pike: all passed within two rounds, $0.06-0.12 per case.
+- Stored in `brief_variants` (migration 041) with a digest of the source brief: a regenerated
+  brief makes its variant `stale`, not silently mismatched. Generated on first tab open;
+  admin-only `force`. Pool-funded under the bounded-reservation rule like summaries.
+- Known limit: a variant inherits its brief's framing (Dean Milk's brief frames the issue as
+  "burden"; the variant follows it). Fix the brief, and the digest forces a fresh variant.
+
 ### Opinion Loading
 
 Production opinion consumers use the shared loader in `backend/opinion_loader.py`.
@@ -511,6 +537,18 @@ with an existing decision, add your case here instead of silently changing the c
   Dry run: 20/20 previously refused cases pass preflight.
 
 ## Current Handoffs
+
+### Simplified / Bullets brief tabs (2026-10-17)
+Owner: Claude
+Status: built and tested locally (236 backend tests, `npm run build`, tabs checked in a browser
+against a mock API); NOT deployed. Deploy order: apply `migrations/041_brief_variants.sql`
+through `railway ssh` first (the 039 lesson), then push to `main`. The API tolerates the
+missing table (GET returns `not_generated`; POST would fail on insert), so migration first.
+Next: batch-generate for Con Law collection 15 (~118 cases, roughly $7-14 from the pool) if
+Sage approves; Podcast/Listen tab (TTS of Simplified) is the planned second step.
+Files: `backend/brief_variants.py`, `backend/main.py` (brief-variants endpoints),
+`backend/test_brief_variants*.py`, `migrations/041_brief_variants.sql`,
+`frontend/app/case/[id]/CaseDetailClient.tsx`.
 
 ### 50k-truncated opinions repaired site-wide (2026-10-11)
 Owner: Claude
