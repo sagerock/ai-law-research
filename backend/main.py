@@ -2462,7 +2462,9 @@ async def summarize_case(
 # Simplified and bullet-point brief versions (backend/brief_variants.py)
 # ============================================================================
 
-BRIEF_VARIANT_MODEL = "claude-sonnet-4-6"
+# Opus writes plainer Simplified versions at equal accuracy (blind comparison, 2026-10-17);
+# about 8-10 cents per case versus 6 on Sonnet.
+BRIEF_VARIANT_MODEL = "claude-opus-4-8"
 BRIEF_VARIANT_MAX_TOKENS = 4000
 # Fidelity review runs on the stronger model: it is the load-bearing check.
 BRIEF_VARIANT_REVIEW_MODEL = "claude-opus-4-8"
