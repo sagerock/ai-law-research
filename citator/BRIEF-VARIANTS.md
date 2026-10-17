@@ -11,7 +11,7 @@ Helper (use exactly this interpreter and path):
 
 ## Batch limit
 
-**5 cases per session.** Hard stop. If the session prompt gives `--ids` or `--redo-model`, pass them to every `queue` call. A `"state": "redo"` item is a live version being rewritten for plainer wording: write it fresh from `fetch`. Stop early if anything errors repeatedly.
+**5 cases per session.** Hard stop. If the session prompt gives `--ids`, `--redo-model`, or `--redo-prompt`, pass them to every `queue` call. A `"state": "redo"` item is a live version being rewritten for plainer wording: write it fresh from `fetch`. Stop early if anything errors repeatedly.
 
 ## Steps — one case at a time
 
