@@ -18,6 +18,8 @@ ANTHROPIC_MODEL_PRICING = {
     "claude-sonnet-4-5-20250929": (3.00, 15.00),
     "claude-sonnet-4-6": (3.00, 15.00),
     "claude-opus-4-8": (5.00, 25.00),
+    "claude-opus-5": (5.00, 25.00),
+    "claude-opus-5-5": (4.00, 20.00),
 }
 
 

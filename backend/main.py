@@ -680,6 +680,71 @@ async def terminal_sse_event(finalize, payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
+# Models whose safety classifiers can decline a request. These requests opt into
+# Anthropic's server-side fallback ("default" routes by refusal category to Claude Opus 5
+# or Opus 4.8), so a false-positive decline on a law case is re-run instead of failing.
+FALLBACK_ENABLED_MODELS = {"claude-opus-5-5"}
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
+# Priced at the costliest permitted fallback target so reservations stay an upper bound.
+FALLBACK_RESERVATION_MODEL = "claude-opus-4-8"
+
+
+def anthropic_headers(api_key: str, model: str) -> dict:
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+    }
+    if model in FALLBACK_ENABLED_MODELS:
+        headers["anthropic-beta"] = FALLBACK_BETA
+    return headers
+
+
+def anthropic_body(model: str, max_tokens: int, messages: list, effort: str | None = None) -> dict:
+    body = {"model": model, "max_tokens": max_tokens, "messages": messages}
+    if model in FALLBACK_ENABLED_MODELS:
+        body["fallbacks"] = "default"
+    if effort:
+        body["output_config"] = {"effort": effort}
+    return body
+
+
+def anthropic_reservation_model(model: str) -> str:
+    return FALLBACK_RESERVATION_MODEL if model in FALLBACK_ENABLED_MODELS else model
+
+
+def anthropic_result_usage(result: dict, model: str) -> tuple[int, int, float]:
+    """(input, output, cost) for a Messages result, including server-side fallback attempts.
+
+    Without a fallback, price the served model. With one, usage.iterations is the
+    per-attempt record; every attempt is priced at the costliest permitted target so the
+    pool is never under-charged."""
+    usage = result.get("usage") or {}
+    iterations = usage.get("iterations") or []
+    fell_back = any(entry.get("type") == "fallback_message" for entry in iterations)
+    if not fell_back:
+        served = result.get("model") or model
+        if served not in ANTHROPIC_MODEL_PRICING:
+            served = anthropic_reservation_model(model)
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+        return input_tokens, output_tokens, anthropic_call_cost(input_tokens, output_tokens, model=served)
+    input_tokens = sum(entry.get("input_tokens", 0) for entry in iterations)
+    output_tokens = sum(entry.get("output_tokens", 0) for entry in iterations)
+    cost = anthropic_call_cost(input_tokens, output_tokens, model=FALLBACK_RESERVATION_MODEL)
+    return input_tokens, output_tokens, cost
+
+
+def anthropic_result_text(result: dict):
+    """The response text, or None. A refusal (after any fallback) has no usable text."""
+    if result.get("stop_reason") == "refusal":
+        return None
+    return next(
+        (block.get("text") for block in result.get("content", []) if block.get("type") == "text"),
+        None,
+    )
+
+
 def validate_configured_anthropic_model(model: str) -> str:
     if model not in ANTHROPIC_MODEL_PRICING:
         raise HTTPException(status_code=500, detail="Configured Anthropic model is unsupported")
@@ -2035,6 +2100,10 @@ def unavailable_opinion_detail(metadata: Any) -> Optional[str]:
     )
 
 
+SOURCE_BRIEF_MODEL = "claude-opus-5-5"
+SOURCE_BRIEF_EFFORT = "high"
+
+
 @app.post("/api/v1/cases/{case_id}/summarize")
 async def summarize_case(
     case_id: str,
@@ -2245,7 +2314,7 @@ async def summarize_case(
     prompt = build_structured_prompt(case_name, str(court), date_str, selected_passages)
 
     try:
-        # Call Anthropic Messages API with Claude Opus 4.8. A brief that fails
+        # Call Anthropic Messages API with Claude Opus 5.5. A brief that fails
         # validation gets one corrective round-trip with the errors fed back,
         # so a near-miss (typoed passage ID, word-count overshoot) becomes a
         # retry instead of a user-facing 502.
@@ -2254,15 +2323,17 @@ async def summarize_case(
         validation_errors: list = []
         input_tokens = 0
         output_tokens = 0
-        model = "claude-opus-4-8"
+        total_cost = 0.0
+        model = SOURCE_BRIEF_MODEL
         # Headroom for long multi-opinion briefs now that there is no word
-        # budget; a JSON brief truncated at the ceiling fails to parse.
-        max_tokens = 8000
+        # budget, plus Opus 5.5's always-on thinking, which counts against
+        # max_tokens; a JSON brief truncated at the ceiling fails to parse.
+        max_tokens = 16000
         for attempt in range(2):
             attempt_reservation = await reserve_anthropic_request(
                 api_key,
                 key_source,
-                model,
+                anthropic_reservation_model(model),
                 max_tokens,
                 messages,
                 "Source-linked brief provider reservation",
@@ -2271,17 +2342,9 @@ async def summarize_case(
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         "https://api.anthropic.com/v1/messages",
-                        headers={
-                            "x-api-key": api_key,
-                            "anthropic-version": "2023-06-01",
-                            "Content-Type": "application/json"
-                        },
-                        json={
-                            "model": model,
-                            "max_tokens": max_tokens,
-                            "messages": messages
-                        },
-                        timeout=90.0
+                        headers=anthropic_headers(api_key, model),
+                        json=anthropic_body(model, max_tokens, messages, SOURCE_BRIEF_EFFORT),
+                        timeout=300.0
                     )
             except Exception as exc:
                 await handle_anthropic_provider_failure(
@@ -2303,27 +2366,23 @@ async def summarize_case(
             result = response.json()
             print(f"Claude API Response: stop_reason={result.get('stop_reason')}")  # Debug logging
 
-            usage = result.get("usage", {})
-            attempt_input_tokens = usage.get("input_tokens", 0)
-            attempt_output_tokens = usage.get("output_tokens", 0)
+            attempt_input_tokens, attempt_output_tokens, attempt_cost = (
+                anthropic_result_usage(result, model)
+            )
             input_tokens += attempt_input_tokens
             output_tokens += attempt_output_tokens
+            total_cost += attempt_cost
             await settle_anthropic_request(
                 attempt_reservation,
-                anthropic_call_cost(
-                    attempt_input_tokens, attempt_output_tokens, model=model
-                ),
+                attempt_cost,
                 "Source-linked brief actual provider cost",
             )
 
             # Extract and validate source-linked JSON from Claude's response.
             content_blocks = result.get("content", [])
-            response_text = None
-
-            for block in content_blocks:
-                if block.get("type") == "text":
-                    response_text = block.get("text")
-                    break
+            if result.get("stop_reason") == "refusal":
+                raise HTTPException(status_code=502, detail="The AI model declined this case.")
+            response_text = anthropic_result_text(result)
 
             if not response_text:
                 print(f"Could not find text in response. Content blocks: {len(content_blocks)}")
@@ -2370,9 +2429,8 @@ async def summarize_case(
             raise HTTPException(status_code=502, detail="Invalid source-linked brief: " + error)
         summary = structured_summary_to_text(structured_summary)
 
-        # Calculate cost (accumulated across attempts)
-        # Claude Opus 4.8: $5 per 1M input tokens, $25 per 1M output tokens
-        cost = anthropic_call_cost(input_tokens, output_tokens, model=model)
+        # Cost accumulated across attempts, each priced by the model that served it.
+        cost = total_cost
 
         generation_metadata = json.dumps({
             "source": key_source,
@@ -2414,7 +2472,7 @@ async def summarize_case(
                            structured_model = EXCLUDED.structured_model,
                            structured_created_at = CURRENT_TIMESTAMP,
                            created_at = CURRENT_TIMESTAMP""",
-                    case_id, summary, "claude-opus-4-8", input_tokens, output_tokens, cost,
+                    case_id, summary, model, input_tokens, output_tokens, cost,
                     json.dumps(structured_summary),
                 )
                 await conn.execute(
@@ -2433,7 +2491,7 @@ async def summarize_case(
                            reviewed_at = EXCLUDED.reviewed_at,
                            review_notes = EXCLUDED.review_notes,
                            created_at = NOW()""",
-                    case_id, "claude-opus-4-8", json.dumps(structured_summary), content_hash,
+                    case_id, model, json.dumps(structured_summary), content_hash,
                     generation_metadata,
                 )
 
@@ -2462,13 +2520,16 @@ async def summarize_case(
 # Simplified and bullet-point brief versions (backend/brief_variants.py)
 # ============================================================================
 
-# Opus writes plainer Simplified versions at equal accuracy (blind comparison, 2026-10-17);
-# about 8-10 cents per case versus 6 on Sonnet.
-BRIEF_VARIANT_MODEL = "claude-opus-4-8"
-BRIEF_VARIANT_MAX_TOKENS = 4000
-# Fidelity review runs on the stronger model: it is the load-bearing check.
-BRIEF_VARIANT_REVIEW_MODEL = "claude-opus-4-8"
-BRIEF_VARIANT_REVIEW_MAX_TOKENS = 2000
+# Opus writes plainer Simplified versions at equal accuracy (blind comparison, 2026-10-17).
+BRIEF_VARIANT_MODEL = "claude-opus-5-5"
+# Opus 5.5 always thinks, and thinking counts against max_tokens; the room keeps the
+# JSON from being cut off. Effort is set explicitly (the model's default is medium).
+BRIEF_VARIANT_MAX_TOKENS = 16000
+BRIEF_VARIANT_EFFORT = "low"  # tested 2026-10-17: same pass rate as medium, half the output tokens
+# Fidelity review is the load-bearing check, so it runs at higher effort.
+BRIEF_VARIANT_REVIEW_MODEL = "claude-opus-5-5"
+BRIEF_VARIANT_REVIEW_MAX_TOKENS = 16000
+BRIEF_VARIANT_REVIEW_EFFORT = "high"
 BRIEF_VARIANT_ATTEMPTS = 3
 
 
@@ -2579,22 +2640,19 @@ async def generate_brief_variants(
     candidate = None
     errors: list = []
 
-    async def call(call_model: str, max_tokens: int, call_messages: list, label: str) -> str:
+    async def call(call_model: str, max_tokens: int, call_messages: list, label: str,
+                   effort: str) -> str:
         reservation = await reserve_anthropic_request(
-            api_key, key_source, call_model, max_tokens, call_messages,
-            f"{label} provider reservation",
+            api_key, key_source, anthropic_reservation_model(call_model), max_tokens,
+            call_messages, f"{label} provider reservation",
         )
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                        "Content-Type": "application/json",
-                    },
-                    json={"model": call_model, "max_tokens": max_tokens, "messages": call_messages},
-                    timeout=90.0,
+                    headers=anthropic_headers(api_key, call_model),
+                    json=anthropic_body(call_model, max_tokens, call_messages, effort),
+                    timeout=300.0,
                 )
         except Exception as exc:
             await handle_anthropic_provider_failure(reservation, exc, f"{label} request failure")
@@ -2608,25 +2666,22 @@ async def generate_brief_variants(
                 status_code=500, detail=f"Anthropic API error ({response.status_code})"
             )
         result = response.json()
-        usage = result.get("usage", {})
-        call_input = usage.get("input_tokens", 0)
-        call_output = usage.get("output_tokens", 0)
-        call_cost = anthropic_call_cost(call_input, call_output, model=call_model)
+        call_input, call_output, call_cost = anthropic_result_usage(result, call_model)
         usage_totals["input"] += call_input
         usage_totals["output"] += call_output
         usage_totals["cost"] += call_cost
         await settle_anthropic_request(reservation, call_cost, f"{label} actual provider cost")
-        text = next(
-            (block.get("text") for block in result.get("content", []) if block.get("type") == "text"),
-            None,
-        )
+        if result.get("stop_reason") == "refusal":
+            raise HTTPException(status_code=502, detail="The AI model declined this case.")
+        text = anthropic_result_text(result)
         if not text:
             raise HTTPException(status_code=500, detail="Could not extract text from Claude response")
         return text
 
     try:
         for attempt in range(BRIEF_VARIANT_ATTEMPTS):
-            response_text = await call(model, BRIEF_VARIANT_MAX_TOKENS, messages, "Brief variants")
+            response_text = await call(model, BRIEF_VARIANT_MAX_TOKENS, messages, "Brief variants",
+                                       BRIEF_VARIANT_EFFORT)
             fidelity_failure = False
             try:
                 candidate = parse_variant_response(response_text)
@@ -2640,7 +2695,7 @@ async def generate_brief_variants(
                 review_text = await call(
                     review_model, BRIEF_VARIANT_REVIEW_MAX_TOKENS,
                     [{"role": "user", "content": build_fidelity_prompt(title, summary, candidate)}],
-                    "Brief variants fidelity review",
+                    "Brief variants fidelity review", BRIEF_VARIANT_REVIEW_EFFORT,
                 )
                 try:
                     errors = parse_fidelity_response(review_text)
