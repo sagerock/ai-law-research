@@ -540,15 +540,18 @@ with an existing decision, add your case here instead of silently changing the c
 
 ### Simplified / Bullets brief tabs (2026-10-17)
 Owner: Claude
-Status: built and tested locally (236 backend tests, `npm run build`, tabs checked in a browser
-against a mock API); NOT deployed. Deploy order: apply `migrations/041_brief_variants.sql`
-through `railway ssh` first (the 039 lesson), then push to `main`. The API tolerates the
-missing table (GET returns `not_generated`; POST would fail on insert), so migration first.
-Next: batch-generate for Con Law collection 15 (~118 cases, roughly $7-14 from the pool) if
-Sage approves; Podcast/Listen tab (TTS of Simplified) is the planned second step.
+Status: live. Migration 041 applied to production before the code push; tabs verified on
+tortwell.com (Dean Milk). Collection 15 batch: 105 of 118 cases generated, $6.33 total
+($0.06 average, $0.15 max); 12 have no approved brief yet (Lujan, TransUnion, Winn, First
+Choice, Garcia, Florida Lime, PLIVA, Riegel, Whiting, Hines, Carbone, United Haulers) and
+generate on first tab open once one exists. Wyeth v. Levine failed all three rounds on its
+rule line (reviewer: the rewrite changed the impossibility test); left unpublished, not
+loosened. Next: Wyeth (fix by hand or retry), Listen tab (TTS of Simplified), topic tags for
+the Week 9 cases so the Bullets "Topic" line appears.
 Files: `backend/brief_variants.py`, `backend/main.py` (brief-variants endpoints),
 `backend/test_brief_variants*.py`, `migrations/041_brief_variants.sql`,
 `frontend/app/case/[id]/CaseDetailClient.tsx`.
+Deployment: live via push to `main` (1624c8d); nothing pending.
 
 ### 50k-truncated opinions repaired site-wide (2026-10-11)
 Owner: Claude
