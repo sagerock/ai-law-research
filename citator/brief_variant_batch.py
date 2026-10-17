@@ -14,7 +14,7 @@ reviewer's notes; the next writer pass repairs only the named lines. Two holds h
 to a human. Staging lives outside the repo in ~/.local/state/tortwell/brief-variants/.
 
 Usage (python = /home/sage/.venvs/lawdata/bin/python or the repo .venv):
-  brief_variant_batch.py queue [N] [--collection ID]
+  brief_variant_batch.py queue [N] [--collection ID] [--ids A,B] [--redo-model sonnet]
   brief_variant_batch.py fetch <case_id>
   brief_variant_batch.py stage <case_id> <candidate.json> "<model-id>"
   brief_variant_batch.py review-list [N]
@@ -117,14 +117,24 @@ async def job(conn, payload):
             ids):
         summary = r["summary"]
         briefs[r["case_id"]] = json.loads(summary) if isinstance(summary, str) else summary
-    variants = {r["case_id"]: r["source_digest"] for r in await conn.fetch(
-        "SELECT case_id, source_digest FROM brief_variants WHERE case_id = ANY($1::text[])", ids)}
+    variants = {r["case_id"]: r for r in await conn.fetch(
+        "SELECT case_id, source_digest, model FROM brief_variants WHERE case_id = ANY($1::text[])", ids)}
+    only = set(payload.get("ids") or [])
+    redo = (payload.get("redo_model") or "").lower()
     out = []
     for r in rows:
-        digest = source_digest(briefs[r["id"]])
-        if variants.get(r["id"]) != digest:
-            out.append({"id": r["id"], "title": r["title"],
-                        "state": "stale" if r["id"] in variants else "missing"})
+        if only and r["id"] not in only:
+            continue
+        current = variants.get(r["id"])
+        if current is None:
+            state = "missing"
+        elif current["source_digest"] != source_digest(briefs[r["id"]]):
+            state = "stale"
+        elif redo and redo in (current["model"] or "").lower():
+            state = "redo"
+        else:
+            continue
+        out.append({"id": r["id"], "title": r["title"], "state": state})
     return out
 '''
 
@@ -165,14 +175,20 @@ async def job(conn, payload):
 
 # ---------------------------------------------------------------- commands
 
-def cmd_queue(n: int, collection: str | None) -> list[dict]:
-    """Cases needing a variant: held candidates awaiting repair first, then fresh work."""
+def cmd_queue(n: int, collection: str | None, ids: list[str] | None = None,
+              redo_model: str | None = None) -> list[dict]:
+    """Cases needing a variant: held candidates awaiting repair first, then fresh work.
+
+    `redo_model` re-queues current versions whose model label contains it (e.g. "sonnet"
+    after Opus proved plainer, 2026-10-17); the live version stays up until a replacement
+    passes review."""
     staged = {record["case_id"]: record for record in all_staged()}
     repairs = [
         {"id": r["case_id"], "title": r["title"], "state": "repair", "notes": r["holds"][-1]}
-        for r in staged.values() if r["status"] == "held"
+        for r in staged.values() if r["status"] == "held" and (not ids or r["case_id"] in ids)
     ]
-    remote = railway_db.run(QUEUE_SNIPPET, {"collection": collection})
+    remote = railway_db.run(QUEUE_SNIPPET, {"collection": collection, "ids": ids,
+                                            "redo_model": redo_model})
     fresh = [
         item for item in remote
         if staged.get(item["id"], {}).get("status") not in {"pending", "held", "needs-human"}
@@ -290,12 +306,15 @@ def main(argv: list[str]) -> int:
         return 0
     command, args = argv[1], argv[2:]
     if command == "queue":
-        collection = None
-        if "--collection" in args:
-            index = args.index("--collection")
-            collection = args[index + 1]
-            args = args[:index] + args[index + 2:]
-        result = cmd_queue(int(args[0]) if args else 10, collection)
+        options = {}
+        for flag in ("--collection", "--ids", "--redo-model"):
+            if flag in args:
+                index = args.index(flag)
+                options[flag] = args[index + 1]
+                args = args[:index] + args[index + 2:]
+        ids = options["--ids"].split(",") if "--ids" in options else None
+        result = cmd_queue(int(args[0]) if args else 10, options.get("--collection"), ids,
+                           options.get("--redo-model"))
     elif command == "fetch" and len(args) == 1:
         result = cmd_fetch(args[0])
     elif command == "stage" and len(args) == 3:
