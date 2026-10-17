@@ -263,6 +263,17 @@ asking Case Ask AI "please simplify this case" on ~100 cases). Design and why:
 - Stored in `brief_variants` (migration 041) with a digest of the source brief: a regenerated
   brief makes its variant `stale`, not silently mismatched. Generated on first tab open;
   admin-only `force`. Pool-funded under the bounded-reservation rule like summaries.
+- Subscription path (same day, Sage's rule: internal build/backfill work runs on the Claude
+  subscription; the API key and pool are for visitors' on-site requests).
+  `citator/brief_variant_batch.py` + `BRIEF-VARIANTS.md` (writer) + `BRIEF-VARIANTS-REVIEW.md`
+  (reviewer) + `brief_variant_burn.sh`. Writer and reviewer are separate sessions; `fetch`
+  serves the endpoint's own prompt (`build_variant_prompt`) and `review-fetch` its rubric, so
+  both paths write to one spec. Candidates stage locally (~/.local/state/tortwell/
+  brief-variants/); approval publishes via `citator/railway_db.py`, which runs the write inside
+  the Backend container over `railway ssh` and re-validates with the deployed module. Rejected:
+  restoring the database's public proxy (undoes the 2026-10-07 audit). Holds return to the
+  writer queue for targeted repair; two holds go to a human. Rows carry
+  `key_source = 'subscription'` and zero cost, so the dashboard never counts them as pool spend.
 - Known limit: a variant inherits its brief's framing (Dean Milk's brief frames the issue as
   "burden"; the variant follows it). Fix the brief, and the digest forces a fresh variant.
 
@@ -544,10 +555,17 @@ Status: live. Migration 041 applied to production before the code push; tabs ver
 tortwell.com (Dean Milk). Collection 15 batch: 105 of 118 cases generated, $6.33 total
 ($0.06 average, $0.15 max); 12 have no approved brief yet (Lujan, TransUnion, Winn, First
 Choice, Garcia, Florida Lime, PLIVA, Riegel, Whiting, Hines, Carbone, United Haulers) and
-generate on first tab open once one exists. Wyeth v. Levine failed all three rounds on its
-rule line (reviewer: the rewrite changed the impossibility test); left unpublished, not
-loosened. Next: Wyeth (fix by hand or retry), Listen tab (TTS of Simplified), topic tags for
-the Week 9 cases so the Bullets "Topic" line appears.
+generate on first tab open once one exists. Wyeth v. Levine failed all three API rounds on its
+rule line (reviewer: the rewrite changed the impossibility test); it was then written and
+approved through the new subscription path (Sonnet writer agent, separate Opus reviewer), the
+path's first end-to-end run. Collection 15 is complete except the 12 cases without an
+approved brief.
+Found in passing: `sunday_briefs.py` (the Sunday brief pipeline) has failed since 2026-10-07:
+it opens `PROD_DATABASE_URL` directly and the audit removed the public proxy (see
+`/home/sage/logs/source-rebuild.log`). `citator/railway_db.py` is the fix pattern; porting
+its commands to it is open work.
+Next: port `sunday_briefs.py` to `railway_db`; schedule `brief_variant_burn.sh` beside the
+Sunday run; Listen tab (TTS of Simplified); topic tags for the Week 9 cases.
 Files: `backend/brief_variants.py`, `backend/main.py` (brief-variants endpoints),
 `backend/test_brief_variants*.py`, `migrations/041_brief_variants.sql`,
 `frontend/app/case/[id]/CaseDetailClient.tsx`.
