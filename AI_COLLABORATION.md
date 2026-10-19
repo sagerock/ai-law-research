@@ -549,6 +549,36 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### NEXT: Take AI off the public site; build the library internally (decided 2026-10-19)
+Owner: unassigned (next session). Status: decided by Sage, not started.
+
+**Why.** A 30-day read of production (2026-10-19, read-only via `citator/railway_db.py`) shows the
+API spend is Sage building, not students: about $33 net in `pool_ledger` (446 reservations, all
+`created_by='system'`): source-linked briefs ~$25, Simplified/Bullets + fidelity review ~$7,
+Case Ask $1.57. All 51 Case Ask conversations were sage@sagerock.com; 5 of 6 `brief_interactions`
+were Sage; 0 signups. 10/17 alone was ~$10.70 on site (110 variant calls + 18 briefs), the build
+day for Simplified/Bullets before the subscription path existed. Generation endpoints accept
+anonymous callers (`get_current_user` optional), so the only thing keeping spend low is traffic.
+Sage: Quimbee is a static library; build it ourselves on the Claude subscription credits (his
+10/17 rule: build/backfill on the subscription, API only for visitors) and stop paying API for
+our own build-out.
+
+**Build:**
+1. Visitors get no live AI generation. `POST .../summarize`, `POST .../brief-variants` and Case Ask
+   (plus any other on-site Anthropic call) require admin, OR a BYOK key (BYOK already exists and
+   skips the pool; Sage: keep it as a quiet power-user option, it costs us nothing).
+   Sage keeps every AI feature as admin (he uses Case Ask constantly).
+2. A case with no approved brief shows "Brief coming soon" and a **Request this brief** button
+   (signed-in users; idempotent per case; rate-limited). Requests land in a queue table ordered by
+   demand. Keep the discussion forum.
+3. The desktop subscription path works the queue: `citator/brief_variant_batch.py` +
+   `BRIEF-VARIANTS*.md` / the Sunday source-brief pipeline, writer and reviewer as separate
+   sessions, publish via `railway_db.py`. Feed it from the request queue first, then the backfill.
+4. Sage's own building goes through the queue, never through clicks on the live site.
+5. Transparency page and `api_usage_log` keep working (subscription rows already record
+   `key_source='subscription'`, cost 0).
+Do not remove BYOK; do not reopen the database's public proxy (2026-10-07 audit).
+
 ### Claude Opus 5.5 for briefs and brief variants (2026-10-17)
 Owner: Claude
 Status: live (5f0af32). Detailed source-linked briefs and the Simplified/Bullets writer and
