@@ -103,13 +103,15 @@ async def job(conn, payload):
             ORDER BY cc.case_id""", int(collection))
         rows = sorted(rows, key=lambda r: r["position"] or 0)
     else:
-        # Without a collection, readers' brief requests go first (Sage, 2026-10-19).
+        # Without a collection, readers' brief requests go first (Sage, 2026-10-19), then
+        # the cases the most casebooks assign: the best signal of what students read.
         rows = await conn.fetch("""
             SELECT DISTINCT s.case_id AS id, c.title, 0 AS position,
-                   (SELECT COUNT(*) FROM brief_requests r WHERE r.case_id = s.case_id) AS requests
+                   (SELECT COUNT(*) FROM brief_requests r WHERE r.case_id = s.case_id) AS requests,
+                   (SELECT COUNT(*) FROM casebook_cases cb WHERE cb.case_id = s.case_id) AS casebooks
             FROM structured_summary_candidates s JOIN cases c ON c.id = s.case_id
             WHERE s.review_status = 'approved'
-            ORDER BY requests DESC""")
+            ORDER BY requests DESC, casebooks DESC, id""")
     ids = [r["id"] for r in rows]
     briefs = {}
     for r in await conn.fetch("""

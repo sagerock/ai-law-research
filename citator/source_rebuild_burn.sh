@@ -8,20 +8,21 @@
 #      the rate of fresh generation (observed 2026-08-12: 9/15 triage vs 90/282
 #      fresh). The two-strike rule in triage-list bounds it: a case rejected
 #      twice leaves the queue for a human.
-#   2. gen — 3 fresh candidates ($GEN_MODEL, default sonnet: cheap, and every
-#      candidate is gated by review anyway; set GEN_MODEL=opus for casebooks
-#      that prove too hard for sonnet, e.g. Con Law justiciability opinions).
+#   2. gen — 3 fresh candidates ($GEN_MODEL, default opus since 2026-10-19: the
+#      library is now built only here, every Simplified/Bullets version inherits
+#      its brief's wording, and subscription runs cost nothing per token; set
+#      GEN_MODEL=sonnet to stretch a tight week).
 #   3. review — 8 verdicts, default model: the gate deserves the strongest
 #      reader, and a different model reviewing avoids same-model blind spots.
 #
-# Usage: [GEN_MODEL=opus] [PRIORITY_CASEBOOK_ID=1499] source_rebuild_burn.sh [cycles]
+# Usage: [GEN_MODEL=sonnet] [PRIORITY_CASEBOOK_ID=1499] source_rebuild_burn.sh [cycles]
 # Kill anytime: pkill -f source_rebuild marker: SOURCE_REBUILD
 export PATH="/home/sage/.local/bin:/home/sage/.venvs/lawdata/bin:/usr/local/bin:/usr/bin:/bin"
 mkdir -p /home/sage/logs
 cd /mnt/d/dev/ai-law-research
 LOG=/home/sage/logs/source-rebuild.log
 CYCLES=${1:-5}
-GEN_MODEL=${GEN_MODEL:-sonnet}
+GEN_MODEL=${GEN_MODEL:-opus}
 ALLOWED_TOOLS_GEN=(--allowedTools "Read" "Write" "Bash(/home/sage/.venvs/lawdata/bin/python /mnt/d/dev/ai-law-research/citator/sunday_briefs.py:*)")
 
 echo "=== SOURCE_REBUILD start $(date) cycles=$CYCLES gen_model=$GEN_MODEL casebook=${PRIORITY_CASEBOOK_ID:-default} ===" >> $LOG
