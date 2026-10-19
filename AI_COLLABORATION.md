@@ -579,10 +579,11 @@ subscription like Quimbee's static library; the API key is not for our own build
   first (by count, admitted without a legacy brief); `candidate-opinion` fetches stub cases
   from CourtListener. `brief_variant_batch.py queue` without `--collection` orders by requests.
 **Open.**
-- `/transparency` still describes the community pool as funding students' AI. Sage's call
-  how to pitch donations now.
-- Sage's own builds should go through the queue (request on the site as a non-admin
-  account, or `--ids` on the batch tools), never by clicking Generate on the live site.
+- `/transparency` (Sage left it to Jax): pool section replaced by "How Briefs Get Made";
+  donations now pitched as keeping the site running. The pool still exists for admin calls.
+- Sage's own builds go through the queue: admin sees "Add to brief queue" under Generate
+  (Generate spends the API key; the site cannot reach the subscription). Or `--ids` on the
+  batch tools.
 - The Sunday cron (`source_rebuild_burn.sh`, 7:03 PM) will pick up requests first now that
   the helper connects again; watch the first run in `/home/sage/logs/source-rebuild.log`.
 

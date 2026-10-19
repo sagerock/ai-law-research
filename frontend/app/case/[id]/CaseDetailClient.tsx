@@ -1597,8 +1597,13 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </div>
                   </div>
                   <p className="text-xs text-stone-500 mt-4">
-                    Estimated cost: $0.10–$0.50 per brief, depending on opinion length and retries
+                    Generate spends the site&apos;s API key: $0.10–$0.50 per brief, depending on opinion length and retries
                   </p>
+                  {!localCaseData.is_stub && !fullOpinionUnavailable && (
+                    <div className="mt-6 border-t pt-4 text-left">
+                      <RequestBrief caseId={caseId} queueOnly />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

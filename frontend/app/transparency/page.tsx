@@ -134,7 +134,7 @@ export default function TransparencyPage() {
           </h1>
           <p className="text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed mb-6">
             This tool was built to help law students access legal research
-            without expensive subscriptions. Your donations keep AI features running for everyone.
+            without expensive subscriptions. Your donations keep the site running and free for everyone.
           </p>
           {stats?.kofi_url ? (
             <a
@@ -282,69 +282,26 @@ export default function TransparencyPage() {
               </div>
             </section>
 
-            {/* Community AI Pool */}
+            {/* How briefs are made */}
             <section className="bg-white rounded-lg border p-6 mb-8">
               <h2 className="text-xl font-bold text-stone-900 mb-4 flex items-center">
                 <Zap className="h-6 w-6 mr-2 text-amber-500" />
-                Community AI Pool
+                How Briefs Get Made
               </h2>
-
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-stone-700">Pool Balance</span>
-                  <span className={`text-2xl font-bold ${
-                    !stats.community_pool_healthy ? 'text-red-500' :
-                    stats.community_pool_low ? 'text-amber-500' :
-                    'text-green-600'
-                  }`}>
-                    ${stats.community_pool_balance.toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="h-3 bg-stone-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      !stats.community_pool_healthy ? 'bg-red-400' :
-                      stats.community_pool_low ? 'bg-amber-400' :
-                      'bg-green-400'
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(3, (stats.community_pool_balance / Math.max(stats.monthly_goal, 1)) * 100))}%` }}
-                  />
-                </div>
-
-                {!stats.community_pool_healthy ? (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800 font-medium">
-                      AI features are paused — the community pool is empty.
-                    </p>
-                    <p className="text-xs text-red-700 mt-1">
-                      Donate to refill the pool and restore free AI access for all students, or{' '}
-                      <a href="/byok" className="underline">add your own API key</a> for unlimited personal access.
-                    </p>
-                  </div>
-                ) : stats.community_pool_low ? (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-800 font-medium">
-                      The pool is running low — help keep AI features available!
-                    </p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Every dollar funds more AI-powered case briefs for students who can't afford Quimbee.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800 font-medium">
-                      Thanks to our donors! The community pool is funded.
-                    </p>
-                    <p className="text-xs text-green-700 mt-1">
-                      AI features are available for everyone. Donations keep it going!
-                    </p>
-                  </div>
-                )}
-
+              <div className="space-y-3 text-sm text-stone-600">
+                <p>
+                  Every brief on Tortwell is written ahead of time, then checked line by line against the
+                  opinion by a separate reviewer before it goes up. Each claim links to the passage it
+                  comes from.
+                </p>
+                <p>
+                  We write them on a flat-rate AI subscription, so a brief doesn&apos;t cost extra no matter
+                  how many students read it. Missing a case? Use <span className="font-medium text-stone-800">Request
+                  this brief</span> on its page, and the most-requested cases get written first.
+                </p>
                 <p className="text-xs text-stone-500">
-                  Ko-fi donations and admin top-ups fund the community AI pool. When the pool is empty, free AI features pause.
-                  You can also <a href="/byok" className="underline">bring your own API key</a> for unlimited personal access.
+                  Want live AI tools like case Q&amp;A and study chat? They run on{' '}
+                  <a href="/byok" className="underline">your own API key</a>, billed to you directly at cost.
                 </p>
               </div>
             </section>
@@ -493,9 +450,9 @@ export default function TransparencyPage() {
                 <div className="flex items-start space-x-3">
                   <Bot className="h-5 w-5 text-sage-600 mt-0.5" />
                   <div>
-                    <p className="font-medium text-stone-900">AI Summaries (~$0.03 each)</p>
+                    <p className="font-medium text-stone-900">Case briefs (flat-rate subscription)</p>
                     <p className="text-stone-600">
-                      Claude AI reads the full case opinion and generates a structured brief with facts, issues, holding, and reasoning.
+                      Claude reads the full opinion and writes a source-linked brief; a separate review checks every line before it&apos;s published.
                     </p>
                   </div>
                 </div>

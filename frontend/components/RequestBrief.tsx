@@ -15,7 +15,9 @@ interface RequestState {
 
 // Shown where a case has no brief yet. Requests feed a demand-ordered queue that
 // the brief writers work through; there is no live generation for readers.
-export default function RequestBrief({ caseId }: { caseId: string }) {
+// `queueOnly` is the admin's version: the same queue, worded as the no-cost
+// alternative to the Generate button (which spends the site's API key).
+export default function RequestBrief({ caseId, queueOnly = false }: { caseId: string; queueOnly?: boolean }) {
   const { user, session } = useAuth()
   const pathname = usePathname()
   const [state, setState] = useState<RequestState | null>(null)
@@ -58,15 +60,23 @@ export default function RequestBrief({ caseId }: { caseId: string }) {
 
   return (
     <div className="space-y-2">
-      <p className="font-medium text-ink">Brief coming soon</p>
-      <p className="text-sm text-stone-600">
-        We write and fact-check every brief against the opinion before it goes up.
-        Request this one and we&apos;ll move it up the list.
-      </p>
+      {queueOnly ? (
+        <p className="text-sm text-stone-600">
+          Or queue it for the subscription writer (no API cost; written and reviewed on the next run).
+        </p>
+      ) : (
+        <>
+          <p className="font-medium text-ink">Brief coming soon</p>
+          <p className="text-sm text-stone-600">
+            We write and fact-check every brief against the opinion before it goes up.
+            Request this one and we&apos;ll move it up the list.
+          </p>
+        </>
+      )}
       {state?.requested ? (
         <p className="inline-flex items-center gap-1.5 text-sm font-medium text-sage-700">
           <Check className="h-4 w-4" />
-          Requested{others > 0 ? ` (along with ${others} other reader${others === 1 ? '' : 's'})` : ''}
+          {queueOnly ? 'Queued' : 'Requested'}{others > 0 ? ` (along with ${others} other reader${others === 1 ? '' : 's'})` : ''}
         </p>
       ) : !user ? (
         <Link
@@ -84,7 +94,7 @@ export default function RequestBrief({ caseId }: { caseId: string }) {
           className="inline-flex items-center rounded-lg bg-sage-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-sage-800 disabled:bg-neutral-400"
         >
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellPlus className="mr-2 h-4 w-4" />}
-          Request this brief
+          {queueOnly ? 'Add to brief queue' : 'Request this brief'}
         </button>
       )}
       {!state?.requested && state && state.requests > 0 && (
