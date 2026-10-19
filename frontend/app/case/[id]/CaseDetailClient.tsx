@@ -13,6 +13,8 @@ import Header from '@/components/Header'
 import { useAuth } from '@/lib/auth-context'
 import Comments from '@/components/Comments'
 import CaseAskAI from '@/components/CaseAskAI'
+import RequestBrief from '@/components/RequestBrief'
+import { useAiAccess } from '@/lib/useAiAccess'
 import { sanitizeLegalHtml } from '@/lib/sanitizeHtml'
 import { getCaseArt } from '@/lib/caseArt'
 import { track } from '@/lib/analytics'
@@ -183,6 +185,8 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { user, session } = useAuth()
+  // Live generation is admin or the reader's own key; everyone else requests briefs.
+  const { live_ai: liveAi } = useAiAccess()
   const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
   const [citations, setCitations] = useState<CitationData | null>(null)
   const [authority, setAuthority] = useState<AuthorityData | null>(null)
@@ -368,7 +372,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
     setVariantsError(null)
     try {
       const cached = await fetchBriefVariants()
-      if (cached?.status === 'ready' || cached?.status === 'unavailable') {
+      if (cached?.status === 'ready' || cached?.status === 'unavailable' || !liveAi) {
         setBriefVariants(cached)
         return
       }
@@ -1008,6 +1012,11 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     <p className="text-amber-900 font-medium mb-1">
                       This case is cited by {localCaseData.metadata?.citation_count || 'other'} case{(localCaseData.metadata?.citation_count || 0) !== 1 ? 's' : ''} in our database but doesn&apos;t have a brief yet.
                     </p>
+                    {!liveAi ? (
+                      <div className="mt-3">
+                        <RequestBrief caseId={caseId} />
+                      </div>
+                    ) : (<>
                     <p className="text-amber-800 text-sm mb-3">
                       The full opinion loads automatically. Generate an AI brief for a structured analysis — the issue, holding, and key rules.
                     </p>
@@ -1051,6 +1060,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     {summaryError && summaryError !== 'sign_in_required' && summaryError !== 'pool_empty' && (
                       <p className="text-red-600 text-sm mt-2">{summaryError}</p>
                     )}
+                    </>)}
                   </div>
                 </div>
               </div>
@@ -1068,7 +1078,7 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     </span>
                   )}
                 </h2>
-                {!fullOpinionUnavailable && ((!caseSummary && !localCaseData.is_stub) || (caseSummary && structuredCandidates.length === 0)) && (
+                {liveAi && !fullOpinionUnavailable && ((!caseSummary && !localCaseData.is_stub) || (caseSummary && structuredCandidates.length === 0)) && (
                   <button
                     onClick={generateSummary}
                     disabled={summaryLoading}
@@ -1165,6 +1175,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                               Try again
                             </button>
                           </div>
+                        )}
+                        {!liveAi && !variantsLoading && !variantsError &&
+                          briefVariants?.status !== 'ready' && briefVariants?.status !== 'unavailable' && (
+                          <p className="text-sm text-stone-500">
+                            The {briefView === 'simplified' ? 'simplified version' : 'bullet-point version'} of this brief is coming soon.
+                          </p>
                         )}
                         {briefVariants?.status === 'unavailable' && !variantsLoading && (
                           <p className="text-sm text-stone-500">This case doesn&apos;t have a reviewed source-linked brief to simplify yet.</p>
@@ -1547,6 +1563,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
                     )
                   })()}
                 </div>
+              ) : !liveAi ? (
+                !localCaseData.is_stub && !fullOpinionUnavailable && (
+                  <div className="py-4">
+                    <RequestBrief caseId={caseId} />
+                  </div>
+                )
               ) : (
                 <div className="text-center py-8">
                   <p className="text-stone-600 mb-4">
@@ -1581,10 +1603,12 @@ export default function CaseDetailClient({ caseData, caseId }: CaseDetailClientP
               )}
             </div>
 
-            {/* Ask AI About This Case */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <CaseAskAI caseId={caseId} caseTitle={caseData.title || caseData.case_name || 'this case'} />
-            </div>
+            {/* Ask AI About This Case (admin, or the reader's own key) */}
+            {liveAi && (
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <CaseAskAI caseId={caseId} caseTitle={caseData.title || caseData.case_name || 'this case'} />
+              </div>
+            )}
 
             {/* Comments Section */}
             <div className="bg-white rounded-lg shadow-sm border p-6">

@@ -343,9 +343,9 @@ export default function BYOKPage() {
             <div className="grid sm:grid-cols-2 gap-3">
               {[
                 { icon: BookOpen, text: 'Unlimited case search and reading' },
-                { icon: Sparkles, text: 'AI case briefs (funded by the community pool)' },
-                { icon: MessageSquare, text: '15 study chat messages per day' },
-                { icon: MessageSquare, text: '15 case Q&A questions per day' },
+                { icon: Sparkles, text: 'Source-linked case briefs, fact-checked before they go up' },
+                { icon: Sparkles, text: 'Request any brief we haven’t written yet' },
+                { icon: MessageSquare, text: 'Discussion on every case' },
               ].map((item) => (
                 <div key={item.text} className="flex items-center gap-2.5">
                   <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -354,8 +354,8 @@ export default function BYOKPage() {
               ))}
             </div>
             <p className="text-sm text-stone-500">
-              Bookmarks, collections, outlines, and cached briefs are always unlimited and free.
-              BYOK is for power users who want the Sonnet model upgrade and no daily message limits.
+              Bookmarks, collections, outlines, and every published brief are always unlimited and free.
+              Live AI tools (case Q&amp;A, study chat, drafting tools) run on your own key.
             </p>
           </div>
         </section>
@@ -368,13 +368,12 @@ export default function BYOKPage() {
               <div>
                 <h2 className="text-xl font-bold text-stone-900 mb-2">Don&apos;t want to manage an API key?</h2>
                 <p className="text-stone-600 text-[15px] leading-relaxed mb-3">
-                  Free AI features are powered by a community pool &mdash; a shared fund that covers the cost of
-                  AI calls for everyone. When the pool has funds, all students can generate briefs, chat, and
-                  ask questions. When it runs out, AI features pause until someone tops it up.
+                  You don&apos;t need one to read briefs. Every brief on Tortwell is written and fact-checked
+                  ahead of time. Missing a case? Request it from the case page and it moves up the list.
                 </p>
                 <p className="text-stone-600 text-[15px] leading-relaxed mb-4">
-                  You can help keep the pool funded by buying a coffee on Ko-fi. Every donation goes directly
-                  to AI costs, and you can see exactly where the money goes on the{' '}
+                  You can help keep Tortwell free by buying a coffee on Ko-fi, and you can see exactly
+                  where the money goes on the{' '}
                   <Link href="/transparency" className="text-amber-700 underline underline-offset-2 hover:text-amber-600">
                     transparency dashboard
                   </Link>.

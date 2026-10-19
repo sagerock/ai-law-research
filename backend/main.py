@@ -141,18 +141,37 @@ async def get_user_api_key(user_id: str) -> Optional[str]:
     return None
 
 
-async def get_anthropic_api_key(user_id: Optional[str] = None) -> tuple[str, str]:
+LIVE_AI_OFF_DETAIL = (
+    "Tortwell's AI tools now run only with your own Anthropic key (add it on "
+    "your Profile page). Case briefs are written ahead of time; request a missing one "
+    "from its case page."
+)
+
+
+async def get_anthropic_api_key(user: Optional[dict]) -> tuple[str, str]:
+    """Returns (api_key, source) where source is 'byok' or 'site'.
+
+    Visitors get no live AI on the site key (Sage, 2026-10-19): the library is
+    built ahead of time on the Claude subscription. A user's own key (BYOK)
+    still works and costs the site nothing; the site key is the admin's only.
     """
-    Returns (api_key, source) where source is 'byok' or 'site'.
-    Tries user key first, falls back to site key.
-    """
-    if user_id:
-        user_key = await get_user_api_key(user_id)
+    if user:
+        user_key = await get_user_api_key(user["id"])
         if user_key:
             return user_key, "byok"
-    if ANTHROPIC_API_KEY:
-        return ANTHROPIC_API_KEY, "site"
-    raise HTTPException(status_code=503, detail="AI service not configured")
+        if user.get("email") == ADMIN_EMAIL:
+            if ANTHROPIC_API_KEY:
+                return ANTHROPIC_API_KEY, "site"
+            raise HTTPException(status_code=503, detail="AI service not configured")
+    raise HTTPException(status_code=403, detail=LIVE_AI_OFF_DETAIL)
+
+
+def require_site_ai(user: Optional[dict]) -> None:
+    """Gate for features that only run on the site key (no BYOK path): admin only."""
+    if not user or user.get("email") != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail=LIVE_AI_OFF_DETAIL)
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service not configured")
 
 # Pydantic models
 class SearchQuery(BaseModel):
@@ -2191,7 +2210,7 @@ async def summarize_case(
             print(f"Returning cached source-linked summary for case {case_id}")
             return await get_case_summary(case_id, current_user)
 
-    api_key, key_source = await get_anthropic_api_key(user_id)
+    api_key, key_source = await get_anthropic_api_key(current_user)
 
     case_data = dict(row)
     case_data["content"] = case_data.pop("opinion_content", None) or case_data.get("content")
@@ -2630,9 +2649,7 @@ async def generate_brief_variants(
     provider, summary = detailed
     digest = source_digest(summary)
 
-    api_key, key_source = await get_anthropic_api_key(
-        current_user["id"] if current_user else None
-    )
+    api_key, key_source = await get_anthropic_api_key(current_user)
     model = validate_configured_anthropic_model(BRIEF_VARIANT_MODEL)
     review_model = validate_configured_anthropic_model(BRIEF_VARIANT_REVIEW_MODEL)
     messages = [{"role": "user", "content": build_variant_prompt(title, summary)}]
@@ -2753,6 +2770,85 @@ async def generate_brief_variants(
         debit_pool_funds=False,
     )
     return response_data
+
+
+BRIEF_REQUESTS_PER_DAY = 25
+
+APPROVED_BRIEF_SQL = """EXISTS (SELECT 1 FROM structured_summary_candidates k
+                              WHERE k.case_id = {case} AND k.provider = 'claude'
+                                AND k.review_status = 'approved')"""
+
+
+@app.get("/api/v1/me/ai-access")
+async def get_ai_access(authorization: Optional[str] = Header(None)):
+    """Whether this reader can run live AI (admin, or their own key)."""
+    user = await get_current_user(authorization)
+    is_admin = bool(user and user.get("email") == ADMIN_EMAIL)
+    is_byok = bool(user and await get_user_api_key(user["id"]))
+    return {"live_ai": is_admin or is_byok, "is_admin": is_admin, "is_byok": is_byok}
+
+
+@app.get("/api/v1/cases/{case_id}/brief-request")
+async def get_brief_request(case_id: str, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    async with db_pool.acquire() as conn:
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM brief_requests WHERE case_id = $1", case_id
+        )
+        requested = bool(user) and await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM brief_requests WHERE case_id = $1 AND user_id = $2)",
+            case_id, user["id"],
+        )
+    return {"requests": count, "requested": bool(requested)}
+
+
+@app.post("/api/v1/cases/{case_id}/brief-request")
+async def request_brief(case_id: str, user: dict = Depends(require_auth)):
+    """Ask for a brief on a case that has none. Idempotent per reader and case."""
+    async with db_pool.acquire() as conn:
+        if not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM cases WHERE id = $1)", case_id):
+            raise HTTPException(status_code=404, detail="Case not found")
+        already = await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM brief_requests WHERE case_id = $1 AND user_id = $2)",
+            case_id, user["id"],
+        )
+        if not already:
+            today = await conn.fetchval(
+                """SELECT COUNT(*) FROM brief_requests
+                   WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 day'""",
+                user["id"],
+            )
+            if today >= BRIEF_REQUESTS_PER_DAY:
+                raise HTTPException(
+                    status_code=429,
+                    detail="That's a lot of requests for one day. Try again tomorrow.",
+                )
+            await conn.execute(
+                """INSERT INTO brief_requests (case_id, user_id) VALUES ($1, $2)
+                   ON CONFLICT DO NOTHING""",
+                case_id, user["id"],
+            )
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM brief_requests WHERE case_id = $1", case_id
+        )
+    return {"requests": count, "requested": True}
+
+
+@app.get("/api/v1/admin/brief-requests")
+async def admin_brief_requests(limit: int = 100, user: dict = Depends(require_admin)):
+    """Open requests (no approved brief yet), most-requested first."""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"""SELECT r.case_id, c.title, COUNT(*) AS requests,
+                       MIN(r.created_at) AS first_requested
+                FROM brief_requests r JOIN cases c ON c.id = r.case_id
+                WHERE NOT {APPROVED_BRIEF_SQL.format(case="r.case_id")}
+                GROUP BY r.case_id, c.title
+                ORDER BY requests DESC, first_requested
+                LIMIT $1""",
+            max(1, min(limit, 500)),
+        )
+    return [dict(r) for r in rows]
 
 
 @app.post("/api/v1/briefcheck")
@@ -5330,11 +5426,8 @@ async def extract_outline_topics(outline_id: int, user: dict = Depends(require_a
     """Extract key topics from an outline using AI"""
     user_id = user["id"]
 
-    user_api_key = await get_user_api_key(user_id)
-    is_byok = user_api_key is not None
-    api_key = user_api_key or ANTHROPIC_API_KEY
-    if not api_key:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    api_key, _key_source = await get_anthropic_api_key(user)
+    is_byok = _key_source == "byok"
 
     async with db_pool.acquire() as conn:
         outline = await conn.fetchrow(
@@ -5472,11 +5565,8 @@ async def start_outline_study(outline_id: int, body: OutlineStudyStart, user: di
     user_id = user["id"]
 
     # BYOK / provider setup
-    user_api_key = await get_user_api_key(user_id)
-    is_byok = user_api_key is not None
-    api_key = user_api_key or ANTHROPIC_API_KEY
-    if not api_key:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    api_key, _key_source = await get_anthropic_api_key(user)
+    is_byok = _key_source == "byok"
 
     async with db_pool.acquire() as conn:
         # Get outline with visibility check
@@ -5742,11 +5832,8 @@ async def outline_study_message(outline_id: int, conv_id: int, body: OutlineStud
     user_id = user["id"]
 
     # BYOK / provider setup
-    user_api_key = await get_user_api_key(user_id)
-    is_byok = user_api_key is not None
-    api_key = user_api_key or ANTHROPIC_API_KEY
-    if not api_key:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    api_key, _key_source = await get_anthropic_api_key(user)
+    is_byok = _key_source == "byok"
 
     async with db_pool.acquire() as conn:
         # Daily limit check
@@ -6352,11 +6439,8 @@ async def study_chat(msg: ChatMessage, user: dict = Depends(require_auth)):
     user_id = user["id"]
 
     # Check for BYOK
-    user_api_key = await get_user_api_key(user_id)
-    is_byok = user_api_key is not None
-    chat_api_key = user_api_key or ANTHROPIC_API_KEY
-    if not chat_api_key:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    chat_api_key, _key_source = await get_anthropic_api_key(user)
+    is_byok = _key_source == "byok"
 
     async with db_pool.acquire() as conn:
         # Get or create user tier
@@ -6698,11 +6782,8 @@ async def case_ask_ai(case_id: str, msg: CaseAskMessage, user: dict = Depends(re
     user_id = user["id"]
 
     # Check for BYOK
-    user_api_key = await get_user_api_key(user_id)
-    is_byok = user_api_key is not None
-    chat_api_key = user_api_key or ANTHROPIC_API_KEY
-    if not chat_api_key:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    chat_api_key, _key_source = await get_anthropic_api_key(user)
+    is_byok = _key_source == "byok"
 
     async with db_pool.acquire() as conn:
         # Verify case exists and fetch data
@@ -7716,7 +7797,7 @@ async def ask_textbook(
         raise HTTPException(status_code=503, detail="AI Q&A is not configured.")
 
     user_id = str(user["id"])
-    anthropic_key, key_source = await get_anthropic_api_key(user_id)
+    anthropic_key, key_source = await get_anthropic_api_key(user)
     is_byok = key_source == "byok"
     reservation_amount = TEXTBOOK_QA_BYOK_RESERVATION if is_byok else TEXTBOOK_QA_SITE_RESERVATION
     reservation_id = f"textbook-qa:{uuid4()}"
@@ -8673,8 +8754,7 @@ class MindmapGenerate(BaseModel):
 @app.post("/api/v1/study/mindmaps/generate")
 async def generate_mindmap(body: MindmapGenerate, user: dict = Depends(require_auth)):
     """AI-generate a mindmap tree from a topic prompt"""
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    require_site_ai(user)
 
     depth = max(2, min(4, body.depth or 3))
     subject_ctx = f" in the context of {body.subject}" if body.subject else ""
@@ -9163,8 +9243,7 @@ async def get_case_and_rule_context(conn, node):
 @app.post("/api/v1/study/session/start")
 async def start_study_session(body: SessionStart, user: dict = Depends(require_auth)):
     """Start or resume a study session on a mindmap"""
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    require_site_ai(user)
 
     user_id = user["id"]
     mindmap_id = body.mindmap_id
@@ -9276,8 +9355,7 @@ async def start_study_session(body: SessionStart, user: dict = Depends(require_a
 @app.post("/api/v1/study/session/{session_id}/respond")
 async def session_respond(session_id: int, body: SessionRespond, user: dict = Depends(require_auth)):
     """Evaluate answer, update progress, generate next question. Returns SSE stream."""
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    require_site_ai(user)
 
     user_id = user["id"]
 
@@ -9616,8 +9694,7 @@ INCORRECT"""
 @app.post("/api/v1/study/session/{session_id}/skip")
 async def session_skip(session_id: int, user: dict = Depends(require_auth)):
     """Skip current node and advance to next unmastered node"""
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="AI service not configured")
+    require_site_ai(user)
 
     user_id = user["id"]
 
@@ -10094,7 +10171,7 @@ async def msj_chat(project_id: int, data: MSJChatMessage, authorization: Optiona
     user_id = user["id"]
 
     # Get API key (BYOK or site)
-    api_key, key_source = await get_anthropic_api_key(user_id)
+    api_key, key_source = await get_anthropic_api_key(user)
 
     # Load project with documents
     async with db_pool.acquire() as conn:
@@ -10307,7 +10384,7 @@ async def msj_generate_motion(project_id: int, authorization: Optional[str] = He
     user = await require_auth(authorization)
     user_id = user["id"]
 
-    api_key, key_source = await get_anthropic_api_key(user_id)
+    api_key, key_source = await get_anthropic_api_key(user)
 
     async with db_pool.acquire() as conn:
         project = await conn.fetchrow(
@@ -11017,7 +11094,7 @@ async def tool_chat(tool_type: str, project_id: int, data: ToolChatMessage, auth
     user = await require_auth(authorization)
     user_id = user["id"]
 
-    api_key, key_source = await get_anthropic_api_key(user_id)
+    api_key, key_source = await get_anthropic_api_key(user)
 
     builder = _get_tool_builder(tool_type)
 
@@ -11202,7 +11279,7 @@ async def tool_generate(tool_type: str, project_id: int, authorization: Optional
     user = await require_auth(authorization)
     user_id = user["id"]
 
-    api_key, key_source = await get_anthropic_api_key(user_id)
+    api_key, key_source = await get_anthropic_api_key(user)
 
     builder = _get_tool_builder(tool_type)
 

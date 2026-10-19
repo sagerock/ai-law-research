@@ -19,6 +19,11 @@ Read `AI_COLLABORATION.md` before substantial work. It is the shared handoff fil
 - Domain: `tortwell.com`
 - Legacy domain: `lawstudygroup.com` (retain indefinitely with permanent redirects)
 
+**Live AI is admin or BYOK only (Sage, 2026-10-19).** Readers get briefs written ahead of time on the
+Claude subscription and request missing ones; the site API key never pays for our own build-out.
+Every live-AI endpoint resolves its key through `get_anthropic_api_key(user)` or `require_site_ai(user)`;
+a new one must too. Details: the 2026-10-19 entry in `AI_COLLABORATION.md`.
+
 ## Production Deployment (Railway)
 
 The app is deployed on Railway with three services:
@@ -166,7 +171,10 @@ GET  /health                        # Service health check
 POST /api/v1/search                 # Search cases (query, search_type, limit)
 GET  /api/v1/cases/{id}             # Get case details
 GET  /api/v1/cases/{id}/summary     # Get cached AI summary
-POST /api/v1/cases/{id}/summarize   # Generate new AI summary (uses Claude)
+POST /api/v1/cases/{id}/summarize   # Generate new AI summary (admin or BYOK only since 2026-10-19)
+GET  /api/v1/cases/{id}/brief-request   # Request count + whether this reader asked
+POST /api/v1/cases/{id}/brief-request   # "Request this brief" (auth; feeds the subscription queue)
+GET  /api/v1/me/ai-access          # live_ai: admin or own key; everyone else gets no live AI
 GET  /api/v1/cases/{id}/brief-variants  # Cached Simplified/Bullets versions of the approved brief
 POST /api/v1/cases/{id}/brief-variants  # Generate them (rewrite + fidelity review; force is admin-only)
 GET  /api/v1/cases/{id}/citations   # Get citing/cited cases

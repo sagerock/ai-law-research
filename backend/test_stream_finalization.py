@@ -338,21 +338,23 @@ def test_preflight_failure_does_not_persist_pending_chat_turn(
         ),
     )
 
+    # The site key is admin-only since 2026-10-19; a non-admin never reaches preflight.
+    user = {"id": "user-1", "email": main.ADMIN_EMAIL}
     with pytest.raises(main.HTTPException) as exc:
         if kind == "study":
             asyncio.run(main.study_chat(
                 main.ChatMessage(content="question", conversation_id=1),
-                user={"id": "user-1"},
+                user=user,
             ))
         elif kind == "outline":
             asyncio.run(main.outline_study_message(
                 2, 1, main.OutlineStudyMessage(content="question"),
-                user={"id": "user-1"},
+                user=user,
             ))
         else:
             asyncio.run(main.case_ask_ai(
                 "case-1", main.CaseAskMessage(content="question", conversation_id=1),
-                user={"id": "user-1"},
+                user=user,
             ))
 
     assert exc.value.status_code == failure_status

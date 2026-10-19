@@ -4,7 +4,8 @@ Generate structured, source-linked case briefs using leftover subscription capac
 The helper owns the queue, passages, validation, and database writes. You write the candidates.
 Never invoke the legacy `save` command and never replace the Original brief.
 
-The queue is the REBUILD backlog: cases that already have a legacy brief but no structured
+Readers' "Request this brief" clicks (`brief_requests`) come first, most-requested first;
+those may have no legacy brief. After them the queue is the REBUILD backlog: cases that already have a legacy brief but no structured
 one (~890 as of 2026-07-12), landmarks first. Your candidates land as `pending` and are NOT
 shown to students until a separate review session approves them — do not review your own
 candidates; a fresh context judges support more honestly than the one that wrote the claims.

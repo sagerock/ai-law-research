@@ -549,35 +549,42 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
-### NEXT: Take AI off the public site; build the library internally (decided 2026-10-19)
-Owner: unassigned (next session). Status: decided by Sage, not started.
-
-**Why.** A 30-day read of production (2026-10-19, read-only via `citator/railway_db.py`) shows the
-API spend is Sage building, not students: about $33 net in `pool_ledger` (446 reservations, all
-`created_by='system'`): source-linked briefs ~$25, Simplified/Bullets + fidelity review ~$7,
-Case Ask $1.57. All 51 Case Ask conversations were sage@sagerock.com; 5 of 6 `brief_interactions`
-were Sage; 0 signups. 10/17 alone was ~$10.70 on site (110 variant calls + 18 briefs), the build
-day for Simplified/Bullets before the subscription path existed. Generation endpoints accept
-anonymous callers (`get_current_user` optional), so the only thing keeping spend low is traffic.
-Sage: Quimbee is a static library; build it ourselves on the Claude subscription credits (his
-10/17 rule: build/backfill on the subscription, API only for visitors) and stop paying API for
-our own build-out.
-
-**Build:**
-1. Visitors get no live AI generation. `POST .../summarize`, `POST .../brief-variants` and Case Ask
-   (plus any other on-site Anthropic call) require admin, OR a BYOK key (BYOK already exists and
-   skips the pool; Sage: keep it as a quiet power-user option, it costs us nothing).
-   Sage keeps every AI feature as admin (he uses Case Ask constantly).
-2. A case with no approved brief shows "Brief coming soon" and a **Request this brief** button
-   (signed-in users; idempotent per case; rate-limited). Requests land in a queue table ordered by
-   demand. Keep the discussion forum.
-3. The desktop subscription path works the queue: `citator/brief_variant_batch.py` +
-   `BRIEF-VARIANTS*.md` / the Sunday source-brief pipeline, writer and reviewer as separate
-   sessions, publish via `railway_db.py`. Feed it from the request queue first, then the backfill.
-4. Sage's own building goes through the queue, never through clicks on the live site.
-5. Transparency page and `api_usage_log` keep working (subscription rows already record
-   `key_source='subscription'`, cost 0).
-Do not remove BYOK; do not reopen the database's public proxy (2026-10-07 audit).
+### AI off the public site; briefs by request (2026-10-19)
+Owner: Claude. Status: built, migration 042 applied to production, code pushed to `main`.
+**Why.** 30 days of production (read 2026-10-19): ~$33 API spend, all of it Sage building;
+51/51 Case Ask conversations were Sage, 0 signups. Sage: build the library on the Claude
+subscription like Quimbee's static library; the API key is not for our own build-out.
+**What changed.**
+- `get_anthropic_api_key(user)` in `backend/main.py` is the one gate: the reader's own key
+  (BYOK) first, the site key only for `ADMIN_EMAIL`, everyone else a 403 with
+  `LIVE_AI_OFF_DETAIL`. Every live-AI endpoint goes through it (summarize, brief-variants,
+  case Ask, study chat, outline extract/study/message, textbook Ask, MSJ and drafting
+  tools). Site-key-only features with no BYOK path (mind-map generate, study sessions
+  start/respond/skip) use `require_site_ai(user)`: admin only. Cached briefs and variants
+  still serve to everyone before any key is resolved. Search embeddings (OpenAI, fractions
+  of a cent) are unchanged.
+- `brief_requests` (migration 042): one row per reader per case. `POST/GET
+  /api/v1/cases/{id}/brief-request` (idempotent, 25 new requests per reader per day),
+  `GET /api/v1/me/ai-access`, admin `GET /api/v1/admin/brief-requests` (open requests,
+  most-requested first).
+- Frontend: `useAiAccess()`; readers see "Brief coming soon" + `RequestBrief` where a brief is
+  missing (also on stub cases), "coming soon" on unwritten Simplified/Bullets tabs, and no
+  Case Ask panel. Admin and BYOK see the old generate buttons. GA4 event `brief_request`.
+  `/byok` copy no longer promises pool-funded briefs or daily chat quotas.
+- Desktop queue: `sunday_briefs.py` runs again (broken since the 10/07 audit). It now uses
+  `citator/remote_conn.py`, an asyncpg-shaped proxy over `railway_db.run` (1.3 s per query;
+  `transaction()` blocks buffer writes and ship them as one remote transaction;
+  `DIRECT_DATABASE_URL` for a real connection). `railway_db.run` stages payloads over 90 KB
+  in a remote file, so a full opinion's passages fit. `candidate-list` puts requested cases
+  first (by count, admitted without a legacy brief); `candidate-opinion` fetches stub cases
+  from CourtListener. `brief_variant_batch.py queue` without `--collection` orders by requests.
+**Open.**
+- `/transparency` still describes the community pool as funding students' AI. Sage's call
+  how to pitch donations now.
+- Sage's own builds should go through the queue (request on the site as a non-admin
+  account, or `--ids` on the batch tools), never by clicking Generate on the live site.
+- The Sunday cron (`source_rebuild_burn.sh`, 7:03 PM) will pick up requests first now that
+  the helper connects again; watch the first run in `/home/sage/logs/source-rebuild.log`.
 
 ### Claude Opus 5.5 for briefs and brief variants (2026-10-17)
 Owner: Claude
@@ -607,7 +614,7 @@ Found in passing: `sunday_briefs.py` (the Sunday brief pipeline) has failed sinc
 it opens `PROD_DATABASE_URL` directly and the audit removed the public proxy (see
 `/home/sage/logs/source-rebuild.log`). `citator/railway_db.py` is the fix pattern; porting
 its commands to it is open work.
-Next: port `sunday_briefs.py` to `railway_db`; schedule `brief_variant_burn.sh` beside the
+Next (port to `railway_db` done 2026-10-19): schedule `brief_variant_burn.sh` beside the
 Sunday run; Listen tab (TTS of Simplified); topic tags for the Week 9 cases.
 Files: `backend/brief_variants.py`, `backend/main.py` (brief-variants endpoints),
 `backend/test_brief_variants*.py`, `migrations/041_brief_variants.sql`,

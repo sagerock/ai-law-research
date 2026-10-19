@@ -21,7 +21,9 @@ Priority: (1) the 30 citator landmarks, (2) curated 1L cases (by casebook count)
 (3) nothing yet — expand when tiers 1-2 run dry. Cost is logged as $0 with
 source='subscription' so the transparency dashboard reflects reality.
 """
-import asyncio, asyncpg, boto3, hashlib, json, os, re, sys
+import asyncio, boto3, hashlib, json, os, re, sys
+
+import remote_conn  # the production DB is private; queries go through railway ssh
 
 HERE = os.path.dirname(__file__)
 CURATED = "/mnt/d/backups/ai-law-research/data/1L_core_cases.json"
@@ -83,14 +85,6 @@ def env_file_value(name):
                 if line.startswith(f"{name}="):
                     return line.split("=", 1)[1].strip().strip('"').strip("'")
     return None
-
-
-def prod_url():
-    url = (os.getenv("PROD_DATABASE_URL") or os.getenv("DATABASE_URL")
-           or env_file_value("PROD_DATABASE_URL"))
-    if not url:
-        raise SystemExit("PROD_DATABASE_URL not found")
-    return url
 
 
 async def fetch_marked_opinion(cid):
@@ -157,7 +151,7 @@ def identity_matches(curated_name, stored_title):
 
 
 async def cmd_list(n):
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     queue = [(c, None, None) for c in LANDMARKS] + curated_ids()  # landmarks hand-verified
     out, skip = [], skiplist()
     ids = [c for c, _, _ in queue]
@@ -190,7 +184,7 @@ async def cmd_opinion(cid):
     except Exception:
         pass
     if not text:
-        conn = await asyncpg.connect(prod_url())
+        conn = await remote_conn.connect()
         text = await conn.fetchval("SELECT content FROM cases WHERE id = $1", cid)
         await conn.close()
     if not text or len(text) < MIN_OPINION:
@@ -214,7 +208,7 @@ async def cmd_save(cid, path, model):
         sys.exit(1)
     # rough token estimate for the log (chars/4); cost is genuinely $0 (subscription)
     in_est, out_est = 20000 // 4, len(summary) // 4
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     await conn.execute("""
         INSERT INTO ai_summaries (case_id, summary, model, input_tokens, output_tokens, cost)
         VALUES ($1, $2, $3, $4, $5, 0)
@@ -265,7 +259,7 @@ async def cmd_candidate_list(n):
                      JOIN canonical_outlines o ON o.id = rev.outline_id
                           AND o.current_version = rev.version AND o.is_published
                      WHERE src.target_type = 'case' AND src.target_ref = c.id"""
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     try:
         rows = await conn.fetch(
             f"""SELECT c.id AS case_id, c.title, c.decision_date,
@@ -274,6 +268,8 @@ async def cmd_candidate_list(n):
                       EXISTS (SELECT 1 FROM casebook_cases cc
                               WHERE cc.case_id = c.id AND cc.casebook_id = $2) AS priority_casebook,
                       EXISTS ({outline_case_sql}) AS outline_case,
+                      (SELECT COUNT(*) FROM brief_requests r
+                       WHERE r.case_id = c.id) AS requests,
                       (SELECT cc.sort_order FROM casebook_cases cc
                        WHERE cc.case_id = c.id AND cc.casebook_id = $2
                        LIMIT 1) AS priority_order
@@ -281,7 +277,8 @@ async def cmd_candidate_list(n):
                WHERE (EXISTS (SELECT 1 FROM ai_summaries s WHERE s.case_id = c.id)
                       OR EXISTS (SELECT 1 FROM casebook_cases cc
                                  WHERE cc.case_id = c.id AND cc.casebook_id = $2)
-                      OR EXISTS ({outline_case_sql}))
+                      OR EXISTS ({outline_case_sql})
+                      OR EXISTS (SELECT 1 FROM brief_requests r WHERE r.case_id = c.id))
                  AND NOT EXISTS (SELECT 1 FROM structured_summary_candidates k
                                   WHERE k.case_id = c.id AND k.provider = $1)
                   AND NOT EXISTS (SELECT 1 FROM structured_summary_failures f
@@ -297,6 +294,9 @@ async def cmd_candidate_list(n):
 
         def rank(row):
             cid = row["case_id"]
+            # Readers' "Request this brief" clicks outrank everything (Sage, 2026-10-19).
+            if row["requests"]:
+                return (-1, -row["requests"])
             if row["priority_casebook"]:
                 return (0, row["priority_order"] or 999999)
             if row["outline_case"]:
@@ -312,6 +312,7 @@ async def cmd_candidate_list(n):
                 "id": row["case_id"],
                 "title": row["title"],
                 "date": row["decision_date"].isoformat() if row["decision_date"] else None,
+                "requests": row["requests"],
             }
             for row in sorted(rows, key=rank)
             if row["case_id"] not in skip
@@ -322,7 +323,7 @@ async def cmd_candidate_list(n):
 
 
 async def cmd_candidate_opinion(cid):
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     try:
         text, original_hash = await conn.fetchrow(
             "SELECT content, content_hash FROM cases WHERE id = $1", cid
@@ -332,6 +333,12 @@ async def cmd_candidate_opinion(cid):
             alternate_text, alternate_source = await asyncio.to_thread(read_full_opinion, cid)
             if alternate_text and len(alternate_text) >= MIN_OPINION:
                 text, source = alternate_text, alternate_source
+        if not text or len(text) < MIN_OPINION:
+            # Requested stub cases (cited, never imported) have no stored text; the
+            # site's summarize endpoint fetches them from CourtListener the same way.
+            marked_text = await fetch_marked_opinion(cid)
+            if marked_text and len(marked_text) >= MIN_OPINION:
+                text, source = marked_text, "courtlistener"
         if not text or len(text) < MIN_OPINION:
             with open(SKIPLIST, "a") as f:
                 f.write(f"{cid}\t{len(text or '')} chars, auto-skipped (candidate) "
@@ -372,6 +379,14 @@ async def cmd_candidate_opinion(cid):
                         text, hashlib.sha256(text.encode("utf-8")).hexdigest(), cid,
                         original_hash,
                     )
+        if source == "courtlistener" and not original_hash and not preflight_errors:
+            # Stub case: store the fetched text so the case page serves what the
+            # passages were built from (same guarded write as below).
+            await conn.execute(
+                """UPDATE cases SET content = $1, content_hash = $2, updated_at = NOW()
+                   WHERE id = $3 AND content_hash IS NULL""",
+                text, hashlib.sha256(text.encode("utf-8")).hexdigest(), cid,
+            )
         if preflight_errors:
             error = "; ".join(preflight_errors)
             await record_candidate_failure(
@@ -423,7 +438,7 @@ async def record_candidate_failure(conn, cid, content_hash, stage, error):
 
 
 async def cmd_candidate_save(cid, path, model, content_hash):
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     try:
         try:
             candidate = json.load(open(path))
@@ -496,7 +511,7 @@ async def cmd_triage_list(n):
     candidate-save resets the candidate to 'pending', so the corrected brief goes
     back through the same review gate; triage never bypasses review.
     """
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     try:
         rows = await conn.fetch(
             """SELECT f.case_id, c.title,
@@ -534,7 +549,7 @@ async def cmd_triage_list(n):
 
 async def cmd_review_list(n):
     """Pending structured candidates awaiting semantic review, oldest first."""
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     try:
         rows = await conn.fetch(
             """SELECT k.case_id, c.title, k.model, k.created_at
@@ -556,7 +571,7 @@ async def cmd_review_list(n):
 
 async def cmd_review_fetch(cid):
     """Print a pending candidate with each claim's cited passage texts for review."""
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     try:
         row = await conn.fetchrow(
             """SELECT summary, content_hash, model FROM structured_summary_candidates
@@ -614,7 +629,7 @@ async def cmd_review_save(cid, path):
     if verdict.get("verdict") not in ("approve", "hold") or not str(verdict.get("notes", "")).strip():
         raise SystemExit('Verdict file must be {"verdict": "approve"|"hold", "notes": "<specific reasons>"}')
     notes = str(verdict["notes"])[:4000]
-    conn = await asyncpg.connect(prod_url())
+    conn = await remote_conn.connect()
     try:
         row = await conn.fetchrow(
             """SELECT content_hash FROM structured_summary_candidates

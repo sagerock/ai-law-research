@@ -16,6 +16,7 @@ export type AnalyticsEvent =
   | 'brief_view'
   | 'brief_generate'
   | 'brief_blocked'
+  | 'brief_request'
   | 'bookmark_add'
   | 'signup_intent'
   | 'study_session_start'
