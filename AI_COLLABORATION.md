@@ -550,7 +550,7 @@ with an existing decision, add your case here instead of silently changing the c
 ## Current Handoffs
 
 ### Con Law Week 10 cases: import, briefs, collections (2026-10-25)
-Owner: Claude (claude-opus-5-5, Jax). Status: done except two briefs held twice (need Sage).
+Owner: Claude (claude-opus-5-5, Jax). Status: done.
 - `scripts/import_conlaw_week10_2026.py` (run in the Backend container): stubs for West Virginia v.
   EPA (cluster 6623244, revised slip op) and Learning Resources v. Trump (10799354, the 2/23/26
   revision; 607 U.S. 229 is Peters's cite; 10595582 is the D.D.C. case). Fixed cites on Gundy
@@ -562,17 +562,25 @@ Owner: Claude (claude-opus-5-5, Jax). Status: done except two briefs held twice 
   the "Chief Justice Roberts delivered" heading. Replaced content with the slip-opinion cluster
   9410786 (guarded on the old content_hash; no brief existed); metadata `courtlistener_document`
   records the swap. It now preflights cleanly.
-- Source briefs (writer agents, separate reviewer agents, `sunday_briefs.py`): approved Youngstown,
-  West Virginia v. EPA, Biden v. Nebraska, Panama Refining (after one triage). **Held twice, now
-  for a human:** Gundy (significance asserts Gorsuch's "stricter, originalist test," unsupported
-  by the dissent claims) and Learning Resources (rule[0] turns "it does not follow that the power
-  to regulate includes the power to tax" into a flat rule; significance asserts the concurrence /
-  dissent count). Both are one-line fixes.
-- Simplified/Bullets (`brief_variant_batch.py`, writer + separate reviewer): published for
-  Youngstown, West Virginia v. EPA, Biden v. Nebraska, Panama Refining.
+- Source briefs (writer agents, separate reviewer agents, `sunday_briefs.py`): all seven Week 10
+  cases now have approved briefs. Gundy and Learning Resources were held twice (unsupported
+  significance lines; LR rule[0] overstated "it does not follow"); Sage authorized a third repair
+  pass, and a fresh reviewer approved both. Gundy's dissent section now states Gorsuch's test.
+- Simplified/Bullets (`brief_variant_batch.py`, writer + separate reviewer): published for all six
+  new briefs (Schechter already had one).
+- **Qdrant (shared General instance …3533) restarted 2026-10-25 02:19 UTC on ephemeral storage and
+  lost its collections.** Tortwell's site depends on one: `evidence_cheng_v38` (casebook 2467
+  textbook Q&A; payload `text`/`chapter`/`case`/`para`). No builder existed in this repo, so I added
+  `scripts/build_cheng_qdrant.py` (rebuilds from `casebook_content`; deterministic IDs). While it
+  ran, another process restored the collection in the original schema (2,345 points, all 13
+  chapters, 85 case excerpts, ~2.70M chars). I deleted my 2,655 points (filter: has
+  `chapter_slug`) to avoid duplicate retrieval and kept theirs; a test query returns the right
+  §5.4 passages. The script stays as the fallback if the collection is lost again.
+  `tortwell_con_law_15` was rebuilt by the Week 10 sync (124 cases, 6,265 points, green).
 - Packet caveat: Youngstown's 80k packet ends partway into Jackson's concurrence (no "lowest
   ebb"), and the schema has no concurrence section; Jackson appears only in Significance.
-Files touched: scripts/import_conlaw_week10_2026.py, AI_COLLABORATION.md. Deployment: none.
+Files touched: scripts/import_conlaw_week10_2026.py, scripts/build_cheng_qdrant.py, AI_COLLABORATION.md.
+Deployment: none (not pushed).
 
 ### AI off the public site; briefs by request (2026-10-19)
 Owner: Claude. Status: built, migration 042 applied to production, code pushed to `main`.
