@@ -549,6 +549,31 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Con Law Week 10 cases: import, briefs, collections (2026-10-25)
+Owner: Claude (claude-opus-5-5, Jax). Status: done except two briefs held twice (need Sage).
+- `scripts/import_conlaw_week10_2026.py` (run in the Backend container): stubs for West Virginia v.
+  EPA (cluster 6623244, revised slip op) and Learning Resources v. Trump (10799354, the 2/23/26
+  revision; 607 U.S. 229 is Peters's cite; 10595582 is the D.D.C. case). Fixed cites on Gundy
+  (4631442, was a citer stub with no cite) and Youngstown (105018 carried 62 Ohio Law. Abs. 417).
+  All seven Week 10 cases appended to collection 15; new private collection 23 "Con Law – Week 10"
+  (22 was consumed by the dry run's rolled-back insert). Youngstown was not in 15 before this.
+- Biden v. Nebraska (10049655) refused `candidate-opinion` ("no explicit majority boundary"): its
+  stored text was CourtListener's preliminary print, where "Proof Pending Publication" stamps break
+  the "Chief Justice Roberts delivered" heading. Replaced content with the slip-opinion cluster
+  9410786 (guarded on the old content_hash; no brief existed); metadata `courtlistener_document`
+  records the swap. It now preflights cleanly.
+- Source briefs (writer agents, separate reviewer agents, `sunday_briefs.py`): approved Youngstown,
+  West Virginia v. EPA, Biden v. Nebraska, Panama Refining (after one triage). **Held twice, now
+  for a human:** Gundy (significance asserts Gorsuch's "stricter, originalist test," unsupported
+  by the dissent claims) and Learning Resources (rule[0] turns "it does not follow that the power
+  to regulate includes the power to tax" into a flat rule; significance asserts the concurrence /
+  dissent count). Both are one-line fixes.
+- Simplified/Bullets (`brief_variant_batch.py`, writer + separate reviewer): published for
+  Youngstown, West Virginia v. EPA, Biden v. Nebraska, Panama Refining.
+- Packet caveat: Youngstown's 80k packet ends partway into Jackson's concurrence (no "lowest
+  ebb"), and the schema has no concurrence section; Jackson appears only in Significance.
+Files touched: scripts/import_conlaw_week10_2026.py, AI_COLLABORATION.md. Deployment: none.
+
 ### AI off the public site; briefs by request (2026-10-19)
 Owner: Claude. Status: built, migration 042 applied to production, code pushed to `main`.
 **Why.** 30 days of production (read 2026-10-19): ~$33 API spend, all of it Sage building;
