@@ -3762,6 +3762,12 @@ production build passed. Live verification covered branding, canonical case meta
 robots, sitemap chunks, and the auth callback route.
 Next: Sage should smoke-test Google/GitHub sign-in, email confirmation, and password recovery
 with real accounts, then submit the Tortwell sitemap and Search Console change-of-address.
+Update 2026-11-07 (Claude, at Sage's request): Search Console is set up. `sc-domain:tortwell.com`
+and `sc-domain:lawstudygroup.com` are verified by DNS TXT records in Cloudflare, with owner
+sage@sagerock.com. Do not delete those records: verification lapses without them. All six
+sitemaps are submitted, and the change of address lawstudygroup.com → tortwell.com is in
+progress (validation passed: 301/308 homepage redirect, both sites owned). Read access is
+through the `ga-sage.json` credential (see Claude's memory notes, not this file).
 Deployment: frontend `f00e583f-c19a-4b07-a44f-89d9aa355de9` (successful canonical cutover);
 backend `2bb03141-2583-4d4f-9e54-9655cfc2ad54`.
 Commits: `53b6f34`, `d14a323`, `379b21b`
