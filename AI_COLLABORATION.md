@@ -558,6 +558,21 @@ unwrapping as their own block (`backend/opinion_passages.py`, test added). Buckl
 passes: 1394 majority / 1113 dissent passages. No format-version bump: the content hash already
 covers boundaries, so only cases whose labels changed get new passage IDs.
 
+Follow-up the same day: a read-only recheck of all 23 cases ever refused with that error. 12 pass
+now. Seven more were inline majority headings the parser never isolated (federal
+`KEARSE, Circuit Judge: Defendants...`, Mississippi `McRAE, Justice, for the Court:`, New Jersey
+`The opinion of the Court was delivered by HALL, J.`, Colorado `JUSTICE MÁRQUEZ delivered the
+Opinion of the Court.`): Strouse 27196, Mount Laurel 2263467, Dukes v. Wal-Mart 78615, Elfgeeh
+1386819, Turnbough 1133413, LaFleur 4846721, Preterm-Cleveland 4872985. `split_inline_headings`
+now isolates them. Regression check against the stored text of all 620 approved briefs (225 long
+enough to test): no case went from passing to failing; 41 rehash, almost all `opinion` to
+`majority` relabels plus headings stripped off first sentences. Engblom v. Carey (403670) also had
+its dissent mislabeled as citable opinion text; it is now `dissent`. Live briefs are unaffected (served
+by stored hash). Left alone as genuine source problems: Windsor v. United States 109153 (stored
+text is essentially only a dissent), Louisiana v. Callais order 10618593 (one-line unsigned order plus
+dissent), OLC guidance 4342450 (not a court opinion). These 7 come back to the Sunday queue after
+their six-day failure backoff.
+
 ### Con Law Week 10 cases: import, briefs, collections (2026-10-25)
 Owner: Claude (claude-opus-5-5, Jax). Status: done.
 - `scripts/import_conlaw_week10_2026.py` (run in the Backend container): stubs for West Virginia v.

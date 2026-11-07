@@ -102,10 +102,49 @@ LOWER_COURT_INLINE_HEADING = re.compile(
 )
 LOWER_COURT_MAJORITY = re.compile(
     rf"(?:\d{{1,4}}\s+)?{LOWER_COURT_AUTHOR}"
-    r",\s*(?:(?:Chief|Circuit|District|Senior|Presiding)\s+)*Judges?"
-    r"(?:,(?![^.;]*(?:dissent|concurr))[^.;]*?)?"
+    r",\s*(?:(?:Chief|Circuit|District|Senior|Presiding)\s+)*"
+    # A Justice heading takes only "for the Court"; a looser clause would read
+    # a footnote ("MONTEMURO, Senior Justice, was an appointed ...") as one.
+    r"(?:Judges?(?:,(?![^.;]*(?:dissent|concurr))[^.;]*?)?|Justice(?:,\s*for\s+the\s+Court)?)"
     r"(?:[:.]|,?\s+deliver\w+\s+the\s+opinion\b[^.;]*\.)"
 )
+# Majority headings that run straight into the opinion's first sentence, so no
+# block or sentence boundary isolates them and the majority goes unlabeled:
+#   "...separate opinion. KEARSE, Circuit Judge: Defendants ..."   (federal)
+#   "ALICE M. BATCHELDER, Circuit Judge. This is an appeal ..."    (federal)
+#   "EN BANC. McRAE, Justice, for the Court: ¶ 1. ..."             (Mississippi)
+#   "The opinion of the Court was delivered by HALL, J. This ..."  (New Jersey)
+#   "Colorado JUSTICE MÁRQUEZ delivered the Opinion of the Court." (Colorado)
+# Each is split onto its own line for detect_opinion_marker. The federal and
+# state forms require a sentence start (not a middle initial: "JERRE S."), a
+# single judge in ALL CAPS, and a bare title, so bench lists ("Circuit
+# Judges.") and dispositions don't qualify.
+INLINE_MAJORITY_HEADINGS = (
+    re.compile(
+        rf"(?m)(^|(?<!\b[A-Z])[.!?][ \t]+)((?:\d{{1,4}}\s+)?{LOWER_COURT_AUTHOR},\s*"
+        r"(?:(?:Chief|Circuit|Senior|Presiding)\s+)*(?:Judge|Justice)"
+        r"(?:,\s*for\s+the\s+Court)?\s*[:.])[ \t]+(?=[A-Z¶\d])"
+    ),
+    re.compile(
+        r"(?m)(^|[.!?][ \t]+)(The\s+opinion\s+of\s+the\s+Court\s+was\s+delivered\s+by\s+"
+        r"[A-Z][A-Za-z'.-]*(?:\s+[A-Z][A-Za-z'.-]*)*,\s*(?:C\.\s*)?J\.)[ \t]+(?=\S)"
+    ),
+    re.compile(
+        r"(?m)(^|\s)((?:CHIEF\s+)?JUSTICE\s+[A-ZÀ-Þ][A-ZÀ-Þ'-]+\s+delivered\s+the\s+"
+        r"Opinion\s+of\s+the\s+Court\.)[ \t]*(?=\S|$)"
+    ),
+)
+NJ_MAJORITY_HEADING = re.compile(
+    r"the\s+opinion\s+of\s+the\s+court\s+was\s+delivered\s+by\s+.+,\s*(?:c\.\s*)?j\.",
+    re.I,
+)
+
+
+def split_inline_headings(text: str) -> str:
+    text = LOWER_COURT_INLINE_HEADING.sub(r"\1\n\2\n", text)
+    for pattern in INLINE_MAJORITY_HEADINGS:
+        text = pattern.sub(r"\1\n\2\n", text)
+    return text
 
 
 # Typeset reporter text (U.S. Reports preliminary prints, state slip opinions)
@@ -281,7 +320,7 @@ def prepare_opinion_text(text: str) -> str:
     """Convert stored opinion HTML to text without losing block boundaries."""
     if "<" not in text or ">" not in text:
         prepared = unwrap_typeset_lines(html.unescape(text))
-        return LOWER_COURT_INLINE_HEADING.sub(r"\1\n\2\n", prepared)
+        return split_inline_headings(prepared)
     value = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", text)
     value = re.sub(
         r"(?i)</?(?:p|div|h[1-6]|blockquote|li|br|section|article|table|tr)[^>]*>",
@@ -291,7 +330,7 @@ def prepare_opinion_text(text: str) -> str:
     value = re.sub(r"<[^>]+>", " ", value)
     lines = [normalize_opinion_text(line) for line in html.unescape(value).splitlines()]
     prepared = unwrap_typeset_lines("\n".join(line for line in lines if line))
-    return LOWER_COURT_INLINE_HEADING.sub(r"\1\n\2\n", prepared)
+    return split_inline_headings(prepared)
 
 
 def detect_opinion_marker(
@@ -327,7 +366,7 @@ def detect_opinion_marker(
     if marker:
         return (marker.group(1) or "majority").lower(), 1
 
-    if PER_CURIAM_HEADING_RE.fullmatch(block):
+    if PER_CURIAM_HEADING_RE.fullmatch(block) or NJ_MAJORITY_HEADING.fullmatch(block):
         return "majority", 1
 
     if re.fullmatch(r"(?:notes|footnotes)", block, re.I):
@@ -349,6 +388,12 @@ def detect_opinion_marker(
         if not candidate.endswith((".", ":")):
             continue
         boundary_check = candidate
+        if is_lower_court_intro:
+            # A judge's middle initial ("PATRICK E. HIGGINBOTHAM") ends no sentence.
+            # Not "C. J.", which is a title, not an initial.
+            boundary_check = re.sub(
+                r"\b([A-Z])\.(?=\s+[A-Z][A-Z])", r"\1<DOT>", boundary_check
+            )
         for abbreviation in ABBREVIATIONS:
             boundary_check = re.sub(
                 re.escape(abbreviation),

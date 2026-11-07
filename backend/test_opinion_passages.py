@@ -641,3 +641,48 @@ def test_unwrapping_keeps_per_curiam_heading_as_majority_boundary():
     assert {p["opinion_part"] for p in passages} >= {"majority", "dissent"}
     assessment = assess_opinion_boundaries(text, passages, require_explicit=True)
     assert assessment.ok, assessment.errors
+
+
+def _parts_and_texts(text):
+    _, passages = build_opinion_passages(text)
+    return [p["opinion_part"] for p in passages], [p["text"] for p in passages]
+
+
+def test_inline_lower_court_majority_headings_mark_the_majority():
+    # Each heading runs straight into the first sentence of the opinion.
+    dissent = "\nSACK, Circuit Judge, dissenting:\nI would reverse."
+    for heading, first in [
+        ("Before HIGGINBOTHAM and DAVIS, Circuit Judges. PATRICK E. HIGGINBOTHAM, "
+         "Circuit Judge:", "A federal grand jury indicted the officers."),
+        ("in a separate opinion. KEARSE, Circuit Judge:", "1 Defendants appeal."),
+        ("ALICE M. BATCHELDER, Circuit Judge.", "This is an appeal from an injunction."),
+        ("EN BANC. McRAE, Justice, for the Court:", "¶ 1. Turnbough sued his doctor."),
+        ("for amicus. The opinion of the Court was delivered by HALL, J.",
+         "This case attacks the zoning system."),
+        ("Denver, Colorado JUSTICE MÁRQUEZ delivered the Opinion of the Court.",
+         "We hold that the marriage is valid."),
+    ]:
+        parts, texts = _parts_and_texts(f"Caption. {heading} {first}{dissent}")
+        last_word = first.split()[-1]
+        opening = next(i for i, text in enumerate(texts) if last_word in text)
+        assert parts[opening] == "majority", heading
+        assert not texts[opening].startswith(heading[-12:]), heading
+        assert {"majority", "dissent"} <= set(parts), heading
+
+
+def test_inline_majority_heading_false_positives():
+    # A middle initial is not a sentence end, so the name is not split off.
+    parts, texts = _parts_and_texts("JERRE S. WILLIAMS, Circuit Judge.\nThe appeal fails.")
+    assert "JERRE S." not in texts
+    assert parts == ["majority"]
+    # A footnote naming a Justice is not a heading.
+    parts, _ = _parts_and_texts(
+        "The Court reversed.\nMONTEMURO, Senior Justice, was an appointed Justice of the "
+        "Court at the time of argument."
+    )
+    assert "majority" not in parts
+    # A syllabus vote line is not a concurrence heading.
+    parts, _ = _parts_and_texts(
+        "The judgment is affirmed.\nROBERTS, C. J., filed an opinion concurring in the judgment."
+    )
+    assert "concurrence" not in parts
