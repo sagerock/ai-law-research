@@ -623,3 +623,21 @@ def test_senate_resolution_citation_does_not_split():
     )
     assert len(passages) == 1
     assert passages[0]["text"].endswith("The record confirms it.")
+
+
+def test_unwrapping_keeps_per_curiam_heading_as_majority_boundary():
+    # Buckley v. Valeo shape: a combined record whose only majority heading is
+    # "PER CURIAM." under the caption. Joined into the caption, the heading is
+    # lost and the later separate writings leave no majority at all.
+    marker = '[[COURTLISTENER_SUBOPINION {"id":"1","part":"opinion"}]]'
+    body = ["   The judgment of the District Court is affirmed in part and"] * 40
+    text = "\n".join(
+        [marker, "424 U.S. 1", "BUCKLEY ET AL.", "v.", "VALEO", "[]", "PER CURIAM."]
+        + body
+        + ["reversed in part.", "MR. JUSTICE WHITE, concurring in part and dissenting in part.",
+           "I would uphold the expenditure limits."]
+    )
+    _, passages = build_opinion_passages(text)
+    assert {p["opinion_part"] for p in passages} >= {"majority", "dissent"}
+    assessment = assess_opinion_boundaries(text, passages, require_explicit=True)
+    assert assessment.ok, assessment.errors

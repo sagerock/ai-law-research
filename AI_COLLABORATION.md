@@ -549,6 +549,15 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Per curiam majority boundary lost in unwrapping (2026-11-07)
+Owner: Claude. Status: fixed and pushed to `main`.
+Buckley v. Valeo (109380) was refused with "separate opinions but no explicit majority boundary".
+Its CourtListener text trips the hard-wrap detector, so `unwrap_typeset_lines` glued the standalone
+"PER CURIAM." heading onto the caption and the majority vanished. Per curiam headings now survive
+unwrapping as their own block (`backend/opinion_passages.py`, test added). Buckley preflight now
+passes: 1394 majority / 1113 dissent passages. No format-version bump: the content hash already
+covers boundaries, so only cases whose labels changed get new passage IDs.
+
 ### Con Law Week 10 cases: import, briefs, collections (2026-10-25)
 Owner: Claude (claude-opus-5-5, Jax). Status: done.
 - `scripts/import_conlaw_week10_2026.py` (run in the Backend container): stubs for West Virginia v.

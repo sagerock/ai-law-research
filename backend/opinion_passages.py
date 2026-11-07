@@ -153,6 +153,7 @@ PAGE_HEADER_RE = re.compile(
     re.X,
 )
 PAGE_BREAK = "\f"
+PER_CURIAM_HEADING_RE = re.compile(r"per\s+curiam\.?", re.I)
 
 
 def _is_page_header(line: str) -> bool:
@@ -260,9 +261,13 @@ def unwrap_typeset_lines(text: str) -> str:
             continue
         # Structural markers must survive as standalone blocks or the opinion
         # boundaries they declare are lost inside a joined paragraph.
+        # "PER CURIAM." is the Court's only majority heading in a per curiam
+        # opinion (Buckley v. Valeo); glued onto the caption it vanishes and the
+        # separate writings that follow have no majority to stand against.
         if (
             CANONICAL_MARKER_RE.fullmatch(stripped)
             or EXTRACTOR_MARKER_RE.fullmatch(stripped)
+            or PER_CURIAM_HEADING_RE.fullmatch(stripped)
         ):
             flush()
             blocks.append(stripped)
@@ -322,7 +327,7 @@ def detect_opinion_marker(
     if marker:
         return (marker.group(1) or "majority").lower(), 1
 
-    if re.fullmatch(r"per\s+curiam\.?", block, re.I):
+    if PER_CURIAM_HEADING_RE.fullmatch(block):
         return "majority", 1
 
     if re.fullmatch(r"(?:notes|footnotes)", block, re.I):
