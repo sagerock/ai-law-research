@@ -549,6 +549,34 @@ with an existing decision, add your case here instead of silently changing the c
 
 ## Current Handoffs
 
+### Multi-issue briefs and whole-opinion packets (2026-11-07)
+Owner: Claude. Status: code pushed to `main`; Buckley regeneration below.
+Sage flagged Buckley v. Valeo (109380): the brief covered only the First Amendment holding, but
+his con law class reads it (week 11(C)) for the Appointments Clause holding. Two causes, both
+fixed in `backend/structured_briefs.py`, which the on-demand endpoint, the Sunday batch, and the
+eval script all share:
+- **Packet.** It was the first 65k + last 15k chars. Buckley is 530k; Part IV (FEC appointments)
+  starts ~142k in, so the model never saw it, or disclosure, or public financing. Now: whole
+  opinion when it fits in 180k chars (nearly all do; a 239-case benchmark averaged 32k). Longer
+  opinions are split at top-level headings (or 8 equal slices if none are found). Each part
+  gets budget in proportion to its length, split 70% from its start and 30% from its end. The
+  end keeps the part's conclusion; a short CONCLUSION folds into the last part's end. Appendices
+  and concurrences go first, since neither is citable. Dissents are spread the same way,
+  because separate writings can arrive as one unbroken `dissent` run with no author lines
+  (Buckley's five). Gaps show as `[... N passages omitted ...]` in the prompt.
+- **Schema.** "Exactly 1 issue, 1-2 holdings" became 1-4 issues/holdings/rules, 1-8 reasoning,
+  1-5 facts. The prompt says most cases have one issue; several distinct questions get one
+  issue + holding + rule each, in order, none dropped. Parallel ordered lists, not a nested
+  per-issue schema. A nested schema would have meant changing the frontend, variants, and
+  review together, and nothing needs it yet.
+- Rejected: an AI map-reduce pass over the full opinion (cost and a second failure point for
+  every long case), and a reviewer coverage check (the reviewer sees only cited passages, so
+  it cannot judge omissions).
+- Subscription sessions: `candidate-opinion` now reports `packet_chars`. The runbook stops a
+  session at 3 candidates or 250k packet chars, whichever comes first.
+- Open: Sage's idea #3, flagging the holding a given course reads the case for, using casebook
+  and week mappings. Not started.
+
 ### Per curiam majority boundary lost in unwrapping (2026-11-07)
 Owner: Claude. Status: fixed and pushed to `main`.
 Buckley v. Valeo (109380) was refused with "separate opinions but no explicit majority boundary".

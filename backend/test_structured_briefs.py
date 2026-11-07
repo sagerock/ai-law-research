@@ -9,6 +9,7 @@ from structured_briefs import (
     has_majority_source_material,
     parse_structured_response,
     repair_unknown_sources,
+    select_packet_passages,
     structured_summary_to_text,
     validate_structured_summary,
 )
@@ -221,6 +222,107 @@ class StructuredBriefTests(unittest.TestCase):
         self.assertIn("**📏 Rule**", text)
         self.assertIn("**🎯 Significance**", text)
         self.assertNotIn("**🗣️ Dissent**", text)
+
+
+def _passage(ordinal, part, text):
+    return {"id": f"op-{ordinal:04d}", "ordinal": ordinal, "opinion_part": part, "text": text}
+
+
+def buckley_shaped_opinion():
+    """Four headed majority parts, a conclusion, an appendix, then one long
+    unbroken dissent run, sized like Buckley v. Valeo (530k chars)."""
+    body = "x" * 990 + "."
+    passages, ordinal = [], 0
+    for heading, count in (
+        ("I. CONTRIBUTION AND EXPENDITURE LIMITATIONS The scheme", 60),
+        ("REPORTING AND DISCLOSURE REQUIREMENTS Unlike the limits", 35),
+        ("PUBLIC FINANCING OF PRESIDENTIAL ELECTION CAMPAIGNS A series", 30),
+        ("THE FEDERAL ELECTION COMMISSION The amendments create", 45),
+    ):
+        passages.append(_passage(ordinal, "majority", heading))
+        ordinal += 1
+        for _ in range(count):
+            passages.append(_passage(ordinal, "majority", body))
+            ordinal += 1
+    for text in ("CONCLUSION In summary, we sustain the limits.", "So ordered."):
+        passages.append(_passage(ordinal, "majority", text))
+        ordinal += 1
+    passages.append(_passage(ordinal, "majority", "MR. JUSTICE STEVENS took no part. APPENDIX TO PER CURIAM OPINION"))
+    ordinal += 1
+    for _ in range(100):
+        passages.append(_passage(ordinal, "majority", body))
+        ordinal += 1
+    for _ in range(200):
+        passages.append(_passage(ordinal, "dissent", body))
+        ordinal += 1
+    return passages
+
+
+class SourcePacketSelectionTests(unittest.TestCase):
+    def test_short_opinion_is_sent_whole(self):
+        passages = [_passage(i, "majority", "Short sentence.") for i in range(50)]
+        self.assertEqual(select_packet_passages(passages), passages)
+
+    def test_long_opinion_keeps_every_headed_part_and_conclusion(self):
+        passages = buckley_shaped_opinion()
+        selected = select_packet_passages(passages)
+        texts = [p["text"] for p in selected]
+        for heading in ("I. CONTRIBUTION", "REPORTING AND", "PUBLIC FINANCING", "THE FEDERAL ELECTION"):
+            self.assertTrue(any(t.startswith(heading) for t in texts), heading)
+        self.assertIn("CONCLUSION In summary, we sustain the limits.", texts)
+        self.assertIn("So ordered.", texts)
+
+    def test_long_opinion_stays_within_budget_and_in_order(self):
+        selected = select_packet_passages(buckley_shaped_opinion())
+        self.assertLessEqual(sum(len(p["text"]) for p in selected), 185_000)
+        ordinals = [p["ordinal"] for p in selected]
+        self.assertEqual(ordinals, sorted(ordinals))
+
+    def test_trimmed_packet_drops_appendix_and_spreads_dissent(self):
+        passages = buckley_shaped_opinion()
+        selected = select_packet_passages(passages)
+        appendix_start = next(p["ordinal"] for p in passages if "APPENDIX" in p["text"])
+        dissent = [p["ordinal"] for p in passages if p["opinion_part"] == "dissent"]
+        chosen = {p["ordinal"] for p in selected}
+        self.assertFalse(chosen & set(range(appendix_start + 1, dissent[0])))
+        # The dissent run is one block with no author lines; both its first
+        # and last quarters must be represented, not just the opening.
+        quarter = len(dissent) // 4
+        self.assertTrue(chosen & set(dissent[:quarter]))
+        self.assertTrue(chosen & set(dissent[-quarter:]))
+
+    def test_trimmed_packet_drops_concurrences(self):
+        passages = buckley_shaped_opinion() + [
+            _passage(9000 + i, "concurrence", "y" * 1000) for i in range(20)
+        ]
+        selected = select_packet_passages(passages)
+        self.assertFalse(any(p["opinion_part"] == "concurrence" for p in selected))
+
+    def test_prompt_marks_omitted_passages(self):
+        selected = select_packet_passages(buckley_shaped_opinion())
+        prompt = build_structured_prompt("Buckley v. Valeo", "SCOTUS", "1976-01-30", selected)
+        self.assertIn("passages omitted ...]", prompt)
+        self.assertIn("the packet is an excerpt", prompt)
+        whole = build_structured_prompt("A v. B", "SCOTUS", "2024-06-21", [
+            _passage(0, "majority", "One."), _passage(1, "majority", "Two."),
+        ])
+        self.assertNotIn("passages omitted", whole)
+        self.assertNotIn("the packet is an excerpt", whole)
+
+    def test_prompt_allows_multiple_issues(self):
+        prompt = build_structured_prompt("A v. B", "SCOTUS", "2024-06-21", [_passage(0, "majority", "One.")])
+        self.assertIn("1-4 issues", prompt)
+        self.assertNotIn("exactly 1 issue", prompt)
+
+    def test_validation_accepts_four_issues_and_rejects_five(self):
+        passages = [{"id": "op-majority", "opinion_part": "opinion", "text": "Supported."}]
+        value = valid_summary()
+        claim = value["issue"][0]
+        value["issue"] = [dict(claim) for _ in range(4)]
+        value["holding"] = [dict(claim) for _ in range(4)]
+        self.assertEqual(validate_structured_summary(value, passages), [])
+        value["issue"].append(dict(claim))
+        self.assertIn("issue must contain 1-4 claims", validate_structured_summary(value, passages))
 
 
 if __name__ == "__main__":

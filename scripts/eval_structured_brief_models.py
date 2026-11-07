@@ -32,6 +32,7 @@ from structured_briefs import (  # noqa: E402
     generation_shape_report,
     parse_structured_response,
     repair_unknown_sources,
+    select_packet_passages,
     validate_structured_summary,
 )
 
@@ -66,12 +67,8 @@ def get_json(url: str) -> dict[str, Any]:
         return json.load(response)
 
 
-def select_passages(
-    passages: list[dict[str, Any]],
-    max_leading_chars: int = 65_000,
-    max_trailing_chars: int = 15_000,
-) -> list[dict[str, Any]]:
-    """Apply the same leading-plus-trailing packet selection as production."""
+def select_passages(passages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Apply the same packet selection as production."""
     normalized = [
         {
             "id": passage.get("id") or passage.get("passage_id"),
@@ -81,26 +78,7 @@ def select_passages(
         }
         for index, passage in enumerate(passages)
     ]
-    selected: list[dict[str, Any]] = []
-    chars = 0
-    for passage in normalized:
-        if chars + len(passage["text"]) > max_leading_chars:
-            break
-        selected.append(passage)
-        chars += len(passage["text"])
-    if len(selected) < len(normalized):
-        tail: list[dict[str, Any]] = []
-        tail_chars = 0
-        for passage in reversed(normalized):
-            if tail_chars + len(passage["text"]) > max_trailing_chars:
-                break
-            tail.append(passage)
-            tail_chars += len(passage["text"])
-        selected_ids = {passage["id"] for passage in selected}
-        selected.extend(
-            passage for passage in reversed(tail) if passage["id"] not in selected_ids
-        )
-    return selected
+    return select_packet_passages(normalized)
 
 
 def case_packet(case_id: str) -> tuple[dict[str, Any], list[dict[str, Any]], str]:

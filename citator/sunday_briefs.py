@@ -415,6 +415,7 @@ async def cmd_candidate_opinion(cid):
             "source": source,
             "is_partial_packet": len(selected) < len(passages),
             "total_passages": len(passages),
+            "packet_chars": sum(len(p["text"]) for p in selected),
             "boundary_assessment": assessment.as_dict(),
             "passages": selected,
         }

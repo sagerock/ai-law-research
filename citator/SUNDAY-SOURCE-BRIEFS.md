@@ -12,9 +12,11 @@ candidates; a fresh context judges support more honestly than the one that wrote
 
 ## Batch limit
 
-**3 candidates per session.** Hard stop. Source packets are large (up to 80k chars each);
-three keeps the session inside the context window with no auto-compaction. If anything
-errors repeatedly, stop early and note it.
+**3 candidates per session, or stop sooner once the packets you have read this session
+add up to more than 250,000 characters** (`packet_chars` in each packet). Hard stop. Most
+packets are the whole opinion and well under 60k; a very long one can reach ~180k, and the
+character cap keeps the session inside the context window with no auto-compaction. If
+anything errors repeatedly, stop early and note it.
 
 ## Steps — repeat up to 3 times, one case at a time
 
@@ -29,7 +31,9 @@ errors repeatedly, stop early and note it.
        /home/sage/.venvs/lawdata/bin/python /mnt/d/dev/ai-law-research/citator/sunday_briefs.py candidate-opinion <id>
 
    The JSON contains `content_hash`, passage IDs, opinion-part labels, and source text. Brief
-   only this packet. If `is_partial_packet` is true, do not claim to cover omitted material.
+   only this packet. If `is_partial_packet` is true, the opinion was too long to send whole:
+   every part of the majority is represented, and gaps show as jumps in `ordinal`. Do not
+   claim to cover omitted material.
 
 3. Write one JSON object to a scratch file **under /tmp** (e.g. `/tmp/brief_<id>.json` —
    never inside the repository; repo-dir scratch files litter `git status` for everyone)
@@ -45,9 +49,13 @@ errors repeatedly, stop early and note it.
          "significance": "Editorial synthesis without passage IDs."
        }
 
-   Limits: Facts 1-4 claims; Issue exactly 1; Holding 1-2; Rule 1-2; Majority Reasoning
-   1-4; Dissent 0-4. Use Dissent only when the packet labels dissent passages. Target
-   550-700 total words. Each sourced claim must be atomic and cite the smallest set of
+   Limits: Facts 1-5 claims; Issue 1-4; Holding 1-4; Rule 1-4; Majority Reasoning 1-8;
+   Dissent 0-4. Use Dissent only when the packet labels dissent passages. Most cases
+   decide one question: use one issue. When the court decides several distinct questions,
+   often under separate headings (Buckley v. Valeo: First Amendment limits, disclosure,
+   public financing, Appointments Clause), give each its own issue, holding, rule, and
+   reasoning in the same order, and drop none: a class may assign the case for any one of
+   them. Target 550-700 total words for a one-issue case; add room for each extra issue. Each sourced claim must be atomic and cite the smallest set of
    passage IDs that directly supports it. Never invent or alter an ID. Significance is
    editorial synthesis, under 90 words, and must not contain passage IDs.
 

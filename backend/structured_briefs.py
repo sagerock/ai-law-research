@@ -4,12 +4,16 @@ import re
 from opinion_passages import build_opinion_passages
 
 
+# Multi-issue cases (Sage, 2026-11-07): Buckley v. Valeo decides First Amendment,
+# disclosure, public-financing, and Appointments Clause questions, and a con law
+# class reads it for the last one. "Exactly 1 issue" forced the brief to drop all
+# but one. Most cases still have one issue; the higher caps are room, not a target.
 SECTION_LIMITS = {
-    "facts": 4,
-    "issue": 1,
-    "holding": 2,
-    "rule": 2,
-    "majority_reasoning": 4,
+    "facts": 5,
+    "issue": 4,
+    "holding": 4,
+    "rule": 4,
+    "majority_reasoning": 8,
     "dissent": 4,
 }
 MAJORITY_SOURCE_SECTIONS = frozenset({
@@ -200,30 +204,186 @@ def drop_uncitable_dissent(candidate: dict, passages: list[dict]) -> None:
     candidate["dissent"] = []
 
 
-def build_source_packet(text: str, max_leading_chars: int = 65000, max_trailing_chars: int = 15000):
-    content_hash, passages = build_opinion_passages(text)
-    selected, chars = [], 0
+# Packet budgets, in characters of passage text. Nearly every opinion fits whole
+# (a 239-case benchmark averaged 32k chars; 6 ran over 100k). Before 2026-11-07
+# the packet was the first 65k + last 15k chars, which cut Buckley v. Valeo's
+# Appointments Clause part (it starts ~142k into a 530k-char opinion) and with it
+# a holding con law classes read the case for.
+MAJORITY_BUDGET_CHARS = 150_000
+DISSENT_BUDGET_CHARS = 30_000
+MAJORITY_PARTS = frozenset({"opinion", "majority"})
+DISSENT_PARTS = frozenset({"dissent", "separate"})
+# A head/tail split per majority segment: the head states the part's question and
+# analysis, the tail usually holds its conclusion ("We therefore hold...").
+SEGMENT_HEAD_SHARE = 0.7
+FALLBACK_SEGMENTS = 8
+
+_CAPS_HEADING_RE = re.compile(
+    r"^(?:\[\d+\]\s*)?(?:[IVX]{1,5}\.?\s+)?([A-Z][A-Z'’,&-]+(?:\s+[A-Z][A-Z'’,&-]+)+)"
+)
+_NUMERAL_HEADING_RE = re.compile(r"^(?:\[\d+\]\s*)?[IVX]{1,5}\.?$")
+_ONE_WORD_HEADING_RE = re.compile(
+    r"^(?:\[\d+\]\s*)?(?:[IVX]{1,5}\.?\s+)?(?:CONCLUSION|BACKGROUND|DISCUSSION|INTRODUCTION)\b"
+)
+# Statutory text or data reprinted after the opinion (Buckley's runs ~100k chars).
+# Dropped first when a packet must be trimmed; the omission marker says so.
+_APPENDIX_RE = re.compile(r"(?:^|\.\s+)APPENDIX\b")
+
+
+def _is_section_heading(text: str) -> bool:
+    """Heuristic: a passage that opens a top-level part of an opinion.
+
+    CourtListener text keeps headings inline ("REPORTING AND DISCLOSURE
+    REQUIREMENTS Unlike the limitations..." or "[11] I. CONTRIBUTION AND...").
+    A false positive only adds a segment boundary, which costs nothing.
+    """
+    stripped = text.strip()
+    if _NUMERAL_HEADING_RE.match(stripped) or _ONE_WORD_HEADING_RE.match(stripped):
+        return True
+    match = _CAPS_HEADING_RE.match(stripped)
+    return bool(match and len(match.group(1)) >= 15)
+
+
+def _take_head(passages: list[dict], budget: int) -> list[dict]:
+    taken, chars = [], 0
     for passage in passages:
-        if chars + len(passage["text"]) > max_leading_chars:
+        if taken and chars + len(passage["text"]) > budget:
             break
-        selected.append(passage)
+        taken.append(passage)
         chars += len(passage["text"])
-    if len(selected) < len(passages):
-        tail, tail_chars = [], 0
-        for passage in reversed(passages):
-            if tail_chars + len(passage["text"]) > max_trailing_chars:
-                break
-            tail.append(passage)
-            tail_chars += len(passage["text"])
-        selected_ids = {passage["id"] for passage in selected}
-        selected.extend(passage for passage in reversed(tail) if passage["id"] not in selected_ids)
-    return content_hash, passages, selected
+    return taken
+
+
+def _take_tail(passages: list[dict], budget: int) -> list[dict]:
+    taken, chars = [], 0
+    for passage in reversed(passages):
+        if chars + len(passage["text"]) > budget:
+            break
+        taken.append(passage)
+        chars += len(passage["text"])
+    return list(reversed(taken))
+
+
+def _segments(passages: list[dict]) -> list[list[dict]]:
+    """Split passages into top-level parts, or equal slices if there are no
+    detectable headings."""
+    total = sum(len(passage["text"]) for passage in passages)
+    raw: list[list[dict]] = []
+    for passage in passages:
+        if raw and not _is_section_heading(passage["text"]):
+            raw[-1].append(passage)
+        else:
+            raw.append([passage])
+    # Fold tiny segments into a neighbor: a caption joins the first part, and a
+    # short CONCLUSION becomes the tail of the last part, which the tail share
+    # then keeps whole.
+    min_size = total / 24
+    segments: list[list[dict]] = []
+    for segment in raw:
+        if segments and sum(len(p["text"]) for p in segment) < min_size:
+            segments[-1].extend(segment)
+        elif segments and sum(len(p["text"]) for p in segments[-1]) < min_size:
+            segments[-1].extend(segment)
+        else:
+            segments.append(segment)
+    if len(segments) >= 3:
+        return segments
+    target = total / FALLBACK_SEGMENTS
+    segments, chars = [[]], 0
+    for passage in passages:
+        if segments[-1] and chars >= target * len(segments):
+            segments.append([])
+        segments[-1].append(passage)
+        chars += len(passage["text"])
+    return segments
+
+
+def _spread_sample(passages: list[dict], budget: int) -> list[dict]:
+    total = sum(len(passage["text"]) for passage in passages)
+    if total <= budget:
+        return list(passages)
+    selected = []
+    for segment in _segments(passages):
+        size = sum(len(passage["text"]) for passage in segment)
+        allocation = budget * size / total
+        head = _take_head(segment, int(allocation * SEGMENT_HEAD_SHARE))
+        head_ids = {passage["id"] for passage in head}
+        tail = _take_tail(segment[len(head):], int(allocation - sum(len(p["text"]) for p in head)))
+        selected.extend(head)
+        selected.extend(passage for passage in tail if passage["id"] not in head_ids)
+    return selected
+
+
+def select_packet_passages(
+    passages: list[dict],
+    majority_budget: int = MAJORITY_BUDGET_CHARS,
+    dissent_budget: int = DISSENT_BUDGET_CHARS,
+) -> list[dict]:
+    """Choose the passages a brief is written from.
+
+    Whole opinion when it fits. Otherwise every top-level part of the majority
+    is represented (head and tail of each, proportional to its length), and
+    the dissent material is spread the same way. Concurrences and "other" parts are dropped
+    first when trimming: no brief section may cite them.
+    """
+    total = sum(len(passage["text"]) for passage in passages)
+    if total <= majority_budget + dissent_budget:
+        return list(passages)
+    majority = [p for p in passages if p.get("opinion_part") in MAJORITY_PARTS]
+    appendix_at = next(
+        (index for index, p in enumerate(majority) if _APPENDIX_RE.search(p["text"])),
+        None,
+    )
+    if appendix_at is not None:
+        # Keep the passage that opens the appendix: it often ends the opinion
+        # proper ("MR. JUSTICE STEVENS took no part... APPENDIX TO ...").
+        majority = majority[: appendix_at + 1]
+    dissents = [p for p in passages if p.get("opinion_part") in DISSENT_PARTS]
+    majority_chars = sum(len(p["text"]) for p in majority)
+    dissent_chars = sum(len(p["text"]) for p in dissents)
+    # Unused budget on one side goes to the other.
+    if majority_chars < majority_budget:
+        dissent_budget += majority_budget - majority_chars
+    elif dissent_chars < dissent_budget:
+        majority_budget += dissent_budget - dissent_chars
+    chosen = {
+        passage["id"]
+        for passage in (
+            _spread_sample(majority, majority_budget)
+            # Separate writings often arrive as one unbroken "dissent" run with
+            # no author lines (Buckley's five), so spread across it rather than
+            # taking its opening, which would be one Justice's.
+            + _spread_sample(dissents, dissent_budget)
+        )
+    }
+    return [passage for passage in passages if passage["id"] in chosen]
+
+
+def build_source_packet(text: str):
+    content_hash, passages = build_opinion_passages(text)
+    return content_hash, passages, select_packet_passages(passages)
+
+
+def format_source_packet(passages: list[dict]) -> tuple[str, bool]:
+    """Render passages one per line, marking any gap in ordinals so the model
+    knows the packet skips text. Returns (text, whether anything was omitted)."""
+    lines, previous, omitted = [], None, False
+    for passage in passages:
+        ordinal = passage.get("ordinal")
+        if previous is not None and ordinal is not None and ordinal > previous + 1:
+            lines.append(f"[... {ordinal - previous - 1} passages omitted ...]")
+            omitted = True
+        lines.append(f'[{passage["id"]}] ({passage["opinion_part"]}) {passage["text"]}')
+        if ordinal is not None:
+            previous = ordinal
+    return "\n".join(lines), omitted
 
 
 def build_structured_prompt(case_name: str, court: str, date: str, passages: list[dict]) -> str:
-    source_packet = "\n".join(
-        f'[{passage["id"]}] ({passage["opinion_part"]}) {passage["text"]}'
-        for passage in passages
+    source_packet, omitted = format_source_packet(passages)
+    excerpt_rule = (
+        "\n- This opinion is long, so the packet is an excerpt: every part of the majority is represented, with gaps marked \"passages omitted\". Brief what the packet shows and never describe omitted text."
+        if omitted else ""
     )
     # Whether a dissent exists is a fact about the packet's tags, not a judgment
     # call about tone, so state it rather than leaving the model to infer it
@@ -249,7 +409,8 @@ Return JSON only, with exactly this shape:
 
 Requirements:
 - Write as much as a complete, useful brief needs and no more. Be concise; a case with several separate opinions may need more room than a short one.
-- Use 1-4 facts, exactly 1 issue, 1-2 holdings, 1-2 rules, 1-4 majority-reasoning claims, and 0-4 dissent claims.
+- Use 1-5 facts, 1-4 issues, 1-4 holdings, 1-4 rules, 1-8 majority-reasoning claims, and 0-4 dissent claims.
+- Most cases decide one question; use one issue for them. When the court decides several distinct questions, often under separate headings (for example a First Amendment challenge and an Appointments Clause challenge), give each its own issue, holding, rule, and reasoning, in the same order, and do not drop any of them. A student may be assigned the case for any one of its holdings.{excerpt_rule}
 - Every claim must cite one or more passage IDs that directly support the complete claim.
 - Cite only opinion/majority passages for facts, issue, holding, rule, and majority reasoning.
 {dissent_rules}
