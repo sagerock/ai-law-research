@@ -550,7 +550,7 @@ with an existing decision, add your case here instead of silently changing the c
 ## Current Handoffs
 
 ### Multi-issue briefs and whole-opinion packets (2026-11-07)
-Owner: Claude. Status: code pushed to `main`; Buckley regeneration below.
+Owner: Claude. Status: pushed to `main` (8dbc819), backend deployed; Buckley regenerated and live.
 Sage flagged Buckley v. Valeo (109380): the brief covered only the First Amendment holding, but
 his con law class reads it (week 11(C)) for the Appointments Clause holding. Two causes, both
 fixed in `backend/structured_briefs.py`, which the on-demand endpoint, the Sunday batch, and the
@@ -574,6 +574,18 @@ eval script all share:
   it cannot judge omissions).
 - Subscription sessions: `candidate-opinion` now reports `packet_chars`. The runbook stops a
   session at 3 candidates or 250k packet chars, whichever comes first.
+- Buckley 109380 regenerated on the subscription (opus generator, separate opus reviewers): 4
+  issues/holdings/rules, Part IV with the "significant authority" rule. First review held 2 of 30
+  claims (an issue naming the Appointments Clause without a cited passage saying so; a dissent
+  claim on certified question 8(d) missing its sources). One triage pass re-sourced both; second
+  review approved. The `ai_summaries` text row (853) still holds the old one-issue rendering;
+  the page shows the approved candidate.
+- Data bug found, not fixed: Buckley's per curiam footnotes that come after the separate opinions
+  (ordinals ~1914-2088, 2210-2379) are labeled `dissent`. Nothing cites them, but they take
+  dissent budget, so Marshall, Blackmun, and Rehnquist got no usable text in the packet. Belongs
+  in `opinion_passages.py` footnote handling.
+- The main checkout (`citator-treatment-grading` branch) holds uncommitted copies of these files,
+  identical to `main`, so the Sunday cron, which runs from that tree, uses the new code.
 - Open: Sage's idea #3, flagging the holding a given course reads the case for, using casebook
   and week mappings. Not started.
 
